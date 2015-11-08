@@ -7,3 +7,5 @@ main.ml
 *.native
 *.byte
 *.docdir
+
+_tests/

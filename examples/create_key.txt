@@ -1,0 +1,96 @@
+> conex list
+repository (name /tmp/conex - File system provider)
+privatekeys (0)
+keys (0)
+delegates (0)
+checksums (0)
+
+> conex generate private me
+generated new private key for me
+keyid: me, private 2048 bit RSA key
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAtgWgM97wbNDVoazCm3AQOe8P/oljYOVFpvVcbcdgf/2v5QqA
+rkkHcMrczr0SkNRQyeSI+lnHMMTfDaCzo3/ZuV9sYW3IB0pUP587m7eahCj2U/Mk
+30r6TXzToM/OnPf1LgRCCBvwk6dsCeiK8+pNUpF4Ly1yX8qGxt5RrQuwMCDxWa6m
+0kFyWgO+wCs+JcQk3BAjSNpdQ9ke1SaRfVD4qGOBEOBdTvWh9M7Qxsb/Y78nhjy9
+wqEpreotQTBvAhf6FsLljdYzkOXexFl+noj6fJ+iqXVCNVVdDnDS17FG9n0v2cuT
+Z5meruUCN4a6x4qHu7j4XKlbK4TTMNVkWBuxqwIDAQABAoIBABP1VfWaEl68H1CU
+8tm8VeskTWqpgd4UBaki6jmXTPt7w5enqShzFX/GnqOEk86RmTIp/uMEiRTN4W9L
+Gadp02PCFM4yDWbPPaGkQhL29Nhc7XWTCY36WKu6bjIJ1yva/GVJTjw5ZA2so+oK
+N4I7RLMzBCyYHRxnxpNzuRzyVSVRp8gqerK3fbfVLLtN6t595vCcPOQLVVQaOBC7
+vPaBj2kRiFASlSfy1jFOy5gYzzbemuKOEG1yBTY5bVPpsiSwV5V97hfgPVh3WAFF
+fuHz4u2x+rx/5TlmnJpsS0boDJTYJgFY6ImggPicRxb0lhFe/vIcOs5gMHv2S6kT
+fG1AWWECgYEA8GDQ67+0ttRsZRgQvIbJu65ZOA9qGfk0Cm2X99wTRtCOoiX1qBac
+KhfhUrZcm3uGA/4mE85aq5LOn7IbE3Rf4EVQSXgu1Ii7v4fX2cT2rlS0yHgUEe7H
+AihRCQKCns8mzyo3yHC1Oknulz15WXs/wOz77d6Kc8OtsN32iIFvtWMCgYEAwdnv
+OjXiALq2LmQbth4PYOU2MEFW2V0LGm1DlcYO9TkNwAJltldX5Uwc+9v2Iqdkd6LY
+NtUNU7QhDh3nCxlZ5isGnCmpwAx8eEbIvuArmGhv7mklRweBh62XWyOm8ctBwZp0
+cnQKaw1aLZY+OItz4FjHRK6bNDUVNLp/eSGriRkCgYAKGAat3573DnR+ykPppr9R
+4kBc2kjaTlyhE3kOL2+fyaIzrORj6o8kNVyA3KeG3+kAwetXaZLlIYULr67zYi+k
+e0Sj0SgmRJeds1adDmhNacEtqd0t45j3vjmo5zIU+R3oFR3CjPkPOYuLTkmKOGK0
+9z6c/ntR4SWqB6gSk1zdgQKBgQCaibjTOR2A41hVR21oFDLCVjiK46vvAOPXH4Af
+qJNIH0G87qxTXvItVC5PAp4IJlZLocCohdRoBFPNwzzrdjxa57YPTI+NEOcxo4xp
+zqAykh+Zeq1DINK8bUEaYSO34wf65b0reSLNEQnxCbN0tIeeNGg3ctM8HY1YSc1R
+revoEQKBgFPjiP+kDybga7KtbAYSinA+1DyJ4V0bC4JazZCi3PyUgN7gMrA4salZ
+Cn8bq3Gcckpyujv/t8FWR+Kf5sQUZBjuH/B6Kxs3kx4btFUfPxxkJfosjq8+7mLy
+7r+BnnvPJlvCJBAs9SB7EUO2gYGm+o5LZUS23aWpNYXGE9xlxnUE
+-----END RSA PRIVATE KEY-----
+
+> conex generate key me
+generated new key for me
+keyid: me role: developer counter: 0
+key: 2048 bits RSA key:
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtgWgM97wbNDVoazCm3AQ
+Oe8P/oljYOVFpvVcbcdgf/2v5QqArkkHcMrczr0SkNRQyeSI+lnHMMTfDaCzo3/Z
+uV9sYW3IB0pUP587m7eahCj2U/Mk30r6TXzToM/OnPf1LgRCCBvwk6dsCeiK8+pN
+UpF4Ly1yX8qGxt5RrQuwMCDxWa6m0kFyWgO+wCs+JcQk3BAjSNpdQ9ke1SaRfVD4
+qGOBEOBdTvWh9M7Qxsb/Y78nhjy9wqEpreotQTBvAhf6FsLljdYzkOXexFl+noj6
+fJ+iqXVCNVVdDnDS17FG9n0v2cuTZ5meruUCN4a6x4qHu7j4XKlbK4TTMNVkWBux
+qwIDAQAB
+-----END PUBLIC KEY-----
+
+0 signatures:
+
+could not verify signatures
+could not read key for id me, ignoring
+
+> conex sign key me
+signed key me
+keyid: me role: developer counter: 0
+key: 2048 bits RSA key:
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtgWgM97wbNDVoazCm3AQ
+Oe8P/oljYOVFpvVcbcdgf/2v5QqArkkHcMrczr0SkNRQyeSI+lnHMMTfDaCzo3/Z
+uV9sYW3IB0pUP587m7eahCj2U/Mk30r6TXzToM/OnPf1LgRCCBvwk6dsCeiK8+pN
+UpF4Ly1yX8qGxt5RrQuwMCDxWa6m0kFyWgO+wCs+JcQk3BAjSNpdQ9ke1SaRfVD4
+qGOBEOBdTvWh9M7Qxsb/Y78nhjy9wqEpreotQTBvAhf6FsLljdYzkOXexFl+noj6
+fJ+iqXVCNVVdDnDS17FG9n0v2cuTZ5meruUCN4a6x4qHu7j4XKlbK4TTMNVkWBux
+qwIDAQAB
+-----END PUBLIC KEY-----
+
+1 signatures:
+me used RSA-PSS, sig:
+IGuGwcl96q4wAzNarQL1pA+aXdQBDGP5lICcizIoAxkr5EVRJhrnmc+8NydLGLS7H8EduUk3bsPWR1iEAw3R+kIjPELXGwOLqPpHo3RjChKZ14dGMM9mciBLLNCsxhvyGC8E3yXhdw2RCSqUCVmYkOYIvUwurQYm/3M0F8jwDq+YK9QBHLJry00OJyQBL9LYqA1x4fQOwgbaAuyOzJoV7f+VvcuS0aWnFshqHAi3RlAHlcjMuS5HLXKQZ2n7bBppWXbI9kV0mlWIbwXQdRZw9FQGsuUazLpYnV9acqqpVbsLXuXzUGAEkIYaodUq3CGghsajh23HYmzmU4lbdiVCMQ==
+
+signatures verified
+
+> conex show key me
+WARNING: treating repository as trusted, maybe you forgot --trust-anchors?
+keyid: me role: developer counter: 0
+key: 2048 bits RSA key:
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtgWgM97wbNDVoazCm3AQ
+Oe8P/oljYOVFpvVcbcdgf/2v5QqArkkHcMrczr0SkNRQyeSI+lnHMMTfDaCzo3/Z
+uV9sYW3IB0pUP587m7eahCj2U/Mk30r6TXzToM/OnPf1LgRCCBvwk6dsCeiK8+pN
+UpF4Ly1yX8qGxt5RrQuwMCDxWa6m0kFyWgO+wCs+JcQk3BAjSNpdQ9ke1SaRfVD4
+qGOBEOBdTvWh9M7Qxsb/Y78nhjy9wqEpreotQTBvAhf6FsLljdYzkOXexFl+noj6
+fJ+iqXVCNVVdDnDS17FG9n0v2cuTZ5meruUCN4a6x4qHu7j4XKlbK4TTMNVkWBux
+qwIDAQAB
+-----END PUBLIC KEY-----
+
+1 signatures:
+me used RSA-PSS, sig:
+IGuGwcl96q4wAzNarQL1pA+aXdQBDGP5lICcizIoAxkr5EVRJhrnmc+8NydLGLS7H8EduUk3bsPWR1iEAw3R+kIjPELXGwOLqPpHo3RjChKZ14dGMM9mciBLLNCsxhvyGC8E3yXhdw2RCSqUCVmYkOYIvUwurQYm/3M0F8jwDq+YK9QBHLJry00OJyQBL9LYqA1x4fQOwgbaAuyOzJoV7f+VvcuS0aWnFshqHAi3RlAHlcjMuS5HLXKQZ2n7bBppWXbI9kV0mlWIbwXQdRZw9FQGsuUazLpYnV9acqqpVbsLXuXzUGAEkIYaodUq3CGghsajh23HYmzmU4lbdiVCMQ==
+
+signatures verified

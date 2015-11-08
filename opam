@@ -1,0 +1,28 @@
+opam-version: "1.2"
+name:         "conex"
+homepage:     "https://github.com/hannesm/conex"
+dev-repo:     "https://github.com/hannesm/conex.git"
+bug-reports:  "https://github.com/hannesm/conex/issues"
+author:       ["Hannes Mehnert <hannes@mehnert.org>"]
+maintainer:   ["Hannes Mehnert <hannes@mehnert.org>"]
+license:      "BSD2"
+
+build: [
+  [ "./build.sh" "bin" ]
+]
+
+build-test: [
+  [ "./build.sh" "test" ]
+  [ "./keys.native" ]
+]
+
+depends: [
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "cstruct" {>= "1.6.0"}
+  "nocrypto" {>= "0.5.3"}
+  "x509" {>= "0.4.0"}
+  "cmdliner"
+  "alcotest" {test}
+]
+available: [ ocaml-version >= "4.01.0" ]

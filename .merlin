@@ -1,0 +1,15 @@
+S app/
+S src/
+S test/
+
+B _build/src
+B _build/app
+B _build/test
+
+PKG cstruct
+PKG nocrypto
+PKG x509
+PKG cmdliner
+PKG alcotest
+
+FLG -safe-string -warn_error +1..49 -w +A-4-6-44-48
