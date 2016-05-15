@@ -5,13 +5,15 @@ type item = [
   | `Dir of string
 ]
 
+type err = [ `NotFound | `UnknownFileType of string ]
+
 type t = {
   name : string ;
   description : string ;
-  file_type : path -> Persistency.file_type ;
-  read : path -> string option ;
+  file_type : path -> (file_type, err) result ;
+  read : path -> (string, err) result ;
   write : path -> string -> unit ;
-  read_dir : path -> item list ;
+  read_dir : path -> (item list, err) result ;
   exists : path -> bool ;
 }
 

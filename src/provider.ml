@@ -5,13 +5,15 @@ type item = [
   | `Dir of string
 ]
 
+type err = [ `NotFound | `UnknownFileType of string ]
+
 type t = {
   name : string ;
   description : string ;
-  file_type : path -> Persistency.file_type ;
-  read : path -> string option ;
+  file_type : path -> (file_type, err) result ;
+  read : path -> (string, err) result ;
   write : path -> string -> unit ;
-  read_dir : path -> item list ;
+  read_dir : path -> (item list, err) result ;
   exists : path -> bool ;
 }
 
@@ -33,24 +35,31 @@ let fs_provider basedir =
     in
     mkdir [basedir] path
   in
-  let file_type path = Persistency.file_type (get path)
+  let file_type path =
+    Utils.option (Error `NotFound) (fun x -> Ok x)
+      (Persistency.file_type (get path))
   and read path =
     let fn = get path in
     if Persistency.exists fn then
-      Some (Persistency.read_file fn)
+      Ok (Persistency.read_file fn)
     else
-      None
+      Error `NotFound
   and write path data =
     ensure_dir path ;
     let nam = get path in
     Persistency.write_replace nam data
   and read_dir path =
     let abs = get path in
-    List.map (fun f ->
-        match Persistency.file_type (Filename.concat abs f) with
-        | `File -> `File f
-        | `Directory -> `Dir f)
-      (Persistency.collect_dir abs)
+    if Persistency.exists abs then
+      foldM (fun acc fn ->
+          let fullfn = Filename.concat abs fn in
+          match Persistency.file_type fullfn with
+          | Some `File -> Ok (`File fn :: acc)
+          | Some `Directory -> Ok (`Dir fn :: acc)
+          | None -> Error (`UnknownFileType fullfn))
+        [] (Persistency.collect_dir abs)
+    else
+      Error `NotFound
   and exists path =
     Persistency.exists (get path)
   in

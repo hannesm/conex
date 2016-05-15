@@ -70,7 +70,10 @@ let load_tas copts =
 let find_keys copts =
   let keys =
     Utils.filter_map
-      ~f:(Repository.read_key copts.repo)
+      ~f:(fun f ->
+          match Repository.read_key copts.repo f with
+          | Error e -> Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          | Ok x -> Some x)
       (List.sort String.compare (Repository.all_keyids copts.repo))
   in
   match copts.owner, copts.signed_by with
@@ -81,7 +84,10 @@ let find_keys copts =
 let find_delegates copts =
   let dels =
     Utils.filter_map
-      ~f:(Repository.read_delegate copts.repo)
+      ~f:(fun f ->
+          match Repository.read_delegate copts.repo f with
+          | Error e -> Format.fprintf copts.out "%sdelegate %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          | Ok x -> Some x)
       (List.sort String.compare (Repository.all_delegates copts.repo))
   in
   match copts.owner, copts.signed_by with
@@ -104,7 +110,10 @@ let find_checksums copts =
        let all = List.sort String.compare items in
        let all_cs =
          Utils.filter_map
-           ~f:(Repository.read_checksum copts.repo)
+           ~f:(fun f ->
+               match Repository.read_checksum copts.repo f with
+               | Error e -> Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+               | Ok x -> Some x)
            all
        in
        Utils.option
@@ -202,21 +211,24 @@ let verify copts kind =
             let verified =
               List.map
                 (fun c ->
-                   let computed = Repository.compute_checksum repo c.Checksum.name in
-                   let valid = Checksum.checksums_equal computed c
+                   let valid =
+                     match Repository.compute_checksum repo c.Checksum.name with
+                     | Error e -> Error e
+                     | Ok computed -> Ok (Checksum.checksums_equal computed c)
                    and verified = Repository.verify_checksum repo d c
                    in
-                   (verified, valid)) cs
+                   (verified, valid))
+                cs
             in
             List.iter2
               (fun s (v, c) ->
                  let col = Color.res_c v in
-                 Format.fprintf
-                   copts.out "%s%s, %s, %a%s@."
-                   col s.Checksum.name
-                   (if c then "valid checksum" else "invalid checksum")
-                   Repository.pp_res v
-                   Color.endc)
+                 Format.fprintf copts.out "%s%s, %a%s, "
+                   col s.Checksum.name Repository.pp_res v Color.endc ;
+                 match c with
+                 | Ok true -> Format.fprintf copts.out "%svalid checksum%s@." Color.green Color.endc
+                 | Ok false -> Format.fprintf copts.out "%sinvalid checksum%s@." Color.red Color.endc
+                 | Error r -> Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err r Color.endc)
               cs verified)
          d_cs ;
        repo
@@ -253,38 +265,45 @@ let show_delegate copts d =
 
 let show_checksum copts c =
   let repo = load copts c.Checksum.signatures in
-  let valid =
-    let computed = Repository.compute_checksum copts.repo c.Checksum.name in
-    Checksum.checksums_equal computed c
-  in
   Checksum.pp_checksums copts.out c ;
   (match Repository.read_delegate repo (Layout.delegate_of_item c.Checksum.name) with
-   | None -> Format.pp_print_string copts.out "no delegate@ "
-   | Some d ->
+   | Error e -> Format.fprintf copts.out "%sdelegate %a%s@ " Color.red Repository.pp_r_err e Color.endc
+   | Ok d ->
      Format.fprintf copts.out "owners: %a@ " Delegate.pp_owners d.Delegate.validids ;
      verified copts (Repository.verify_checksum repo d c)) ;
-  Format.fprintf copts.out "%s@." (if valid then "checksums valid" else "checksums invalid") ;
+  (match Repository.compute_checksum copts.repo c.Checksum.name with
+   | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Repository.pp_r_err e Color.endc
+   | Ok computed ->
+     let eq = Checksum.checksums_equal computed c in
+     Format.fprintf copts.out "%schecksum %s%s@."
+       (if eq then Color.green else Color.red)
+       (if eq then "valid" else "invalid")
+       Color.endc) ;
   `Ok ()
 
 let show copts item value =
   let copts = load_tas copts in
   match item with
-  | `Key -> Utils.option
-              (`Error (false, ("key " ^ value ^ " not found")))
-              (show_key copts)
-              (Repository.read_key copts.repo value)
-  | `Private -> Utils.option
-                  (`Error (false, ("private key " ^ value ^ " not found")))
-                  (show_private copts)
-                  (Private.read_private_key ~id:value copts.repo)
-  | `Delegate -> Utils.option
-                   (`Error (false, "delegate " ^ value ^ " not found"))
-                   (show_delegate copts)
-                   (Repository.read_delegate copts.repo value)
-  | `Checksum -> Utils.option
-                   (`Error (false, "checksum " ^ value ^ " not found"))
-                   (show_checksum copts)
-                   (Repository.read_checksum copts.repo value)
+  | `Key -> (match Repository.read_key copts.repo value with
+      | Ok k -> show_key copts k
+      | Error e ->
+        Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+        `Error (false, "error"))
+  | `Private -> (match Private.read_private_key ~id:value copts.repo with
+      | Ok k -> show_private copts k
+      | Error e ->
+        Format.fprintf copts.out "%s%a%s@." Color.red Private.pp_err e Color.endc ;
+        `Error (false, "error"))
+  | `Delegate -> (match Repository.read_delegate copts.repo value with
+      | Ok k -> show_delegate copts k
+      | Error e ->
+        Format.fprintf copts.out "%sdelegate %a%s" Color.red Repository.pp_r_err e Color.endc ;
+        `Error (false, "error"))
+  | `Checksum -> (match Repository.read_checksum copts.repo value with
+      | Ok k -> show_checksum copts k
+      | Error e ->
+        Format.fprintf copts.out "%schecksum %a%s" Color.red Repository.pp_r_err e Color.endc ;
+        `Error (false, "error"))
   | `Diff -> if Persistency.exists value then
                let data = Persistency.read_file value in
                let provider = Repository.provider copts.repo in
@@ -317,30 +336,29 @@ let generate copts item name role ids =
        Format.fprintf copts.out "generated new key for %s@." name ;
        show_key copts p
      in
-     Utils.option
-       (Utils.option
-          (`Error (false, "no private key and public does not exist"))
-          (fun (_, k) ->
-           let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
-           writeout pub)
-          (Private.read_private_key ~id:name copts.repo))
-       (fun p ->
+     (match Repository.read_key copts.repo name with
+      | Ok p ->
         let pub = { p with Publickey.counter = Int64.succ p.Publickey.counter ; role ; signatures = [] } in
         let pub =
-          Utils.option
-            pub
-            (fun (_, priv) -> { pub with Publickey.key = Some (Private.pub_of_priv priv) })
-            (Private.read_private_key ~id:name copts.repo)
+          match Private.read_private_key ~id:name copts.repo with
+          | Error _ -> pub
+          | Ok (_, priv) ->
+            { pub with Publickey.key = Some (Private.pub_of_priv priv) }
         in
-        writeout pub)
-       (Repository.read_key copts.repo name)
+        writeout pub
+      | Error _ ->
+        match Private.read_private_key ~id:name copts.repo with
+        | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
+                       Color.red name Color.endc ;
+          `Error (false, "no private key and public does not exist")
+        | Ok (_, k) ->
+          let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
+          writeout pub)
   | `Delegate ->
      let d = { Delegate.name = name ; counter = 0L ; validids = ids ; signatures = [] } in
-     let d =
-       Utils.option
-         d
-         (fun d' -> { d with Delegate.counter = Int64.succ d'.Delegate.counter })
-         (Repository.read_delegate copts.repo name)
+     let d = match Repository.read_delegate copts.repo name with
+       | Error _ -> d
+       | Ok d' -> { d with Delegate.counter = Int64.succ d'.Delegate.counter }
      in
      if copts.dry then
        Format.fprintf copts.out "dry run, nothing written.@."
@@ -349,66 +367,77 @@ let generate copts item name role ids =
      Format.fprintf copts.out "updated delegate %s@." name ;
      show_delegate copts d
   | `Checksum ->
-     let cs = Repository.compute_checksum copts.repo name in
-     let cs =
-       Utils.option
-         cs
-         (fun o -> { cs with Checksum.counter = Int64.succ o.Checksum.counter })
-         (Repository.read_checksum copts.repo name)
-     in
-     if copts.dry then
-       Format.fprintf copts.out "dry run, nothing written.@."
-     else
-       Repository.write_checksum copts.repo cs ;
-     Format.fprintf copts.out "updated checksum %s@." name ;
-     show_checksum copts cs
+    (match Repository.compute_checksum copts.repo name with
+     | Error e ->
+       Format.fprintf copts.out "%scomputing checksum %a%s@."
+         Color.red Repository.pp_r_err e Color.endc ;
+       `Error (false, "while computing checksum")
+     | Ok cs ->
+       let cs = match Repository.read_checksum copts.repo name with
+         | Error _ -> cs
+         | Ok o -> { cs with Checksum.counter = Int64.succ o.Checksum.counter }
+       in
+       if copts.dry then
+         Format.fprintf copts.out "dry run, nothing written.@."
+       else
+         Repository.write_checksum copts.repo cs ;
+       Format.fprintf copts.out "updated checksum %s@." name ;
+       show_checksum copts cs)
   | _ -> `Error (false, "dunno what to generate")
 
 let sign copts item name =
   Nocrypto_entropy_unix.initialize () ;
-  let sign raw =
-    match Private.read_private_key ?id:copts.private_key copts.repo with
-    | Some (id, p) -> Private.sign id p raw
-    | None -> invalid_arg "no private_key"
-  in
-  match item with
-  | `Key -> Utils.option
-              (`Error (false, ("no such key " ^ name)))
-              (fun k ->
-               let sigv = sign (Data.publickey_raw k) in
-               let key = { k with Publickey.signatures = sigv :: k.Publickey.signatures } in
-               if copts.dry then
-                 Format.fprintf copts.out "dry run, nothing written.@."
-               else
-                 Repository.write_key copts.repo key ;
-               Format.fprintf copts.out "signed key %s@." name ;
-               show_key copts key)
-              (Repository.read_key copts.repo name)
-  | `Delegate -> Utils.option
-                   (`Error (false, ("no delegate " ^ name)))
-                   (fun d ->
-                    let sigv = sign (Data.delegate_raw d) in
-                    let d = { d with Delegate.signatures = sigv :: d.Delegate.signatures } in
-                    if copts.dry then
-                      Format.fprintf copts.out "dry run, nothing written.@."
-                    else
-                      Repository.write_delegate copts.repo d ;
-                    Format.fprintf copts.out "signed delegate %s@." name ;
-                    show_delegate copts d)
-                   (Repository.read_delegate copts.repo name)
-  | `Checksum -> Utils.option
-                   (`Error (false, ("no checksum " ^ name)))
-                   (fun c ->
-                    let sigv = sign (Data.checksums_raw c) in
-                    let c = { c with Checksum.signatures = sigv :: c.Checksum.signatures } in
-                    if copts.dry then
-                      Format.fprintf copts.out "dry run, nothing written.@."
-                    else
-                      Repository.write_checksum copts.repo c ;
-                    Format.fprintf copts.out "signed checksum %s@." name ;
-                    show_checksum copts c)
-                   (Repository.read_checksum copts.repo name)
-  | _ -> `Error (false, "dunno what to sign")
+  match Private.read_private_key ?id:copts.private_key copts.repo with
+  | Error e ->
+    Format.fprintf copts.out "%s%a%s@." Color.red Private.pp_err e Color.endc ;
+    `Error (false, "error")
+  | Ok (id, p) ->
+    Format.fprintf copts.out "using private key %s@." id ;
+    let sign raw = Private.sign id p raw in
+    match item with
+    | `Key -> (match Repository.read_key copts.repo name with
+        | Error e ->
+          Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          `Error (false, "error")
+        | Ok k ->
+          let sigv = sign (Data.publickey_raw k) in
+          let key = { k with Publickey.signatures = sigv :: k.Publickey.signatures } in
+          if copts.dry then
+            Format.fprintf copts.out "dry run, nothing written.@."
+          else
+            Repository.write_key copts.repo key ;
+          Format.fprintf copts.out "signed key %s@." name ;
+          show_key copts key)
+
+    | `Delegate -> (match Repository.read_delegate copts.repo name with
+        | Error e ->
+          Format.fprintf copts.out "%sdelegate %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          `Error (false, "error")
+        | Ok d ->
+          let sigv = sign (Data.delegate_raw d) in
+          let d = { d with Delegate.signatures = sigv :: d.Delegate.signatures } in
+          if copts.dry then
+            Format.fprintf copts.out "dry run, nothing written.@."
+          else
+            Repository.write_delegate copts.repo d ;
+          Format.fprintf copts.out "signed delegate %s@." name ;
+          show_delegate copts d)
+
+    | `Checksum -> (match Repository.read_checksum copts.repo name with
+        | Error e ->
+          Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          `Error (false, "error")
+        | Ok c ->
+          let sigv = sign (Data.checksums_raw c) in
+          let c = { c with Checksum.signatures = sigv :: c.Checksum.signatures } in
+          if copts.dry then
+            Format.fprintf copts.out "dry run, nothing written.@."
+          else
+            Repository.write_checksum copts.repo c ;
+          Format.fprintf copts.out "signed checksum %s@." name ;
+          show_checksum copts c)
+
+    | _ -> `Error (false, "dunno what to sign")
 
 
 open Cmdliner

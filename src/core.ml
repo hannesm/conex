@@ -1,5 +1,7 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
+type file_type = [ `File | `Directory ]
+
 type path = string list
 
 let path_to_string path =
@@ -16,10 +18,6 @@ let path_to_string path =
 let string_to_path str = Strhelper.cuts '/' str
 
 type identifier = string
-
-let warn = Printf.eprintf
-
-let dbg = Printf.printf
 
 type algorithm = [
   | `RSA_PSS

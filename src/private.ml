@@ -87,18 +87,24 @@ let write_private_key repo id key =
     Unix.mkdir private_dir 0o700 ;
   Persistency.write_file ~mode:0o400 filename data
 
+type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list ]
+let pp_err ppf = function
+  | `NotFound x -> Format.fprintf ppf "couldn't find private key %s" x
+  | `NoPrivateKey -> Format.pp_print_string ppf "no private key found"
+  | `MultiplePrivateKeys keys -> Format.fprintf ppf "multiple private keys found %s" (String.concat ", " keys)
+
 let read_private_key ?id repo =
   let read id =
     let fn = Filename.concat private_dir (private_filename repo id) in
     if Persistency.exists fn then
       let key = Persistency.read_file fn in
-      Some (id, decode_priv key)
+      Ok (id, decode_priv key)
     else
-      None
+      Error (`NotFound id)
   in
   match id with
   | Some x -> read x
   | None -> match all_private_keys repo with
             | [x] -> read x
-            | [] -> None
-            | _ -> None
+            | [] -> Error `NoPrivateKey
+            | xs -> Error (`MultiplePrivateKeys xs)

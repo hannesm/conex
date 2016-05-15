@@ -90,16 +90,23 @@ let verify_checksum repo d cs =
   guard (nam = d.Delegate.name) (`InvalidDelegate (d.Delegate.name, cs.Checksum.name)) >>= fun () ->
   verify_data ("checksum " ^ cs.Checksum.name) repo d.Delegate.validids raw signatures
 
+type r_err = [ `NotFound of string | `NameMismatch of string * string ]
+
+let pp_r_err ppf = function
+  | `NotFound x -> Format.fprintf ppf "%s was not found in repository" x
+  | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
+
+type 'a r_res = ('a, r_err) result
+
 let read_key repo keyid =
   match repo.data.Provider.read (Layout.key_path keyid) with
-  | None -> warn "could not read key for id %s, ignoring\n" keyid ; None
-  | Some data ->
+  | Error _ -> Error (`NotFound keyid)
+  | Ok data ->
     let pubkey = Data.data_to_publickey (Data.parse data) in
     if pubkey.Publickey.keyid <> keyid then
-      (warn "keyid doesn't match, ignoring: %s != %s\n" keyid pubkey.Publickey.keyid ;
-       None)
+      Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
     else
-      Some pubkey
+      Ok pubkey
 
 let write_key repo key =
   let data = Data.publickey_to_data key in
@@ -111,14 +118,13 @@ let all_keyids repo = Layout.keys repo.data
 
 let read_delegate repo name =
   match repo.data.Provider.read (Layout.delegate_path name) with
-  | None -> warn "could not read delegate for %s, ignoring\n" name ; None
-  | Some data ->
+  | Error _ -> Error (`NotFound name)
+  | Ok data ->
     let delegate = Data.data_to_delegate (Data.parse data) in
     if delegate.Delegate.name <> name then
-      (warn "delegate name does not match, ignoring: %s != %s\n" name delegate.Delegate.name ;
-       None)
+      Error (`NameMismatch (name, delegate.Delegate.name))
     else
-      Some delegate
+      Ok delegate
 
 let write_delegate repo del =
   let data = Data.delegate_to_data del in
@@ -130,14 +136,13 @@ let all_delegates repo = Layout.delegates repo.data
 
 let read_checksum repo name =
   match repo.data.Provider.read (Layout.checksum_path name) with
-  | None -> warn "could not read checksum for %s, ignoring\n" name ; None
-  | Some data ->
+  | Error _ -> Error (`NotFound name)
+  | Ok data ->
     let csum = Data.data_to_checksums (Data.parse data) in
     if csum.Checksum.name <> name then
-      (warn "checksums name does not match, ignoring: %s != %s\n" name csum.Checksum.name ;
-       None)
+      Error (`NameMismatch (name, csum.Checksum.name))
     else
-      Some csum
+      Ok csum
 
 let write_checksum repo csum =
   let data = Data.checksums_to_data csum in
@@ -148,16 +153,20 @@ let compute_checksum repo name =
   let files = Layout.checksum_files repo.data name in
   let del = Layout.delegate_of_item name in
   let datas =
-    List.map
-      (fun f ->
+    foldM
+      (fun acc f ->
          match repo.data.Provider.read ([del;name]@f) with
-         | None -> invalid_arg ("couldn't read file " ^ (path_to_string ([del;name]@f)))
-         | Some data -> data)
+         | Error _ -> Error (`NotFound (path_to_string ([del;name]@f)))
+         | Ok data -> Ok (data :: acc))
+      []
       files
   in
   let names = List.map path_to_string files in
-  let csums = List.map2 Checksum.checksum names datas in
-  Checksum.checksums name csums
+  match datas with
+  | Ok datas ->
+    let csums = List.map2 Checksum.checksum names datas in
+    Ok (Checksum.checksums name csums)
+  | Error e -> Error e
 
 
 module Graph = struct
@@ -213,16 +222,17 @@ end
 
 module SM = Map.Make(String)
 
+(* Ignoring read failures may be fine here, in case a publickey is removed, but there are
+   still some dangling signatures, which won't verify later *)
+
 let required_keys repo ids =
   let rec load_one (graph, pubkeys) id =
     if Graph.contains graph id then
       (graph, pubkeys)
     else
       match read_key repo id with
-      | None ->
-         warn "while loading, key %s couldn't be found\n" id ;
-         (graph, pubkeys)
-      | Some pkey ->
+      | Error _ -> invalid_arg ("error while loading key " ^ id)
+      | Ok pkey ->
          let others =
            let sigs = pkey.Publickey.signatures in
            List.map id_of_sig sigs
@@ -237,7 +247,6 @@ let required_keys repo ids =
   let sorted = Graph.topsort graph in
   List.map (fun n -> SM.find n pubkeys) sorted
 
-
 let load_keys repo ?(verify = false) ids =
   if verify then
     let keys = required_keys repo ids in
@@ -251,6 +260,6 @@ let load_keys repo ?(verify = false) ids =
     List.fold_left
       (fun repo id ->
        match read_key repo id with
-       | None -> warn "couldn't find key for %s\n" id ; repo
-       | Some k -> add_key repo k)
+       | Error _ -> invalid_arg ("could not find key " ^ id)
+       | Ok k -> add_key repo k)
       repo ids

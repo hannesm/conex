@@ -59,13 +59,13 @@ let categorise diff =
   let p = string_to_path (Diff.file diff) in
   match Layout.is_key p, Layout.is_delegate p, Layout.is_item p with
   | Some id, None, None ->
-    dbg "found a key in diff %s\n" id;
+    Printf.printf "found a key in diff %s\n" id;
     Key (id, diff)
   | None, Some id, None ->
-    dbg "found a delegate in diff %s\n" id;
+    Printf.printf "found a delegate in diff %s\n" id;
     Delegate (id, diff)
   | None, None, Some (d, p) ->
-    dbg "found a dir in diff %s %s\n" d p;
+    Printf.printf "found a dir in diff %s %s\n" d p;
     Directory (d, p, [ diff ])
   | _ -> invalid_arg ("couldn't categorise " ^ (path_to_string p))
 

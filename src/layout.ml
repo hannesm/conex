@@ -38,66 +38,88 @@ let private_key_path path id =
   in
   string_to_path private_dir @ [ filename ]
 
+let key_dir, key_suffix = ("keys", ".public")
 
 let keys p =
-  let f = function
-    | `File f when Strhelper.is_suffix ~suffix:".public" f ->
-      Some (String.sub f 0 (String.length f - 7))
-    | _ -> None
-  in
-  Utils.filter_map ~f (p.Provider.read_dir [ "keys" ])
+  match p.Provider.read_dir [ key_dir ] with
+  | Error _ -> []
+  | Ok data ->
+    let suffix = key_suffix in
+    let f = function
+      | `File f when Strhelper.is_suffix ~suffix f ->
+        Some (Strhelper.cut_suffix ~suffix f)
+      | _ -> None
+    in
+    Utils.filter_map ~f data
 
-let key_path id = [ "keys" ; id ^ ".public" ]
+let key_path id = [ key_dir ; id ^ key_suffix ]
 
+let data_dir = "data"
+let delegate_filename = "delegate"
 
 let delegates p =
-  let f = function
-    | `Dir d -> Some d
-    | `File _ -> None
-  in
-  Utils.filter_map ~f (p.Provider.read_dir [ "data" ])
+  match p.Provider.read_dir [ data_dir ] with
+  | Error _ -> []
+  | Ok data ->
+    let f = function
+      | `Dir d -> Some d
+      | `File _ -> None
+    in
+    Utils.filter_map ~f data
 
-let delegate_path id = [ "data" ; id ; "delegate" ]
+let delegate_path id = [ data_dir ; id ; delegate_filename ]
 
+let checksum_filename = "checksum"
 
 let items p id =
-  let f = function
-    | `Dir d -> Some d
-    | `File _ -> None
-  in
-  Utils.filter_map ~f (p.Provider.read_dir [ "data" ; id ])
+  match p.Provider.read_dir [ data_dir ; id ] with
+  | Error _ -> []
+  | Ok data ->
+    let f = function
+      | `Dir d -> Some d
+      | `File _ -> None
+    in
+    Utils.filter_map ~f data
 
 let checksum_path p =
   let d = delegate_of_item p in
-  [ "data" ; d ; p ; "checksum" ]
-
+  [ data_dir ; d ; p ; checksum_filename ]
 
 let checksum_files p da =
   let de = delegate_of_item da in
-  let st = [ "data" ; de ; da ] in
+  let st = [ data_dir ; de ; da ] in
   let rec collect1 acc d = function
-    | `File f when d = [] && f = "checksum" -> acc
+    | `File f when d = [] && f = checksum_filename -> acc
     | `File f -> (d@[f]) :: acc
     | `Dir dir ->
       let sub = d @ [ dir ] in
-      List.fold_left
-        (fun acc x -> collect1 acc sub x)
-        acc
-        (p.Provider.read_dir (st@sub))
+      match p.Provider.read_dir (st@sub) with
+      | Error _ -> []
+      | Ok data ->
+        List.fold_left
+          (fun acc x -> collect1 acc sub x)
+          acc
+          data
   in
-  List.fold_left
-    (fun acc x -> collect1 [] [] x @ acc)
-    []
-    (p.Provider.read_dir st)
+  match p.Provider.read_dir st with
+  | Error _ -> []
+  | Ok data ->
+    List.fold_left
+      (fun acc x -> collect1 [] [] x @ acc)
+      []
+      data
 
 let is_key = function
-  | "keys" :: id :: [] when Strhelper.is_suffix ~suffix:".public" id -> Some (String.sub id 0 (String.length id - 7))
+  | kd :: id :: [] when
+      kd = key_dir && Strhelper.is_suffix ~suffix:key_suffix id ->
+    Some (String.sub id 0 (String.length id - 7))
   | _ -> None
 
 let is_delegate = function
-  | "data" :: id :: "delegate" :: [] -> Some id
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = delegate_filename->
+    Some id
   | _ -> None
 
 let is_item = function
-  | "data" :: id :: id2 :: _ -> Some (id, id2)
+  | dd :: id :: id2 :: _ when dd = data_dir -> Some (id, id2)
   | _ -> None

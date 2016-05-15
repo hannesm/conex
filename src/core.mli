@@ -1,15 +1,13 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
+type file_type = [ `File | `Directory ]
+
 type path = string list
 val path_to_string : path -> string
 val string_to_path : string -> path
 
 (* keyid (NOTE: maybe abstract, checking for printable ASCII characters, case-insensitive, make private!) *)
 type identifier = string
-
-val warn : ('a, out_channel, unit) format -> 'a
-
-val dbg : ('a, out_channel, unit) format -> 'a
 
 type algorithm = [
   | `RSA_PSS
@@ -41,6 +39,6 @@ type error = [
 val pp_error : Format.formatter -> error -> unit
 
 val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-val guard : bool -> error -> (unit, error) result
-val foldM : ('a -> 'b -> ('a, error) result) -> 'a -> 'b list -> ('a, error) result
-val anyM : ('b -> ('a, error) result) -> 'b list -> ('a, unit) result
+val guard : bool -> 'a -> (unit, 'a) result
+val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
+val anyM : ('b -> ('a, 'c) result) -> 'b list -> ('a, unit) result

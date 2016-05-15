@@ -43,6 +43,12 @@ let is_suffix ~suffix str =
   else
     String.sub str (String.length str - sl) sl = suffix
 
+let cut_suffix ~suffix str =
+  if is_suffix ~suffix str then
+    String.sub str 0 (String.length str - String.length suffix)
+  else
+    invalid_arg ("suffix " ^ suffix ^ " is not a suffix of string " ^ str)
+
 let lowercase_char = function
   | 'A' .. 'Z' as c -> char_of_int (int_of_char c + 0x20)
   | c -> c

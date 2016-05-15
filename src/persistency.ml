@@ -5,15 +5,13 @@ let remove = Sys.remove
 
 let rename = Sys.rename
 
-type file_type = [ `File | `Directory ]
-
 let file_type filename =
   let open Unix in
   let stat = stat filename in
   match stat.st_kind with
-  | S_REG -> `File
-  | S_DIR -> `Directory
-  | _ -> invalid_arg (filename ^ " is neither file nor directory")
+  | S_REG -> Some `File
+  | S_DIR -> Some `Directory
+  | _ -> None
 
 let read_file filename =
   let open Unix in
