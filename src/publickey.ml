@@ -39,7 +39,7 @@ let pp_publickey ppf p =
                  p.keyid (role_to_string p.role) p.counter
                  pp_opt_key p.key Signature.pp_signatures p.signatures
 
-let publickey ?(counter = 0L) ?(role = `Developer) ?(signatures = []) keyid key =
+let publickey ?(counter = 0L) ?(role = Author) ?(signatures = []) keyid key =
   (match key with
    | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p >= 2048 -> ()
    | _ -> invalid_arg "insufficient key size") ;
@@ -47,31 +47,20 @@ let publickey ?(counter = 0L) ?(role = `Developer) ?(signatures = []) keyid key 
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let verify pub mrole data (id, sig_alg, sigval) =
-  if mrole = pub.role then (* XXX: pub.role == `RM, but `Dev needed should be ok as well (in case pub owns this thing) *)
+let verify pub mrole kind data (id, sigval) =
+  if mrole = pub.role then (* XXX: pub.role == Janitor, but Author needed should be ok as well (in case pub owns this thing) *)
     match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
       | None -> Error (`InvalidBase64Encoding (id, sigval))
       | Some signature ->
-        let data = Signature.extend_data data sig_alg id in
+        let data = Signature.extend_data data id kind in
         let cs_data = Cstruct.of_string data in
-        match pub.key, sig_alg with
-        | Some (RSA_pub key), `RSA_PSS ->
+        match pub.key with
+        | Some (RSA_pub key) ->
           if Pss_sha256.verify ~key ~signature cs_data then
             Ok id
           else
             let s = Cstruct.to_string signature in
-            Error (`InvalidSignature (id, sig_alg, s, data))
-        | Some (RSA_pub key), `RSA_PKCS ->
-          Utils.option
-            (let s = Cstruct.to_string signature in
-             Error (`InvalidSignature (id, sig_alg, s, data)))
-            (fun s ->
-               if Cstruct.equal (Nocrypto.Hash.SHA256.digest cs_data) s then
-                 Ok id
-               else
-                 let s = Cstruct.to_string signature in
-                 Error (`InvalidSignature (id, sig_alg, s, data)))
-            (Nocrypto.Rsa.PKCS1.sig_decode ~key signature)
-        | None, _ -> Error (`InvalidPublicKey id)
+            Error (`InvalidSignature (id, kind, s, data))
+        | None -> Error (`InvalidPublicKey id)
   else
     Error (`InvalidRole (mrole, pub.role))

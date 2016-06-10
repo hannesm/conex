@@ -17,4 +17,4 @@ val publickey : ?counter:int64 -> ?role:role -> ?signatures:(Signature.t list) -
 
 val equal : t -> t -> bool
 
-val verify : t -> role -> string -> Signature.t -> (identifier, error) result
+val verify : t -> role -> kind -> string -> Signature.t -> (identifier, error) result

@@ -28,10 +28,10 @@ let add_key repo key =
   let store = Keystore.add repo.store key in
   { repo with store }
 
-let id_of_sig (id, _, _) = id
+let id_of_sig (id, _) = id
 
-let has_quorum id repo data signatures =
-  let verify = Keystore.verify repo.store `RepositoryMaintainer data in
+let has_quorum id repo kind data signatures =
+  let verify = Keystore.verify repo.store Janitor kind data in
   let sigs = List.map verify signatures in
   let ids = Utils.filter_map ~f:(function Ok id -> Some id | Error _ -> None) sigs in
   if S.cardinal (S.of_list ids) >= repo.quorum then
@@ -40,14 +40,15 @@ let has_quorum id repo data signatures =
     let errs = Utils.filter_map ~f:(function Error e -> Some e | Ok _ -> None) sigs in
     Error (`InsufficientQuorum (id, ids, errs))
 
-let verify_data id repo authorised_ids ?(role = `Developer) data signatures =
+let verify_data id repo authorised_ids ?(role = Author) kind data signatures =
   let valids, _others =
     let tst s = List.mem (id_of_sig s) authorised_ids in
     List.partition tst signatures
   in
-  let sigs = List.map (Keystore.verify repo.store role data) valids in
+  let sigs = List.map (Keystore.verify repo.store role kind data) valids in
   let errs = Utils.filter_map ~f:(function Error e -> Some e | Ok _ -> None) sigs in
   Error (`InvalidSignatures (id, errs))
+(* XXX: re-enable *)
 (* match anyM (Keystore.verify repo.store role data) valids with
   | Ok x -> Ok (`Identifier x)
   | Error () -> has_quorum id repo data others *)
@@ -65,30 +66,30 @@ let verify_key repo key =
      else
        guard (key.Publickey.counter > old.Publickey.counter)
          (`InvalidCounter (id, old.Publickey.counter, key.Publickey.counter)) >>= fun () ->
-       verify_data ("key " ^ id) repo [id] ~role:old.Publickey.role raw sigs >>= fun _ ->
+       verify_data id repo [id] ~role:old.Publickey.role PublicKey raw sigs >>= fun _ ->
        Ok ()
    else
      Ok ()) >>= fun _ ->
-  verify_data ("key " ^ id) (add_key repo key) [id] ~role raw sigs >>= fun ok ->
-  if key.Publickey.role = `Developer then
+  verify_data id (add_key repo key) [id] ~role PublicKey raw sigs >>= fun ok ->
+  if key.Publickey.role = Author then
     Ok ok
   else
-    has_quorum ("key " ^ id) repo raw sigs >>= fun _ -> Ok ok
+    has_quorum id repo PublicKey raw sigs >>= fun _ -> Ok ok
 
-let verify_delegate repo ?validids del =
-  let raw = Data.delegate_raw del
-  and signatures = del.Delegate.signatures
+let verify_authorisation repo ?authorised auth =
+  let raw = Data.authorisation_raw auth
+  and signatures = auth.Authorisation.signatures
   in
-  let valid = Utils.option del.Delegate.validids (fun x -> x) validids in
-  verify_data ("delegate " ^ del.Delegate.name) repo valid raw signatures
+  let valid = Utils.option auth.Authorisation.authorised (fun x -> x) authorised in
+  verify_data auth.Authorisation.name repo valid Authorisation raw signatures
 
-let verify_checksum repo d cs =
+let verify_checksum repo a cs =
   let raw = Data.checksums_raw cs
   and signatures = cs.Checksum.signatures
   in
-  let nam = Layout.delegate_of_item cs.Checksum.name in
-  guard (nam = d.Delegate.name) (`InvalidDelegate (d.Delegate.name, cs.Checksum.name)) >>= fun () ->
-  verify_data ("checksum " ^ cs.Checksum.name) repo d.Delegate.validids raw signatures
+  let nam = Layout.authorisation_of_item cs.Checksum.name in
+  guard (nam = a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
+  verify_data cs.Checksum.name repo a.Authorisation.authorised Checksum raw signatures
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
@@ -116,23 +117,23 @@ let write_key repo key =
 
 let all_keyids repo = Layout.keys repo.data
 
-let read_delegate repo name =
-  match repo.data.Provider.read (Layout.delegate_path name) with
+let read_authorisation repo name =
+  match repo.data.Provider.read (Layout.authorisation_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    let delegate = Data.data_to_delegate (Data.parse data) in
-    if delegate.Delegate.name <> name then
-      Error (`NameMismatch (name, delegate.Delegate.name))
+    let auth = Data.data_to_authorisation (Data.parse data) in
+    if auth.Authorisation.name <> name then
+      Error (`NameMismatch (name, auth.Authorisation.name))
     else
-      Ok delegate
+      Ok auth
 
-let write_delegate repo del =
-  let data = Data.delegate_to_data del in
+let write_authorisation repo a =
+  let data = Data.authorisation_to_data a in
   repo.data.Provider.write
-    (Layout.delegate_path del.Delegate.name)
+    (Layout.authorisation_path a.Authorisation.name)
     (Data.normalise data)
 
-let all_delegates repo = Layout.delegates repo.data
+let all_authorisations repo = Layout.authorisations repo.data
 
 let read_checksum repo name =
   match repo.data.Provider.read (Layout.checksum_path name) with
@@ -151,7 +152,7 @@ let write_checksum repo csum =
 
 let compute_checksum repo name =
   let files = Layout.checksum_files repo.data name in
-  let del = Layout.delegate_of_item name in
+  let del = Layout.authorisation_of_item name in
   let datas =
     foldM
       (fun acc f ->

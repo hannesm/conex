@@ -29,7 +29,7 @@ let help _copts man_format cmds = function
 let kinds =
   [ ("privatekeys", `Privates) ;
     ("keys", `Keys) ;
-    ("delegates", `Delegates) ;
+    ("authorisations", `Authorisations) ;
     ("checksums", `Checksums) ;
     ("repository", `Repository) ]
 
@@ -38,9 +38,9 @@ let find_private_keys copts =
   let keys = Utils.option keys (fun _ -> []) copts.signed_by in
   Utils.option keys (fun s -> List.filter ((=) s) keys) copts.owner
 
-let has_signature_of sigs id = List.exists (fun (id', _, _) -> id' = id) sigs
+let has_signature_of sigs id = List.exists (fun (id', _) -> id' = id) sigs
 
-let id_of_sig (id, _, _) = id
+let id_of_sig (id, _) = id
 
 let load copts sigs =
   Repository.load_keys copts.repo ~verify:copts.verify (List.map id_of_sig sigs)
@@ -81,32 +81,32 @@ let find_keys copts =
   | None, Some s -> List.filter (fun k -> has_signature_of k.Publickey.signatures s) keys
   | _ -> keys
 
-let find_delegates copts =
-  let dels =
+let find_authorisations copts =
+  let auths =
     Utils.filter_map
       ~f:(fun f ->
-          match Repository.read_delegate copts.repo f with
-          | Error e -> Format.fprintf copts.out "%sdelegate %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          match Repository.read_authorisation copts.repo f with
+          | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (Repository.all_delegates copts.repo))
+      (List.sort String.compare (Repository.all_authorisations copts.repo))
   in
   match copts.owner, copts.signed_by with
-  | Some o, _ -> List.filter (fun d -> List.mem o d.Delegate.validids) dels
-  | None, Some s -> List.filter (fun d -> has_signature_of d.Delegate.signatures s) dels
-  | None, None -> dels
+  | Some o, _ -> List.filter (fun d -> List.mem o d.Authorisation.authorised) auths
+  | None, Some s -> List.filter (fun d -> has_signature_of d.Authorisation.signatures s) auths
+  | None, None -> auths
 
 let find_checksums copts =
-  let dels =
-    let ds = find_delegates { copts with signed_by = None } in
+  let auths =
+    let auths = find_authorisations { copts with signed_by = None } in
     Utils.option
-      ds
-      (fun o -> List.filter (fun d -> d.Delegate.name = o) ds)
+      auths
+      (fun o -> List.filter (fun a -> a.Authorisation.name = o) auths)
       copts.name
   in
   List.fold_left
     (fun acc d ->
      let cs =
-       let items = Layout.items (Repository.provider copts.repo) d.Delegate.name in
+       let items = Layout.items (Repository.provider copts.repo) d.Authorisation.name in
        let all = List.sort String.compare items in
        let all_cs =
          Utils.filter_map
@@ -125,7 +125,7 @@ let find_checksums copts =
      | [] -> acc
      | xs -> (d, xs) :: acc)
     []
-    dels
+    auths
 
 let list copts kind =
   let rec exec kind =
@@ -143,16 +143,16 @@ let list copts kind =
     | `Keys ->
        let keys = find_keys copts in
        Format.fprintf copts.out " (%d)@." (List.length keys) ; out (List.map (fun k -> k.Publickey.keyid) keys)
-    | `Delegates ->
-       let dels = find_delegates copts in
-       Format.fprintf copts.out " (%d)@." (List.length dels) ; out (List.map (fun d -> d.Delegate.name) dels)
+    | `Authorisations ->
+       let auths = find_authorisations copts in
+       Format.fprintf copts.out " (%d)@." (List.length auths) ; out (List.map (fun a -> a.Authorisation.name) auths)
     | `Checksums ->
        let d_cs = find_checksums copts in
        Format.fprintf copts.out " (%d)@." (List.length d_cs) ;
        List.iter
-         (fun (d, cs) ->
+         (fun (a, cs) ->
           Format.fprintf copts.out "%s (%d owners: %a)@."
-                         d.Delegate.name (List.length cs) Delegate.pp_owners d.Delegate.validids ;
+                         a.Authorisation.name (List.length cs) Authorisation.pp_owners a.Authorisation.authorised ;
           out (List.map (fun c -> c.Checksum.name) cs))
          d_cs
     | `Repository ->
@@ -189,25 +189,25 @@ let verify copts kind =
        Format.fprintf copts.out " (%d)@." (List.length verified) ;
        out (List.map (fun k -> k.Publickey.keyid) keys) verified ;
        repo
-    | `Delegates ->
-       let dels = find_delegates copts in
-       let repo = List.fold_left load_k repo (List.map (fun d -> d.Delegate.signatures) dels) in
-       let verified = List.map (Repository.verify_delegate repo) dels in
-       Format.fprintf copts.out " (%d)@." (List.length dels) ;
-       out (List.map (fun d -> d.Delegate.name) dels) verified ;
+    | `Authorisations ->
+       let auths = find_authorisations copts in
+       let repo = List.fold_left load_k repo (List.map (fun d -> d.Authorisation.signatures) auths) in
+       let verified = List.map (Repository.verify_authorisation repo) auths in
+       Format.fprintf copts.out " (%d)@." (List.length auths) ;
+       out (List.map (fun d -> d.Authorisation.name) auths) verified ;
        repo
     | `Checksums ->
        let d_cs = find_checksums copts in
-       let repo = List.fold_left (fun repo (d, cs) -> List.fold_left load_k (load_k repo d.Delegate.signatures) (List.map (fun c -> c.Checksum.signatures) cs)) repo d_cs in
+       let repo = List.fold_left (fun repo (a, cs) -> List.fold_left load_k (load_k repo a.Authorisation.signatures) (List.map (fun c -> c.Checksum.signatures) cs)) repo d_cs in
        Format.fprintf copts.out " (%d)@." (List.length d_cs) ;
        List.iter
-         (fun (d, cs) ->
-            let d_verified = Repository.verify_delegate repo d in
-            let c = Color.res_c d_verified in
+         (fun (a, cs) ->
+            let a_verified = Repository.verify_authorisation repo a in
+            let c = Color.res_c a_verified in
             Format.fprintf
               copts.out "%s%s (%d owners: %a) (%a)%s@."
-              c d.Delegate.name (List.length cs) Delegate.pp_owners d.Delegate.validids
-              Repository.pp_res d_verified Color.endc ;
+              c a.Authorisation.name (List.length cs) Authorisation.pp_owners a.Authorisation.authorised
+              Repository.pp_res a_verified Color.endc ;
             let verified =
               List.map
                 (fun c ->
@@ -215,7 +215,7 @@ let verify copts kind =
                      match Repository.compute_checksum repo c.Checksum.name with
                      | Error e -> Error e
                      | Ok computed -> Ok (Checksum.checksums_equal computed c)
-                   and verified = Repository.verify_checksum repo d c
+                   and verified = Repository.verify_checksum repo a c
                    in
                    (verified, valid))
                 cs
@@ -241,7 +241,7 @@ let verify copts kind =
   let _ = exec copts.repo kind in
   `Ok ()
 
-let items = [ ("key", `Key) ; ("private", `Private) ; ("delegate", `Delegate) ; ("checksum", `Checksum) ; ("diff", `Diff) ]
+let items = [ ("key", `Key) ; ("private", `Private) ; ("authorisation", `Authorisation) ; ("checksum", `Checksum) ; ("diff", `Diff) ]
 
 let verified copts b =
   let c = Color.res_c b in
@@ -257,19 +257,19 @@ let show_private copts (id, priv) =
   Format.fprintf copts.out "keyid: %s,@ %a@." id Private.pp_priv priv ;
   `Ok ()
 
-let show_delegate copts d =
-  Delegate.pp_delegate copts.out d ;
-  let repo = load copts d.Delegate.signatures in
-  verified copts (Repository.verify_delegate repo d) ;
+let show_authorisation copts a =
+  Authorisation.pp_authorisation copts.out a ;
+  let repo = load copts a.Authorisation.signatures in
+  verified copts (Repository.verify_authorisation repo a) ;
   `Ok ()
 
 let show_checksum copts c =
   let repo = load copts c.Checksum.signatures in
   Checksum.pp_checksums copts.out c ;
-  (match Repository.read_delegate repo (Layout.delegate_of_item c.Checksum.name) with
-   | Error e -> Format.fprintf copts.out "%sdelegate %a%s@ " Color.red Repository.pp_r_err e Color.endc
+  (match Repository.read_authorisation repo (Layout.authorisation_of_item c.Checksum.name) with
+   | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Repository.pp_r_err e Color.endc
    | Ok d ->
-     Format.fprintf copts.out "owners: %a@ " Delegate.pp_owners d.Delegate.validids ;
+     Format.fprintf copts.out "owners: %a@ " Authorisation.pp_owners d.Authorisation.authorised ;
      verified copts (Repository.verify_checksum repo d c)) ;
   (match Repository.compute_checksum copts.repo c.Checksum.name with
    | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Repository.pp_r_err e Color.endc
@@ -294,10 +294,10 @@ let show copts item value =
       | Error e ->
         Format.fprintf copts.out "%s%a%s@." Color.red Private.pp_err e Color.endc ;
         `Error (false, "error"))
-  | `Delegate -> (match Repository.read_delegate copts.repo value with
-      | Ok k -> show_delegate copts k
+  | `Authorisation -> (match Repository.read_authorisation copts.repo value with
+      | Ok k -> show_authorisation copts k
       | Error e ->
-        Format.fprintf copts.out "%sdelegate %a%s" Color.red Repository.pp_r_err e Color.endc ;
+        Format.fprintf copts.out "%sauthorisation %a%s" Color.red Repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
   | `Checksum -> (match Repository.read_checksum copts.repo value with
       | Ok k -> show_checksum copts k
@@ -354,18 +354,18 @@ let generate copts item name role ids =
         | Ok (_, k) ->
           let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
           writeout pub)
-  | `Delegate ->
-     let d = { Delegate.name = name ; counter = 0L ; validids = ids ; signatures = [] } in
-     let d = match Repository.read_delegate copts.repo name with
-       | Error _ -> d
-       | Ok d' -> { d with Delegate.counter = Int64.succ d'.Delegate.counter }
+  | `Authorisation ->
+     let a = { Authorisation.name = name ; counter = 0L ; authorised = ids ; signatures = [] } in
+     let a = match Repository.read_authorisation copts.repo name with
+       | Error _ -> a
+       | Ok a' -> { a with Authorisation.counter = Int64.succ a'.Authorisation.counter }
      in
      if copts.dry then
        Format.fprintf copts.out "dry run, nothing written.@."
      else
-       Repository.write_delegate copts.repo d ;
-     Format.fprintf copts.out "updated delegate %s@." name ;
-     show_delegate copts d
+       Repository.write_authorisation copts.repo a ;
+     Format.fprintf copts.out "updated authorisation %s@." name ;
+     show_authorisation copts a
   | `Checksum ->
     (match Repository.compute_checksum copts.repo name with
      | Error e ->
@@ -393,14 +393,14 @@ let sign copts item name =
     `Error (false, "error")
   | Ok (id, p) ->
     Format.fprintf copts.out "using private key %s@." id ;
-    let sign raw = Private.sign id p raw in
+    let sign = Private.sign id p in
     match item with
     | `Key -> (match Repository.read_key copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok k ->
-          let sigv = sign (Data.publickey_raw k) in
+          let sigv = sign PublicKey (Data.publickey_raw k) in
           let key = { k with Publickey.signatures = sigv :: k.Publickey.signatures } in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
@@ -409,26 +409,26 @@ let sign copts item name =
           Format.fprintf copts.out "signed key %s@." name ;
           show_key copts key)
 
-    | `Delegate -> (match Repository.read_delegate copts.repo name with
+    | `Authorisation -> (match Repository.read_authorisation copts.repo name with
         | Error e ->
-          Format.fprintf copts.out "%sdelegate %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
-        | Ok d ->
-          let sigv = sign (Data.delegate_raw d) in
-          let d = { d with Delegate.signatures = sigv :: d.Delegate.signatures } in
+        | Ok a ->
+          let sigv = sign Authorisation (Data.authorisation_raw a) in
+          let a = { a with Authorisation.signatures = sigv :: a.Authorisation.signatures } in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else
-            Repository.write_delegate copts.repo d ;
-          Format.fprintf copts.out "signed delegate %s@." name ;
-          show_delegate copts d)
+            Repository.write_authorisation copts.repo a ;
+          Format.fprintf copts.out "signed authorisation %s@." name ;
+          show_authorisation copts a)
 
     | `Checksum -> (match Repository.read_checksum copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
-          let sigv = sign (Data.checksums_raw c) in
+          let sigv = sign Checksum (Data.checksums_raw c) in
           let c = { c with Checksum.signatures = sigv :: c.Checksum.signatures } in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
@@ -446,9 +446,9 @@ let copts_sect = "COMMON OPTIONS"
 let help_secs = [
  `S "GENERAL";
  `P "Conex provides a signed repository, containing data as well as public keys and ownership information.  The main idea is that each directory is owned by a set of keys (which can contract and expand dynamically).  An initial set of public keys, so called trust anchors, should be distributed out of band.  A set of maintainers can do janitor work, cleaning up and adjusting all directories, if needed.  These need to coordinate, there need to be either a signature by the owner, or a quorum of maintainer signatures on ownership and data information.";
- `P "If starting with a fresh repository, you likely want to generate a private and public key, then setup some delegations and distribute some data.";
+ `P "If starting with a fresh repository, you likely want to generate a private and public key, then setup some authorisations and distribute some data.";
  `S "ITEM";
- `P "Conex distinguishes five different items, which you can identify by name: private, key, delegate, checksum, and diff.  Private keys are stored in ~/.conex, key, delegate, and checksum are stored in the repository.  A diff is just a file containing a unified diff, which can be verified (if it applies cleanly and has valid signatures).";
+ `P "Conex distinguishes five different items, which you can identify by name: private, key, authorisation, checksum, and diff.  Private keys are stored in ~/.conex, key, authorisation, and checksum are stored in the repository.  A diff is just a file containing a unified diff, which can be verified (if it applies cleanly and has valid signatures).";
  `S "KEYS";
  `P "Public keys contain a unique identifier.  They are distributed with the repository itself.  You can filter items by the owner (a key identifier) and by the key identifier which signed items.";
  `P "Your private keys are stored PEM-encoded in ~/.conex.  You can select which key to use for a signing operation by passing -k to conex.";
@@ -526,10 +526,10 @@ let role =
     ((fun s -> try `Ok (string_to_role s) with _ -> `Error "not a role"),
      pp_role)
   in
-  Arg.(value & opt conv `Developer & info ["role"; "r"] ~doc ~docv:"KEYS")
+  Arg.(value & opt conv Author & info ["role"; "r"] ~doc ~docv:"KEYS")
 
 let valid =
-  let doc = "Owners of this delegation, defaults to own keyid." in
+  let doc = "Owners of this authorisation, defaults to own keyid." in
   Arg.(value & opt_all string [] & info ["id"; "i"] ~doc ~docv:"KEYS")
 
 let generate_cmd =
@@ -541,7 +541,7 @@ let generate_cmd =
   Term.(ret (const generate $ copts_t $ item $ value $ role $ valid)),
   Term.info "generate" ~doc ~man
 
-(* modify_cmd = [key: role change ; delegate: add/remove id] *)
+(* modify_cmd = [key: role change ; authorisation: add/remove id] *)
 
 let sign_cmd =
   let doc = "signs an item in the repository" in

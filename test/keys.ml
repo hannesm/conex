@@ -77,7 +77,7 @@ let err =
       | `InvalidIdentifier _, `InvalidIdentifier _ -> true
       | `InvalidCounter _, `InvalidCounter _ -> true
       | `InsufficientQuorum _, `InsufficientQuorum _ -> true
-      | `InvalidDelegate _, `InvalidDelegate _ -> true
+      | `InvalidAuthorisation _, `InvalidAuthorisation _ -> true
       | `InvalidSignatures _, `InvalidSignatures _ -> true
       | _ -> false
   end in
@@ -85,78 +85,56 @@ let err =
 
 let check_ver = Alcotest.check (result Alcotest.string err)
 
-let invalid_sig = Error (`InvalidSignature ("", `RSA_PSS, "", ""))
+let invalid_sig = Error (`InvalidSignature ("", PublicKey, "", ""))
 let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
-let invalid_role = Error (`InvalidRole (`Developer, `Developer))
+let invalid_role = Error (`InvalidRole (Author, Author))
 
-let check_sig prefix pub role raw (id, alg, sv) =
+let check_sig prefix pub role kind raw (id, sv) =
   check_ver (prefix ^ " signature can be verified") (Ok id)
-    (Publickey.verify pub role raw (id, alg, sv)) ;
+    (Publickey.verify pub role kind raw (id, sv)) ;
   check_ver (prefix ^ " signature of other id") invalid_sig
-    (Publickey.verify pub role raw ("foo", alg, sv)) ;
+    (Publickey.verify pub role kind raw ("foo", sv)) ;
   check_ver (prefix ^ " signature empty") invalid_sig
-    (Publickey.verify pub role raw (id, alg, "")) ;
+    (Publickey.verify pub role kind raw (id, "")) ;
   check_ver (prefix ^ " signature is bad (b64prefix)") invalid_b64
-    (Publickey.verify pub role raw (id, alg, "\000" ^ sv)) ;
+    (Publickey.verify pub role kind raw (id, "\000" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (prefix)") invalid_sig
-    (Publickey.verify pub role raw (id, alg, "abcd" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (postfix)") invalid_sig
-    (Publickey.verify pub role raw (id, alg, sv ^ "abcd")) ;
+    (Publickey.verify pub role kind raw (id, "abcd" ^ sv)) ;
+  check_ver (prefix ^ " signature is bad (postfix)") invalid_sig (* should be invalid_b64 once nocrypto is fixed *)
+    (Publickey.verify pub role kind raw (id, sv ^ "abcd")) ;
   check_ver (prefix ^ " signature is bad (raw)") invalid_sig
-    (Publickey.verify pub role "" (id, alg, sv)) ;
+    (Publickey.verify pub role kind "" (id, sv)) ;
   check_ver (prefix ^ " signature has bad role") invalid_role
-    (Publickey.verify pub `RepositoryMaintainer raw (id, alg, sv))
+    (Publickey.verify pub Janitor kind raw (id, sv))
 
 let sign_single () =
   let id = "a"
-  and role = `Developer
+  and role = Author
   in
   let pub, priv = gen_pub ~role id in
   let raw = Data.publickey_raw pub in
-  let s = Private.sign id priv raw in
-  check_sig "common" pub role raw s
-
-let sign_pss () =
-  let id = "a"
-  and role = `Developer
-  and alg = `RSA_PSS
-  in
-  let pub, priv = gen_pub ~role id in
-  let raw = Data.publickey_raw pub in
-  let pss = Private.sign ~algorithm:alg id priv raw in
-  check_sig "PSS" pub role raw pss
-
-let sign_pkcs () =
-  let id = "a"
-  and role = `Developer
-  and alg = `RSA_PKCS
-  in
-  let pub, priv = gen_pub ~role id in
-  let raw = Data.publickey_raw pub in
-  let pkcs = Private.sign ~algorithm:alg id priv raw in
-  check_sig "PKCS" pub role raw pkcs
+  let s = Private.sign id priv PublicKey raw in
+  check_sig "common" pub role PublicKey raw s
 
 let sign_tests = [
   "self-sign", `Quick, sign_single ;
-  "pss-sign", `Quick, sign_pss ;
-  "pkcs-sign", `Quick, sign_pkcs ;
 ]
 
 let verify_all exp ks role pub =
   List.iter2 (fun s r ->
       check_ver "signature is valid" r
-        (Keystore.verify ks role (Data.publickey_raw pub) s))
+        (Keystore.verify ks role PublicKey (Data.publickey_raw pub) s))
     pub.Publickey.signatures
     exp
 
 let ks_sign_single () =
   let id = "a"
-  and role = `Developer
+  and role = Author
   in
   let pub, priv = gen_pub ~role id in
   let s =
     let raw = Data.publickey_raw pub in
-    Private.sign id priv raw
+    Private.sign id priv PublicKey raw
   in
   let ks = Keystore.(add empty { pub with Publickey.signatures = [ s ] }) in
   let ks_pub = Keystore.find ks id in
@@ -169,12 +147,12 @@ let ks_sign_single () =
 
 let ks_sign_revoked () =
   let id = "a"
-  and role = `Developer
+  and role = Author
   in
   let pub, priv = gen_pub ~role id in
   let s =
     let raw = Data.publickey_raw pub in
-    Private.sign id priv raw
+    Private.sign id priv PublicKey raw
   in
   let ks_pub = { pub with Publickey.signatures = [ s ] } in
   let ks = Keystore.(add empty { ks_pub with Publickey.key = None }) in
@@ -182,26 +160,26 @@ let ks_sign_revoked () =
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Error (`InvalidPublicKey "")] ks role ks_pub' ;
   check_ver "keystore key can be verified if pubkey provided" (Ok "a")
-    (Publickey.verify ks_pub role (Data.publickey_raw ks_pub) s)
+    (Publickey.verify ks_pub role PublicKey (Data.publickey_raw ks_pub) s)
 
 let ks_sign_multiple () =
   let ida = "a"
   and idb = "b"
-  and role = `Developer
+  and role = Author
   in
   let puba, priva = gen_pub ~role ida in
   let pubb, privb = gen_pub ~role idb in
   let ks =
     let raw = Data.publickey_raw puba in
-    let sa = Private.sign ida priva raw in
-    let sb = Private.sign idb privb raw in
+    let sa = Private.sign ida priva PublicKey raw in
+    let sb = Private.sign idb privb PublicKey raw in
     Keystore.(add empty { puba with Publickey.signatures = [ sa ; sb ] })
   in
   let ks_pub = Keystore.find ks ida in
   Alcotest.(check int "signature size of 'a' is 2" 2 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Ok "a" ; Error (`InvalidIdentifier "")] ks role ks_pub ;
   let ks =
-    let sbb = Private.sign idb privb (Data.publickey_raw pubb) in
+    let sbb = Private.sign idb privb PublicKey (Data.publickey_raw pubb) in
     Keystore.(add ks { pubb with Publickey.signatures = [ sbb ] })
   in
   let ks_pub = Keystore.find ks ida in

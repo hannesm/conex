@@ -9,8 +9,8 @@ let file_type filename =
   let open Unix in
   let stat = stat filename in
   match stat.st_kind with
-  | S_REG -> Some `File
-  | S_DIR -> Some `Directory
+  | S_REG -> Some Core.File
+  | S_DIR -> Some Core.Directory
   | _ -> None
 
 let read_file filename =

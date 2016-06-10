@@ -30,22 +30,19 @@ let pp_priv ppf p =
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let primitive_sign algorithm priv data =
+let primitive_sign priv data =
   let cs = Cstruct.of_string data in
   let signature =
-    match priv, algorithm with
-    | RSA_priv key, `RSA_PSS -> Pss_sha256.sign ~key cs
-    | RSA_priv key, `RSA_PKCS ->
-       let data = Nocrypto.Hash.SHA256.digest cs in
-       Nocrypto.Rsa.PKCS1.sig_encode ~key data
+    match priv with
+    | RSA_priv key -> Pss_sha256.sign ~key cs
   in
   let b64 = Nocrypto.Base64.encode signature in
   Cstruct.to_string b64
 
-let sign ?(algorithm = `RSA_PSS) id priv data =
-  let data = Signature.extend_data data algorithm id in
-  let sigval = primitive_sign algorithm priv data in
-  (id, algorithm, sigval)
+let sign id priv kind data =
+  let data = Signature.extend_data data id kind in
+  let sigval = primitive_sign priv data in
+  (id, sigval)
 
 
 

@@ -15,9 +15,9 @@ let add store pub = K.add pub.Publickey.keyid pub store
 
 let remove store identifier = K.remove identifier store
 
-let verify store role data (id, alg, sigval) =
+let verify store role kind data (id, sigval) =
   if mem store id then
     let key = find store id in
-    Publickey.verify key role data (id, alg, sigval)
+    Publickey.verify key role kind data (id, sigval)
   else
     Error (`InvalidIdentifier id)

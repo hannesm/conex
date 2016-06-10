@@ -134,19 +134,15 @@ let parse data =
 let normalise = to_string
 
 
-let signature_to_data (id, alg, signature) =
-  let alg = algorithm_to_string alg in
+let signature_to_data (id, signature) =
   List [ Entry ("keyid", Leaf (String id)) ;
-         Entry ("method", Leaf (String alg)) ;
          Entry ("sig", Leaf (String signature)) ]
 
 let data_to_signature signature =
   let keyid = extract_string_exn (get_exn signature "keyid")
-  and sig_alg = extract_string_exn (get_exn signature "method")
   and sigval = extract_string_exn (get_exn signature "sig")
   in
-  let alg = string_to_algorithm sig_alg in
-  (keyid, alg, sigval)
+  (keyid, sigval)
 
 (* not sure where this belongs *)
 let parse_signed_data data =
@@ -196,26 +192,26 @@ let publickey_raw pk =
   let signed, _ = parse_signed_data data in
   normalise signed
 
-let delegate_to_data d =
+let authorisation_to_data d =
   let id s = Leaf (String s) in
-  List [ Entry ("signed", List [ Entry ("name"   , Leaf (String d.Delegate.name)) ;
-                                 Entry ("counter", Leaf (Int d.Delegate.counter)) ;
-                                 Entry ("key-ids", List (List.map id d.Delegate.validids)) ]);
-         Entry ("signatures", List (List.map signature_to_data d.Delegate.signatures)) ]
+  List [ Entry ("signed", List [ Entry ("name"      , Leaf (String d.Authorisation.name)) ;
+                                 Entry ("counter"   , Leaf (Int d.Authorisation.counter)) ;
+                                 Entry ("authorised", List (List.map id d.Authorisation.authorised)) ]);
+         Entry ("signatures", List (List.map signature_to_data d.Authorisation.signatures)) ]
 
-let data_to_delegate data =
+let data_to_authorisation data =
   let signed, signatures = parse_signed_data data in
   let id x = extract_string_exn x in
   let name = extract_string_exn (get_exn signed "name")
   and counter = extract_int_exn (get_exn signed "counter")
-  and validids = match get_exn signed "key-ids" with
+  and authorised = match get_exn signed "authorised" with
     | List es -> List.map id es
-    | _ -> invalid_arg "validids not a list"
+    | _ -> invalid_arg "authorised not a list"
   in
-  { Delegate.name ; counter ; validids ; signatures }
+  { Authorisation.name ; counter ; authorised ; signatures }
 
-let delegate_raw del =
-  let data = delegate_to_data del in
+let authorisation_raw auth =
+  let data = authorisation_to_data auth in
   let signed, _ = parse_signed_data data in
   normalise signed
 

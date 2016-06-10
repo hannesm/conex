@@ -8,7 +8,7 @@ let lowercase_equal names name =
 let unique_keyid = lowercase_equal
 and unique_data = lowercase_equal
 
-let delegate_of_item x =
+let authorisation_of_item x =
   match Strhelper.cut '.' x with
   | Some (pre, _) -> pre
   | None -> assert false
@@ -55,9 +55,9 @@ let keys p =
 let key_path id = [ key_dir ; id ^ key_suffix ]
 
 let data_dir = "data"
-let delegate_filename = "delegate"
+let authorisation_filename = "authorisation"
 
-let delegates p =
+let authorisations p =
   match p.Provider.read_dir [ data_dir ] with
   | Error _ -> []
   | Ok data ->
@@ -67,7 +67,7 @@ let delegates p =
     in
     Utils.filter_map ~f data
 
-let delegate_path id = [ data_dir ; id ; delegate_filename ]
+let authorisation_path id = [ data_dir ; id ; authorisation_filename ]
 
 let checksum_filename = "checksum"
 
@@ -82,11 +82,11 @@ let items p id =
     Utils.filter_map ~f data
 
 let checksum_path p =
-  let d = delegate_of_item p in
+  let d = authorisation_of_item p in
   [ data_dir ; d ; p ; checksum_filename ]
 
 let checksum_files p da =
-  let de = delegate_of_item da in
+  let de = authorisation_of_item da in
   let st = [ data_dir ; de ; da ] in
   let rec collect1 acc d = function
     | `File f when d = [] && f = checksum_filename -> acc
@@ -115,8 +115,8 @@ let is_key = function
     Some (String.sub id 0 (String.length id - 7))
   | _ -> None
 
-let is_delegate = function
-  | dd :: id :: dfn :: [] when dd = data_dir && dfn = delegate_filename->
+let is_authorisation = function
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename->
     Some id
   | _ -> None
 

@@ -3,7 +3,7 @@ open Core
 type t = {
   name : string ;
   counter : int64 ;
-  validids : identifier list ;
+  authorised : identifier list ;
   signatures : Signature.t list ;
 }
 
@@ -16,6 +16,6 @@ let pp_owners ppf x =
   in
   p1 (List.sort String.compare x)
 
-let pp_delegate ppf d =
+let pp_authorisation ppf d =
   Format.fprintf ppf "name: %s@ counter: %Lu@ owners:@ %a@ %a@."
-                 d.name d.counter pp_owners d.validids Signature.pp_signatures d.signatures
+                 d.name d.counter pp_owners d.authorised Signature.pp_signatures d.signatures

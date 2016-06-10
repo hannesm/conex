@@ -54,8 +54,8 @@ let fs_provider basedir =
       foldM (fun acc fn ->
           let fullfn = Filename.concat abs fn in
           match Persistency.file_type fullfn with
-          | Some `File -> Ok (`File fn :: acc)
-          | Some `Directory -> Ok (`Dir fn :: acc)
+          | Some File -> Ok (`File fn :: acc)
+          | Some Directory -> Ok (`Dir fn :: acc)
           | None -> Error (`UnknownFileType fullfn))
         [] (Persistency.collect_dir abs)
     else
