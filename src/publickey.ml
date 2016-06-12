@@ -35,9 +35,12 @@ let pp_publickey ppf p =
     | None -> Format.pp_print_string ppf "none"
     | Some x -> pp_key ppf x
   in
-  Format.fprintf ppf "keyid: %s@ role: %s@ counter: %Lu@ key: %a%a@."
-                 p.keyid (role_to_string p.role) p.counter
-                 pp_opt_key p.key Signature.pp_signatures p.signatures
+  Format.fprintf ppf "keyid: %a@ role: %a@ counter: %Lu@ key: %a%a@."
+    pp_id p.keyid
+    pp_role p.role
+    p.counter
+    pp_opt_key p.key
+    Signature.pp_signatures p.signatures
 
 let publickey ?(counter = 0L) ?(role = `Author) ?(signatures = []) keyid key =
   (match key with

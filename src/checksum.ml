@@ -1,13 +1,14 @@
+open Core
 
-(* TODO: maybe abstract over checksum algorithm?, or support a set of algo, value *)
 type c = {
-  filename : string ;
+  filename : name ;
   bytesize : int64 ;
-  checksum : string ;
+  checksum : digest ;
 }
 
 let pp_checksum ppf c =
-  Format.fprintf ppf "%s [%Lu bytes]: %s@ " c.filename c.bytesize c.checksum
+  Format.fprintf ppf "%a [%Lu bytes]: %a@ "
+    pp_name c.filename c.bytesize pp_digest c.checksum
 
 let checksum_equal a b =
   a.filename = b.filename && a.bytesize = b.bytesize && a.checksum = b.checksum
@@ -30,23 +31,22 @@ let fold f m acc = M.fold (fun _ c acc -> f c acc) m acc
 let find m id = M.find id m
 
 let pp_checksum_map ppf cs =
-  List.iter
-    (pp_checksum ppf)
+  pp_list pp_checksum ppf
     (List.sort (fun a b -> String.compare a.filename b.filename)
-               (snd (List.split (M.bindings cs))))
-
+       (snd (List.split (M.bindings cs))))
 
 type t = {
   counter : int64 ;
-  name : string ;
+  name : name ;
   files : checksum_map ;
   signatures : Signature.t list ;
 }
 
 let pp_checksums ppf c =
-  Format.fprintf ppf "checksums for %s (counter %Lu) are:@.%a@.sigs: %a"
-                 c.name c.counter pp_checksum_map c.files Signature.pp_signatures c.signatures
-
+  Format.fprintf ppf "checksums for %a (counter %Lu) are:@.%a@.sigs: %a"
+    pp_name c.name c.counter
+    pp_checksum_map c.files
+    Signature.pp_signatures c.signatures
 
 let checksums ?(counter = 0L) ?(signatures = []) name files =
   let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in

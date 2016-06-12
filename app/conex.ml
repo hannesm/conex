@@ -151,8 +151,8 @@ let list copts kind =
        Format.fprintf copts.out " (%d)@." (List.length d_cs) ;
        List.iter
          (fun (a, cs) ->
-          Format.fprintf copts.out "%s (%d owners: %a)@."
-                         a.Authorisation.name (List.length cs) Authorisation.pp_owners a.Authorisation.authorised ;
+          Format.fprintf copts.out "%s (%d authorised: %a)@."
+                         a.Authorisation.name (List.length cs) Authorisation.pp_authorised a.Authorisation.authorised ;
           out (List.map (fun c -> c.Checksum.name) cs))
          d_cs
     | `Repository ->
@@ -204,9 +204,9 @@ let verify copts kind =
          (fun (a, cs) ->
             let a_verified = Repository.verify_authorisation repo a in
             let c = Color.res_c a_verified in
-            Format.fprintf
-              copts.out "%s%s (%d owners: %a) (%a)%s@."
-              c a.Authorisation.name (List.length cs) Authorisation.pp_owners a.Authorisation.authorised
+            Format.fprintf copts.out "%s%s (%d authorised: %a) (%a)%s@."
+              c a.Authorisation.name (List.length cs)
+              Authorisation.pp_authorised a.Authorisation.authorised
               Repository.pp_res a_verified Color.endc ;
             let verified =
               List.map
@@ -269,7 +269,7 @@ let show_checksum copts c =
   (match Repository.read_authorisation repo (Layout.authorisation_of_item c.Checksum.name) with
    | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Repository.pp_r_err e Color.endc
    | Ok d ->
-     Format.fprintf copts.out "owners: %a@ " Authorisation.pp_owners d.Authorisation.authorised ;
+     Format.fprintf copts.out "authorised: %a@ " Authorisation.pp_authorised d.Authorisation.authorised ;
      verified copts (Repository.verify_checksum repo d c)) ;
   (match Repository.compute_checksum copts.repo c.Checksum.name with
    | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Repository.pp_r_err e Color.endc

@@ -1,13 +1,25 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
+val pp_list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
+
 type file_type = File | Directory
 
 type path = string list
 val path_to_string : path -> string
 val string_to_path : string -> path
 
+type name = string
+
+val pp_name : Format.formatter -> name -> unit
+
 (* keyid (NOTE: maybe abstract, checking for printable ASCII characters, case-insensitive, make private!) *)
 type identifier = string
+
+val pp_id : Format.formatter -> identifier -> unit
+
+type digest = string
+
+val pp_digest : Format.formatter -> digest -> unit
 
 type kind = [
   | `PublicKey

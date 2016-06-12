@@ -1,5 +1,14 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
+let pp_list pe ppf xs =
+  Format.pp_print_string ppf "[" ;
+  let rec p1 = function
+    | [] -> Format.pp_print_string ppf "]"
+    | [x] -> Format.fprintf ppf "%a]" pe x
+    | x::xs -> Format.fprintf ppf "%a,@ " pe x ; p1 xs
+  in
+  p1 xs
+
 type file_type = File | Directory
 
 type path = string list
@@ -17,7 +26,17 @@ let path_to_string path =
 
 let string_to_path str = Strhelper.cuts '/' str
 
+type name = string
+
+let pp_name ppf x = Format.pp_print_string ppf x
+
 type identifier = string
+
+let pp_id ppf x = Format.pp_print_string ppf x
+
+type digest = string
+
+let pp_digest ppf x = Format.pp_print_string ppf x
 
 type kind = [
   | `PublicKey

@@ -1,7 +1,9 @@
+open Core
+
 type c = {
-  filename : string ;
+  filename : name ;
   bytesize : int64 ;
-  checksum : string ;
+  checksum : digest ;
 }
 
 val pp_checksum : Format.formatter -> c -> unit
@@ -12,7 +14,7 @@ type checksum_map
 
 type t = {
   counter : int64 ;
-  name : string ;
+  name : name ;
   files : checksum_map ;
   signatures : Signature.t list ;
 }
