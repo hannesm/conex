@@ -8,6 +8,9 @@ type t = {
   signatures : Signature.t list ;
 }
 
+let janitorindex ?(counter = 0L) ?(version = 0L) ?(resources = []) ?(signatures = []) identifier =
+  { counter ; version ; identifier ; resources ; signatures }
+
 let pp_resource ppf (n, k, digest) =
   Format.fprintf ppf "name: %a@ kind: %a@ digest: %a@."
     pp_name n pp_kind k pp_digest digest

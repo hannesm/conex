@@ -12,16 +12,21 @@ val checksum_equal : c -> c -> bool
 
 type checksum_map
 
-type t = {
+type t = private {
   counter : int64 ;
   version : int64 ;
   name : name ;
   files : checksum_map ;
   signatures : Signature.t list ;
 }
+
 val pp_checksums : Format.formatter -> t -> unit
 
 val checksums : ?counter:int64 -> ?version:int64 -> ?signatures:(Signature.t list) -> string -> c list -> t
+
+val add_sig : t -> Signature.t -> t
+
+val set_counter : t -> int64 -> t
 
 val checksums_equal : t -> t -> bool
 

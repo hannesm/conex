@@ -136,11 +136,12 @@ let ks_sign_single () =
     let raw = Data.publickey_raw pub in
     Private.sign id priv `PublicKey raw
   in
-  let ks = Keystore.(add empty { pub with Publickey.signatures = [ s ] }) in
+  let ks = Keystore.(add empty (Publickey.add_sig pub s)) in
   let ks_pub = Keystore.find ks id in
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Ok "a"] ks role ks_pub ;
-  let ks = Keystore.(add empty { pub with Publickey.signatures = [ s ; s ; s ] }) in
+  let pub = Publickey.add_sig (Publickey.add_sig (Publickey.add_sig pub s) s) s in
+  let ks = Keystore.(add empty pub) in
   let ks_pub = Keystore.find ks id in
   Alcotest.(check int "signature size is 3" 3 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Ok "a" ; Ok "a" ; Ok "a"] ks role ks_pub
@@ -154,8 +155,10 @@ let ks_sign_revoked () =
     let raw = Data.publickey_raw pub in
     Private.sign id priv `PublicKey raw
   in
-  let ks_pub = { pub with Publickey.signatures = [ s ] } in
-  let ks = Keystore.(add empty { ks_pub with Publickey.key = None }) in
+  let ks_pub = Publickey.add_sig pub s in
+  let ks =
+    let ks_pub = Publickey.publickey ~role ~signatures:[s] id None in
+    Keystore.(add empty ks_pub) in
   let ks_pub' = Keystore.find ks id in
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Error (`InvalidPublicKey "")] ks role ks_pub' ;
@@ -173,14 +176,14 @@ let ks_sign_multiple () =
     let raw = Data.publickey_raw puba in
     let sa = Private.sign ida priva `PublicKey raw in
     let sb = Private.sign idb privb `PublicKey raw in
-    Keystore.(add empty { puba with Publickey.signatures = [ sa ; sb ] })
+    Keystore.(add empty (Publickey.add_sig (Publickey.add_sig puba sb) sa))
   in
   let ks_pub = Keystore.find ks ida in
   Alcotest.(check int "signature size of 'a' is 2" 2 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Ok "a" ; Error (`InvalidIdentifier "")] ks role ks_pub ;
   let ks =
     let sbb = Private.sign idb privb `PublicKey (Data.publickey_raw pubb) in
-    Keystore.(add ks { pubb with Publickey.signatures = [ sbb ] })
+    Keystore.(add ks (Publickey.add_sig pubb sbb))
   in
   let ks_pub = Keystore.find ks ida in
   Alcotest.(check int "signature size of 'a' is still 2" 2 (List.length ks_pub.Publickey.signatures)) ;

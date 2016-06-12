@@ -46,8 +46,11 @@ let pp_publickey ppf p =
 let publickey ?(counter = 0L) ?(version = 0L) ?(role = `Author) ?(signatures = []) keyid key =
   (match key with
    | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p >= 2048 -> ()
-   | _ -> invalid_arg "insufficient key size") ;
+   | Some _ -> invalid_arg "insufficient key size"
+   | None -> ()) ;
   { counter ; version ; role ; signatures ; keyid ; key }
+
+let add_sig t s = { t with signatures = s :: t.signatures }
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 

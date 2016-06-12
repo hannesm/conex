@@ -212,7 +212,7 @@ let data_to_authorisation data =
     | List es -> List.map id es
     | _ -> invalid_arg "authorised not a list"
   in
-  { Authorisation.name ; counter ; version ; authorised ; signatures }
+  Authorisation.authorisation ~counter ~version ~authorised ~signatures name
 
 let authorisation_raw auth =
   let data = authorisation_to_data auth in

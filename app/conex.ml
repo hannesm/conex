@@ -328,44 +328,49 @@ let generate copts item name role ids =
      Format.fprintf copts.out "generated new private key for %s@." name ;
      show_private copts (name, priv)
   | `Key ->
-     let writeout p =
-       if copts.dry then
-         Format.fprintf copts.out "dry run, nothing written.@."
-       else
-         Repository.write_key copts.repo p ;
-       Format.fprintf copts.out "generated new key for %s@." name ;
-       show_key copts p
-     in
-     (match Repository.read_key copts.repo name with
-      | Ok p ->
-        let pub = { p with Publickey.counter = Int64.succ p.Publickey.counter ; role ; signatures = [] } in
-        let pub =
-          match Private.read_private_key ~id:name copts.repo with
-          | Error _ -> pub
-          | Ok (_, priv) ->
-            { pub with Publickey.key = Some (Private.pub_of_priv priv) }
-        in
-        writeout pub
-      | Error _ ->
-        match Private.read_private_key ~id:name copts.repo with
-        | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
-                       Color.red name Color.endc ;
-          `Error (false, "no private key and public does not exist")
-        | Ok (_, k) ->
-          let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
-          writeout pub)
+    let writeout p =
+      if copts.dry then
+        Format.fprintf copts.out "dry run, nothing written.@."
+      else
+        Repository.write_key copts.repo p ;
+      Format.fprintf copts.out "generated new key for %s@." name ;
+      show_key copts p
+    in
+    (match Repository.read_key copts.repo name with
+     | Ok p ->
+       let pub_opt =
+         match Private.read_private_key ~id:name copts.repo with
+         | Error _ -> None
+          | Ok (_, priv) -> Some (Private.pub_of_priv priv)
+       in
+       let pub =
+         Publickey.publickey
+           ~counter:(Int64.succ p.Publickey.counter)
+           ~role
+           name
+           pub_opt
+       in
+       writeout pub
+     | Error _ ->
+       match Private.read_private_key ~id:name copts.repo with
+       | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
+                      Color.red name Color.endc ;
+         `Error (false, "no private key and public does not exist")
+       | Ok (_, k) ->
+         let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
+         writeout pub)
   | `Authorisation ->
-     let a = { Authorisation.name = name ; counter = 0L ; version = 0L ; authorised = ids ; signatures = [] } in
-     let a = match Repository.read_authorisation copts.repo name with
-       | Error _ -> a
-       | Ok a' -> { a with Authorisation.counter = Int64.succ a'.Authorisation.counter }
-     in
-     if copts.dry then
-       Format.fprintf copts.out "dry run, nothing written.@."
-     else
-       Repository.write_authorisation copts.repo a ;
-     Format.fprintf copts.out "updated authorisation %s@." name ;
-     show_authorisation copts a
+    let counter = match Repository.read_authorisation copts.repo name with
+      | Error _ -> None
+      | Ok a' -> Some (Int64.succ a'.Authorisation.counter)
+    in
+    let a = Authorisation.authorisation ~authorised:ids ?counter name in
+    if copts.dry then
+      Format.fprintf copts.out "dry run, nothing written.@."
+    else
+      Repository.write_authorisation copts.repo a ;
+    Format.fprintf copts.out "updated authorisation %s@." name ;
+    show_authorisation copts a
   | `Checksum ->
     (match Repository.compute_checksum copts.repo name with
      | Error e ->
@@ -375,7 +380,7 @@ let generate copts item name role ids =
      | Ok cs ->
        let cs = match Repository.read_checksum copts.repo name with
          | Error _ -> cs
-         | Ok o -> { cs with Checksum.counter = Int64.succ o.Checksum.counter }
+         | Ok o -> Checksum.set_counter cs (Int64.succ o.Checksum.counter)
        in
        if copts.dry then
          Format.fprintf copts.out "dry run, nothing written.@."
@@ -401,7 +406,7 @@ let sign copts item name =
           `Error (false, "error")
         | Ok k ->
           let sigv = sign `PublicKey (Data.publickey_raw k) in
-          let key = { k with Publickey.signatures = sigv :: k.Publickey.signatures } in
+          let key = Publickey.add_sig k sigv in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else
@@ -415,7 +420,7 @@ let sign copts item name =
           `Error (false, "error")
         | Ok a ->
           let sigv = sign `Authorisation (Data.authorisation_raw a) in
-          let a = { a with Authorisation.signatures = sigv :: a.Authorisation.signatures } in
+          let a = Authorisation.add_sig a sigv in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else
@@ -429,7 +434,7 @@ let sign copts item name =
           `Error (false, "error")
         | Ok c ->
           let sigv = sign `Checksum (Data.checksums_raw c) in
-          let c = { c with Checksum.signatures = sigv :: c.Checksum.signatures } in
+          let c = Checksum.add_sig c sigv in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else

@@ -53,6 +53,10 @@ let checksums ?(counter = 0L) ?(version = 0L) ?(signatures = []) name files =
   let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
   { counter ; version ; name ; files ; signatures }
 
+let add_sig c s = { c with signatures = s :: c.signatures }
+
+let set_counter cs counter = { cs with counter }
+
 (* XXX: compare_checksums which returns a result type!
    then we can inform the user which checksum is offending *)
 
