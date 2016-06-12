@@ -167,6 +167,7 @@ let publickey_to_data pubkey =
   and role = role_to_string pubkey.Publickey.role
   in
   List [ Entry ("signed", List [ Entry ("counter", Leaf (Int pubkey.Publickey.counter)) ;
+                                 Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
                                  Entry ("keyid"  , Leaf (String pubkey.Publickey.keyid)) ;
                                  Entry ("key"    , Leaf (String pem)) ;
                                  Entry ("role"   , Leaf (String role)) ]);
@@ -175,6 +176,7 @@ let publickey_to_data pubkey =
 let data_to_publickey data =
   let signed, signatures = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
+  and version = extract_int_exn (get_exn signed "version")
   and keyid = extract_string_exn (get_exn signed "keyid")
   and key = extract_string_exn (get_exn signed "key")
   and role = extract_string_exn (get_exn signed "role")
@@ -185,7 +187,7 @@ let data_to_publickey data =
     | _ -> Some (Publickey.decode_key key)
   and role = string_to_role role
   in
-  Publickey.publickey ~counter ~role ~signatures  keyid key
+  Publickey.publickey ~counter ~version ~role ~signatures  keyid key
 
 let publickey_raw pk =
   let data = publickey_to_data pk in
@@ -196,6 +198,7 @@ let authorisation_to_data d =
   let id s = Leaf (String s) in
   List [ Entry ("signed", List [ Entry ("name"      , Leaf (String d.Authorisation.name)) ;
                                  Entry ("counter"   , Leaf (Int d.Authorisation.counter)) ;
+                                 Entry ("version"   , Leaf (Int d.Authorisation.version)) ;
                                  Entry ("authorised", List (List.map id d.Authorisation.authorised)) ]);
          Entry ("signatures", List (List.map signature_to_data d.Authorisation.signatures)) ]
 
@@ -204,11 +207,12 @@ let data_to_authorisation data =
   let id x = extract_string_exn x in
   let name = extract_string_exn (get_exn signed "name")
   and counter = extract_int_exn (get_exn signed "counter")
+  and version = extract_int_exn (get_exn signed "version")
   and authorised = match get_exn signed "authorised" with
     | List es -> List.map id es
     | _ -> invalid_arg "authorised not a list"
   in
-  { Authorisation.name ; counter ; authorised ; signatures }
+  { Authorisation.name ; counter ; version ; authorised ; signatures }
 
 let authorisation_raw auth =
   let data = authorisation_to_data auth in
@@ -231,6 +235,7 @@ let data_to_checksum data =
 let checksums_to_data cs =
   let csums = Checksum.fold (fun c acc -> checksum_to_data c :: acc) cs.Checksum.files [] in
   List [ Entry ("signed", List [ Entry ("counter", Leaf (Int cs.Checksum.counter)) ;
+                                 Entry ("version", Leaf (Int cs.Checksum.version)) ;
                                  Entry ("name", Leaf (String cs.Checksum.name)) ;
                                  Entry ("files", List csums) ]) ;
          Entry ("signatures", List (List.map signature_to_data cs.Checksum.signatures)) ]
@@ -238,6 +243,7 @@ let checksums_to_data cs =
 let data_to_checksums data =
   let signed, signatures = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
+  and version = extract_int_exn (get_exn signed "version")
   and name = extract_string_exn (get_exn signed "name")
   and sums = get_exn signed "files"
   in
@@ -245,7 +251,7 @@ let data_to_checksums data =
     | List elements -> List.map data_to_checksum elements
     | _ -> invalid_arg "unknown files"
   in
-  Checksum.checksums ~counter ~signatures name files
+  Checksum.checksums ~counter ~version ~signatures name files
 
 let checksums_raw cs =
   let data = checksums_to_data cs in

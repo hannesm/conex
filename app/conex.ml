@@ -355,7 +355,7 @@ let generate copts item name role ids =
           let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
           writeout pub)
   | `Authorisation ->
-     let a = { Authorisation.name = name ; counter = 0L ; authorised = ids ; signatures = [] } in
+     let a = { Authorisation.name = name ; counter = 0L ; version = 0L ; authorised = ids ; signatures = [] } in
      let a = match Repository.read_authorisation copts.repo name with
        | Error _ -> a
        | Ok a' -> { a with Authorisation.counter = Int64.succ a'.Authorisation.counter }

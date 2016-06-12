@@ -1,8 +1,9 @@
 open Core
 
 type t = {
-  identifier : identifier ;
   counter : int64 ;
+  version : int64 ;
+  identifier : identifier ;
   resources : (name * kind * digest) list ;
   signatures : Signature.t list ;
 }

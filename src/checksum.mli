@@ -14,13 +14,14 @@ type checksum_map
 
 type t = {
   counter : int64 ;
+  version : int64 ;
   name : name ;
   files : checksum_map ;
   signatures : Signature.t list ;
 }
 val pp_checksums : Format.formatter -> t -> unit
 
-val checksums : ?counter:int64 -> ?signatures:(Signature.t list) -> string -> c list -> t
+val checksums : ?counter:int64 -> ?version:int64 -> ?signatures:(Signature.t list) -> string -> c list -> t
 
 val checksums_equal : t -> t -> bool
 

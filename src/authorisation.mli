@@ -1,8 +1,9 @@
 open Core
 
 type t = {
-  name : name ;
   counter : int64 ;
+  version : int64 ;
+  name : name ;
   authorised : identifier list ;
   signatures : Signature.t list ;
 }

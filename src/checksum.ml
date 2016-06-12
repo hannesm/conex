@@ -37,6 +37,7 @@ let pp_checksum_map ppf cs =
 
 type t = {
   counter : int64 ;
+  version : int64 ;
   name : name ;
   files : checksum_map ;
   signatures : Signature.t list ;
@@ -48,9 +49,12 @@ let pp_checksums ppf c =
     pp_checksum_map c.files
     Signature.pp_signatures c.signatures
 
-let checksums ?(counter = 0L) ?(signatures = []) name files =
+let checksums ?(counter = 0L) ?(version = 0L) ?(signatures = []) name files =
   let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
-  { counter ; name ; files ; signatures }
+  { counter ; version ; name ; files ; signatures }
+
+(* XXX: compare_checksums which returns a result type!
+   then we can inform the user which checksum is offending *)
 
 let checksums_equal a b =
   a.name = b.name &&
