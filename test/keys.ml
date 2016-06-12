@@ -67,8 +67,8 @@ let result (type a) (type e) a e =
 
 let err =
   let module M = struct
-    type t = error
-    let pp = pp_error
+    type t = Core.error
+    let pp = Core.pp_error
     let equal a b = match a, b with
       | `InvalidBase64Encoding _, `InvalidBase64Encoding _ -> true
       | `InvalidSignature _, `InvalidSignature _ -> true
@@ -85,9 +85,9 @@ let err =
 
 let check_ver = Alcotest.check (result Alcotest.string err)
 
-let invalid_sig = Error (`InvalidSignature ("", PublicKey, "", ""))
+let invalid_sig = Error (`InvalidSignature ("", `PublicKey, "", ""))
 let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
-let invalid_role = Error (`InvalidRole (Author, Author))
+let invalid_role = Error (`InvalidRole (`Author, `Author))
 
 let check_sig prefix pub role kind raw (id, sv) =
   check_ver (prefix ^ " signature can be verified") (Ok id)
@@ -105,16 +105,16 @@ let check_sig prefix pub role kind raw (id, sv) =
   check_ver (prefix ^ " signature is bad (raw)") invalid_sig
     (Publickey.verify pub role kind "" (id, sv)) ;
   check_ver (prefix ^ " signature has bad role") invalid_role
-    (Publickey.verify pub Janitor kind raw (id, sv))
+    (Publickey.verify pub `Janitor kind raw (id, sv))
 
 let sign_single () =
   let id = "a"
-  and role = Author
+  and role = `Author
   in
   let pub, priv = gen_pub ~role id in
   let raw = Data.publickey_raw pub in
-  let s = Private.sign id priv PublicKey raw in
-  check_sig "common" pub role PublicKey raw s
+  let s = Private.sign id priv `PublicKey raw in
+  check_sig "common" pub role `PublicKey raw s
 
 let sign_tests = [
   "self-sign", `Quick, sign_single ;
@@ -123,18 +123,18 @@ let sign_tests = [
 let verify_all exp ks role pub =
   List.iter2 (fun s r ->
       check_ver "signature is valid" r
-        (Keystore.verify ks role PublicKey (Data.publickey_raw pub) s))
+        (Keystore.verify ks role `PublicKey (Data.publickey_raw pub) s))
     pub.Publickey.signatures
     exp
 
 let ks_sign_single () =
   let id = "a"
-  and role = Author
+  and role = `Author
   in
   let pub, priv = gen_pub ~role id in
   let s =
     let raw = Data.publickey_raw pub in
-    Private.sign id priv PublicKey raw
+    Private.sign id priv `PublicKey raw
   in
   let ks = Keystore.(add empty { pub with Publickey.signatures = [ s ] }) in
   let ks_pub = Keystore.find ks id in
@@ -147,12 +147,12 @@ let ks_sign_single () =
 
 let ks_sign_revoked () =
   let id = "a"
-  and role = Author
+  and role = `Author
   in
   let pub, priv = gen_pub ~role id in
   let s =
     let raw = Data.publickey_raw pub in
-    Private.sign id priv PublicKey raw
+    Private.sign id priv `PublicKey raw
   in
   let ks_pub = { pub with Publickey.signatures = [ s ] } in
   let ks = Keystore.(add empty { ks_pub with Publickey.key = None }) in
@@ -160,26 +160,26 @@ let ks_sign_revoked () =
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Error (`InvalidPublicKey "")] ks role ks_pub' ;
   check_ver "keystore key can be verified if pubkey provided" (Ok "a")
-    (Publickey.verify ks_pub role PublicKey (Data.publickey_raw ks_pub) s)
+    (Publickey.verify ks_pub role `PublicKey (Data.publickey_raw ks_pub) s)
 
 let ks_sign_multiple () =
   let ida = "a"
   and idb = "b"
-  and role = Author
+  and role = `Author
   in
   let puba, priva = gen_pub ~role ida in
   let pubb, privb = gen_pub ~role idb in
   let ks =
     let raw = Data.publickey_raw puba in
-    let sa = Private.sign ida priva PublicKey raw in
-    let sb = Private.sign idb privb PublicKey raw in
+    let sa = Private.sign ida priva `PublicKey raw in
+    let sb = Private.sign idb privb `PublicKey raw in
     Keystore.(add empty { puba with Publickey.signatures = [ sa ; sb ] })
   in
   let ks_pub = Keystore.find ks ida in
   Alcotest.(check int "signature size of 'a' is 2" 2 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Ok "a" ; Error (`InvalidIdentifier "")] ks role ks_pub ;
   let ks =
-    let sbb = Private.sign idb privb PublicKey (Data.publickey_raw pubb) in
+    let sbb = Private.sign idb privb `PublicKey (Data.publickey_raw pubb) in
     Keystore.(add ks { pubb with Publickey.signatures = [ sbb ] })
   in
   let ks_pub = Keystore.find ks ida in

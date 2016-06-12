@@ -39,7 +39,7 @@ let pp_publickey ppf p =
                  p.keyid (role_to_string p.role) p.counter
                  pp_opt_key p.key Signature.pp_signatures p.signatures
 
-let publickey ?(counter = 0L) ?(role = Author) ?(signatures = []) keyid key =
+let publickey ?(counter = 0L) ?(role = `Author) ?(signatures = []) keyid key =
   (match key with
    | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p >= 2048 -> ()
    | _ -> invalid_arg "insufficient key size") ;

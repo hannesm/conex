@@ -19,41 +19,42 @@ let string_to_path str = Strhelper.cuts '/' str
 
 type identifier = string
 
-type kind =
-  | PublicKey
-  | Checksum
-  | Releases
-  | JanitorIndex
-  | Authorisation
+type kind = [
+  | `PublicKey
+  | `Checksum
+  | `Releases
+  | `JanitorIndex
+  | `Authorisation
+]
 
 let kind_to_string = function
-  | PublicKey -> "publickey"
-  | Checksum -> "checksum"
-  | Releases -> "releases"
-  | JanitorIndex -> "janitorindex"
-  | Authorisation -> "authorisation"
+  | `PublicKey -> "publickey"
+  | `Checksum -> "checksum"
+  | `Releases -> "releases"
+  | `JanitorIndex -> "janitorindex"
+  | `Authorisation -> "authorisation"
 
 let string_to_kind = function
-  | "publickey" -> Some PublicKey
-  | "checksum" -> Some Checksum
-  | "releases" -> Some Releases
-  | "janitorindex" -> Some JanitorIndex
-  | "authorisation" -> Some Authorisation
+  | "publickey" -> Some `PublicKey
+  | "checksum" -> Some `Checksum
+  | "releases" -> Some `Releases
+  | "janitorindex" -> Some `JanitorIndex
+  | "authorisation" -> Some `Authorisation
   | _ -> None
 
 let pp_kind ppf k = Format.pp_print_string ppf (kind_to_string k)
 
-type role = Author | Janitor | Other of string
+type role = [ `Author | `Janitor | `Other of string ]
 
 let role_to_string = function
-  | Author -> "author"
-  | Janitor -> "janitor"
-  | Other x -> x
+  | `Author -> "author"
+  | `Janitor -> "janitor"
+  | `Other x -> x
 
 let string_to_role = function
-  | "author" -> Author
-  | "janitor" -> Janitor
-  | x -> Other x
+  | "author" -> `Author
+  | "janitor" -> `Janitor
+  | x -> `Other x
 
 let pp_role pp r = Format.pp_print_string pp (role_to_string r)
 

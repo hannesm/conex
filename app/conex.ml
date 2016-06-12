@@ -60,7 +60,7 @@ let load_tas copts =
          keys
      in
      let repo = List.fold_left Repository.add_key copts.repo keys in
-     let pkey k = Printf.sprintf "%s as %s" k.Publickey.keyid (role_to_string k.Publickey.role) in
+     let pkey k = Printf.sprintf "%s as %s" k.Publickey.keyid (Core.role_to_string k.Publickey.role) in
      Format.fprintf copts.out "Loaded %d trust anchors [%s] from %s@."
                     (List.length keys)
                     (String.concat ", " (List.map pkey keys))
@@ -400,7 +400,7 @@ let sign copts item name =
           Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok k ->
-          let sigv = sign PublicKey (Data.publickey_raw k) in
+          let sigv = sign `PublicKey (Data.publickey_raw k) in
           let key = { k with Publickey.signatures = sigv :: k.Publickey.signatures } in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
@@ -414,7 +414,7 @@ let sign copts item name =
           Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok a ->
-          let sigv = sign Authorisation (Data.authorisation_raw a) in
+          let sigv = sign `Authorisation (Data.authorisation_raw a) in
           let a = { a with Authorisation.signatures = sigv :: a.Authorisation.signatures } in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
@@ -428,7 +428,7 @@ let sign copts item name =
           Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
-          let sigv = sign Checksum (Data.checksums_raw c) in
+          let sigv = sign `Checksum (Data.checksums_raw c) in
           let c = { c with Checksum.signatures = sigv :: c.Checksum.signatures } in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
@@ -523,10 +523,10 @@ let show_cmd =
 let role =
   let doc = "Role of the key" in
   let conv =
-    ((fun s -> try `Ok (string_to_role s) with _ -> `Error "not a role"),
-     pp_role)
+    ((fun s -> try `Ok (Core.string_to_role s) with _ -> `Error "not a role"),
+     Core.pp_role)
   in
-  Arg.(value & opt conv Author & info ["role"; "r"] ~doc ~docv:"KEYS")
+  Arg.(value & opt conv `Author & info ["role"; "r"] ~doc ~docv:"KEYS")
 
 let valid =
   let doc = "Owners of this authorisation, defaults to own keyid." in

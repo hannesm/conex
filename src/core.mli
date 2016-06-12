@@ -9,18 +9,19 @@ val string_to_path : string -> path
 (* keyid (NOTE: maybe abstract, checking for printable ASCII characters, case-insensitive, make private!) *)
 type identifier = string
 
-type kind =
-  | PublicKey
-  | Checksum
-  | Releases
-  | JanitorIndex
-  | Authorisation
+type kind = [
+  | `PublicKey
+  | `Checksum
+  | `Releases
+  | `JanitorIndex
+  | `Authorisation
+]
 
 val kind_to_string : kind -> string
 val string_to_kind : string -> kind option
 val pp_kind : Format.formatter -> kind -> unit
 
-type role = Author | Janitor | Other of string
+type role = [ `Author | `Janitor | `Other of string ]
 val role_to_string : role -> string
 val string_to_role : string -> role
 val pp_role : Format.formatter -> role -> unit
