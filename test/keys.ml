@@ -5,8 +5,9 @@ let empty () =
   Alcotest.(check int "Empty keystore is empty" 0 (Keystore.size store))
 
 let gen_pub ?counter ?role ?(priv = Private.generate ()) id =
-  let public = Publickey.publickey ?counter ?role id (Some (Private.pub_of_priv priv)) in
-  (public, priv)
+  match Publickey.publickey ?counter ?role id (Some (Private.pub_of_priv priv)) with
+  | Ok public -> (public, priv)
+  | Error s -> invalid_arg s
 
 let single () =
   let s = Keystore.empty in
@@ -157,8 +158,10 @@ let ks_sign_revoked () =
   in
   let ks_pub = Publickey.add_sig pub s in
   let ks =
-    let ks_pub = Publickey.publickey ~role ~signatures:[s] id None in
-    Keystore.(add empty ks_pub) in
+    match Publickey.publickey ~role ~signatures:[s] id None with
+    | Error s -> invalid_arg s
+    | Ok ks_pub -> Keystore.(add empty ks_pub)
+  in
   let ks_pub' = Keystore.find ks id in
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
   verify_all [Error (`InvalidPublicKey "")] ks role ks_pub' ;

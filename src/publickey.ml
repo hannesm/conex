@@ -44,11 +44,9 @@ let pp_publickey ppf p =
     Signature.pp_signatures p.signatures
 
 let publickey ?(counter = 0L) ?(version = 0L) ?(role = `Author) ?(signatures = []) keyid key =
-  (match key with
-   | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p >= 2048 -> ()
-   | Some _ -> invalid_arg "insufficient key size"
-   | None -> ()) ;
-  { counter ; version ; role ; signatures ; keyid ; key }
+  match key with
+  | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p < 2048 -> Error "RSA key too small"
+  | _ -> Ok { counter ; version ; role ; signatures ; keyid ; key }
 
 let add_sig t s = { t with signatures = s :: t.signatures }
 

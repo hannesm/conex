@@ -187,7 +187,9 @@ let data_to_publickey data =
     | _ -> Some (Publickey.decode_key key)
   and role = string_to_role role
   in
-  Publickey.publickey ~counter ~version ~role ~signatures  keyid key
+  match Publickey.publickey ~counter ~version ~role ~signatures  keyid key with
+  | Ok t -> t
+  | Error s -> invalid_arg s
 
 let publickey_raw pk =
   let data = publickey_to_data pk in

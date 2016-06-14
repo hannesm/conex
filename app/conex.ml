@@ -328,13 +328,17 @@ let generate copts item name role ids =
      Format.fprintf copts.out "generated new private key for %s@." name ;
      show_private copts (name, priv)
   | `Key ->
-    let writeout p =
-      if copts.dry then
-        Format.fprintf copts.out "dry run, nothing written.@."
-      else
-        Repository.write_key copts.repo p ;
-      Format.fprintf copts.out "generated new key for %s@." name ;
-      show_key copts p
+    let writeout = function
+      | Ok p ->
+        if copts.dry then
+          Format.fprintf copts.out "dry run, nothing written.@."
+        else
+          Repository.write_key copts.repo p ;
+        Format.fprintf copts.out "generated new key for %s@." name ;
+        show_key copts p
+      | Error s ->
+        Format.fprintf copts.out "%s%s%s@." Color.red s Color.endc ;
+        `Error (false, s)
     in
     (match Repository.read_key copts.repo name with
      | Ok p ->
@@ -343,22 +347,17 @@ let generate copts item name role ids =
          | Error _ -> None
           | Ok (_, priv) -> Some (Private.pub_of_priv priv)
        in
-       let pub =
-         Publickey.publickey
-           ~counter:(Int64.succ p.Publickey.counter)
-           ~role
-           name
-           pub_opt
-       in
-       writeout pub
+       writeout
+         (Publickey.publickey
+            ~counter:(Int64.succ p.Publickey.counter)
+            ~role name pub_opt)
      | Error _ ->
        match Private.read_private_key ~id:name copts.repo with
        | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
                       Color.red name Color.endc ;
          `Error (false, "no private key and public does not exist")
        | Ok (_, k) ->
-         let pub = Publickey.publickey ~role name (Some (Private.pub_of_priv k)) in
-         writeout pub)
+         writeout (Publickey.publickey ~role name (Some (Private.pub_of_priv k))))
   | `Authorisation ->
     let counter = match Repository.read_authorisation copts.repo name with
       | Error _ -> None
