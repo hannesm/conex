@@ -8,7 +8,9 @@ let pub_of_priv = function
      let pub = Nocrypto.Rsa.pub_of_priv k in
      let pem = X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub) in
      let str = Cstruct.to_string pem in
-     Publickey.decode_key str
+     match Publickey.decode_key str with
+     | Some pk -> pk
+     | None -> invalid_arg "X509 public key decoding and encoding not identity"
 
 let generate ?(bits = 2048) () = RSA_priv (Nocrypto.Rsa.generate bits)
 

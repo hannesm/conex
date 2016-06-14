@@ -1,7 +1,7 @@
 open Core
 
 type pub
-val decode_key : string -> pub
+val decode_key : string -> pub option
 val encode_key : pub -> string
 val pp_key : Format.formatter -> pub -> unit
 

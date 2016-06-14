@@ -5,8 +5,8 @@ type pub =
 
 let decode_key data =
   match X509.Encoding.Pem.Public_key.of_pem_cstruct (Cstruct.of_string data) with
-  | [ `RSA pub ] -> RSA_pub pub
-  | _ -> invalid_arg "invalid public key"
+  | [ `RSA pub ] -> Some (RSA_pub pub)
+  | _ -> None
 
 let encode_key = function
   | RSA_pub pub -> Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub))

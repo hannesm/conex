@@ -184,7 +184,9 @@ let data_to_publickey data =
   let key =
     match key with
     | "NONE" -> None
-    | _ -> Some (Publickey.decode_key key)
+    | _ -> match Publickey.decode_key key with
+      | Some k -> Some k
+      | None -> invalid_arg "cannot decode public key"
   and role = string_to_role role
   in
   match Publickey.publickey ~counter ~version ~role ~signatures  keyid key with
