@@ -1,15 +1,13 @@
 open Core
 
 type priv
-val decode_priv : string -> priv
-val encode_priv : priv -> string
 
 val pp_priv : Format.formatter -> priv -> unit
 
 (* how's the public? *)
 val pub_of_priv : priv -> Publickey.pub
 (* generate a new private *)
-val generate : unit -> priv
+val generate : ?bits:int -> unit -> priv
 (* sign a piece of data *)
 val sign : identifier -> priv -> kind -> string -> Signature.t
 

@@ -10,12 +10,12 @@ let pub_of_priv = function
      let str = Cstruct.to_string pem in
      Publickey.decode_key str
 
-let generate () = RSA_priv (Nocrypto.Rsa.generate 2048)
+let generate ?(bits = 2048) () = RSA_priv (Nocrypto.Rsa.generate bits)
 
 let decode_priv data =
   match X509.Encoding.Pem.Private_key.of_pem_cstruct (Cstruct.of_string data) with
-  | [ `RSA priv ] -> RSA_priv priv
-  | _ -> invalid_arg "invalid private key"
+  | [ `RSA priv ] -> Some (RSA_priv priv)
+  | _ -> None
 
 let encode_priv = function
   | RSA_priv priv ->
@@ -74,11 +74,28 @@ let all_private_keys repo =
 let write_private_key repo id key =
   let filename = Filename.concat private_dir (private_filename repo id) in
   if Persistency.exists filename then
-    (let backup = Filename.concat private_dir (private_filename repo (id ^ ".bak")) in
-     if Persistency.exists backup then
-       invalid_arg "backup already exists"
-     else
-       Persistency.rename filename backup) ;
+    (let ts =
+       let open Unix in
+       let t = gmtime (stat filename).st_mtime in
+       Printf.sprintf "%4d%2d%2d%2d%2d%2d" (t.tm_year + 1900) (succ t.tm_mon)
+         t.tm_mday t.tm_hour t.tm_min t.tm_sec
+     in
+     let backfn = String.concat "." [ id ; ts ; "bak" ] in
+     let backup = Filename.concat private_dir (private_filename repo backfn) in
+     let rec inc n =
+       let nam = backup ^ "." ^ string_of_int n in
+       if Persistency.exists nam then
+         inc (succ n)
+       else
+         nam
+     in
+     let backup =
+       if Persistency.exists backup then
+         inc 0
+       else
+         backup
+     in
+     Persistency.rename filename backup) ;
   let data = encode_priv key in
   if not (Sys.is_directory private_dir) then
     Unix.mkdir private_dir 0o700 ;
@@ -95,7 +112,9 @@ let read_private_key ?id repo =
     let fn = Filename.concat private_dir (private_filename repo id) in
     if Persistency.exists fn then
       let key = Persistency.read_file fn in
-      Ok (id, decode_priv key)
+      match decode_priv key with
+      | Some k -> Ok (id, k)
+      | None -> Error `NoPrivateKey
     else
       Error (`NotFound id)
   in
