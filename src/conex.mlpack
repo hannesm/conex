@@ -3,6 +3,7 @@ Checksum
 Core
 Data
 Diff
+Janitorindex
 Keystore
 Layout
 Patch
@@ -10,6 +11,7 @@ Persistency
 Private
 Provider
 Publickey
+Releases
 Repository
 Signature
 Strhelper

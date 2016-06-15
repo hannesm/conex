@@ -160,6 +160,45 @@ let combine_signed data sigs =
   List [ Entry ("signed", data) ;
          Entry ("signatures", List (List.map signature_to_data sigs)) ]
 
+let r_to_data (name, kind, digest) =
+  List [ Leaf (String name) ; Leaf (String (kind_to_string kind)) ; Leaf (String digest) ]
+
+let data_to_r = function
+  | List (n::k::d::[]) ->
+    let name = extract_string_exn n
+    and kind = extract_string_exn k
+    and digest = extract_string_exn d
+    in
+    (match string_to_kind kind with
+     | None -> invalid_arg "bad kind"
+     | Some k -> (name, k, digest))
+  | _ -> invalid_arg "bad resource"
+
+let janitorindex_to_data ji =
+  List [ Entry ("signed", List [ Entry ("counter"   , Leaf (Int ji.Janitorindex.counter)) ;
+                                 Entry ("version"   , Leaf (Int ji.Janitorindex.version)) ;
+                                 Entry ("identifier", Leaf (String ji.Janitorindex.identifier)) ;
+                                 Entry ("resources" , List (List.map r_to_data ji.Janitorindex.resources)) ]) ;
+         Entry ("signatures", List (List.map signature_to_data ji.Janitorindex.signatures)) ]
+
+let data_to_janitorindex data =
+  let signed, signatures = parse_signed_data data in
+  let counter = extract_int_exn (get_exn signed "counter")
+  and version = extract_int_exn (get_exn signed "version")
+  and identifier = extract_string_exn (get_exn signed "identifier")
+  and rs = get_exn signed "resources"
+  in
+  let resources = match rs with
+    | List r -> List.map data_to_r r
+    | _ -> invalid_arg "unknown resources"
+  in
+  Janitorindex.janitorindex ~counter ~version ~resources ~signatures identifier
+
+let janitorindex_raw ji =
+  let data = janitorindex_to_data ji in
+  let signed, _ = parse_signed_data data in
+  normalise signed
+
 let publickey_to_data pubkey =
   let pem = match pubkey.Publickey.key with
     | None -> "NONE"
@@ -195,6 +234,31 @@ let data_to_publickey data =
 
 let publickey_raw pk =
   let data = publickey_to_data pk in
+  let signed, _ = parse_signed_data data in
+  normalise signed
+
+let releases_to_data r =
+  let id s = Leaf (String s) in
+  List [ Entry ("signed", List [ Entry ("name"     , Leaf (String r.Releases.name)) ;
+                                 Entry ("counter"  , Leaf (Int r.Releases.counter)) ;
+                                 Entry ("version"  , Leaf (Int r.Releases.version)) ;
+                                 Entry ("releases" , List (List.map id r.Releases.releases)) ]);
+         Entry ("signatures", List (List.map signature_to_data r.Releases.signatures)) ]
+
+let data_to_releases data =
+  let signed, signatures = parse_signed_data data in
+  let id x = extract_string_exn x in
+  let name = extract_string_exn (get_exn signed "name")
+  and counter = extract_int_exn (get_exn signed "counter")
+  and version = extract_int_exn (get_exn signed "version")
+  and releases = match get_exn signed "releases" with
+    | List es -> List.map id es
+    | _ -> invalid_arg "releases not a list"
+  in
+  Releases.releases ~counter ~version ~releases ~signatures name
+
+let releases_raw auth =
+  let data = releases_to_data auth in
   let signed, _ = parse_signed_data data in
   normalise signed
 

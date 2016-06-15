@@ -38,21 +38,22 @@ let private_key_path path id =
   in
   string_to_path private_dir @ [ filename ]
 
-let key_dir, key_suffix = ("keys", ".public")
+let key_dir = "keys"
 
 let keys p =
   match p.Provider.read_dir [ key_dir ] with
   | Error _ -> []
   | Ok data ->
-    let suffix = key_suffix in
     let f = function
-      | `File f when Strhelper.is_suffix ~suffix f ->
-        Some (Strhelper.cut_suffix ~suffix f)
+      | `File f -> Some f
       | _ -> None
     in
     Utils.filter_map ~f data
 
-let key_path id = [ key_dir ; id ^ key_suffix ]
+let key_path id = [ key_dir ; id ]
+
+let jipath = "sigs"
+let janitorindex_path ji = [ jipath ; ji ]
 
 let data_dir = "data"
 let authorisation_filename = "authorisation"
@@ -68,6 +69,9 @@ let authorisations p =
     Utils.filter_map ~f data
 
 let authorisation_path id = [ data_dir ; id ; authorisation_filename ]
+
+let releases_filename = "releases"
+let releases_path id = [ data_dir ; id ; releases_filename ]
 
 let checksum_filename = "checksum"
 
@@ -110,9 +114,7 @@ let checksum_files p da =
       data
 
 let is_key = function
-  | kd :: id :: [] when
-      kd = key_dir && Strhelper.is_suffix ~suffix:key_suffix id ->
-    Some (String.sub id 0 (String.length id - 7))
+  | kd :: id :: [] when kd = key_dir -> Some id
   | _ -> None
 
 let is_authorisation = function

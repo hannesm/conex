@@ -9,9 +9,17 @@ val data_to_signature : t -> Signature.t
 val parse_signed_data : t -> (t * Signature.t list)
 val combine_signed : t -> Signature.t list -> t
 
+val janitorindex_to_data : Janitorindex.t -> t
+val data_to_janitorindex : t -> Janitorindex.t
+val janitorindex_raw : Janitorindex.t -> string
+
 val publickey_to_data : Publickey.t -> t
 val data_to_publickey : t -> Publickey.t
 val publickey_raw : Publickey.t -> string
+
+val releases_to_data : Releases.t -> t
+val data_to_releases : t -> Releases.t
+val releases_raw : Releases.t -> string
 
 val authorisation_to_data : Authorisation.t -> t
 val data_to_authorisation : t -> Authorisation.t

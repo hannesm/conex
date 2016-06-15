@@ -28,12 +28,18 @@ type 'a r_res = ('a, r_err) result
 
 val pp_r_err : Format.formatter -> r_err -> unit
 
-val read_key : t -> string -> Publickey.t r_res
+val read_key : t -> identifier -> Publickey.t r_res
 val write_key : t -> Publickey.t -> unit
 
-val read_authorisation : t -> string -> Authorisation.t r_res
+val read_janitorindex : t -> identifier -> Janitorindex.t r_res
+val write_janitorindex : t -> Janitorindex.t -> unit
+
+val read_authorisation : t -> name -> Authorisation.t r_res
 val write_authorisation : t -> Authorisation.t -> unit
 
-val read_checksum : t -> string -> Checksum.t r_res
+val read_releases : t -> name -> Releases.t r_res
+val write_releases : t -> Releases.t -> unit
+
+val read_checksum : t -> name -> Checksum.t r_res
 val write_checksum : t -> Checksum.t -> unit
-val compute_checksum : t -> string -> Checksum.t r_res
+val compute_checksum : t -> name -> Checksum.t r_res

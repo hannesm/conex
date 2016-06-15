@@ -117,6 +117,21 @@ let write_key repo key =
 
 let all_keyids repo = Layout.keys repo.data
 
+let read_janitorindex repo name =
+  match repo.data.Provider.read (Layout.janitorindex_path name) with
+  | Error _ -> Error (`NotFound name)
+  | Ok data ->
+    let r = Data.data_to_janitorindex (Data.parse data) in
+    if r.Janitorindex.identifier <> name then
+      Error (`NameMismatch (name, r.Janitorindex.identifier))
+    else
+      Ok r
+
+let write_janitorindex repo j =
+  let data = Data.janitorindex_to_data j in
+  let name = Layout.janitorindex_path j.Janitorindex.identifier in
+  repo.data.Provider.write name (Data.normalise data)
+
 let read_authorisation repo name =
   match repo.data.Provider.read (Layout.authorisation_path name) with
   | Error _ -> Error (`NotFound name)
@@ -134,6 +149,21 @@ let write_authorisation repo a =
     (Data.normalise data)
 
 let all_authorisations repo = Layout.authorisations repo.data
+
+let read_releases repo name =
+  match repo.data.Provider.read (Layout.releases_path name) with
+  | Error _ -> Error (`NotFound name)
+  | Ok data ->
+    let r = Data.data_to_releases (Data.parse data) in
+    if r.Releases.name <> name then
+      Error (`NameMismatch (name, r.Releases.name))
+    else
+      Ok r
+
+let write_releases repo r =
+  let data = Data.releases_to_data r in
+  let name = Layout.releases_path r.Releases.name in
+  repo.data.Provider.write name (Data.normalise data)
 
 let read_checksum repo name =
   match repo.data.Provider.read (Layout.checksum_path name) with
