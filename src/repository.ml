@@ -91,6 +91,19 @@ let verify_checksum repo a cs =
   guard (nam = a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
   verify_data cs.Checksum.name repo a.Authorisation.authorised `Checksum raw signatures
 
+let verify_releases repo a r =
+  let raw = Data.releases_raw r
+  and signatures = r.Releases.signatures
+  in
+  guard (r.Releases.name = a.Authorisation.name) (`InvalidReleases (a.Authorisation.name, r.Releases.name)) >>= fun () ->
+  verify_data r.Releases.name repo a.Authorisation.authorised `Releases raw signatures
+
+let verify_janitorindex repo ji =
+  let raw = Data.janitorindex_raw ji
+  and signatures = ji.Janitorindex.signatures
+  in
+  verify_data ji.Janitorindex.identifier repo [ji.Janitorindex.identifier] `JanitorIndex raw signatures
+
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
 let pp_r_err ppf = function

@@ -86,6 +86,7 @@ type error = [
   | `InvalidCounter of string * int64 * int64
   | `InsufficientQuorum of string * identifier list * error list
   | `InvalidAuthorisation of string * string
+  | `InvalidReleases of string * string
   | `InvalidSignatures of string * error list
 ]
 
@@ -100,6 +101,7 @@ let rec pp_error ppf = function
     Format.fprintf ppf "quorum for %s not reached (valid: %s), errors:" id (String.concat ", " goods) ;
     Format.pp_print_list pp_error ppf errs
   | `InvalidAuthorisation (anam, nam) -> Format.fprintf ppf "invalid authorisation for %s, responsible for %s" nam anam
+  | `InvalidReleases (anam, rnam) -> Format.fprintf ppf "invalid releases for %s, responsible for %s" rnam anam
   | `InvalidSignatures (id, errs) ->
     Format.fprintf ppf "bad signatures for %s, errors:@." id ;
     Format.pp_print_list pp_error ppf errs

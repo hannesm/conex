@@ -15,6 +15,8 @@ val pp_res : Format.formatter -> res -> unit
 val verify_key : t -> Publickey.t -> res
 val verify_authorisation : t -> ?authorised:(identifier list) -> Authorisation.t -> res
 val verify_checksum : t -> Authorisation.t -> Checksum.t -> res
+val verify_releases : t -> Authorisation.t -> Releases.t -> res
+val verify_janitorindex : t -> Janitorindex.t -> res
 
 val load_keys : t -> ?verify:bool -> identifier list -> t
 

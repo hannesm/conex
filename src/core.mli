@@ -47,6 +47,7 @@ type error = [
   | `InvalidCounter of string * int64 * int64
   | `InsufficientQuorum of string * identifier list * error list
   | `InvalidAuthorisation of string * string
+  | `InvalidReleases of string * string
   | `InvalidSignatures of string * error list
 ]
 
