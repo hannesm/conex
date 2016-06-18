@@ -51,7 +51,6 @@ let load_tas copts =
      Format.fprintf copts.out "WARNING: treating repository as trusted, maybe you forgot --trust-anchors?@." ; copts
   | Some s ->
      let keys = List.map (Filename.concat s) (Persistency.collect_dir s) in
-     let keys = List.filter (Strhelper.is_suffix ~suffix:".public") keys in
      let keys =
        List.map
          (fun f -> let content = Persistency.read_file (Filename.concat s f) in
