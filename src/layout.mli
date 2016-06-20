@@ -7,6 +7,7 @@ val authorisation_of_item : name -> name
 
 val private_keys : Provider.t -> identifier list
 val keys : Provider.t -> identifier list
+val janitors : Provider.t -> identifier list
 val authorisations : Provider.t -> name list
 val items : Provider.t -> name -> name list
 

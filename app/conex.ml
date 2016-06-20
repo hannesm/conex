@@ -58,7 +58,7 @@ let load_tas copts =
                    Data.data_to_publickey data)
          keys
      in
-     let repo = List.fold_left Repository.add_key copts.repo keys in
+     let repo = List.fold_left Repository.add_trusted_key copts.repo keys in
      let pkey k = Printf.sprintf "%s as %s" k.Publickey.keyid (Core.role_to_string k.Publickey.role) in
      Format.fprintf copts.out "Loaded %d trust anchors [%s] from %s@."
                     (List.length keys)

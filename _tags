@@ -5,7 +5,7 @@ true : warn(+A-4-6-33-44-48)
 "src" : include
 
 <src/authorisation.{ml,mli}>: for-pack(Conex)
-<src/core.{ml,mli}>: for-pack(Conex)
+<src/core.{ml,mli}>: package(cstruct), package(nocrypto), for-pack(Conex)
 <src/data.{ml,mli}>: for-pack(Conex)
 <src/diff.{ml,mli}>: for-pack(Conex)
 <src/janitorindex.{ml,mli}>: for-pack(Conex)

@@ -2,10 +2,14 @@ open Core
 
 module S = Set.Make(String)
 
+module SM = Map.Make(String)
+type valid = (name * kind * identifier list) SM.t
+
 type t = {
   store : Keystore.t ;
   quorum : int ;
   data : Provider.t ;
+  valid : valid ;
 }
 
 type res = ([ `Identifier of identifier | `Quorum ], error) result
@@ -16,7 +20,7 @@ let pp_res ppf = function
   | Error e -> pp_error ppf e
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
-  { store ; quorum ; data }
+  { store ; quorum ; data ; valid = SM.empty }
 
 let quorum r = r.quorum
 
@@ -24,21 +28,34 @@ let provider t = t.data
 
 let change_provider t data = { t with data }
 
-let add_key repo key =
+let add_trusted_key repo key =
   let store = Keystore.add repo.store key in
   { repo with store }
 
+let add_csums repo janitor rs =
+  let add_csum t (name, kind, hash) =
+    try
+      let (n, k, ids) = SM.find hash t in
+      assert (n = name) ; assert (k = kind) ;
+      SM.add hash (n, k, janitor :: ids) t
+    with Not_found -> SM.add hash (name, kind, [janitor]) t
+  in
+  let valid = List.fold_left add_csum repo.valid rs in
+  { repo with valid }
+
 let id_of_sig (id, _) = id
 
-let has_quorum id repo kind data signatures =
-  let verify = Keystore.verify repo.store `Janitor kind data in
-  let sigs = List.map verify signatures in
-  let ids = Utils.filter_map ~f:(function Ok id -> Some id | Error _ -> None) sigs in
-  if S.cardinal (S.of_list ids) >= repo.quorum then
-    Ok `Quorum
-  else
-    let errs = Utils.filter_map ~f:(function Error e -> Some e | Ok _ -> None) sigs in
-    Error (`InsufficientQuorum (id, ids, errs))
+let has_quorum id repo kind data =
+  let csum = digest (Signature.extend_data data id kind) in
+  try
+    let (n, k, js) = SM.find csum repo.valid in
+    assert (n = id) ; assert (k = kind) ;
+    if List.length js >= repo.quorum then
+      Ok `Quorum
+    else
+      Error (`InsufficientQuorum (id, js))
+  with Not_found ->
+      Error (`InsufficientQuorum (id, []))
 
 let verify_data id repo authorised_ids ?(role = `Author) kind data signatures =
   let valids, _others =
@@ -69,12 +86,12 @@ let verify_key repo key =
        verify_data id repo [id] ~role:old.Publickey.role `PublicKey raw sigs >>= fun _ ->
        Ok ()
    else
-     Ok ()) >>= fun _ ->
-  verify_data id (add_key repo key) [id] ~role `PublicKey raw sigs >>= fun ok ->
+     Ok ()) >>= fun () ->
+  verify_data id (add_trusted_key repo key) [id] ~role `PublicKey raw sigs >>= fun ok ->
   if key.Publickey.role = `Author then
     Ok ok
   else
-    has_quorum id repo `PublicKey raw sigs >>= fun _ -> Ok ok
+    has_quorum id repo `PublicKey raw >>= fun _ -> Ok ok
 
 let verify_authorisation repo ?authorised auth =
   let raw = Data.authorisation_raw auth
@@ -102,7 +119,7 @@ let verify_janitorindex repo ji =
   let raw = Data.janitorindex_raw ji
   and signatures = ji.Janitorindex.signatures
   in
-  verify_data ji.Janitorindex.identifier repo [ji.Janitorindex.identifier] `JanitorIndex raw signatures
+  verify_data ji.Janitorindex.identifier repo [ji.Janitorindex.identifier] ~role:`Janitor `JanitorIndex raw signatures
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
@@ -129,6 +146,8 @@ let write_key repo key =
     (Data.normalise data)
 
 let all_keyids repo = Layout.keys repo.data
+
+let all_janitors repo = Layout.janitors repo.data
 
 let read_janitorindex repo name =
   match repo.data.Provider.read (Layout.janitorindex_path name) with
@@ -264,8 +283,6 @@ module Graph = struct
     s []
 end
 
-module SM = Map.Make(String)
-
 (* Ignoring read failures may be fine here, in case a publickey is removed, but there are
    still some dangling signatures, which won't verify later *)
 
@@ -291,19 +308,39 @@ let required_keys repo ids =
   let sorted = Graph.topsort graph in
   List.map (fun n -> SM.find n pubkeys) sorted
 
-let load_keys repo ?(verify = false) ids =
+
+let maybe_load repo ids =
+  let keys = required_keys repo ids in
+  List.fold_left
+    (fun repo key ->
+       match verify_key repo key with
+       | Ok _ -> add_trusted_key repo key
+       | Error e -> pp_error Format.std_formatter e ; repo)
+    repo keys
+
+let load_keys ?(verify = false) repo ids =
   if verify then
-    let keys = required_keys repo ids in
-    List.fold_left
-      (fun repo key ->
-         match verify_key repo key with
-         | Ok _ -> add_key repo key
-         | Error e -> pp_error Format.std_formatter e ; repo)
-      repo keys
+    maybe_load repo ids
   else
     List.fold_left
       (fun repo id ->
        match read_key repo id with
        | Error _ -> invalid_arg ("could not find key " ^ id)
-       | Ok k -> add_key repo k)
+       | Ok k -> add_trusted_key repo k)
       repo ids
+
+let load_janitor ?(verify = false) repo janitor =
+  match read_janitorindex repo janitor with
+  | Ok ji ->
+    if verify then
+      let repo = maybe_load repo [janitor] in
+      match verify_janitorindex repo ji with
+      | Ok _ -> add_csums repo janitor ji.Janitorindex.resources
+      | Error _ -> invalid_arg "verification failed"
+    else
+      add_csums repo janitor ji.Janitorindex.resources
+  | Error _ -> invalid_arg "unlikely to happen"
+
+let load_janitors ?(verify = false) repo =
+  let all = all_janitors repo in
+  List.fold_left (load_janitor ~verify) repo all

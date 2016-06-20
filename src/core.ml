@@ -38,6 +38,12 @@ type digest = string
 
 let pp_digest ppf x = Format.pp_print_string ppf x
 
+let digest data =
+  let cs = Cstruct.of_string data in
+  let check = Nocrypto.Hash.digest `SHA256 cs in
+  let b64 = Nocrypto.Base64.encode check in
+  Cstruct.to_string b64
+
 type kind = [
   | `PublicKey
   | `Checksum
@@ -84,7 +90,7 @@ type error = [
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `InvalidCounter of string * int64 * int64
-  | `InsufficientQuorum of string * identifier list * error list
+  | `InsufficientQuorum of string * identifier list
   | `InvalidAuthorisation of string * string
   | `InvalidReleases of string * string
   | `InvalidSignatures of string * error list
@@ -97,9 +103,8 @@ let rec pp_error ppf = function
   | `InvalidPublicKey id -> Format.fprintf ppf "keystore contained no valid key for %s" id
   | `InvalidIdentifier id -> Format.fprintf ppf "identifier %s was not found in keystore" id
   | `InvalidCounter (id, old, nev) -> Format.fprintf ppf "key %s did not increase counter (old %Lu new %Lu)" id old nev
-  | `InsufficientQuorum (id, goods, errs) ->
-    Format.fprintf ppf "quorum for %s not reached (valid: %s), errors:" id (String.concat ", " goods) ;
-    Format.pp_print_list pp_error ppf errs
+  | `InsufficientQuorum (id, goods) ->
+    Format.fprintf ppf "quorum for %s not reached (valid: %s)" id (String.concat ", " goods)
   | `InvalidAuthorisation (anam, nam) -> Format.fprintf ppf "invalid authorisation for %s, responsible for %s" nam anam
   | `InvalidReleases (anam, rnam) -> Format.fprintf ppf "invalid releases for %s, responsible for %s" rnam anam
   | `InvalidSignatures (id, errs) ->

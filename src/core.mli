@@ -21,6 +21,8 @@ type digest = string
 
 val pp_digest : Format.formatter -> digest -> unit
 
+val digest : string -> string
+
 type kind = [
   | `PublicKey
   | `Checksum
@@ -45,7 +47,7 @@ type error = [
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `InvalidCounter of string * int64 * int64
-  | `InsufficientQuorum of string * identifier list * error list
+  | `InsufficientQuorum of string * identifier list
   | `InvalidAuthorisation of string * string
   | `InvalidReleases of string * string
   | `InvalidSignatures of string * error list

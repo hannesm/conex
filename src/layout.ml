@@ -55,6 +55,16 @@ let key_path id = [ key_dir ; id ]
 let jipath = "sigs"
 let janitorindex_path ji = [ jipath ; ji ]
 
+let janitors p =
+  match p.Provider.read_dir [ jipath ] with
+  | Error _ -> []
+  | Ok data ->
+    let f = function
+      | `File f -> Some f
+      | _ -> None
+    in
+    Utils.filter_map ~f data
+
 let data_dir = "data"
 let authorisation_filename = "authorisation"
 

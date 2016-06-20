@@ -18,11 +18,14 @@ val verify_checksum : t -> Authorisation.t -> Checksum.t -> res
 val verify_releases : t -> Authorisation.t -> Releases.t -> res
 val verify_janitorindex : t -> Janitorindex.t -> res
 
-val load_keys : t -> ?verify:bool -> identifier list -> t
+val load_keys : ?verify:bool -> t -> identifier list -> t
+val load_janitor : ?verify:bool -> t -> identifier -> t
+val load_janitors : ?verify:bool -> t -> t
 
-val add_key : t -> Publickey.t -> t
+val add_trusted_key : t -> Publickey.t -> t
 
 val all_keyids : t -> identifier list
+val all_janitors : t -> identifier list
 val all_authorisations : t -> string list
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]

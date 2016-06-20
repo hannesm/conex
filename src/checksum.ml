@@ -14,12 +14,8 @@ let checksum_equal a b =
   a.filename = b.filename && a.bytesize = b.bytesize && a.checksum = b.checksum
 
 let checksum filename data =
-  let bytesize = Int64.of_int (String.length data) in
-  let checksum =
-    let cs = Cstruct.of_string data in
-    let check = Nocrypto.Hash.digest `SHA256 cs in
-    let b64 = Nocrypto.Base64.encode check in
-    Cstruct.to_string b64
+  let bytesize = Int64.of_int (String.length data)
+  and checksum = digest data
   in
   { filename ; bytesize ; checksum }
 
