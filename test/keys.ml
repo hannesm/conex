@@ -1,13 +1,80 @@
 open Core
 
-let empty () =
-  let store = Keystore.empty in
-  Alcotest.(check int "Empty keystore is empty" 0 (Keystore.size store))
+let result (type a) (type e) a e =
+  let (module A: Alcotest.TESTABLE with type t = a) = a in
+  let (module E: Alcotest.TESTABLE with type t = e) = e in
+  let module M = struct
+    type t = (a, e) result
+    let pp fmt t = match t with
+      | Ok    t -> Format.fprintf fmt "Ok @[(%a)@]" A.pp t
+      | Error e -> Format.fprintf fmt "Error @[(%a)@]" E.pp e
+    let equal x y = match x, y with
+      | Ok    x, Ok    y -> A.equal x y
+      | Error x, Error y -> E.equal x y
+      | _      , _       -> false
+  end in
+  (module M: Alcotest.TESTABLE with type t = M.t)
+
+let publickey =
+  let module M = struct
+    type t = Publickey.t
+    let pp = Publickey.pp_publickey
+    let equal = Publickey.equal
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
 
 let gen_pub ?counter ?role ?(priv = Private.generate ()) id =
   match Publickey.publickey ?counter ?role id (Some (Private.pub_of_priv priv)) with
   | Ok public -> (public, priv)
   | Error s -> invalid_arg s
+
+(* since Publickey.t is private, we've no way to properly test Publickey.publickey *)
+let good_publickey () =
+  let apriv = Private.generate () in
+  let pk, _ = gen_pub ~counter:0L ~role:`Author ~priv:apriv "a" in
+  Alcotest.check
+    (result publickey Alcotest.string)
+    "good key is good"
+    (Ok pk)
+    (Publickey.publickey "a" (Some (Private.pub_of_priv apriv)))
+
+let good_publickey_2 () =
+  let apriv = Private.generate ~bits:4096 () in
+  let pk, _ = gen_pub ~counter:100L ~role:`Janitor ~priv:apriv "a" in
+  Alcotest.check
+    (result publickey Alcotest.string)
+    "good key is good"
+    (Ok pk)
+    (Publickey.publickey ~counter:100L ~role:`Janitor "a" (Some (Private.pub_of_priv apriv)))
+
+let bad_publickey () =
+  let apriv = Private.generate ~bits:1024 () in
+  Alcotest.check
+    (result publickey Alcotest.string)
+    "small key is rejected"
+    (Error "RSA key too small")
+    (Publickey.publickey "a" (Some (Private.pub_of_priv apriv)))
+
+let pubkey_enc_dec () =
+  let apriv = Private.generate () in
+  let apub = Private.pub_of_priv apriv in
+  let enc = Publickey.encode_key apub in
+  Alcotest.(check string "encoding and decoding works"
+              enc
+              (match Publickey.decode_key enc with
+               | None -> invalid_arg "invalid data"
+               | Some x -> Publickey.encode_key x))
+
+let public_tests = [
+  "good publickey", `Quick, good_publickey ;
+  "good publickey explicit", `Slow, good_publickey_2 ;
+  "bad publickey", `Quick, bad_publickey ;
+  "encode/decode publickey", `Quick, pubkey_enc_dec ;
+]
+
+let empty () =
+  let store = Keystore.empty in
+  Alcotest.(check int "Empty keystore is empty" 0 (Keystore.size store))
 
 let single () =
   let s = Keystore.empty in
@@ -50,21 +117,6 @@ let ks_tests = [
   "single keystore insert and remove", `Quick, single ;
   "multiple keys", `Quick, multiple ;
 ]
-
-let result (type a) (type e) a e =
-  let (module A: Alcotest.TESTABLE with type t = a) = a in
-  let (module E: Alcotest.TESTABLE with type t = e) = e in
-  let module M = struct
-    type t = (a, e) result
-    let pp fmt t = match t with
-      | Ok    t -> Format.fprintf fmt "Ok @[(%a)@]" A.pp t
-      | Error e -> Format.fprintf fmt "Error @[(%a)@]" E.pp e
-    let equal x y = match x, y with
-      | Ok    x, Ok    y -> A.equal x y
-      | Error x, Error y -> E.equal x y
-      | _      , _       -> false
-  end in
-  (module M: Alcotest.TESTABLE with type t = M.t)
 
 let err =
   let module M = struct
@@ -204,6 +256,7 @@ let ks_sign_tests = [
 let () =
   Nocrypto_entropy_unix.initialize () ;
   Alcotest.run "Conex tests" [
+    ("Publickey", public_tests) ;
     ("Keystore", ks_tests) ;
     ("Signature", sign_tests) ;
     ("KeystoreSign", ks_sign_tests)
