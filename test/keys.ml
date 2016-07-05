@@ -72,6 +72,110 @@ let public_tests = [
   "encode/decode publickey", `Quick, pubkey_enc_dec ;
 ]
 
+let err =
+  let module M = struct
+    type t = Core.error
+    let pp = Core.pp_error
+    let equal a b = match a, b with
+      | `InvalidBase64Encoding _, `InvalidBase64Encoding _ -> true
+      | `InvalidSignature _, `InvalidSignature _ -> true
+      | `InvalidRole _, `InvalidRole _ -> true
+      | `InvalidPublicKey _, `InvalidPublicKey _ -> true
+      | `InvalidIdentifier _, `InvalidIdentifier _ -> true
+      | `InvalidCounter _, `InvalidCounter _ -> true
+      | `InsufficientQuorum _, `InsufficientQuorum _ -> true
+      | `InvalidAuthorisation _, `InvalidAuthorisation _ -> true
+      | `InvalidSignatures _, `InvalidSignatures _ -> true
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let check_ver = Alcotest.check (result Alcotest.string err)
+
+let invalid_sig = Error (`InvalidSignature ("", `PublicKey, "", ""))
+let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
+let invalid_role = Error (`InvalidRole (`Author, `Author))
+
+let sig_good () =
+  let pid = "foobar" in
+  let pub, p = gen_pub pid in
+  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  Alcotest.(check string "id of sign is same as given" pid id) ;
+  check_ver "signature is good" (Ok id) (Publickey.verify pub `Author `PublicKey "bla" (id, sigval))
+
+let check_sig prefix pub role kind raw (id, sv) =
+  check_ver (prefix ^ " signature can be verified") (Ok id)
+    (Publickey.verify pub role kind raw (id, sv)) ;
+  check_ver (prefix ^ " signature of other id") invalid_sig
+    (Publickey.verify pub role kind raw ("foo", sv)) ;
+  check_ver (prefix ^ " signature empty") invalid_sig
+    (Publickey.verify pub role kind raw (id, "")) ;
+  check_ver (prefix ^ " signature is bad (b64prefix)") invalid_b64
+    (Publickey.verify pub role kind raw (id, "\000" ^ sv)) ;
+  check_ver (prefix ^ " signature is bad (prefix)") invalid_sig
+    (Publickey.verify pub role kind raw (id, "abcd" ^ sv)) ;
+  check_ver (prefix ^ " signature is bad (postfix)") invalid_sig (* should be invalid_b64 once nocrypto is fixed *)
+    (Publickey.verify pub role kind raw (id, sv ^ "abcd")) ;
+  check_ver (prefix ^ " signature is bad (raw)") invalid_sig
+    (Publickey.verify pub role kind "" (id, sv)) ;
+  check_ver (prefix ^ " signature has bad role") invalid_role
+    (Publickey.verify pub `Janitor kind raw (id, sv))
+
+let sign_single () =
+  let id = "a"
+  and role = `Author
+  in
+  let pub, priv = gen_pub ~role id in
+  let raw = Data.publickey_raw pub in
+  let s = Private.sign id priv `PublicKey raw in
+  check_sig "common" pub role `PublicKey raw s
+
+let sig_good_role () =
+  let pid = "foobar" in
+  let pub, p = gen_pub ~role:`Janitor pid in
+  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  Alcotest.(check string "id of sign is same as given" pid id) ;
+  check_ver "signature is good" (Ok id) (Publickey.verify pub `Janitor `PublicKey "bla" (id, sigval))
+
+let sig_bad_role () =
+  let pid = "foobar" in
+  let pub, p = gen_pub pid in
+  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  Alcotest.(check string "id of sign is same as given" pid id) ;
+  check_ver
+    "verify fails (role)"
+    invalid_role
+    (Publickey.verify pub `Janitor `PublicKey "bla" (id, sigval))
+
+let sig_bad_kind () =
+  let pid = "foobar" in
+  let pub, p = gen_pub pid in
+  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  Alcotest.(check string "id of sign is same as given" pid id) ;
+  check_ver
+    "verify fails (kind)"
+    invalid_sig
+    (Publickey.verify pub `Author `Checksum "bla" (id, sigval))
+
+let sig_bad_data () =
+  let pid = "foobar" in
+  let pub, p = gen_pub pid in
+  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  Alcotest.(check string "id of sign is same as given" pid id) ;
+  check_ver
+    "verify fails (data)"
+    invalid_sig
+    (Publickey.verify pub `Author `Checksum "blabb" (id, sigval))
+
+let sign_tests = [
+  "sign and verify is good", `Quick, sig_good ;
+  "sign and verify is good", `Quick, sig_good_role ;
+  "self-sign is good", `Quick, sign_single ;
+  "bad signature (role)", `Quick, sig_bad_role ;
+  "bad signature (kind)", `Quick, sig_bad_kind ;
+  "bad signature (data)", `Quick, sig_bad_data ;
+]
+
 let empty () =
   let store = Keystore.empty in
   Alcotest.(check int "Empty keystore is empty" 0 (Keystore.size store))
@@ -116,61 +220,6 @@ let ks_tests = [
   "empty keystore", `Quick, empty ;
   "single keystore insert and remove", `Quick, single ;
   "multiple keys", `Quick, multiple ;
-]
-
-let err =
-  let module M = struct
-    type t = Core.error
-    let pp = Core.pp_error
-    let equal a b = match a, b with
-      | `InvalidBase64Encoding _, `InvalidBase64Encoding _ -> true
-      | `InvalidSignature _, `InvalidSignature _ -> true
-      | `InvalidRole _, `InvalidRole _ -> true
-      | `InvalidPublicKey _, `InvalidPublicKey _ -> true
-      | `InvalidIdentifier _, `InvalidIdentifier _ -> true
-      | `InvalidCounter _, `InvalidCounter _ -> true
-      | `InsufficientQuorum _, `InsufficientQuorum _ -> true
-      | `InvalidAuthorisation _, `InvalidAuthorisation _ -> true
-      | `InvalidSignatures _, `InvalidSignatures _ -> true
-      | _ -> false
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let check_ver = Alcotest.check (result Alcotest.string err)
-
-let invalid_sig = Error (`InvalidSignature ("", `PublicKey, "", ""))
-let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
-let invalid_role = Error (`InvalidRole (`Author, `Author))
-
-let check_sig prefix pub role kind raw (id, sv) =
-  check_ver (prefix ^ " signature can be verified") (Ok id)
-    (Publickey.verify pub role kind raw (id, sv)) ;
-  check_ver (prefix ^ " signature of other id") invalid_sig
-    (Publickey.verify pub role kind raw ("foo", sv)) ;
-  check_ver (prefix ^ " signature empty") invalid_sig
-    (Publickey.verify pub role kind raw (id, "")) ;
-  check_ver (prefix ^ " signature is bad (b64prefix)") invalid_b64
-    (Publickey.verify pub role kind raw (id, "\000" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (prefix)") invalid_sig
-    (Publickey.verify pub role kind raw (id, "abcd" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (postfix)") invalid_sig (* should be invalid_b64 once nocrypto is fixed *)
-    (Publickey.verify pub role kind raw (id, sv ^ "abcd")) ;
-  check_ver (prefix ^ " signature is bad (raw)") invalid_sig
-    (Publickey.verify pub role kind "" (id, sv)) ;
-  check_ver (prefix ^ " signature has bad role") invalid_role
-    (Publickey.verify pub `Janitor kind raw (id, sv))
-
-let sign_single () =
-  let id = "a"
-  and role = `Author
-  in
-  let pub, priv = gen_pub ~role id in
-  let raw = Data.publickey_raw pub in
-  let s = Private.sign id priv `PublicKey raw in
-  check_sig "common" pub role `PublicKey raw s
-
-let sign_tests = [
-  "self-sign", `Quick, sign_single ;
 ]
 
 let verify_all exp ks role pub =
@@ -257,8 +306,8 @@ let () =
   Nocrypto_entropy_unix.initialize () ;
   Alcotest.run "Conex tests" [
     ("Publickey", public_tests) ;
-    ("Keystore", ks_tests) ;
     ("Signature", sign_tests) ;
+    ("Keystore", ks_tests) ;
     ("KeystoreSign", ks_sign_tests)
   ]
 
