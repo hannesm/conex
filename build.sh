@@ -27,7 +27,7 @@ action ()
         default) action bin ; action test ;;
         bin) action lib ; $OCAMLBUILD app/conex.native ;;
         lib) $OCAMLBUILD conex.cmx conex.cmxa ;;
-        test) action lib ; $OCAMLBUILD test/keys.native ;;
+        test) action lib ; $OCAMLBUILD test/tests.native ;;
         doc) shift
              $OCAMLBUILD -no-links $OCAMLDOCFLAGS doc/api.docdir/index.html
              cp doc/style.css $BUILDDIR/$DOCDIRFILE/style.css ;;

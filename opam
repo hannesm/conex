@@ -13,7 +13,7 @@ build: [
 
 build-test: [
   [ "./build.sh" "test" ]
-  [ "./keys.native" ]
+  [ "./tests.native" ]
 ]
 
 depends: [

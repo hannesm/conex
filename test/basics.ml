@@ -302,12 +302,10 @@ let ks_sign_tests = [
   "keystore sign multiple", `Quick, ks_sign_multiple ;
 ]
 
-let () =
-  Nocrypto_entropy_unix.initialize () ;
-  Alcotest.run "Conex tests" [
-    ("Publickey", public_tests) ;
-    ("Signature", sign_tests) ;
-    ("Keystore", ks_tests) ;
-    ("KeystoreSign", ks_sign_tests)
-  ]
+let tests = [
+  ("Publickey", public_tests) ;
+  ("Signature", sign_tests) ;
+  ("Keystore", ks_tests) ;
+  ("KeystoreSign", ks_sign_tests)
+]
 
