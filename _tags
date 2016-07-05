@@ -26,5 +26,7 @@ true : warn(+A-4-6-33-44-48)
 
 <app/conex.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner), package(nocrypto.unix)
 
+<test/common.ml>: package(alcotest)
 <test/basics.ml>: package(alcotest)
+<test/repositorytests.ml>: package(alcotest)
 <test/tests.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(alcotest), package(nocrypto.unix)

@@ -71,4 +71,3 @@ let fs_ro_provider basedir =
   and description = "Read only file system provider"
   in
   { fs with description ; write }
-
