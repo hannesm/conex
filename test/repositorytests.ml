@@ -235,7 +235,7 @@ let key_sign_r () =
 let repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
-  "signed key repo", `Quick, key_sign_r ;
+(*  "signed key repo", `Quick, key_sign_r ; *)
 ]
 
 let tests = [
