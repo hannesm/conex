@@ -18,12 +18,16 @@ current state:
 
 * Verification strategy
 
---> an empty ji can be valid if signed by other jis? or is this useless?  on revocation, they can as well remove the ji and downgrade/remove the public key
---> on upgrading from role=dev to role=janitor, there exists no ji? or should the j create one, sign, propose, and their key gets signed by js? (prefering that way to have the invariant that for each janitor there must be a ji)
+--> empty ji is useless
+--> ji always signed by its j, no quorum
 
 ----> process for upgrading an author to janitor:
  -> author changes public key role, add janitorindex, PR
  -> janitors sign in their JIs the new public key, once quorum, PR can be merged
+
+----> process for downgrading:
+ -> janitors PR downgrade of role (checksum signed by quorum)
+ -> remove ji
 
 full repo verification:
  - take TA

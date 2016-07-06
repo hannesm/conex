@@ -160,6 +160,85 @@ let mem_provider_tests = [
   "more provider", `Quick, more_p ;
 ]
 
+let re =
+  let module M = struct
+    type t = Repository.r_err
+    let pp = Repository.pp_r_err
+    let equal a b = match a, b with
+      | `NotFound x, `NotFound y -> x = y
+      | `NameMismatch _, `NameMismatch _ -> true
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+(* basic operations work, and we have an in-memory data provider!  let the games begin *)
+let empty_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository p in
+  Alcotest.(check (list string) "empty repo has no keys" [] (Repository.all_keyids r)) ;
+  Alcotest.(check (list string) "empty repo has no janitors" [] (Repository.all_janitors r)) ;
+  Alcotest.(check (list string) "empty repo has no authorisations" [] (Repository.all_authorisations r)) ;
+  Alcotest.check (result publickey re) "reading key foo in empty repo fails"
+    (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
+  Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
+    (Error (`NotFound "foo")) (Repository.read_authorisation r "foo") ;
+  Alcotest.check (result releases re) "reading releases foo in empty repo fails"
+    (Error (`NotFound "foo")) (Repository.read_releases r "foo") ;
+  Alcotest.check (result ji re) "reading janitorindex foo in empty repo fails"
+    (Error (`NotFound "foo")) (Repository.read_janitorindex r "foo") ;
+  Alcotest.check (result cs re) "reading checksum foo.0 in empty repo fails"
+    (Error (`NotFound "foo.0")) (Repository.read_checksum r "foo.0") ;
+  Alcotest.check (result cs re) "computing checksum foo.0 in empty repo fails"
+    (Error (`NotFound "foo.0")) (Repository.compute_checksum r "foo.0")
+
+let key_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository p in
+  Alcotest.(check (list string) "empty key repo has no keys" [] (Repository.all_keyids r)) ;
+  let k, _pk = gen_pub "foo" in
+  Repository.write_key r k ;
+  Alcotest.(check (list string) "key repo has one key" ["foo"] (Repository.all_keyids r)) ;
+  Repository.write_key r k ;
+  Alcotest.(check (list string) "key repo+ has one key" ["foo"] (Repository.all_keyids r)) ;
+  let k2, _pk2 = gen_pub "foobar" in
+  Repository.write_key r k2 ;
+  Alcotest.(check (list string) "key repo has two keys" ["foobar" ; "foo"] (Repository.all_keyids r)) ;
+  Alcotest.check (result publickey re) "reading key gives back right key"
+    (Ok k) (Repository.read_key r "foo")
+
+let ok =
+  let module M = struct
+    type t = Repository.ok
+    let pp = Repository.pp_ok
+    let equal a b = match a, b with
+      | `Identifier a, `Identifier b -> a = b
+      | `Quorum, `Quorum -> true
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let key_sign_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let sign pub priv =
+    let raw = Data.publickey_raw pub in
+    let s = Private.sign "foo" priv `PublicKey raw in
+    Publickey.add_sig pub s
+  in
+  let k, pk = gen_pub ~role:`Janitor "foo" in
+  let r' = Repository.add_trusted_key r k in
+  let k', _pk' = gen_pub "foobar" in
+  let k' = sign k' pk in
+  Alcotest.check (result ok err) "key signed properly"
+    (Ok `Quorum) (Repository.verify_key r' k')
+
+let repo_tests = [
+  "empty repo", `Quick, empty_r ;
+  "key repo", `Quick, key_r ;
+  "signed key repo", `Quick, key_sign_r ;
+]
+
 let tests = [
-  "Memory provider", mem_provider_tests
+  "Memory provider", mem_provider_tests ;
+  "Repository", repo_tests ;
 ]

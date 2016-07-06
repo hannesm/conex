@@ -12,11 +12,15 @@ type t = {
   valid : valid ;
 }
 
-type res = ([ `Identifier of identifier | `Quorum ], error) result
+type ok = [ `Identifier of identifier | `Quorum ]
+let pp_ok ppf = function
+  | `Identifier id -> Format.fprintf ppf "id %s" id
+  | `Quorum -> Format.fprintf ppf "quorum"
+
+type res = (ok, error) result
 
 let pp_res ppf = function
-  | Ok (`Identifier id) -> Format.fprintf ppf "id %s" id
-  | Ok `Quorum -> Format.fprintf ppf "quorum"
+  | Ok ok -> pp_ok ppf ok
   | Error e -> pp_error ppf e
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
@@ -47,21 +51,20 @@ let id_of_sig (id, _) = id
 
 let has_quorum id repo kind data =
   let csum = digest (Signature.extend_data data id kind) in
-  try
+  if SM.mem csum repo.valid then
     let (n, k, js) = SM.find csum repo.valid in
-    assert (n = id) ; assert (k = kind) ;
-    if List.length js >= repo.quorum then
-      Ok `Quorum
-    else
-      Error (`InsufficientQuorum (id, js))
-  with Not_found ->
-      Error (`InsufficientQuorum (id, []))
+    (* TODO: define equality on kind and names? *)
+    match n = id, k = kind, List.length js >= repo.quorum with
+    | true, true, true -> Ok `Quorum
+    | _ -> Error (`InsufficientQuorum (id, js))
+  else
+    Error (`InsufficientQuorum (id, []))
 
 let verify_data id repo authorised_ids ?(role = `Author) kind data signatures =
-  let valids, _others =
-    let tst s = List.mem (id_of_sig s) authorised_ids in
-    List.partition tst signatures
+  let valids =
+    List.filter (fun (id, _) -> List.mem id authorised_ids) signatures
   in
+  (* FIXME *)
   let sigs = List.map (Keystore.verify repo.store role kind data) valids in
   let errs = Utils.filter_map ~f:(function Error e -> Some e | Ok _ -> None) sigs in
   Error (`InvalidSignatures (id, errs))
@@ -213,23 +216,27 @@ let write_checksum repo csum =
   repo.data.Provider.write name (Data.normalise data)
 
 let compute_checksum repo name =
-  let files = Layout.checksum_files repo.data name in
-  let del = Layout.authorisation_of_item name in
-  let datas =
-    foldM
-      (fun acc f ->
-         match repo.data.Provider.read ([del;name]@f) with
-         | Error _ -> Error (`NotFound (path_to_string ([del;name]@f)))
-         | Ok data -> Ok (data :: acc))
-      []
-      files
-  in
-  let names = List.map path_to_string files in
-  match datas with
-  | Ok datas ->
-    let csums = List.map2 Checksum.checksum names datas in
-    Ok (Checksum.checksums name csums)
-  | Error e -> Error e
+  match repo.data.Provider.file_type (Layout.checksum_dir name) with
+  | Error _ -> Error (`NotFound name)
+  | Ok File -> Error (`NotFound name) (* more precise? *)
+  | Ok Directory ->
+    let files = Layout.checksum_files repo.data name in
+    let del = Layout.authorisation_of_item name in
+    let datas =
+      foldM
+        (fun acc f ->
+           match repo.data.Provider.read ([del;name]@f) with
+           | Error _ -> Error (`NotFound (path_to_string ([del;name]@f)))
+           | Ok data -> Ok (data :: acc))
+        []
+        files
+    in
+    let names = List.map path_to_string files in
+    match datas with
+    | Ok datas ->
+      let csums = List.map2 Checksum.checksum names datas in
+      Ok (Checksum.checksums name csums)
+    | Error e -> Error e
 
 
 module Graph = struct

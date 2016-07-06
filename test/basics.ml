@@ -1,19 +1,6 @@
 open Core
 open Common
 
-let publickey =
-  let module M = struct
-    type t = Publickey.t
-    let pp = Publickey.pp_publickey
-    let equal = Publickey.equal
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let gen_pub ?counter ?role ?(priv = Private.generate ()) id =
-  match Publickey.publickey ?counter ?role id (Some (Private.pub_of_priv priv)) with
-  | Ok public -> (public, priv)
-  | Error s -> invalid_arg s
-
 (* since Publickey.t is private, we've no way to properly test Publickey.publickey *)
 let good_publickey () =
   let apriv = Private.generate () in
@@ -58,29 +45,7 @@ let public_tests = [
   "encode/decode publickey", `Quick, pubkey_enc_dec ;
 ]
 
-let err =
-  let module M = struct
-    type t = Core.error
-    let pp = Core.pp_error
-    let equal a b = match a, b with
-      | `InvalidBase64Encoding _, `InvalidBase64Encoding _ -> true
-      | `InvalidSignature _, `InvalidSignature _ -> true
-      | `InvalidRole _, `InvalidRole _ -> true
-      | `InvalidPublicKey _, `InvalidPublicKey _ -> true
-      | `InvalidIdentifier _, `InvalidIdentifier _ -> true
-      | `InvalidCounter _, `InvalidCounter _ -> true
-      | `InsufficientQuorum _, `InsufficientQuorum _ -> true
-      | `InvalidAuthorisation _, `InvalidAuthorisation _ -> true
-      | `InvalidSignatures _, `InvalidSignatures _ -> true
-      | _ -> false
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
 let check_ver = Alcotest.check (result Alcotest.string err)
-
-let invalid_sig = Error (`InvalidSignature ("", `PublicKey, "", ""))
-let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
-let invalid_role = Error (`InvalidRole (`Author, `Author))
 
 let sig_good () =
   let pid = "foobar" in

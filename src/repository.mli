@@ -8,8 +8,10 @@ val quorum : t -> int
 
 val change_provider : t -> Provider.t -> t
 
-type res = ([ `Identifier of identifier | `Quorum ], error) result
+type ok = [ `Identifier of identifier | `Quorum ]
+val pp_ok : Format.formatter -> ok -> unit
 
+type res = (ok, error) result
 val pp_res : Format.formatter -> res -> unit
 
 val verify_key : t -> Publickey.t -> res

@@ -95,9 +95,12 @@ let items p id =
     in
     Utils.filter_map ~f data
 
-let checksum_path p =
+let checksum_dir p =
   let d = authorisation_of_item p in
-  [ data_dir ; d ; p ; checksum_filename ]
+  [ data_dir ; d ; p ]
+
+let checksum_path p =
+  checksum_dir p @ [checksum_filename]
 
 let checksum_files p da =
   let de = authorisation_of_item da in

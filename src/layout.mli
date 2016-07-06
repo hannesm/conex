@@ -17,6 +17,7 @@ val janitorindex_path : identifier -> path
 val authorisation_path : name -> path
 val releases_path : name -> path
 val checksum_path : name -> path
+val checksum_dir : name -> path
 
 val checksum_files : Provider.t -> string -> path list
 
