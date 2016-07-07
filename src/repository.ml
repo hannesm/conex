@@ -51,7 +51,7 @@ let add_csums repo janitor rs =
 let id_of_sig (id, _) = id
 
 let has_quorum id repo kind data =
-  let csum = digest (Signature.extend_data data id kind) in
+  let csum = digest data in
   let (n, k, js) =
     if SM.mem csum repo.valid then
       SM.find csum repo.valid

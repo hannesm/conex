@@ -21,3 +21,5 @@ let pp_janitorindex ppf ji =
     ji.counter
     (pp_list pp_resource) ji.resources
     Signature.pp_signatures ji.signatures
+
+let add_sig ji s = { ji with signatures = s :: ji.signatures }

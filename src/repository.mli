@@ -20,6 +20,7 @@ val verify_checksum : t -> Authorisation.t -> Checksum.t -> res
 val verify_releases : t -> Authorisation.t -> Releases.t -> res
 val verify_janitorindex : t -> Janitorindex.t -> res
 
+(* TODO: are these return types good? *)
 val load_keys : ?verify:bool -> t -> identifier list -> t
 val load_janitor : ?verify:bool -> t -> identifier -> t
 val load_janitors : ?verify:bool -> t -> t

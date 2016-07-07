@@ -13,3 +13,5 @@ val janitorindex : ?counter:int64 -> ?version:int64 -> ?resources:((name * kind 
 val pp_resource : Format.formatter -> (name * kind * digest) -> unit
 
 val pp_janitorindex : Format.formatter -> t -> unit
+
+val add_sig : t -> Signature.t -> t

@@ -234,10 +234,59 @@ let key_sign_r () =
   Alcotest.check (result ok err) "key requires quorum"
     (Error (`InsufficientQuorum ("foo", []))) (Repository.verify_key r' k')
 
+let empty_ji_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let sign ji priv =
+    let raw = Data.janitorindex_raw ji in
+    let s = Private.sign "foo" priv `JanitorIndex raw in
+    Janitorindex.add_sig ji s
+  in
+  let k, pk = gen_pub ~role:`Janitor "foo" in
+  let ji = Janitorindex.janitorindex "foo" in
+  let ji = sign ji pk in
+  Alcotest.check (result ok err) "janitorindex requires public key to be present"
+    (Error (`InvalidIdentifier "foo")) (Repository.verify_janitorindex r ji) ;
+  let r = Repository.add_trusted_key r k in
+  Alcotest.check (result ok err) "janitorindex verifies good"
+    (Ok (`Identifier "foo")) (Repository.verify_janitorindex r ji)
+
+let ji_key_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let sign_ji ji priv =
+    let raw = Data.janitorindex_raw ji in
+    let s = Private.sign "foo" priv `JanitorIndex raw in
+    Janitorindex.add_sig ji s
+  in
+  let k, pk = gen_pub ~role:`Janitor "foo" in
+  let ak, apk = gen_pub "foobar" in
+  let raw = Data.publickey_raw ak in
+  let resources = ["foobar", `PublicKey, digest raw] in
+  let ji = Janitorindex.janitorindex ~resources "foo" in
+  let ji = sign_ji ji pk in
+  let ak =
+    Publickey.add_sig ak (Private.sign "foobar" apk `PublicKey raw)
+  in
+  let r = Repository.add_trusted_key r k in
+  Alcotest.check (result ok err) "janitorindex verifies good"
+    (Ok (`Identifier "foo")) (Repository.verify_janitorindex r ji) ;
+  Alcotest.check (result ok err) "ak does not verify"
+    (Error (`InsufficientQuorum ("foobar", [])))
+    (Repository.verify_key r ak) ;
+  Repository.write_key r k ; (* TODO: not sure whether this should be needed *)
+  Repository.write_janitorindex r ji ;
+  let r = Repository.load_janitor ~verify:true r "foo" in
+  Alcotest.check (result ok err) "ak verifies"
+    (Ok (`Both ("foobar", ["foo"])))
+    (Repository.verify_key r ak)
+
 let repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
   "signed key repo", `Quick, key_sign_r ;
+  "signed ji repo", `Quick, empty_ji_r ;
+  "key in signed ji repo", `Quick, ji_key_r ;
 ]
 
 let tests = [
