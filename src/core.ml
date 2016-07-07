@@ -86,30 +86,26 @@ let pp_role pp r = Format.pp_print_string pp (role_to_string r)
 type error = [
   | `InvalidBase64Encoding of identifier * string
   | `InvalidSignature of identifier * kind * string * string
-  | `InvalidRole of role * role
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `InvalidCounter of string * int64 * int64
   | `InsufficientQuorum of string * identifier list
   | `InvalidAuthorisation of string * string
   | `InvalidReleases of string * string
-  | `InvalidSignatures of string * error list
+  | `NotAuthorised of string
 ]
 
-let rec pp_error ppf = function
+let pp_error ppf = function
   | `InvalidBase64Encoding (id, data) -> Format.fprintf ppf "%s signature is not in valid base64 encoding %s" id data
   | `InvalidSignature (id, kind, signature, data) -> Format.fprintf ppf "%s signature (a %s) is not valid %a, data %s" id (kind_to_string kind) Utils.pp_hex signature data
-  | `InvalidRole (want, have) -> Format.fprintf ppf "role mismatch, wanted %a but public key has %a" pp_role want pp_role have
   | `InvalidPublicKey id -> Format.fprintf ppf "keystore contained no valid key for %s" id
   | `InvalidIdentifier id -> Format.fprintf ppf "identifier %s was not found in keystore" id
   | `InvalidCounter (id, old, nev) -> Format.fprintf ppf "key %s did not increase counter (old %Lu new %Lu)" id old nev
   | `InsufficientQuorum (id, goods) ->
     Format.fprintf ppf "quorum for %s not reached (valid: %s)" id (String.concat ", " goods)
   | `InvalidAuthorisation (anam, nam) -> Format.fprintf ppf "invalid authorisation for %s, responsible for %s" nam anam
-  | `InvalidReleases (anam, rnam) -> Format.fprintf ppf "invalid releases for %s, responsible for %s" rnam anam
-  | `InvalidSignatures (id, errs) ->
-    Format.fprintf ppf "bad signatures for %s, errors:@." id ;
-    Format.pp_print_list pp_error ppf errs
+  | `InvalidReleases (anam, rnam) -> Format.fprintf ppf "invalid releases for %s, releases for %s" rnam anam
+  | `NotAuthorised name -> Format.fprintf ppf "%s is not authorised to sign this resource" name
 
 let (>>=) a f =
   match a with

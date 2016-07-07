@@ -12,10 +12,11 @@ type t = {
   valid : valid ;
 }
 
-type ok = [ `Identifier of identifier | `Quorum ]
+type ok = [ `Identifier of identifier | `Quorum of identifier list | `Both of identifier * identifier list ]
 let pp_ok ppf = function
   | `Identifier id -> Format.fprintf ppf "id %s" id
-  | `Quorum -> Format.fprintf ppf "quorum"
+  | `Both (id, js) -> Format.fprintf ppf "id %s and quorum %s" id (String.concat ", " js)
+  | `Quorum js -> Format.fprintf ppf "quorum %s" (String.concat ", " js)
 
 type res = (ok, error) result
 
@@ -51,56 +52,51 @@ let id_of_sig (id, _) = id
 
 let has_quorum id repo kind data =
   let csum = digest (Signature.extend_data data id kind) in
-  if SM.mem csum repo.valid then
-    let (n, k, js) = SM.find csum repo.valid in
-    (* TODO: define equality on kind and names? *)
-    match n = id, k = kind, List.length js >= repo.quorum with
-    | true, true, true -> Ok `Quorum
-    | _ -> Error (`InsufficientQuorum (id, js))
-  else
-    Error (`InsufficientQuorum (id, []))
-
-let verify_data id repo authorised_ids kind data signatures =
-  let valids =
-    List.filter (fun (id, _) -> List.mem id authorised_ids) signatures
+  let (n, k, js) =
+    if SM.mem csum repo.valid then
+      SM.find csum repo.valid
+    else
+      (id, kind, [])
   in
-  (* FIXME *)
-  let sigs = List.map (Keystore.verify repo.store kind data) valids in
-  let errs = Utils.filter_map ~f:(function Error e -> Some e | Ok _ -> None) sigs in
-  Error (`InvalidSignatures (id, errs))
-(* XXX: re-enable *)
-(* match anyM (Keystore.verify repo.store role data) valids with
-  | Ok x -> Ok (`Identifier x)
-  | Error () -> has_quorum id repo data others *)
+  (* TODO: define equality on kind and names? *)
+  match n = id, k = kind, List.length js >= repo.quorum with
+  | true, true, true -> Ok (`Quorum js)
+  | _ -> Error (`InsufficientQuorum (id, js))
+
+let verify_data repo authorised_ids kind data signatures =
+  let ver = Keystore.verify repo.store kind data in
+  let ok, errs =
+    List.fold_left (fun (b, err) (id, s) ->
+        if b = None && List.mem id authorised_ids then
+          match ver (id, s) with
+          | Ok id -> (Some id, err)
+          | Error e -> (None, e :: err)
+        else
+          (b, `NotAuthorised id :: err))
+      (None, [])
+      signatures
+  in
+  (* TODO: revise return type *)
+  match ok, errs with
+  | None, e::_ -> Error e
+  | None, [] -> Error (`NotAuthorised "bla")
+  | Some x, _ -> Ok (`Identifier x)
 
 let verify_key repo key =
   let id = key.Publickey.keyid
   and raw = Data.publickey_raw key
   and sigs = key.Publickey.signatures
   in
-  (if Keystore.mem repo.store id then
-     let old = Keystore.find repo.store id in
-     if Publickey.equal key old then
-       Ok ()
-     else
-       guard (key.Publickey.counter > old.Publickey.counter)
-         (`InvalidCounter (id, old.Publickey.counter, key.Publickey.counter)) >>= fun () ->
-       verify_data id repo [id] `PublicKey raw sigs >>= fun _ ->
-       Ok ()
-   else
-     Ok ()) >>= fun () ->
-  verify_data id (add_trusted_key repo key) [id] `PublicKey raw sigs >>= fun ok ->
-  if key.Publickey.role = `Author then
-    Ok ok
-  else
-    has_quorum id repo `PublicKey raw >>= fun _ -> Ok ok
+  verify_data (add_trusted_key repo key) [id] `PublicKey raw sigs >>= fun (`Identifier id) ->
+  has_quorum id repo `PublicKey raw >>= fun (`Quorum js) ->
+  Ok (`Both (id, js))
 
 let verify_authorisation repo ?authorised auth =
   let raw = Data.authorisation_raw auth
   and signatures = auth.Authorisation.signatures
   in
   let valid = Utils.option auth.Authorisation.authorised (fun x -> x) authorised in
-  verify_data auth.Authorisation.name repo valid `Authorisation raw signatures
+  verify_data repo valid `Authorisation raw signatures
 
 let verify_checksum repo a cs =
   let raw = Data.checksums_raw cs
@@ -108,20 +104,20 @@ let verify_checksum repo a cs =
   in
   let nam = Layout.authorisation_of_item cs.Checksum.name in
   guard (nam = a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
-  verify_data cs.Checksum.name repo a.Authorisation.authorised `Checksum raw signatures
+  verify_data repo a.Authorisation.authorised `Checksum raw signatures
 
 let verify_releases repo a r =
   let raw = Data.releases_raw r
   and signatures = r.Releases.signatures
   in
   guard (r.Releases.name = a.Authorisation.name) (`InvalidReleases (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  verify_data r.Releases.name repo a.Authorisation.authorised `Releases raw signatures
+  verify_data repo a.Authorisation.authorised `Releases raw signatures
 
 let verify_janitorindex repo ji =
   let raw = Data.janitorindex_raw ji
   and signatures = ji.Janitorindex.signatures
   in
-  verify_data ji.Janitorindex.identifier repo [ji.Janitorindex.identifier] `JanitorIndex raw signatures
+  verify_data repo [ji.Janitorindex.identifier] `JanitorIndex raw signatures
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 

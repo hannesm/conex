@@ -212,30 +212,32 @@ let ok =
     let pp = Repository.pp_ok
     let equal a b = match a, b with
       | `Identifier a, `Identifier b -> a = b
-      | `Quorum, `Quorum -> true
+      | `Quorum js, `Quorum is -> List.length js = List.length is && List.for_all (fun a -> List.mem a is) js
+      | `Both (a, js), `Both (b, is) -> a = b && List.length js = List.length is && List.for_all (fun a -> List.mem a is) js
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let key_sign_r () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Repository.repository ~quorum:0 p in
   let sign pub priv =
     let raw = Data.publickey_raw pub in
     let s = Private.sign "foo" priv `PublicKey raw in
     Publickey.add_sig pub s
   in
   let k, pk = gen_pub ~role:`Janitor "foo" in
-  let r' = Repository.add_trusted_key r k in
-  let k', _pk' = gen_pub "foobar" in
-  let k' = sign k' pk in
+  let k' = sign k pk in
   Alcotest.check (result ok err) "key signed properly"
-    (Ok `Quorum) (Repository.verify_key r' k')
+    (Ok (`Both ("foo", []))) (Repository.verify_key r k') ;
+  let r' = Repository.repository ~quorum:1 p in
+  Alcotest.check (result ok err) "key requires quorum"
+    (Error (`InsufficientQuorum ("foo", []))) (Repository.verify_key r' k')
 
 let repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
-(*  "signed key repo", `Quick, key_sign_r ; *)
+  "signed key repo", `Quick, key_sign_r ;
 ]
 
 let tests = [

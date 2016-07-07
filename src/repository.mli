@@ -8,7 +8,7 @@ val quorum : t -> int
 
 val change_provider : t -> Provider.t -> t
 
-type ok = [ `Identifier of identifier | `Quorum ]
+type ok = [ `Identifier of identifier | `Quorum of identifier list | `Both of identifier * identifier list ]
 val pp_ok : Format.formatter -> ok -> unit
 
 type res = (ok, error) result

@@ -43,14 +43,13 @@ val pp_role : Format.formatter -> role -> unit
 type error = [
   | `InvalidBase64Encoding of identifier * string
   | `InvalidSignature of identifier * kind * string * string
-  | `InvalidRole of role * role
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `InvalidCounter of string * int64 * int64
   | `InsufficientQuorum of string * identifier list
   | `InvalidAuthorisation of string * string
   | `InvalidReleases of string * string
-  | `InvalidSignatures of string * error list
+  | `NotAuthorised of identifier
 ]
 
 val pp_error : Format.formatter -> error -> unit

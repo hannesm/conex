@@ -88,17 +88,16 @@ let err =
     let equal a b = match a, b with
       | `InvalidBase64Encoding _, `InvalidBase64Encoding _ -> true
       | `InvalidSignature _, `InvalidSignature _ -> true
-      | `InvalidRole _, `InvalidRole _ -> true
       | `InvalidPublicKey _, `InvalidPublicKey _ -> true
       | `InvalidIdentifier _, `InvalidIdentifier _ -> true
       | `InvalidCounter _, `InvalidCounter _ -> true
       | `InsufficientQuorum _, `InsufficientQuorum _ -> true
       | `InvalidAuthorisation _, `InvalidAuthorisation _ -> true
-      | `InvalidSignatures _, `InvalidSignatures _ -> true
+      | `InvalidReleases _, `InvalidReleases _ -> true
+      | `NotAuthorised _, `NotAuthorised _ -> true
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let invalid_sig = Error (`InvalidSignature ("", `PublicKey, "", ""))
 let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
-let invalid_role = Error (`InvalidRole (`Author, `Author))
