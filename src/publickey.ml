@@ -52,20 +52,17 @@ let add_sig t s = { t with signatures = s :: t.signatures }
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let verify pub mrole kind data (id, sigval) =
-  if mrole = pub.role then (* XXX: pub.role == Janitor, but Author needed should be ok as well (in case pub owns this thing) *)
-    match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
-      | None -> Error (`InvalidBase64Encoding (id, sigval))
-      | Some signature ->
-        let data = Signature.extend_data data id kind in
-        let cs_data = Cstruct.of_string data in
-        match pub.key with
-        | Some (RSA_pub key) ->
-          if Pss_sha256.verify ~key ~signature cs_data then
-            Ok id
-          else
-            let s = Cstruct.to_string signature in
-            Error (`InvalidSignature (id, kind, s, data))
-        | None -> Error (`InvalidPublicKey id)
-  else
-    Error (`InvalidRole (mrole, pub.role))
+let verify pub kind data (id, sigval) =
+  match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
+  | None -> Error (`InvalidBase64Encoding (id, sigval))
+  | Some signature ->
+    let data = Signature.extend_data data id kind in
+    let cs_data = Cstruct.of_string data in
+    match pub.key with
+    | Some (RSA_pub key) ->
+      if Pss_sha256.verify ~key ~signature cs_data then
+        Ok id
+      else
+        let s = Cstruct.to_string signature in
+        Error (`InvalidSignature (id, kind, s, data))
+    | None -> Error (`InvalidPublicKey id)

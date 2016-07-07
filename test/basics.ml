@@ -52,25 +52,23 @@ let sig_good () =
   let pub, p = gen_pub pid in
   let (id, sigval) = Private.sign pid p `PublicKey "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver "signature is good" (Ok id) (Publickey.verify pub `Author `PublicKey "bla" (id, sigval))
+  check_ver "signature is good" (Ok id) (Publickey.verify pub `PublicKey "bla" (id, sigval))
 
-let check_sig prefix pub role kind raw (id, sv) =
+let check_sig prefix pub kind raw (id, sv) =
   check_ver (prefix ^ " signature can be verified") (Ok id)
-    (Publickey.verify pub role kind raw (id, sv)) ;
+    (Publickey.verify pub kind raw (id, sv)) ;
   check_ver (prefix ^ " signature of other id") invalid_sig
-    (Publickey.verify pub role kind raw ("foo", sv)) ;
+    (Publickey.verify pub kind raw ("foo", sv)) ;
   check_ver (prefix ^ " signature empty") invalid_sig
-    (Publickey.verify pub role kind raw (id, "")) ;
+    (Publickey.verify pub kind raw (id, "")) ;
   check_ver (prefix ^ " signature is bad (b64prefix)") invalid_b64
-    (Publickey.verify pub role kind raw (id, "\000" ^ sv)) ;
+    (Publickey.verify pub kind raw (id, "\000" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (prefix)") invalid_sig
-    (Publickey.verify pub role kind raw (id, "abcd" ^ sv)) ;
+    (Publickey.verify pub kind raw (id, "abcd" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (postfix)") invalid_sig (* should be invalid_b64 once nocrypto is fixed *)
-    (Publickey.verify pub role kind raw (id, sv ^ "abcd")) ;
+    (Publickey.verify pub kind raw (id, sv ^ "abcd")) ;
   check_ver (prefix ^ " signature is bad (raw)") invalid_sig
-    (Publickey.verify pub role kind "" (id, sv)) ;
-  check_ver (prefix ^ " signature has bad role") invalid_role
-    (Publickey.verify pub `Janitor kind raw (id, sv))
+    (Publickey.verify pub kind "" (id, sv))
 
 let sign_single () =
   let id = "a"
@@ -79,24 +77,14 @@ let sign_single () =
   let pub, priv = gen_pub ~role id in
   let raw = Data.publickey_raw pub in
   let s = Private.sign id priv `PublicKey raw in
-  check_sig "common" pub role `PublicKey raw s
+  check_sig "common" pub `PublicKey raw s
 
 let sig_good_role () =
   let pid = "foobar" in
   let pub, p = gen_pub ~role:`Janitor pid in
   let (id, sigval) = Private.sign pid p `PublicKey "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver "signature is good" (Ok id) (Publickey.verify pub `Janitor `PublicKey "bla" (id, sigval))
-
-let sig_bad_role () =
-  let pid = "foobar" in
-  let pub, p = gen_pub pid in
-  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
-  Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver
-    "verify fails (role)"
-    invalid_role
-    (Publickey.verify pub `Janitor `PublicKey "bla" (id, sigval))
+  check_ver "signature is good" (Ok id) (Publickey.verify pub `PublicKey "bla" (id, sigval))
 
 let sig_bad_kind () =
   let pid = "foobar" in
@@ -106,7 +94,7 @@ let sig_bad_kind () =
   check_ver
     "verify fails (kind)"
     invalid_sig
-    (Publickey.verify pub `Author `Checksum "bla" (id, sigval))
+    (Publickey.verify pub `Checksum "bla" (id, sigval))
 
 let sig_bad_data () =
   let pid = "foobar" in
@@ -116,13 +104,12 @@ let sig_bad_data () =
   check_ver
     "verify fails (data)"
     invalid_sig
-    (Publickey.verify pub `Author `Checksum "blabb" (id, sigval))
+    (Publickey.verify pub `Checksum "blabb" (id, sigval))
 
 let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
   "sign and verify is good", `Quick, sig_good_role ;
   "self-sign is good", `Quick, sign_single ;
-  "bad signature (role)", `Quick, sig_bad_role ;
   "bad signature (kind)", `Quick, sig_bad_kind ;
   "bad signature (data)", `Quick, sig_bad_data ;
 ]
@@ -173,10 +160,10 @@ let ks_tests = [
   "multiple keys", `Quick, multiple ;
 ]
 
-let verify_all exp ks role pub =
+let verify_all exp ks pub =
   List.iter2 (fun s r ->
       check_ver "signature is valid" r
-        (Keystore.verify ks role `PublicKey (Data.publickey_raw pub) s))
+        (Keystore.verify ks `PublicKey (Data.publickey_raw pub) s))
     pub.Publickey.signatures
     exp
 
@@ -192,12 +179,12 @@ let ks_sign_single () =
   let ks = Keystore.(add empty (Publickey.add_sig pub s)) in
   let ks_pub = Keystore.find ks id in
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a"] ks role ks_pub ;
+  verify_all [Ok "a"] ks ks_pub ;
   let pub = Publickey.add_sig (Publickey.add_sig (Publickey.add_sig pub s) s) s in
   let ks = Keystore.(add empty pub) in
   let ks_pub = Keystore.find ks id in
   Alcotest.(check int "signature size is 3" 3 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a" ; Ok "a" ; Ok "a"] ks role ks_pub
+  verify_all [Ok "a" ; Ok "a" ; Ok "a"] ks ks_pub
 
 let ks_sign_revoked () =
   let id = "a"
@@ -216,9 +203,9 @@ let ks_sign_revoked () =
   in
   let ks_pub' = Keystore.find ks id in
   Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Error (`InvalidPublicKey "")] ks role ks_pub' ;
+  verify_all [Error (`InvalidPublicKey "")] ks ks_pub' ;
   check_ver "keystore key can be verified if pubkey provided" (Ok "a")
-    (Publickey.verify ks_pub role `PublicKey (Data.publickey_raw ks_pub) s)
+    (Publickey.verify ks_pub `PublicKey (Data.publickey_raw ks_pub) s)
 
 let ks_sign_multiple () =
   let ida = "a"
@@ -235,17 +222,17 @@ let ks_sign_multiple () =
   in
   let ks_pub = Keystore.find ks ida in
   Alcotest.(check int "signature size of 'a' is 2" 2 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a" ; Error (`InvalidIdentifier "")] ks role ks_pub ;
+  verify_all [Ok "a" ; Error (`InvalidIdentifier "")] ks ks_pub ;
   let ks =
     let sbb = Private.sign idb privb `PublicKey (Data.publickey_raw pubb) in
     Keystore.(add ks (Publickey.add_sig pubb sbb))
   in
   let ks_pub = Keystore.find ks ida in
   Alcotest.(check int "signature size of 'a' is still 2" 2 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a" ; Ok "b"] ks role ks_pub ;
+  verify_all [Ok "a" ; Ok "b"] ks ks_pub ;
   let ks_pub = Keystore.find ks idb in
   Alcotest.(check int "signature size of 'b' is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "b"] ks role ks_pub
+  verify_all [Ok "b"] ks ks_pub
 
 let ks_sign_tests = [
   "keystore sign", `Quick, ks_sign_single ;

@@ -60,12 +60,12 @@ let has_quorum id repo kind data =
   else
     Error (`InsufficientQuorum (id, []))
 
-let verify_data id repo authorised_ids ?(role = `Author) kind data signatures =
+let verify_data id repo authorised_ids kind data signatures =
   let valids =
     List.filter (fun (id, _) -> List.mem id authorised_ids) signatures
   in
   (* FIXME *)
-  let sigs = List.map (Keystore.verify repo.store role kind data) valids in
+  let sigs = List.map (Keystore.verify repo.store kind data) valids in
   let errs = Utils.filter_map ~f:(function Error e -> Some e | Ok _ -> None) sigs in
   Error (`InvalidSignatures (id, errs))
 (* XXX: re-enable *)
@@ -77,7 +77,6 @@ let verify_key repo key =
   let id = key.Publickey.keyid
   and raw = Data.publickey_raw key
   and sigs = key.Publickey.signatures
-  and role = key.Publickey.role
   in
   (if Keystore.mem repo.store id then
      let old = Keystore.find repo.store id in
@@ -86,11 +85,11 @@ let verify_key repo key =
      else
        guard (key.Publickey.counter > old.Publickey.counter)
          (`InvalidCounter (id, old.Publickey.counter, key.Publickey.counter)) >>= fun () ->
-       verify_data id repo [id] ~role:old.Publickey.role `PublicKey raw sigs >>= fun _ ->
+       verify_data id repo [id] `PublicKey raw sigs >>= fun _ ->
        Ok ()
    else
      Ok ()) >>= fun () ->
-  verify_data id (add_trusted_key repo key) [id] ~role `PublicKey raw sigs >>= fun ok ->
+  verify_data id (add_trusted_key repo key) [id] `PublicKey raw sigs >>= fun ok ->
   if key.Publickey.role = `Author then
     Ok ok
   else
@@ -122,7 +121,7 @@ let verify_janitorindex repo ji =
   let raw = Data.janitorindex_raw ji
   and signatures = ji.Janitorindex.signatures
   in
-  verify_data ji.Janitorindex.identifier repo [ji.Janitorindex.identifier] ~role:`Janitor `JanitorIndex raw signatures
+  verify_data ji.Janitorindex.identifier repo [ji.Janitorindex.identifier] `JanitorIndex raw signatures
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
