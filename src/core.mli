@@ -55,6 +55,6 @@ type error = [
 val pp_error : Format.formatter -> error -> unit
 
 val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
+val (<<?>>) : ('a, 'b) result -> ('a, 'b) result -> ('a, 'b) result
 val guard : bool -> 'a -> (unit, 'a) result
 val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
-val anyM : ('b -> ('a, 'c) result) -> 'b list -> ('a, unit) result

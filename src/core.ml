@@ -112,14 +112,15 @@ let (>>=) a f =
   | Ok x -> f x
   | Error e -> Error e
 
+let (<<?>>) a b =
+  match a, b with
+  | Ok x, _ -> Ok x
+  | _, Ok x -> Ok x
+  | Error e, _ -> Error e
+
+
 let guard p err = if p then Error err else Ok ()
 
 let rec foldM f n = function
   | [] -> Ok n
   | x::xs -> f n x >>= fun n' -> foldM f n' xs
-
-let rec anyM f = function
-  | [] -> Error ()
-  | x::xs -> match f x with
-    | Ok x -> Ok x
-    | Error _ -> anyM f xs

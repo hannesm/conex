@@ -274,7 +274,7 @@ let ji_key_r () =
   Alcotest.check (result ok err) "ak does not verify"
     (Error (`InsufficientQuorum ("foobar", [])))
     (Repository.verify_key r ak) ;
-  Repository.write_key r k ; (* TODO: not sure whether this should be needed *)
+  Repository.write_key r k ; (* TODO: not sure whether this should be needed -- key is already trusted in KS, but load anyways.. *)
   Repository.write_janitorindex r ji ;
   let r = Repository.load_janitor ~verify:true r "foo" in
   Alcotest.check (result ok err) "ak verifies"
