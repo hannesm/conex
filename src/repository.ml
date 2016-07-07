@@ -236,7 +236,7 @@ let compute_checksum repo name =
       Ok (Checksum.checksums name csums)
     | Error e -> Error e
 
-
+(* TODO: can be removed IIRC now that we have JI *)
 module Graph = struct
   type node = string
   type edge = node * node
@@ -323,6 +323,7 @@ let maybe_load repo ids =
        | Error e -> pp_error Format.std_formatter e ; repo)
     repo keys
 
+(* TODO: invalid_arg are bad! *)
 let load_keys ?(verify = false) repo ids =
   if verify then
     maybe_load repo ids
