@@ -41,6 +41,7 @@ let add_csums repo janitor rs =
   let add_csum t (name, kind, hash) =
     try
       let (n, k, ids) = SM.find hash t in
+      (* TODO: remove asserts here, deal with errors! *)
       assert (n = name) ; assert (k = kind) ;
       SM.add hash (n, k, janitor :: ids) t
     with Not_found -> SM.add hash (name, kind, [janitor]) t
@@ -252,9 +253,9 @@ let load_keys ?(verify = false) repo ids =
   else
     List.fold_left
       (fun repo id ->
-       match read_key repo id with
-       | Error _ -> invalid_arg ("could not find key " ^ id)
-       | Ok k -> add_trusted_key repo k)
+         match read_key repo id with
+         | Error _ -> invalid_arg ("could not find key " ^ id)
+         | Ok k -> add_trusted_key repo k)
       repo ids
 
 let load_janitor ?(verify = false) repo janitor =
