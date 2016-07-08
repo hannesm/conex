@@ -96,8 +96,8 @@ let verify_authorisation repo ?authorised auth =
   and signatures = auth.Authorisation.signatures
   in
   let valid = Utils.option auth.Authorisation.authorised (fun x -> x) authorised in
-  verify_data repo valid `Authorisation raw signatures <<?>>
-  has_quorum auth.Authorisation.name repo `Authorisation raw
+  verify_data repo valid `Authorisation raw signatures <<|>>
+    has_quorum auth.Authorisation.name repo `Authorisation raw
 
 let verify_checksum repo a cs =
   let raw = Data.checksums_raw cs
@@ -105,16 +105,16 @@ let verify_checksum repo a cs =
   in
   let nam = Layout.authorisation_of_item cs.Checksum.name in
   guard (nam = a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
-  verify_data repo a.Authorisation.authorised `Checksum raw signatures <<?>>
-  has_quorum cs.Checksum.name repo `Checksum raw
+  verify_data repo a.Authorisation.authorised `Checksum raw signatures <<|>>
+    has_quorum cs.Checksum.name repo `Checksum raw
 
 let verify_releases repo a r =
   let raw = Data.releases_raw r
   and signatures = r.Releases.signatures
   in
   guard (r.Releases.name = a.Authorisation.name) (`InvalidReleases (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  verify_data repo a.Authorisation.authorised `Releases raw signatures <<?>>
-  has_quorum r.Releases.name repo `Releases raw
+  verify_data repo a.Authorisation.authorised `Releases raw signatures <<|>>
+    has_quorum r.Releases.name repo `Releases raw
 
 let verify_janitorindex repo ji =
   let raw = Data.janitorindex_raw ji

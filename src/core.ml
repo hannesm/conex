@@ -112,12 +112,11 @@ let (>>=) a f =
   | Ok x -> f x
   | Error e -> Error e
 
-let (<<?>>) a b =
+let (<<|>>) a b =
   match a, b with
   | Ok x, _ -> Ok x
   | _, Ok x -> Ok x
   | Error e, _ -> Error e
-
 
 let guard p err = if p then Error err else Ok ()
 
