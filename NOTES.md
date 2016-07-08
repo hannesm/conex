@@ -18,7 +18,7 @@ current state:
 
 * Verification strategy
 
---> empty ji is useless
+--> empty ji is useless (apart from initial)
 --> ji always signed by its j, no quorum
 
 ----> process for upgrading an author to janitor:

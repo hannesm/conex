@@ -275,7 +275,7 @@ let ji_key_r () =
   Alcotest.check (result ok err) "ak does not verify"
     (Error (`InsufficientQuorum ("foobar", [])))
     (Repository.verify_key r ak) ;
-  Repository.write_key r k ; (* TODO: not sure whether this should be needed -- key is already trusted in KS, but load anyways.. *)
+  Repository.write_key r k ; (* TODO: atm needed, but maybe get rid of this *)
   Repository.write_janitorindex r ji ;
   let r = Repository.load_janitor ~verify:true r "foo" in
   Alcotest.check (result ok err) "ak verifies"
@@ -312,14 +312,14 @@ let auth_rel_key_r () =
   in
   Repository.write_authorisation r auth ;
   Repository.write_releases r releases ;
-  Repository.write_key r k ; (* TODO: needed? *)
+  Repository.write_key r k ; (* TODO: atm needed, but maybe get rid of this *)
   Repository.write_key r ak ;
   Repository.write_janitorindex r ji ;
   Alcotest.(check (list string) "authorisations list is non-empty"
     ["barf"] (Repository.all_authorisations r)) ;
   let r = Repository.add_trusted_key r k in
-  let r = Repository.load_janitors r in (* TODO: needed? *)
-  Alcotest.check (result ok err) "ak verifies"
+  let r = Repository.load_janitors r in (* TODO: atm needed, but maybe get rid of this *)
+  Alcotest.check (result ok err) "key of foobar verifies"
     (Ok (`Both ("foobar", ["foo"])))
     (Repository.verify_key r ak) ;
   Alcotest.check (result ok err) "auth verifies"
@@ -330,6 +330,26 @@ let auth_rel_key_r () =
     (Ok (`Identifier "foobar"))
     (Repository.verify_releases r auth releases)
 
+let checks_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  p.write ["data"; "foo"; "foo.0"; "foo"] "bar" ;
+  p.write ["data"; "foo"; "foo.0"; "bar"] "foo" ;
+  p.write ["data"; "foo"; "foo.0"; "files"; "patch1"] "p1" ;
+  p.write ["data"; "foo"; "foo.0"; "files"; "patch2"] "p2" ;
+  (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
+  let csums = [
+    { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
+    { Checksum.filename = "foo" ; bytesize = 3L ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
+    { Checksum.filename = "files/patch1" ; bytesize = 2L ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
+    { Checksum.filename = "files/patch2" ; bytesize = 2L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
+  ]
+  in
+  let css = Checksum.checksums "foo.0" csums in
+  Alcotest.check (result cs re) "checksum computation works"
+    (Ok css) (Repository.compute_checksum r "foo.0")
+
 let repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
@@ -337,6 +357,7 @@ let repo_tests = [
   "signed ji repo", `Quick, empty_ji_r ;
   "key in signed ji repo", `Quick, ji_key_r ;
   "releases and authorisation in repo", `Quick, auth_rel_key_r ;
+  "checksum computation is sane", `Quick, checks_r ;
 ]
 
 let tests = [

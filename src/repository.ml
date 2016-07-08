@@ -219,12 +219,12 @@ let compute_checksum repo name =
   | Ok File -> Error (`NotFound name) (* more precise? *)
   | Ok Directory ->
     let files = Layout.checksum_files repo.data name in
-    let del = Layout.authorisation_of_item name in
+    let d = Layout.checksum_dir name in
     let datas =
       foldM
         (fun acc f ->
-           match repo.data.Provider.read ([del;name]@f) with
-           | Error _ -> Error (`NotFound (path_to_string ([del;name]@f)))
+           match repo.data.Provider.read (d@f) with
+           | Error _ -> Error (`NotFound (path_to_string (d@f)))
            | Ok data -> Ok (data :: acc))
         []
         files
@@ -232,7 +232,7 @@ let compute_checksum repo name =
     let names = List.map path_to_string files in
     match datas with
     | Ok datas ->
-      let csums = List.map2 Checksum.checksum names datas in
+      let csums = List.map2 Checksum.checksum names (List.rev datas) in
       Ok (Checksum.checksums name csums)
     | Error e -> Error e
 
