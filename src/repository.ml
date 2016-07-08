@@ -48,8 +48,6 @@ let add_csums repo janitor rs =
   let valid = List.fold_left add_csum repo.valid rs in
   { repo with valid }
 
-let id_of_sig (id, _) = id
-
 let has_quorum id repo kind data =
   let csum = digest data in
   let (n, k, js) =
@@ -236,92 +234,16 @@ let compute_checksum repo name =
       Ok (Checksum.checksums name csums)
     | Error e -> Error e
 
-(* TODO: can be removed IIRC now that we have JI *)
-module Graph = struct
-  type node = string
-  type edge = node * node
-
-  type t = { nodes : S.t ; edges : edge list }
-
-  let empty = { nodes = S.empty ; edges = [] }
-
-  let contains graph node = S.mem node graph.nodes
-
-  let insert graph node = { graph with nodes = S.add node graph.nodes }
-
-  let connect graph nodea nodeb =
-    let graph = insert graph nodea in
-    let graph = insert graph nodeb in
-    if nodea = nodeb then
-      graph
-    else
-      let edge = (nodea, nodeb) in
-      if List.mem edge graph.edges then
-        graph
-      else
-        { graph with edges = edge :: graph.edges }
-
-  let out_nodes graph node =
-    let tst (from, _) = from = node in
-    List.map (fun (_, x) -> x) (List.filter tst graph.edges)
-
-  (* this is Tarjan's algorithm based on DFS *)
-  let topsort graph =
-    let rec visit visiting node l =
-      if S.mem node visiting then
-        invalid_arg "graph has a cycle"
-      else
-        let out_nodes = out_nodes graph node
-        and visiting = S.add node visiting
-        in
-        let l = List.fold_right (visit visiting) out_nodes l in
-        if List.mem node l then l else node :: l
-    in
-    let rec s l =
-      if S.cardinal graph.nodes = List.length l then
-        l
-      else
-        let rest = S.diff graph.nodes (S.of_list l) in
-        let l = visit S.empty (S.choose rest) l in
-        s l
-    in
-    s []
-end
-
-(* Ignoring read failures may be fine here, in case a publickey is removed, but there are
-   still some dangling signatures, which won't verify later *)
-
-let required_keys repo ids =
-  let rec load_one (graph, pubkeys) id =
-    if Graph.contains graph id then
-      (graph, pubkeys)
-    else
-      match read_key repo id with
-      | Error _ -> invalid_arg ("error while loading key " ^ id)
-      | Ok pkey ->
-         let others =
-           let sigs = pkey.Publickey.signatures in
-           List.map id_of_sig sigs
-         in
-         let graph =
-           let conn g o = Graph.connect g o id in
-           List.fold_left conn graph others
-         in
-         List.fold_left load_one (graph, SM.add id pkey pubkeys) others
-  in
-  let graph, pubkeys = List.fold_left load_one (Graph.empty, SM.empty) ids in
-  let sorted = Graph.topsort graph in
-  List.map (fun n -> SM.find n pubkeys) sorted
-
-
 let maybe_load repo ids =
-  let keys = required_keys repo ids in
   List.fold_left
-    (fun repo key ->
-       match verify_key repo key with
-       | Ok _ -> add_trusted_key repo key
-       | Error e -> pp_error Format.std_formatter e ; repo)
-    repo keys
+    (fun repo id ->
+       match read_key repo id with
+      | Error _ -> invalid_arg ("error while loading key " ^ id)
+      | Ok key ->
+        match verify_key repo key with
+        | Ok _ -> add_trusted_key repo key
+        | Error e -> pp_error Format.std_formatter e ; repo)
+    repo ids
 
 (* TODO: invalid_arg are bad! *)
 let load_keys ?(verify = false) repo ids =
