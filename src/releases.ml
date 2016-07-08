@@ -16,3 +16,5 @@ let pp_releases ppf r =
     pp_name r.name r.counter
     (pp_list pp_name) r.releases
     Signature.pp_signatures r.signatures
+
+let add_sig r s = { r with signatures = s :: r.signatures }

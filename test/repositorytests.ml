@@ -38,6 +38,7 @@ module Mem = struct
         (* follow on *)
         | Some n -> insert n (p'::ps) v
       in
+      let xs = List.filter (fun n -> name n <> p') xs in
       Node (x, node::xs)
     | _ -> invalid_arg "should not happen"
 
@@ -281,12 +282,61 @@ let ji_key_r () =
     (Ok (`Both ("foobar", ["foo"])))
     (Repository.verify_key r ak)
 
+let auth_rel_key_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let sign_ji ji priv =
+    let raw = Data.janitorindex_raw ji in
+    let s = Private.sign "foo" priv `JanitorIndex raw in
+    Janitorindex.add_sig ji s
+  in
+  let k, pk = gen_pub ~role:`Janitor "foo" in
+  let ak, apk = gen_pub "foobar" in
+  let ak_raw = Data.publickey_raw ak in
+  let auth = Authorisation.authorisation ~authorised:["foobar"] "barf" in
+  let auth_raw = Data.authorisation_raw auth in
+  let resources = [
+    "foobar", `PublicKey, digest ak_raw ;
+    "barf", `Authorisation, digest auth_raw ]
+  in
+  let ji = Janitorindex.janitorindex ~resources "foo" in
+  let ji = sign_ji ji pk in
+  let ak =
+    Publickey.add_sig ak (Private.sign "foobar" apk `PublicKey ak_raw)
+  in
+  let releases =
+    let r = Releases.releases "barf" in
+    let raw = Data.releases_raw r in
+    let s = Private.sign "foobar" apk `Releases raw in
+    Releases.add_sig r s
+  in
+  Repository.write_authorisation r auth ;
+  Repository.write_releases r releases ;
+  Repository.write_key r k ; (* TODO: needed? *)
+  Repository.write_key r ak ;
+  Repository.write_janitorindex r ji ;
+  Alcotest.(check (list string) "authorisations list is non-empty"
+    ["barf"] (Repository.all_authorisations r)) ;
+  let r = Repository.add_trusted_key r k in
+  let r = Repository.load_janitors r in (* TODO: needed? *)
+  Alcotest.check (result ok err) "ak verifies"
+    (Ok (`Both ("foobar", ["foo"])))
+    (Repository.verify_key r ak) ;
+  Alcotest.check (result ok err) "auth verifies"
+    (Ok (`Quorum ["foo"]))
+    (Repository.verify_authorisation r auth) ;
+  let r = Repository.load_keys ~verify:true r ["foobar"] in
+  Alcotest.check (result ok err) "releases verifies"
+    (Ok (`Identifier "foobar"))
+    (Repository.verify_releases r auth releases)
+
 let repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
   "signed key repo", `Quick, key_sign_r ;
   "signed ji repo", `Quick, empty_ji_r ;
   "key in signed ji repo", `Quick, ji_key_r ;
+  "releases and authorisation in repo", `Quick, auth_rel_key_r ;
 ]
 
 let tests = [

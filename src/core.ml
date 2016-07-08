@@ -118,7 +118,7 @@ let (<<|>>) a b =
   | _, Ok x -> Ok x
   | Error e, _ -> Error e
 
-let guard p err = if p then Error err else Ok ()
+let guard p err = if p then Ok () else Error err
 
 let rec foldM f n = function
   | [] -> Ok n

@@ -11,3 +11,5 @@ type t = private {
 val releases : ?counter:int64 -> ?version:int64 -> ?releases:(name list) -> ?signatures:(Signature.t list) -> name -> t
 
 val pp_releases : Format.formatter -> t -> unit
+
+val add_sig : t -> Signature.t -> t
