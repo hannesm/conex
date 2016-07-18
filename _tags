@@ -1,6 +1,5 @@
 true : annot, bin_annot
 true : safe_string
-true : warn_error(+1..49)
 true : warn(+A-4-6-33-44-48)
 "src" : include
 

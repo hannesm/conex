@@ -5,9 +5,7 @@
 set -e
 
 OCAMLBUILD=${OCAMLBUILD:="ocamlbuild -tag debug -classic-display \
-                          -use-ocamlfind" }
-OCAMLDOCFLAGS=${OCAMLDOCFLAGS:="-docflags -colorize-code,-charset,utf-8"}
-BUILDDIR=${BUILDDIR:="_build"}
+                          -use-ocamlfind -cflags -warn-error,+A" }
 
 # hack to avoid depending on result package
 RESULT="src/core.ml src/core.mli"
@@ -28,10 +26,7 @@ action ()
         bin) action lib ; $OCAMLBUILD app/conex.native ;;
         lib) $OCAMLBUILD conex.cmx conex.cmxa ;;
         test) action lib ; $OCAMLBUILD test/tests.native ;;
-        doc) shift
-             $OCAMLBUILD -no-links $OCAMLDOCFLAGS doc/api.docdir/index.html
-             cp doc/style.css $BUILDDIR/$DOCDIRFILE/style.css ;;
-        clean) $OCAMLBUILD -clean ; rm -rf _tests ; rm -f keys.native ; rm -f conex.native ;;
+        clean) $OCAMLBUILD -clean ; rm -rf _tests ; rm -f tests.native ; rm -f conex.native ;;
         *) $OCAMLBUILD $* ;;
     esac
 }
