@@ -51,6 +51,43 @@ incremental:
  -> other updates
 
 * TODO
-- version 0 - member of repository!
+- version 0 - member of repository (together with other data)
 - id & name private
 - custom base64?
+- API and when to check for counters being incremental?
+- API for sign
+- instead of having signatures spread over (which is fine if you want to mix up
+  new repos with those packages), use a central AuthorIndex file, similar to
+  JanitorIndex.  Pro: less bignum computations, key rollover is trivial.
+- integration with opam:  opam will let you specify a validate_repo command
+  in .opam/config:
+   "conex verify" --root <dir> --patch <filename> (OR --repo <dir>)
+  where either patch or repo will be given, and root will point to current head.
+  initial distribution of trust anchors for default repo with opam, available
+  via %root%/trust_anchors.txt
+  --> patch and VCS handling is inside of opam, not conex
+--> will this scale to timestamp server stuff?  there sth needs to know about
+    git, how to extract data, and verification (including TA)
+    --> having XXXindex, we can have a snapshot server which hashes those and
+        puts them into snapshot.txt, signs that --> no git dependency!!!
+        (well, certainly would have to happen on a branch [or other repo])
+        --> reverts back to TUF original design?
+        --> only with snapshot signature we have the global index, mix-n-match
+            is possible otherwise
+- checksum handling: url (or opam) includes already the digest of the tarball,
+  no need to handle it specially (also pro: only run conex during update, no
+  need to run during installation!)
+
+signature is done over <data> <identifier> <kind> to prevent reusing the same
+ signature for other data kinds or pretending another identifier
+
+--> should janitors sign their packages in an authorindex?  or just put
+    everything in the janitorindex?
+-> should there be a janitors/ and a authors/ for the indexes?  how to
+   up/downgrade roles?  central list of janitors (but who modifies + signs this)?
+   can a janitor also have an authorindex?   if not, the upgrade from author to
+   janitor gets troublesome:  first find quorum of js to include the modified role,
+   then merge role modification and move (maybe now modified) index elsewhere?
+   OTOH reading all the keys just for role info seems bad (esp since it needs to
+   be done on every startup) --> might just have a local janitors.txt (and if
+   not present, do slow startup)
