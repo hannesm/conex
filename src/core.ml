@@ -51,6 +51,7 @@ let digest data =
   let b64 = Nocrypto.Base64.encode check in
   Cstruct.to_string b64
 
+
 type resource = [
   | `PublicKey
   | `Checksum
@@ -84,6 +85,7 @@ let string_to_resource = function
 
 let pp_resource ppf k = Format.pp_print_string ppf (resource_to_string k)
 
+
 type role = [ `Author | `Janitor | `Other of string ]
 
 let role_to_string = function
@@ -97,6 +99,7 @@ let string_to_role = function
   | x -> `Other x
 
 let pp_role pp r = Format.pp_print_string pp (role_to_string r)
+
 
 type error = [
   | `InvalidBase64Encoding of identifier * string
@@ -121,6 +124,7 @@ let pp_error ppf = function
   | `InvalidAuthorisation (anam, nam) -> Format.fprintf ppf "invalid authorisation for %s, responsible for %s" nam anam
   | `InvalidReleases (anam, rnam) -> Format.fprintf ppf "invalid releases for %s, releases for %s" rnam anam
   | `NotAuthorised name -> Format.fprintf ppf "%s is not authorised to sign this resource" name
+
 
 let (>>=) a f =
   match a with
