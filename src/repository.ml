@@ -37,21 +37,9 @@ let add_trusted_key repo key =
   let store = Keystore.add repo.store key in
   { repo with store }
 
-let add_csums repo janitor rs =
-  let add_csum t (name, resource, hash) =
-    try
-      let (n, r, ids) = SM.find hash t in
-      (* TODO: remove asserts here, deal with errors! *)
-      assert (n = name) ; assert (resource_equal r resource) ;
-      SM.add hash (n, r, janitor :: ids) t
-    with Not_found -> SM.add hash (name, resource, [janitor]) t
-  in
-  let valid = List.fold_left add_csum repo.valid rs in
-  { repo with valid }
-
 let has_quorum id repo resource data =
   let csum = digest data in
-  let (n, r, js) =
+  let n, r, js =
     if SM.mem csum repo.valid then
       SM.find csum repo.valid
     else
@@ -257,6 +245,18 @@ let load_keys ?(verify = false) repo ids =
          | Error _ -> invalid_arg ("could not find key " ^ id)
          | Ok k -> add_trusted_key repo k)
       repo ids
+
+let add_csums repo janitor rs =
+  let add_csum t (name, resource, hash) =
+    try
+      let n, r, ids = SM.find hash t in
+      (* TODO: remove asserts here, deal with errors! *)
+      assert (n = name) ; assert (resource_equal r resource) ;
+      SM.add hash (n, r, janitor :: ids) t
+    with Not_found -> SM.add hash (name, resource, [janitor]) t
+  in
+  let valid = List.fold_left add_csum repo.valid rs in
+  { repo with valid }
 
 let load_janitor ?(verify = false) repo janitor =
   match read_janitorindex repo janitor with
