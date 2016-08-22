@@ -3,7 +3,7 @@ open Core
 module S = Set.Make(String)
 
 module SM = Map.Make(String)
-type valid = (name * kind * identifier list) SM.t
+type valid = (name * resource * identifier list) SM.t
 
 type t = {
   store : Keystore.t ;
@@ -38,32 +38,32 @@ let add_trusted_key repo key =
   { repo with store }
 
 let add_csums repo janitor rs =
-  let add_csum t (name, kind, hash) =
+  let add_csum t (name, resource, hash) =
     try
-      let (n, k, ids) = SM.find hash t in
+      let (n, r, ids) = SM.find hash t in
       (* TODO: remove asserts here, deal with errors! *)
-      assert (n = name) ; assert (k = kind) ;
-      SM.add hash (n, k, janitor :: ids) t
-    with Not_found -> SM.add hash (name, kind, [janitor]) t
+      assert (n = name) ; assert (resource_equal r resource) ;
+      SM.add hash (n, r, janitor :: ids) t
+    with Not_found -> SM.add hash (name, resource, [janitor]) t
   in
   let valid = List.fold_left add_csum repo.valid rs in
   { repo with valid }
 
-let has_quorum id repo kind data =
+let has_quorum id repo resource data =
   let csum = digest data in
-  let (n, k, js) =
+  let (n, r, js) =
     if SM.mem csum repo.valid then
       SM.find csum repo.valid
     else
-      (id, kind, [])
+      (id, resource, [])
   in
-  (* TODO: define equality on kind and names? *)
-  match n = id, k = kind, List.length js >= repo.quorum with
+  (* TODO: define equality on names and ids? *)
+  match n = id, resource_equal r resource, List.length js >= repo.quorum with
   | true, true, true -> Ok (`Quorum js)
   | _ -> Error (`InsufficientQuorum (id, js))
 
-let verify_data repo authorised_ids kind data signatures =
-  let ver = Keystore.verify repo.store kind data in
+let verify_data repo authorised_ids resource data signatures =
+  let ver = Keystore.verify repo.store resource data in
   let ok, errs =
     List.fold_left (fun (b, err) (id, s) ->
         if b = None && List.mem id authorised_ids then

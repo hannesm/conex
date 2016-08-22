@@ -22,4 +22,4 @@ val add_sig : t -> Signature.t -> t
 
 val equal : t -> t -> bool
 
-val verify : t -> kind -> string -> Signature.t -> (identifier, error) result
+val verify : t -> resource -> string -> Signature.t -> (identifier, error) result

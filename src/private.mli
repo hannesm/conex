@@ -9,7 +9,7 @@ val pub_of_priv : priv -> Publickey.pub
 (* generate a new private *)
 val generate : ?bits:int -> unit -> priv
 (* sign a piece of data *)
-val sign : identifier -> priv -> kind -> string -> Signature.t
+val sign : identifier -> priv -> resource -> string -> Signature.t
 
 val write_private_key : Repository.t -> string -> priv -> unit
 

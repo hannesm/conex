@@ -23,7 +23,7 @@ val pp_digest : Format.formatter -> digest -> unit
 
 val digest : string -> string
 
-type kind = [
+type resource = [
   | `PublicKey
   | `Checksum
   | `Releases
@@ -31,9 +31,10 @@ type kind = [
   | `Authorisation
 ]
 
-val kind_to_string : kind -> string
-val string_to_kind : string -> kind option
-val pp_kind : Format.formatter -> kind -> unit
+val resource_to_string : resource -> string
+val string_to_resource : string -> resource option
+val pp_resource : Format.formatter -> resource -> unit
+val resource_equal : resource -> resource -> bool
 
 type role = [ `Author | `Janitor | `Other of string ]
 val role_to_string : role -> string
@@ -42,7 +43,7 @@ val pp_role : Format.formatter -> role -> unit
 
 type error = [
   | `InvalidBase64Encoding of identifier * string
-  | `InvalidSignature of identifier * kind * string * string
+  | `InvalidSignature of identifier * resource * string * string
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `InvalidCounter of string * int64 * int64

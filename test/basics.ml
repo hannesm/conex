@@ -54,21 +54,21 @@ let sig_good () =
   Alcotest.(check string "id of sign is same as given" pid id) ;
   check_ver "signature is good" (Ok id) (Publickey.verify pub `PublicKey "bla" (id, sigval))
 
-let check_sig prefix pub kind raw (id, sv) =
+let check_sig prefix pub resource raw (id, sv) =
   check_ver (prefix ^ " signature can be verified") (Ok id)
-    (Publickey.verify pub kind raw (id, sv)) ;
+    (Publickey.verify pub resource raw (id, sv)) ;
   check_ver (prefix ^ " signature of other id") invalid_sig
-    (Publickey.verify pub kind raw ("foo", sv)) ;
+    (Publickey.verify pub resource raw ("foo", sv)) ;
   check_ver (prefix ^ " signature empty") invalid_sig
-    (Publickey.verify pub kind raw (id, "")) ;
+    (Publickey.verify pub resource raw (id, "")) ;
   check_ver (prefix ^ " signature is bad (b64prefix)") invalid_b64
-    (Publickey.verify pub kind raw (id, "\000" ^ sv)) ;
+    (Publickey.verify pub resource raw (id, "\000" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (prefix)") invalid_sig
-    (Publickey.verify pub kind raw (id, "abcd" ^ sv)) ;
+    (Publickey.verify pub resource raw (id, "abcd" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (postfix)") invalid_sig (* should be invalid_b64 once nocrypto is fixed *)
-    (Publickey.verify pub kind raw (id, sv ^ "abcd")) ;
+    (Publickey.verify pub resource raw (id, sv ^ "abcd")) ;
   check_ver (prefix ^ " signature is bad (raw)") invalid_sig
-    (Publickey.verify pub kind "" (id, sv))
+    (Publickey.verify pub resource "" (id, sv))
 
 let sign_single () =
   let id = "a"
@@ -86,13 +86,13 @@ let sig_good_role () =
   Alcotest.(check string "id of sign is same as given" pid id) ;
   check_ver "signature is good" (Ok id) (Publickey.verify pub `PublicKey "bla" (id, sigval))
 
-let sig_bad_kind () =
+let sig_bad_resource () =
   let pid = "foobar" in
   let pub, p = gen_pub pid in
   let (id, sigval) = Private.sign pid p `PublicKey "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
   check_ver
-    "verify fails (kind)"
+    "verify fails (resource)"
     invalid_sig
     (Publickey.verify pub `Checksum "bla" (id, sigval))
 
@@ -110,7 +110,7 @@ let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
   "sign and verify is good", `Quick, sig_good_role ;
   "self-sign is good", `Quick, sign_single ;
-  "bad signature (kind)", `Quick, sig_bad_kind ;
+  "bad signature (resource)", `Quick, sig_bad_resource ;
   "bad signature (data)", `Quick, sig_bad_data ;
 ]
 

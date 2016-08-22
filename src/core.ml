@@ -44,7 +44,7 @@ let digest data =
   let b64 = Nocrypto.Base64.encode check in
   Cstruct.to_string b64
 
-type kind = [
+type resource = [
   | `PublicKey
   | `Checksum
   | `Releases
@@ -52,14 +52,22 @@ type kind = [
   | `Authorisation
 ]
 
-let kind_to_string = function
+let resource_equal a b = match a, b with
+  | `PublicKey, `PublicKey
+  | `Checksum, `Checksum
+  | `Releases, `Releases
+  | `JanitorIndex, `JanitorIndex
+  | `Authorisation, `Authorisation -> true
+  | _ -> false
+
+let resource_to_string = function
   | `PublicKey -> "publickey"
   | `Checksum -> "checksum"
   | `Releases -> "releases"
   | `JanitorIndex -> "janitorindex"
   | `Authorisation -> "authorisation"
 
-let string_to_kind = function
+let string_to_resource = function
   | "publickey" -> Some `PublicKey
   | "checksum" -> Some `Checksum
   | "releases" -> Some `Releases
@@ -67,7 +75,7 @@ let string_to_kind = function
   | "authorisation" -> Some `Authorisation
   | _ -> None
 
-let pp_kind ppf k = Format.pp_print_string ppf (kind_to_string k)
+let pp_resource ppf k = Format.pp_print_string ppf (resource_to_string k)
 
 type role = [ `Author | `Janitor | `Other of string ]
 
@@ -85,7 +93,7 @@ let pp_role pp r = Format.pp_print_string pp (role_to_string r)
 
 type error = [
   | `InvalidBase64Encoding of identifier * string
-  | `InvalidSignature of identifier * kind * string * string
+  | `InvalidSignature of identifier * resource * string * string
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `InvalidCounter of string * int64 * int64
@@ -97,7 +105,7 @@ type error = [
 
 let pp_error ppf = function
   | `InvalidBase64Encoding (id, data) -> Format.fprintf ppf "%s signature is not in valid base64 encoding %s" id data
-  | `InvalidSignature (id, kind, signature, data) -> Format.fprintf ppf "%s signature (a %s) is not valid %a, data %s" id (kind_to_string kind) Utils.pp_hex signature data
+  | `InvalidSignature (id, resource, signature, data) -> Format.fprintf ppf "%s signature (a %s) is not valid %a, data %s" id (resource_to_string resource) Utils.pp_hex signature data
   | `InvalidPublicKey id -> Format.fprintf ppf "keystore contained no valid key for %s" id
   | `InvalidIdentifier id -> Format.fprintf ppf "identifier %s was not found in keystore" id
   | `InvalidCounter (id, old, nev) -> Format.fprintf ppf "key %s did not increase counter (old %Lu new %Lu)" id old nev

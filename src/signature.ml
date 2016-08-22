@@ -2,8 +2,8 @@ open Core
 
 type t = identifier * string
 
-let extend_data data id kind =
-  String.concat " " [ data ; id ; kind_to_string kind ]
+let extend_data data id resource =
+  String.concat " " [ data ; id ; resource_to_string resource ]
 
 let pp_signature ppf (id, sv) =
   Format.fprintf ppf "%a sig:@ %s" pp_id id sv

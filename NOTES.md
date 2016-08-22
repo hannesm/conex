@@ -2,18 +2,18 @@
 
 - byte size pretty useless, since the digest algorithm already appends the input size as part of its output
 - filename?  otherwise can be reused with a different file, but should not matter since everything is public anyways (in contrast to signatures)
-- kind? see above
+- resource? see above
 - what is the maximum length here? that one of a cstruct?  String.length? int32? 31 bit? 63 bit? int64?
 
 current state:
 - Checksum module includes type c = { name ; size ; digest }, computes digest over data
-- Janitorindex includes (name * kind * digest), digest over data
+- Janitorindex includes (name * resource * digest), digest over data
 
 * What to sign?
 
 - signature is just a tuple (identity * signature data)
-- verify : publickey -> role -> kind -> data -> (identity * signature data) -> (id, err) result
--> data is extended (String.concat " " [raw data; id; kind]) --> neither of them may include ' '... or different separator?
+- verify : publickey -> role -> resource -> data -> (identity * signature data) -> (id, err) result
+-> data is extended (String.concat " " [raw data; id; resource]) --> neither of them may include ' '... or different separator?
 --> this is fine for now! but we might want to add a timestamp (for UI)
 
 * Verification strategy
@@ -64,7 +64,7 @@ incremental:
    "conex verify" --root <dir> --patch <filename> (OR --repo <dir>)
   where either patch or repo will be given, and root will point to current head.
   initial distribution of trust anchors for default repo with opam, available
-  via %root%/trust_anchors.txt
+  via %root%/trust_anchors.txt <- specify file format of TA (multiple id/key/sig?)
   --> patch and VCS handling is inside of opam, not conex
 --> will this scale to timestamp server stuff?  there sth needs to know about
     git, how to extract data, and verification (including TA)
@@ -78,8 +78,8 @@ incremental:
   no need to handle it specially (also pro: only run conex during update, no
   need to run during installation!)
 
-signature is done over <data> <identifier> <kind> to prevent reusing the same
- signature for other data kinds or pretending another identifier
+signature is done over <data> <identifier> <resource> to prevent reusing the same
+ signature for other data resources or pretending another identifier
 
 --> should janitors sign their packages in an authorindex?  or just put
     everything in the janitorindex?

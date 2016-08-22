@@ -41,8 +41,8 @@ let primitive_sign priv data =
   let b64 = Nocrypto.Base64.encode signature in
   Cstruct.to_string b64
 
-let sign id priv kind data =
-  let data = Signature.extend_data data id kind in
+let sign id priv resource data =
+  let data = Signature.extend_data data id resource in
   let sigval = primitive_sign priv data in
   (id, sigval)
 

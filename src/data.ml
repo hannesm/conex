@@ -160,18 +160,20 @@ let combine_signed data sigs =
   List [ Entry ("signed", data) ;
          Entry ("signatures", List (List.map signature_to_data sigs)) ]
 
-let r_to_data (name, kind, digest) =
-  List [ Leaf (String name) ; Leaf (String (kind_to_string kind)) ; Leaf (String digest) ]
+let r_to_data (name, resource, digest) =
+  List [ Leaf (String name) ;
+         Leaf (String (resource_to_string resource)) ;
+         Leaf (String digest) ]
 
 let data_to_r = function
   | List (n::k::d::[]) ->
     let name = extract_string_exn n
-    and kind = extract_string_exn k
+    and resource = extract_string_exn k
     and digest = extract_string_exn d
     in
-    (match string_to_kind kind with
-     | None -> invalid_arg "bad kind"
-     | Some k -> (name, k, digest))
+    (match string_to_resource resource with
+     | None -> invalid_arg "bad resource string"
+     | Some r -> (name, r, digest))
   | _ -> invalid_arg "bad resource"
 
 let janitorindex_to_data ji =

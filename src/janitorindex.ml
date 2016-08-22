@@ -4,16 +4,16 @@ type t = {
   counter : int64 ;
   version : int64 ;
   identifier : identifier ;
-  resources : (name * kind * digest) list ;
+  resources : (name * resource * digest) list ;
   signatures : Signature.t list ;
 }
 
 let janitorindex ?(counter = 0L) ?(version = 0L) ?(resources = []) ?(signatures = []) identifier =
   { counter ; version ; identifier ; resources ; signatures }
 
-let pp_resource ppf (n, k, digest) =
-  Format.fprintf ppf "name: %a@ kind: %a@ digest: %a@."
-    pp_name n pp_kind k pp_digest digest
+let pp_resource ppf (n, r, digest) =
+  Format.fprintf ppf "name: %a@ resource: %a@ digest: %a@."
+    pp_name n pp_resource r pp_digest digest
 
 let pp_janitorindex ppf ji =
   Format.fprintf ppf "identifier: %a@ counter: %Lu@ resources:@ %a@ %a@."

@@ -13,6 +13,6 @@ val find : t -> identifier -> Publickey.t
 val add : t -> Publickey.t -> t
 val remove : t -> identifier -> t
 
-(* verify a signature, given a store, a kind, and some data *)
-val verify : t -> kind -> string -> Signature.t ->
+(* verify a signature, given a store, a resource, and some data *)
+val verify : t -> resource -> string -> Signature.t ->
   (identifier, error) result
