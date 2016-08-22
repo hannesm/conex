@@ -9,18 +9,16 @@ val path_to_string : path -> string
 val string_to_path : string -> path
 
 type name = string
-
 val pp_name : Format.formatter -> name -> unit
+val name_equal : name -> name -> bool
 
 (* keyid (NOTE: maybe abstract, checking for printable ASCII characters, case-insensitive, make private!) *)
 type identifier = string
-
 val pp_id : Format.formatter -> identifier -> unit
+val id_equal : identifier -> identifier -> bool
 
 type digest = string
-
 val pp_digest : Format.formatter -> digest -> unit
-
 val digest : string -> string
 
 type resource = [
@@ -30,7 +28,6 @@ type resource = [
   | `JanitorIndex
   | `Authorisation
 ]
-
 val resource_to_string : resource -> string
 val string_to_resource : string -> resource option
 val pp_resource : Format.formatter -> resource -> unit

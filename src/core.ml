@@ -26,13 +26,20 @@ let path_to_string path =
 
 let string_to_path str = Strhelper.cuts '/' str
 
+
 type name = string
 
 let pp_name ppf x = Format.pp_print_string ppf x
 
+let name_equal a b = String.compare a b = 0
+
+
 type identifier = string
 
 let pp_id ppf x = Format.pp_print_string ppf x
+
+let id_equal a b = String.compare a b = 0
+
 
 type digest = string
 

@@ -3,13 +3,13 @@ open Core
 module S = Set.Make(String)
 
 module SM = Map.Make(String)
-type valid = (name * resource * identifier list) SM.t
+type valid_resources = (name * resource * identifier list) SM.t
 
 type t = {
   store : Keystore.t ;
   quorum : int ;
   data : Provider.t ;
-  valid : valid ;
+  janitor_checked : valid_resources ;
 }
 
 type ok = [ `Identifier of identifier | `Quorum of identifier list | `Both of identifier * identifier list ]
@@ -25,7 +25,7 @@ let pp_res ppf = function
   | Error e -> pp_error ppf e
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
-  { store ; quorum ; data ; valid = SM.empty }
+  { store ; quorum ; data ; janitor_checked = SM.empty }
 
 let quorum r = r.quorum
 
@@ -40,13 +40,16 @@ let add_trusted_key repo key =
 let has_quorum id repo resource data =
   let csum = digest data in
   let n, r, js =
-    if SM.mem csum repo.valid then
-      SM.find csum repo.valid
+    if SM.mem csum repo.janitor_checked then
+      SM.find csum repo.janitor_checked
     else
       (id, resource, [])
   in
-  (* TODO: define equality on names and ids? *)
-  match n = id, resource_equal r resource, List.length js >= repo.quorum with
+  match
+    name_equal n id,
+    resource_equal r resource,
+    List.length js >= repo.quorum
+  with
   | true, true, true -> Ok (`Quorum js)
   | _ -> Error (`InsufficientQuorum (id, js))
 
@@ -91,7 +94,7 @@ let verify_checksum repo a cs =
   and signatures = cs.Checksum.signatures
   in
   let nam = Layout.authorisation_of_item cs.Checksum.name in
-  guard (nam = a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
+  guard (name_equal nam a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
   verify_data repo a.Authorisation.authorised `Checksum raw signatures <<|>>
     has_quorum cs.Checksum.name repo `Checksum raw
 
@@ -99,7 +102,7 @@ let verify_releases repo a r =
   let raw = Data.releases_raw r
   and signatures = r.Releases.signatures
   in
-  guard (r.Releases.name = a.Authorisation.name) (`InvalidReleases (a.Authorisation.name, r.Releases.name)) >>= fun () ->
+  guard (name_equal r.Releases.name a.Authorisation.name) (`InvalidReleases (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   verify_data repo a.Authorisation.authorised `Releases raw signatures <<|>>
     has_quorum r.Releases.name repo `Releases raw
 
@@ -251,12 +254,12 @@ let add_csums repo janitor rs =
     try
       let n, r, ids = SM.find hash t in
       (* TODO: remove asserts here, deal with errors! *)
-      assert (n = name) ; assert (resource_equal r resource) ;
+      assert (name_equal n name) ; assert (resource_equal r resource) ;
       SM.add hash (n, r, janitor :: ids) t
     with Not_found -> SM.add hash (name, resource, [janitor]) t
   in
-  let valid = List.fold_left add_csum repo.valid rs in
-  { repo with valid }
+  let janitor_checked = List.fold_left add_csum repo.janitor_checked rs in
+  { repo with janitor_checked }
 
 let load_janitor ?(verify = false) repo janitor =
   match read_janitorindex repo janitor with
