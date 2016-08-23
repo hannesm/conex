@@ -45,30 +45,38 @@ let public_tests = [
   "encode/decode publickey", `Quick, pubkey_enc_dec ;
 ]
 
-let check_ver = Alcotest.check (result Alcotest.string err)
+let check_ver = Alcotest.check (result Alcotest.string verr)
 
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub pid in
-  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  let (id, sigval) = Private.sign pid p "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver "signature is good" (Ok id) (Publickey.verify pub `PublicKey "bla" (id, sigval))
+  check_ver "signature is good" (Ok id) (Publickey.verify pub "bla" (id, sigval))
 
-let check_sig prefix pub resource raw (id, sv) =
+let check_sig prefix pub raw (id, sv) =
   check_ver (prefix ^ " signature can be verified") (Ok id)
-    (Publickey.verify pub resource raw (id, sv)) ;
-  check_ver (prefix ^ " signature of other id") invalid_sig
-    (Publickey.verify pub resource raw ("foo", sv)) ;
-  check_ver (prefix ^ " signature empty") invalid_sig
-    (Publickey.verify pub resource raw (id, "")) ;
-  check_ver (prefix ^ " signature is bad (b64prefix)") invalid_b64
-    (Publickey.verify pub resource raw (id, "\000" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (prefix)") invalid_sig
-    (Publickey.verify pub resource raw (id, "abcd" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (postfix)") invalid_sig (* should be invalid_b64 once nocrypto is fixed *)
-    (Publickey.verify pub resource raw (id, sv ^ "abcd")) ;
-  check_ver (prefix ^ " signature is bad (raw)") invalid_sig
-    (Publickey.verify pub resource "" (id, sv))
+    (Publickey.verify pub raw (id, sv)) ;
+  check_ver (prefix ^ " signature of other id")
+    (Error (`InvalidSignature ("foo", "", Signature.extend_data raw "foo")))
+    (Publickey.verify pub raw ("foo", sv)) ;
+  let sigdata = Signature.extend_data raw id in
+  check_ver (prefix ^ " signature empty")
+    (Error (`InvalidSignature (id, "", sigdata)))
+    (Publickey.verify pub raw (id, "")) ;
+  check_ver (prefix ^ " signature is bad (b64prefix)")
+    (Error (`InvalidBase64Encoding (id, "")))
+    (Publickey.verify pub raw (id, "\000" ^ sv)) ;
+  check_ver (prefix ^ " signature is bad (prefix)")
+    (Error (`InvalidSignature (id, "", sigdata)))
+    (Publickey.verify pub raw (id, "abcd" ^ sv)) ;
+  check_ver (prefix ^ " signature is bad (postfix)")
+    (* should be invalid_b64 once nocrypto >0.5.3 is released *)
+    (Error (`InvalidSignature (id, "", sigdata)))
+    (Publickey.verify pub raw (id, sv ^ "abcd")) ;
+  check_ver (prefix ^ " signature is bad (raw)")
+    (Error (`InvalidSignature (id, "", Signature.extend_data "" id)))
+    (Publickey.verify pub "" (id, sv))
 
 let sign_single () =
   let id = "a"
@@ -76,41 +84,31 @@ let sign_single () =
   in
   let pub, priv = gen_pub ~role id in
   let raw = Data.publickey_raw pub in
-  let s = Private.sign id priv `PublicKey raw in
-  check_sig "common" pub `PublicKey raw s
+  let s = Private.sign id priv raw in
+  check_sig "common" pub raw s
 
 let sig_good_role () =
   let pid = "foobar" in
   let pub, p = gen_pub ~role:`Janitor pid in
-  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  let (id, sigval) = Private.sign pid p "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver "signature is good" (Ok id) (Publickey.verify pub `PublicKey "bla" (id, sigval))
-
-let sig_bad_resource () =
-  let pid = "foobar" in
-  let pub, p = gen_pub pid in
-  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
-  Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver
-    "verify fails (resource)"
-    invalid_sig
-    (Publickey.verify pub `Checksum "bla" (id, sigval))
+  check_ver "signature is good" (Ok id) (Publickey.verify pub "bla" (id, sigval))
 
 let sig_bad_data () =
   let pid = "foobar" in
   let pub, p = gen_pub pid in
-  let (id, sigval) = Private.sign pid p `PublicKey "bla" in
+  let id, sigval = Private.sign pid p "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
+  let raw = "blabb" in
   check_ver
     "verify fails (data)"
-    invalid_sig
-    (Publickey.verify pub `Checksum "blabb" (id, sigval))
+    (Error (`InvalidSignature (id, "", Signature.extend_data raw id)))
+    (Publickey.verify pub raw (id, sigval))
 
 let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
   "sign and verify is good", `Quick, sig_good_role ;
   "self-sign is good", `Quick, sign_single ;
-  "bad signature (resource)", `Quick, sig_bad_resource ;
   "bad signature (data)", `Quick, sig_bad_data ;
 ]
 
@@ -160,90 +158,70 @@ let ks_tests = [
   "multiple keys", `Quick, multiple ;
 ]
 
-let verify_all exp ks pub =
-  List.iter2 (fun s r ->
-      check_ver "signature is valid" r
-        (Keystore.verify ks `PublicKey (Data.publickey_raw pub) s))
-    pub.Publickey.signatures
-    exp
+let idx_sign () =
+  let k, p = gen_pub "a" in
+  let idx = Index.index "a" in
+  let signed = Private.sign_index idx p in
+  let signature = match signed.Index.signature with
+    | None -> assert false
+    | Some x -> x
+  in
+  check_ver "signed index verifies" (Ok "a")
+    (Publickey.verify k (Data.index_raw signed) signature)
 
-let ks_sign_single () =
-  let id = "a"
-  and role = `Author
+let idx_sign_other () =
+  (* this shows that Publickey.verify does not check
+       index.identifier == fst signature
+     cause it does not get the index *)
+  let k, p = gen_pub "a" in
+  let idx = Index.index "b" in
+  let signed = Private.sign_index idx p in
+  let signature = match signed.Index.signature with
+    | None -> assert false
+    | Some x -> x
   in
-  let pub, priv = gen_pub ~role id in
-  let s =
-    let raw = Data.publickey_raw pub in
-    Private.sign id priv `PublicKey raw
-  in
-  let ks = Keystore.(add empty (Publickey.add_sig pub s)) in
-  let ks_pub = Keystore.find ks id in
-  Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a"] ks ks_pub ;
-  let pub = Publickey.add_sig (Publickey.add_sig (Publickey.add_sig pub s) s) s in
-  let ks = Keystore.(add empty pub) in
-  let ks_pub = Keystore.find ks id in
-  Alcotest.(check int "signature size is 3" 3 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a" ; Ok "a" ; Ok "a"] ks ks_pub
+  check_ver "signed index verifies" (Ok "b")
+    (Publickey.verify k (Data.index_raw signed) signature)
 
-let ks_sign_revoked () =
-  let id = "a"
-  and role = `Author
+let idx_sign_bad () =
+  let k, p = gen_pub "a" in
+  let idx = Index.index "b" in
+  let signed = Private.sign_index idx p in
+  let signature = match signed.Index.signature with
+    | None -> assert false
+    | Some x -> x
   in
-  let pub, priv = gen_pub ~role id in
-  let s =
-    let raw = Data.publickey_raw pub in
-    Private.sign id priv `PublicKey raw
-  in
-  let ks_pub = Publickey.add_sig pub s in
-  let ks =
-    match Publickey.publickey ~role ~signatures:[s] id None with
-    | Error s -> invalid_arg s
-    | Ok ks_pub -> Keystore.(add empty ks_pub)
-  in
-  let ks_pub' = Keystore.find ks id in
-  Alcotest.(check int "signature size is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Error (`InvalidPublicKey "")] ks ks_pub' ;
-  check_ver "keystore key can be verified if pubkey provided" (Ok "a")
-    (Publickey.verify ks_pub `PublicKey (Data.publickey_raw ks_pub) s)
+  let idx' = Index.index "c" in
+  let raw = Data.index_raw idx' in
+  check_ver "signed index does not verify (wrong id)"
+    (Error (`InvalidSignature ("b", "", Signature.extend_data raw "b")))
+    (Publickey.verify k raw signature)
 
-let ks_sign_multiple () =
-  let ida = "a"
-  and idb = "b"
-  and role = `Author
+let idx_sign_bad2 () =
+  let k, p = gen_pub "a" in
+  let idx = Index.index "a" in
+  let signed = Private.sign_index idx p in
+  let signature = match signed.Index.signature with
+    | None -> assert false
+    | Some x -> x
   in
-  let puba, priva = gen_pub ~role ida in
-  let pubb, privb = gen_pub ~role idb in
-  let ks =
-    let raw = Data.publickey_raw puba in
-    let sa = Private.sign ida priva `PublicKey raw in
-    let sb = Private.sign idb privb `PublicKey raw in
-    Keystore.(add empty (Publickey.add_sig (Publickey.add_sig puba sb) sa))
-  in
-  let ks_pub = Keystore.find ks ida in
-  Alcotest.(check int "signature size of 'a' is 2" 2 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a" ; Error (`InvalidIdentifier "")] ks ks_pub ;
-  let ks =
-    let sbb = Private.sign idb privb `PublicKey (Data.publickey_raw pubb) in
-    Keystore.(add ks (Publickey.add_sig pubb sbb))
-  in
-  let ks_pub = Keystore.find ks ida in
-  Alcotest.(check int "signature size of 'a' is still 2" 2 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "a" ; Ok "b"] ks ks_pub ;
-  let ks_pub = Keystore.find ks idb in
-  Alcotest.(check int "signature size of 'b' is 1" 1 (List.length ks_pub.Publickey.signatures)) ;
-  verify_all [Ok "b"] ks ks_pub
+  let idx' = Index.index ~counter:23L "b" in
+  let raw = Data.index_raw idx' in
+  check_ver "signed index does not verify (wrong data)"
+    (Error (`InvalidSignature ("a", "", Signature.extend_data raw "a")))
+    (Publickey.verify k raw signature) ;
+  check_sig "index" k (Data.index_raw idx) signature
 
-let ks_sign_tests = [
-  "keystore sign", `Quick, ks_sign_single ;
-  "keystore sign revoked", `Quick, ks_sign_revoked ;
-  "keystore sign multiple", `Quick, ks_sign_multiple ;
+let idx_tests = [
+  "good index", `Quick, idx_sign ;
+  "good index other", `Quick, idx_sign_other ;
+  "bad index", `Quick, idx_sign_bad ;
+  "bad index 2", `Quick, idx_sign_bad2 ;
 ]
 
 let tests = [
   ("Publickey", public_tests) ;
   ("Signature", sign_tests) ;
   ("Keystore", ks_tests) ;
-  ("KeystoreSign", ks_sign_tests)
+  ("Index", idx_tests)
 ]
-

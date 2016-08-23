@@ -8,17 +8,20 @@ val quorum : t -> int
 
 val change_provider : t -> Provider.t -> t
 
-type ok = [ `Identifier of identifier | `Quorum of identifier list | `Both of identifier * identifier list ]
+val verify_index : t -> Index.t -> (identifier, verification_error) result
+
+type ok = [ `Identifier of identifier | `Quorum of S.t | `Both of identifier * S.t ]
 val pp_ok : Format.formatter -> ok -> unit
 
 type res = (ok, error) result
 val pp_res : Format.formatter -> res -> unit
 
 val verify_key : t -> Publickey.t -> res
-val verify_authorisation : t -> ?authorised:(identifier list) -> Authorisation.t -> res
+val verify_authorisation : t -> ?authorised:S.t -> Authorisation.t -> res
 val verify_checksum : t -> Authorisation.t -> Checksum.t -> res
 val verify_releases : t -> Authorisation.t -> Releases.t -> res
-val verify_index : t -> Index.t -> res
+
+val add_index : t -> Index.t -> t
 
 (* TODO: are these return types good? *)
 val load_keys : ?verify:bool -> t -> identifier list -> t

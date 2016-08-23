@@ -36,20 +36,16 @@ type t = {
   version : int64 ;
   name : name ;
   files : checksum_map ;
-  signatures : Signature.t list ;
 }
 
 let pp_checksums ppf c =
-  Format.fprintf ppf "checksums for %a (counter %Lu) are:@.%a@.sigs: %a"
+  Format.fprintf ppf "checksums for %a (counter %Lu) are:@.%a@."
     pp_name c.name c.counter
     pp_checksum_map c.files
-    Signature.pp_signatures c.signatures
 
-let checksums ?(counter = 0L) ?(version = 0L) ?(signatures = []) name files =
+let checksums ?(counter = 0L) ?(version = 0L) name files =
   let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
-  { counter ; version ; name ; files ; signatures }
-
-let add_sig c s = { c with signatures = s :: c.signatures }
+  { counter ; version ; name ; files }
 
 let set_counter cs counter = { cs with counter }
 

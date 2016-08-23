@@ -4,12 +4,12 @@ type t = {
   counter : int64 ;
   version : int64 ;
   identifier : identifier ;
-  resources : (name * resource * digest) list ;
-  signatures : Signature.t list ;
+  resources : (name * resource * digest) list ; (* should be a Set? should include file size for better error reporting? *)
+  signature : Signature.t option ;
 }
 
-let index ?(counter = 0L) ?(version = 0L) ?(resources = []) ?(signatures = []) identifier =
-  { counter ; version ; identifier ; resources ; signatures }
+let index ?(counter = 0L) ?(version = 0L) ?(resources = []) ?signature identifier =
+  { counter ; version ; identifier ; resources ; signature }
 
 let pp_resource ppf (n, r, digest) =
   Format.fprintf ppf "name: %a@ resource: %a@ digest: %a@."
@@ -20,6 +20,6 @@ let pp_index ppf i =
     pp_id i.identifier
     i.counter
     (pp_list pp_resource) i.resources
-    Signature.pp_signatures i.signatures
+    Signature.pp_signature i.signature
 
-let add_sig i s = { i with signatures = s :: i.signatures }
+let add_sig i s = { i with signature = Some s }

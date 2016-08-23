@@ -1,22 +1,21 @@
 open Core
 
-module S = Set.Make(String)
-
 module SM = Map.Make(String)
-type valid_resources = (name * resource * identifier list) SM.t
+type valid_resources = (name * resource * S.t) SM.t
 
 type t = {
   store : Keystore.t ;
   quorum : int ;
   data : Provider.t ;
-  janitor_checked : valid_resources ;
+  valid : valid_resources ;
+  janitors : S.t
 }
 
-type ok = [ `Identifier of identifier | `Quorum of identifier list | `Both of identifier * identifier list ]
+type ok = [ `Identifier of identifier | `Quorum of S.t | `Both of identifier * S.t ]
 let pp_ok ppf = function
   | `Identifier id -> Format.fprintf ppf "id %s" id
-  | `Both (id, js) -> Format.fprintf ppf "id %s and quorum %s" id (String.concat ", " js)
-  | `Quorum js -> Format.fprintf ppf "quorum %s" (String.concat ", " js)
+  | `Both (id, js) -> Format.fprintf ppf "id %s and quorum %s" id (String.concat ", " (S.elements js))
+  | `Quorum js -> Format.fprintf ppf "quorum %s" (String.concat ", " (S.elements js))
 
 type res = (ok, error) result
 
@@ -25,7 +24,7 @@ let pp_res ppf = function
   | Error e -> pp_error ppf e
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
-  { store ; quorum ; data ; janitor_checked = SM.empty }
+  { store ; quorum ; data ; valid = SM.empty ; janitors = S.empty }
 
 let quorum r = r.quorum
 
@@ -35,82 +34,70 @@ let change_provider t data = { t with data }
 
 let add_trusted_key repo key =
   let store = Keystore.add repo.store key in
-  { repo with store }
+  let janitors = match key.Publickey.role with
+    | `Janitor -> S.add key.Publickey.keyid repo.janitors
+    | _ -> repo.janitors
+  in
+  { repo with store ; janitors }
 
-let has_quorum id repo resource data =
+let verify_index repo idx =
+  let data = Data.index_raw idx
+  and aid = idx.Index.identifier
+  in
+  match idx.Index.signature with
+  | Some (id, s) when id_equal id aid -> Keystore.verify repo.store data (id, s)
+  | Some (id, _) -> Error (`NotAuthorised (aid, id))
+  | None -> Error (`NoSignature aid)
+
+let verify_resource repo authorised name resource data =
   let csum = digest data in
-  let n, r, js =
-    if SM.mem csum repo.janitor_checked then
-      SM.find csum repo.janitor_checked
+  let n, r, s =
+    if SM.mem csum repo.valid then
+      SM.find csum repo.valid
     else
-      (id, resource, [])
+      (name, resource, S.empty)
   in
+  let js = S.filter (fun j -> S.mem j repo.janitors) s in
+  let id a = S.choose (S.filter (fun a -> S.mem a s) a) in
   match
-    name_equal n id,
+    name_equal n name,
     resource_equal r resource,
-    List.length js >= repo.quorum
+    S.exists (fun a -> S.mem a s) authorised,
+    S.cardinal js >= repo.quorum
   with
-  | true, true, true -> Ok (`Quorum js)
-  | _ -> Error (`InsufficientQuorum (id, js))
-
-let verify_data repo authorised_ids resource data signatures =
-  let ver = Keystore.verify repo.store resource data in
-  let ok, errs =
-    List.fold_left (fun (b, err) (id, s) ->
-        if b = None && List.mem id authorised_ids then
-          match ver (id, s) with
-          | Ok id -> (Some id, err)
-          | Error e -> (None, e :: err)
-        else
-          (b, `NotAuthorised id :: err))
-      (None, [])
-      signatures
-  in
-  (* TODO: revise return type *)
-  match ok, errs with
-  | None, e::_ -> Error e
-  | None, [] -> Error (`NotAuthorised "bla")
-  | Some x, _ -> Ok (`Identifier x)
+  | false, _    , _    , _     -> Error (`InvalidName (name, n))
+  | true , false, _    , _     -> Error (`InvalidResource (resource, r))
+  | true , true , false, false -> Error (`NotSigned (n, r))
+  | true , true , false, true  -> Ok (`Quorum js)
+  | true , true , true , false -> Ok (`Identifier (id authorised))
+  | true , true , true , true  -> Ok (`Both (id authorised, js))
 
 let verify_key repo key =
   let id = key.Publickey.keyid
   and raw = Data.publickey_raw key
-  and sigs = key.Publickey.signatures
   in
-  verify_data (add_trusted_key repo key) [id] `PublicKey raw sigs >>= fun (`Identifier id) ->
-  has_quorum id repo `PublicKey raw >>= fun (`Quorum js) ->
-  Ok (`Both (id, js))
+  match verify_resource repo (S.singleton id) id `PublicKey raw with
+  | Error e -> Error e
+  | Ok (`Both b) -> Ok (`Both b)
+  | Ok (`Identifier id) -> Error (`InsufficientQuorum (id, S.empty))
+  | Ok (`Quorum js) when key.Publickey.key = None -> Ok (`Quorum js)
+  | Ok (`Quorum _) -> Error (`MissingSignature id)
 
-let verify_authorisation repo ?authorised auth =
-  let raw = Data.authorisation_raw auth
-  and signatures = auth.Authorisation.signatures
-  in
-  let valid = Utils.option auth.Authorisation.authorised (fun x -> x) authorised in
-  verify_data repo valid `Authorisation raw signatures <<|>>
-    has_quorum auth.Authorisation.name repo `Authorisation raw
+let verify_authorisation repo ?(authorised = S.empty) auth =
+  (* XXX: when to use a.Authorisation.authorised?? *)
+  let raw = Data.authorisation_raw auth in
+  verify_resource repo authorised auth.Authorisation.name `Authorisation raw >>= function
+  | `Both b -> Ok (`Both b)
+  | `Identifier id -> Error (`InsufficientQuorum (id, S.empty))
+  | `Quorum js -> Ok (`Quorum js)
 
 let verify_checksum repo a cs =
-  let raw = Data.checksums_raw cs
-  and signatures = cs.Checksum.signatures
-  in
-  let nam = Layout.authorisation_of_item cs.Checksum.name in
-  guard (name_equal nam a.Authorisation.name) (`InvalidAuthorisation (a.Authorisation.name, cs.Checksum.name)) >>= fun () ->
-  verify_data repo a.Authorisation.authorised `Checksum raw signatures <<|>>
-    has_quorum cs.Checksum.name repo `Checksum raw
+  let raw = Data.checksums_raw cs in
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw
 
 let verify_releases repo a r =
-  let raw = Data.releases_raw r
-  and signatures = r.Releases.signatures
-  in
-  guard (name_equal r.Releases.name a.Authorisation.name) (`InvalidReleases (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  verify_data repo a.Authorisation.authorised `Releases raw signatures <<|>>
-    has_quorum r.Releases.name repo `Releases raw
-
-let verify_index repo i =
-  let raw = Data.index_raw i
-  and signatures = i.Index.signatures
-  in
-  verify_data repo [i.Index.identifier] `JanitorIndex raw signatures
+  let raw = Data.releases_raw r in
+  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
@@ -226,52 +213,73 @@ let compute_checksum repo name =
       Ok (Checksum.checksums name csums)
     | Error e -> Error e
 
+(* TODO: invalid_args are bad below!!! *)
+let add_csums repo id rs =
+  let add_csum t (name, resource, hash) =
+    try
+      let n, r, ids = SM.find hash t in
+      (* TODO: remove asserts here, deal with errors! *)
+      assert (name_equal n name) ; assert (resource_equal r resource) ;
+      SM.add hash (n, r, S.add id ids) t
+    with Not_found ->
+      SM.add hash (name, resource, S.singleton id) t
+  in
+  let valid = List.fold_left add_csum repo.valid rs in
+  { repo with valid }
+
+let add_index r idx =
+  add_csums r idx.Index.identifier idx.Index.resources
+
 let maybe_load repo ids =
   List.fold_left
     (fun repo id ->
        match read_key repo id with
       | Error _ -> invalid_arg ("error while loading key " ^ id)
       | Ok key ->
+        (* XXX: might only be able to do it afterwards... (sig of key k is in index i) *)
         match verify_key repo key with
         | Ok _ -> add_trusted_key repo key
         | Error e -> pp_error Format.std_formatter e ; repo)
     repo ids
 
-(* TODO: invalid_arg are bad! *)
 let load_keys ?(verify = false) repo ids =
-  if verify then
-    maybe_load repo ids
-  else
-    List.fold_left
-      (fun repo id ->
-         match read_key repo id with
-         | Error _ -> invalid_arg ("could not find key " ^ id)
-         | Ok k -> add_trusted_key repo k)
-      repo ids
-
-let add_csums repo janitor rs =
-  let add_csum t (name, resource, hash) =
-    try
-      let n, r, ids = SM.find hash t in
-      (* TODO: remove asserts here, deal with errors! *)
-      assert (name_equal n name) ; assert (resource_equal r resource) ;
-      SM.add hash (n, r, janitor :: ids) t
-    with Not_found -> SM.add hash (name, resource, [janitor]) t
+  let repo =
+    if verify then
+      maybe_load repo ids
+    else
+      List.fold_left
+        (fun repo id ->
+           match read_key repo id with
+           | Error _ -> invalid_arg ("could not find key " ^ id)
+           | Ok k -> add_trusted_key repo k)
+        repo ids
   in
-  let janitor_checked = List.fold_left add_csum repo.janitor_checked rs in
-  { repo with janitor_checked }
+  List.fold_left
+    (fun repo id ->
+       match read_index repo id with
+       | Ok i ->
+         begin match verify_index repo i with
+           | Ok _ -> add_csums repo id i.Index.resources
+           | Error _ -> invalid_arg "verification failed"
+         end
+       | Error _ -> invalid_arg "couldn't read index")
+    repo ids
 
+(* XXX: load janitor key as well! *)
 let load_janitor ?(verify = false) repo janitor =
   match read_index repo janitor with
   | Ok ji ->
-    if verify then
-      let repo = maybe_load repo [janitor] in
-      match verify_index repo ji with
-      | Ok _ -> add_csums repo janitor ji.Index.resources
-      | Error _ -> invalid_arg "verification failed"
-    else
-      add_csums repo janitor ji.Index.resources
-  | Error _ -> invalid_arg "unlikely to happen"
+    let repo =
+      if verify then
+        let repo = maybe_load repo [janitor] in
+        match verify_index repo ji with
+        | Ok _ -> add_csums repo janitor ji.Index.resources
+        | Error _ -> invalid_arg "verification failed"
+      else
+        add_csums repo janitor ji.Index.resources
+    in
+    { repo with janitors = S.add janitor repo.janitors }
+  | Error _ -> invalid_arg "unlikely to happen, error reading index"
 
 let load_janitors ?(verify = false) repo =
   let all = all_janitors repo in

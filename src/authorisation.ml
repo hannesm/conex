@@ -4,18 +4,14 @@ type t = {
   counter : int64 ;
   version : int64 ;
   name : name ;
-  authorised : identifier list ;
-  signatures : Signature.t list ;
+  authorised : S.t ;
 }
 
-let authorisation ?(counter = 0L) ?(version = 0L) ?(authorised = []) ?(signatures = []) name =
-  { counter ; version ; name ; authorised ; signatures }
-
-let add_sig t s = { t with signatures = s :: t.signatures }
+let authorisation ?(counter = 0L) ?(version = 0L) ?(authorised = S.empty) name =
+  { counter ; version ; name ; authorised }
 
 let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare x)
 
 let pp_authorisation ppf d =
-  Format.fprintf ppf "authorisation name: %a@ counter: %Lu@ authorised:@ %a@ %a@."
-    pp_name d.name d.counter pp_authorised d.authorised
-    Signature.pp_signatures d.signatures
+  Format.fprintf ppf "authorisation name: %a@ counter: %Lu@ authorised:@ %a@."
+    pp_name d.name d.counter pp_authorised (S.elements d.authorised)

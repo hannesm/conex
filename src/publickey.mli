@@ -11,15 +11,12 @@ type t = private {
   keyid : identifier ;
   key : pub option ;
   role : role ;
-  signatures : Signature.t list
 }
 
 val pp_publickey : Format.formatter -> t -> unit
 
-val publickey : ?counter:int64 -> ?version:int64 -> ?role:role -> ?signatures:(Signature.t list) -> identifier -> pub option -> (t, string) result
-
-val add_sig : t -> Signature.t -> t
+val publickey : ?counter:int64 -> ?version:int64 -> ?role:role -> identifier -> pub option -> (t, string) result
 
 val equal : t -> t -> bool
 
-val verify : t -> resource -> string -> Signature.t -> (identifier, error) result
+val verify : t -> string -> Signature.t -> (identifier, verification_error) result

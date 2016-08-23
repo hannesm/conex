@@ -1,6 +1,6 @@
 true : annot, bin_annot
 true : safe_string
-true : warn(+A-4-6-33-44-48)
+true : warn(+A-4-6-33-44-48-58)
 "src" : include
 
 <src/authorisation.{ml,mli}>: for-pack(Conex)

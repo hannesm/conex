@@ -3,11 +3,8 @@ type t
 val parse : string -> t
 val normalise : t -> string
 
-val signature_to_data : Signature.t -> t
-val data_to_signature : t -> Signature.t
-
-val parse_signed_data : t -> (t * Signature.t list)
-val combine_signed : t -> Signature.t list -> t
+val signature_to_data : Signature.t option -> t
+val data_to_signature : t -> Signature.t option
 
 val index_to_data : Index.t -> t
 val data_to_index : t -> Index.t

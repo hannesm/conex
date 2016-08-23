@@ -207,51 +207,179 @@ let key_r () =
   Alcotest.check (result publickey re) "reading key gives back right key"
     (Ok k) (Repository.read_key r "foo")
 
+let idx_sign () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository p in
+  let id = "foo" in
+  let idx = Index.index id in
+  Alcotest.check (result Alcotest.string verr) "index must be signed"
+    (Error (`NoSignature id)) (Repository.verify_index r idx) ;
+  let pub, priv = gen_pub id in
+  let signed_idx = Private.sign_index idx priv in
+  Alcotest.check (result Alcotest.string verr) "id must be in keystore"
+    (Error (`InvalidIdentifier id)) (Repository.verify_index r signed_idx) ;
+  let r = Repository.add_trusted_key r pub in
+  Alcotest.check (result Alcotest.string verr) "idx signed properly"
+    (Ok id) (Repository.verify_index r signed_idx) ;
+  let oid = "bar" in
+  let signed' =
+    match signed_idx.Index.signature with
+    | None -> assert false
+    | Some (_, s) -> Index.add_sig idx (oid, s)
+  in
+  Alcotest.check (result Alcotest.string verr) "id not authorised"
+    (Error (`NotAuthorised (id, oid))) (Repository.verify_index r signed')
+
 let ok =
   let module M = struct
     type t = Repository.ok
     let pp = Repository.pp_ok
     let equal a b = match a, b with
-      | `Identifier a, `Identifier b -> a = b
-      | `Quorum js, `Quorum is -> List.length js = List.length is && List.for_all (fun a -> List.mem a is) js
-      | `Both (a, js), `Both (b, is) -> a = b && List.length js = List.length is && List.for_all (fun a -> List.mem a is) js
+      | `Identifier a, `Identifier b -> id_equal a b
+      | `Quorum js, `Quorum is -> S.equal js is
+      | `Both (a, js), `Both (b, is) -> id_equal a b && S.equal js is
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let key_sign_r () =
-  let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:0 p in
-  let sign pub priv =
-    let raw = Data.publickey_raw pub in
-    let s = Private.sign "foo" priv `PublicKey raw in
-    Publickey.add_sig pub s
-  in
-  let k, pk = gen_pub ~role:`Janitor "foo" in
-  let k' = sign k pk in
-  Alcotest.check (result ok err) "key signed properly"
-    (Ok (`Both ("foo", []))) (Repository.verify_key r k') ;
-  let r' = Repository.repository ~quorum:1 p in
-  Alcotest.check (result ok err) "key requires quorum"
-    (Error (`InsufficientQuorum ("foo", []))) (Repository.verify_key r' k')
-
-let empty_ji_r () =
+let empty_key () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
-  let sign ji priv =
-    let raw = Data.index_raw ji in
-    let s = Private.sign "foo" priv `JanitorIndex raw in
-    Index.add_sig ji s
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let id = "foo" in
+  let pub = match Publickey.publickey id None with
+    | Ok p -> p
+    | _ -> assert false
   in
-  let k, pk = gen_pub ~role:`Janitor "foo" in
-  let ji = Index.index "foo" in
-  let ji = sign ji pk in
-  Alcotest.check (result ok err) "janitorindex requires public key to be present"
-    (Error (`InvalidIdentifier "foo")) (Repository.verify_index r ji) ;
-  let r = Repository.add_trusted_key r k in
-  Alcotest.check (result ok err) "janitorindex verifies good"
-    (Ok (`Identifier "foo")) (Repository.verify_index r ji)
+  let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  Alcotest.check (result ok err) "not signed"
+    (Error (`NotSigned (id, `PublicKey)))
+    (Repository.verify_key r pub) ;
+  let r' = Repository.add_index r jidx in
+  Alcotest.check (result ok err) "empty publickey good"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_key r' pub)
 
+let key_good () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let id = "foo" in
+  let pub, priv = gen_pub id in
+  let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let idx =
+    let idx = Index.index ~resources id in
+    Private.sign_index idx priv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  Alcotest.check (result ok err) "not signed"
+    (Error (`NotSigned (id, `PublicKey)))
+    (Repository.verify_key r pub) ;
+  let r' = Repository.add_index r jidx in
+  Alcotest.check (result ok err) "publickey missing self-sig"
+    (Error (`MissingSignature id))
+    (Repository.verify_key r' pub) ;
+  let r'' = Repository.add_index r idx in
+  Alcotest.check (result ok err) "publickey missing quorum"
+    (Error (`InsufficientQuorum (id, S.empty)))
+    (Repository.verify_key r'' pub) ;
+  let r''' = Repository.add_index r' idx in
+  Alcotest.check (result ok err) "publickey is fine"
+    (Ok (`Both (id, S.singleton jid)))
+    (Repository.verify_key r''' pub)
+
+let no_janitor () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let id = "foo" in
+  let pub, priv = gen_pub id in
+  let id' = "bar" in
+  let pem = match Publickey.publickey id' None with
+    | Ok p -> p
+    | _ -> assert false
+  in
+  let resources = [
+    id, `PublicKey, digest (Data.publickey_raw pub) ;
+    id', `PublicKey, digest (Data.publickey_raw pem)
+  ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let idx =
+    let idx = Index.index ~resources id in
+    Private.sign_index idx priv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  let r = Repository.add_index r idx in
+  Alcotest.check (result ok err) "missing quorum"
+    (Error (`InsufficientQuorum (id, S.empty)))
+    (Repository.verify_key r pub) ;
+  Alcotest.check (result ok err) "missing quorum for empty"
+    (Error (`NotSigned (id', `PublicKey)))
+    (Repository.verify_key r pem)
+
+let wrong_resource () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let id = "foo" in
+  let pub, priv = gen_pub id in
+  let resources = [ id, `Checksum, digest (Data.publickey_raw pub) ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let idx =
+    let idx = Index.index ~resources id in
+    Private.sign_index idx priv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  let r = Repository.add_index r idx in
+  Alcotest.check (result ok err) "wrong resource"
+    (Error (`InvalidResource (`PublicKey, `Checksum)))
+    (Repository.verify_key r pub)
+
+let wrong_name () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let id = "foo" in
+  let pub, priv = gen_pub id in
+  let resources = [ jid, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let idx =
+    let idx = Index.index ~resources id in
+    Private.sign_index idx priv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  let r = Repository.add_index r idx in
+  Alcotest.check (result ok err) "wrong name"
+    (Error (`InvalidName (id, jid)))
+    (Repository.verify_key r pub)
+
+(*
 let ji_key_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
@@ -329,6 +457,8 @@ let auth_rel_key_r () =
   Alcotest.check (result ok err) "releases verifies"
     (Ok (`Identifier "foobar"))
     (Repository.verify_releases r auth releases)
+*)
+
 
 let checks_r () =
   let open Provider in
@@ -353,10 +483,16 @@ let checks_r () =
 let repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
-  "signed key repo", `Quick, key_sign_r ;
+  "signed index", `Quick, idx_sign ;
+  "empty key", `Quick, empty_key ;
+  "key good", `Quick, key_good ;
+  "no janitor", `Quick, no_janitor ;
+  "wrong resource", `Quick, wrong_resource ;
+  "wrong name", `Quick, wrong_name ;
+(*  "signed key repo", `Quick, key_sign_r ;
   "signed ji repo", `Quick, empty_ji_r ;
   "key in signed ji repo", `Quick, ji_key_r ;
-  "releases and authorisation in repo", `Quick, auth_rel_key_r ;
+    "releases and authorisation in repo", `Quick, auth_rel_key_r ; *)
   "checksum computation is sane", `Quick, checks_r ;
 ]
 

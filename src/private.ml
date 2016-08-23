@@ -41,11 +41,14 @@ let primitive_sign priv data =
   let b64 = Nocrypto.Base64.encode signature in
   Cstruct.to_string b64
 
-let sign id priv resource data =
-  let data = Signature.extend_data data id resource in
+let sign id priv data =
+  let data = Signature.extend_data data id in
   let sigval = primitive_sign priv data in
   (id, sigval)
 
+let sign_index idx priv =
+  let signature = sign idx.Index.identifier priv (Data.index_raw idx) in
+  Index.add_sig idx signature
 
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"

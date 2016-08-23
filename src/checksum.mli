@@ -17,14 +17,11 @@ type t = private {
   version : int64 ;
   name : name ;
   files : checksum_map ;
-  signatures : Signature.t list ;
 }
 
 val pp_checksums : Format.formatter -> t -> unit
 
-val checksums : ?counter:int64 -> ?version:int64 -> ?signatures:(Signature.t list) -> string -> c list -> t
-
-val add_sig : t -> Signature.t -> t
+val checksums : ?counter:int64 -> ?version:int64 -> string -> c list -> t
 
 val set_counter : t -> int64 -> t
 

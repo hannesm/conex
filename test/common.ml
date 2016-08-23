@@ -36,9 +36,8 @@ let auth =
       let open Authorisation in
       a.counter = b.counter &&
       a.version = b.version &&
-      a.name = b.name &&
-      List.length a.authorised = List.length b.authorised &&
-      List.for_all (fun n -> List.mem n b.authorised) a.authorised
+      name_equal a.name b.name &&
+      S.equal a.authorised b.authorised
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
@@ -86,18 +85,26 @@ let err =
     type t = Core.error
     let pp = Core.pp_error
     let equal a b = match a, b with
-      | `InvalidBase64Encoding _, `InvalidBase64Encoding _ -> true
-      | `InvalidSignature _, `InvalidSignature _ -> true
-      | `InvalidPublicKey _, `InvalidPublicKey _ -> true
-      | `InvalidIdentifier _, `InvalidIdentifier _ -> true
-      | `InvalidCounter _, `InvalidCounter _ -> true
-      | `InsufficientQuorum _, `InsufficientQuorum _ -> true
-      | `InvalidAuthorisation _, `InvalidAuthorisation _ -> true
-      | `InvalidReleases _, `InvalidReleases _ -> true
-      | `NotAuthorised _, `NotAuthorised _ -> true
+      | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
+      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
+      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `MissingSignature id, `MissingSignature id' -> id_equal id id'
+      | `NotSigned (n, r), `NotSigned (n', r') -> name_equal n n' && resource_equal r r'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let invalid_sig = Error (`InvalidSignature ("", `PublicKey, "", ""))
-let invalid_b64 = Error (`InvalidBase64Encoding ("", ""))
+let verr =
+  let module M = struct
+    type t = Core.verification_error
+    let pp = Core.pp_verification_error
+    let equal a b = match a, b with
+      | `InvalidBase64Encoding (id, _), `InvalidBase64Encoding (id', _) -> id_equal id id'
+      | `InvalidSignature (id, _, data), `InvalidSignature (id', _, data') -> id_equal id id' && String.compare data data' = 0
+      | `InvalidPublicKey id, `InvalidPublicKey id' -> id_equal id id'
+      | `InvalidIdentifier id, `InvalidIdentifier id' -> id_equal id id'
+      | `NotAuthorised (a, s), `NotAuthorised (a', s') -> id_equal a a' && id_equal s s'
+      | `NoSignature id, `NoSignature id' -> id_equal id id'
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)

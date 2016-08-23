@@ -134,31 +134,28 @@ let parse data =
 let normalise = to_string
 
 
-let signature_to_data (id, signature) =
-  List [ Entry ("keyid", Leaf (String id)) ;
-         Entry ("sig", Leaf (String signature)) ]
+let signature_to_data = function
+  | None -> List []
+  | Some (id, signature) ->
+    List [ Entry ("keyid", Leaf (String id)) ;
+           Entry ("sig", Leaf (String signature)) ]
 
 let data_to_signature signature =
-  let keyid = extract_string_exn (get_exn signature "keyid")
-  and sigval = extract_string_exn (get_exn signature "sig")
-  in
-  (keyid, sigval)
+  try
+    let keyid = extract_string_exn (get_exn signature "keyid")
+    and sigval = extract_string_exn (get_exn signature "sig")
+    in
+    Some (keyid, sigval)
+  with Invalid_argument _ -> None
 
 (* not sure where this belongs *)
 let parse_signed_data data =
-  match get data "signatures" with
-  | Some (Entry _) -> invalid_arg "signatures should be a list, not an entry"
-  | Some (Leaf _) -> invalid_arg "signatures should be a list, not a leaf"
-  | Some (List xs) ->
+  match get data "signature" with
+  | Some t ->
      let signed = get_exn data "signed" in
-     (signed, List.map data_to_signature xs)
+     (signed, data_to_signature t)
   | None ->
-     (* everything is signed... signatures are empty *)
-     (data, [])
-
-let combine_signed data sigs =
-  List [ Entry ("signed", data) ;
-         Entry ("signatures", List (List.map signature_to_data sigs)) ]
+     (data, None)
 
 let r_to_data (name, resource, digest) =
   List [ Leaf (String name) ;
@@ -181,10 +178,10 @@ let index_to_data i =
                                  Entry ("version"   , Leaf (Int i.Index.version)) ;
                                  Entry ("identifier", Leaf (String i.Index.identifier)) ;
                                  Entry ("resources" , List (List.map r_to_data i.Index.resources)) ]) ;
-         Entry ("signatures", List (List.map signature_to_data i.Index.signatures)) ]
+         Entry ("signature", signature_to_data i.Index.signature) ]
 
 let data_to_index data =
-  let signed, signatures = parse_signed_data data in
+  let signed, signature = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
   and version = extract_int_exn (get_exn signed "version")
   and identifier = extract_string_exn (get_exn signed "identifier")
@@ -194,10 +191,10 @@ let data_to_index data =
     | List r -> List.map data_to_r r
     | _ -> invalid_arg "unknown resources"
   in
-  Index.index ~counter ~version ~resources ~signatures identifier
+  Index.index ~counter ~version ~resources ?signature identifier
 
-let index_raw ji =
-  let data = index_to_data ji in
+let index_raw i =
+  let data = index_to_data i in
   let signed, _ = parse_signed_data data in
   normalise signed
 
@@ -207,20 +204,18 @@ let publickey_to_data pubkey =
     | Some x -> Publickey.encode_key x
   and role = role_to_string pubkey.Publickey.role
   in
-  List [ Entry ("signed", List [ Entry ("counter", Leaf (Int pubkey.Publickey.counter)) ;
-                                 Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
-                                 Entry ("keyid"  , Leaf (String pubkey.Publickey.keyid)) ;
-                                 Entry ("key"    , Leaf (String pem)) ;
-                                 Entry ("role"   , Leaf (String role)) ]);
-         Entry ("signatures", List (List.map signature_to_data pubkey.Publickey.signatures)) ]
+  List [ Entry ("counter", Leaf (Int pubkey.Publickey.counter)) ;
+         Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
+         Entry ("keyid"  , Leaf (String pubkey.Publickey.keyid)) ;
+         Entry ("key"    , Leaf (String pem)) ;
+         Entry ("role"   , Leaf (String role)) ]
 
 let data_to_publickey data =
-  let signed, signatures = parse_signed_data data in
-  let counter = extract_int_exn (get_exn signed "counter")
-  and version = extract_int_exn (get_exn signed "version")
-  and keyid = extract_string_exn (get_exn signed "keyid")
-  and key = extract_string_exn (get_exn signed "key")
-  and role = extract_string_exn (get_exn signed "role")
+  let counter = extract_int_exn (get_exn data "counter")
+  and version = extract_int_exn (get_exn data "version")
+  and keyid = extract_string_exn (get_exn data "keyid")
+  and key = extract_string_exn (get_exn data "key")
+  and role = extract_string_exn (get_exn data "role")
   in
   let key =
     match key with
@@ -230,64 +225,54 @@ let data_to_publickey data =
       | None -> invalid_arg "cannot decode public key"
   and role = string_to_role role
   in
-  match Publickey.publickey ~counter ~version ~role ~signatures  keyid key with
+  match Publickey.publickey ~counter ~version ~role keyid key with
   | Ok t -> t
   | Error s -> invalid_arg s
 
-let publickey_raw pk =
-  let data = publickey_to_data pk in
-  let signed, _ = parse_signed_data data in
-  normalise signed
+let publickey_raw p = normalise (publickey_to_data p)
+
 
 let releases_to_data r =
   let id s = Leaf (String s) in
-  List [ Entry ("signed", List [ Entry ("name"     , Leaf (String r.Releases.name)) ;
-                                 Entry ("counter"  , Leaf (Int r.Releases.counter)) ;
-                                 Entry ("version"  , Leaf (Int r.Releases.version)) ;
-                                 Entry ("releases" , List (List.map id r.Releases.releases)) ]);
-         Entry ("signatures", List (List.map signature_to_data r.Releases.signatures)) ]
+  List [ Entry ("name"     , Leaf (String r.Releases.name)) ;
+         Entry ("counter"  , Leaf (Int r.Releases.counter)) ;
+         Entry ("version"  , Leaf (Int r.Releases.version)) ;
+         Entry ("releases" , List (List.map id r.Releases.releases)) ]
 
 let data_to_releases data =
-  let signed, signatures = parse_signed_data data in
   let id x = extract_string_exn x in
-  let name = extract_string_exn (get_exn signed "name")
-  and counter = extract_int_exn (get_exn signed "counter")
-  and version = extract_int_exn (get_exn signed "version")
-  and releases = match get_exn signed "releases" with
+  let name = extract_string_exn (get_exn data "name")
+  and counter = extract_int_exn (get_exn data "counter")
+  and version = extract_int_exn (get_exn data "version")
+  and releases = match get_exn data "releases" with
     | List es -> List.map id es
     | _ -> invalid_arg "releases not a list"
   in
-  Releases.releases ~counter ~version ~releases ~signatures name
+  Releases.releases ~counter ~version ~releases name
 
-let releases_raw auth =
-  let data = releases_to_data auth in
-  let signed, _ = parse_signed_data data in
-  normalise signed
+let releases_raw r = normalise (releases_to_data r)
+
 
 let authorisation_to_data d =
   let id s = Leaf (String s) in
-  List [ Entry ("signed", List [ Entry ("name"      , Leaf (String d.Authorisation.name)) ;
-                                 Entry ("counter"   , Leaf (Int d.Authorisation.counter)) ;
-                                 Entry ("version"   , Leaf (Int d.Authorisation.version)) ;
-                                 Entry ("authorised", List (List.map id d.Authorisation.authorised)) ]);
-         Entry ("signatures", List (List.map signature_to_data d.Authorisation.signatures)) ]
+  List [ Entry ("name"      , Leaf (String d.Authorisation.name)) ;
+         Entry ("counter"   , Leaf (Int d.Authorisation.counter)) ;
+         Entry ("version"   , Leaf (Int d.Authorisation.version)) ;
+         Entry ("authorised", List (List.map id (S.elements d.Authorisation.authorised))) ]
 
 let data_to_authorisation data =
-  let signed, signatures = parse_signed_data data in
   let id x = extract_string_exn x in
-  let name = extract_string_exn (get_exn signed "name")
-  and counter = extract_int_exn (get_exn signed "counter")
-  and version = extract_int_exn (get_exn signed "version")
-  and authorised = match get_exn signed "authorised" with
-    | List es -> List.map id es
+  let name = extract_string_exn (get_exn data "name")
+  and counter = extract_int_exn (get_exn data "counter")
+  and version = extract_int_exn (get_exn data "version")
+  and authorised = match get_exn data "authorised" with
+    | List es -> S.of_list (List.map id es)
     | _ -> invalid_arg "authorised not a list"
   in
-  Authorisation.authorisation ~counter ~version ~authorised ~signatures name
+  Authorisation.authorisation ~counter ~version ~authorised name
 
-let authorisation_raw auth =
-  let data = authorisation_to_data auth in
-  let signed, _ = parse_signed_data data in
-  normalise signed
+let authorisation_raw a = normalise (authorisation_to_data a)
+
 
 let checksum_to_data c =
   List [ Entry ("filename", Leaf (String c.Checksum.filename)) ;
@@ -301,29 +286,23 @@ let data_to_checksum data =
   in
   { Checksum.filename ; bytesize ; checksum }
 
-
 let checksums_to_data cs =
   let csums = Checksum.fold (fun c acc -> checksum_to_data c :: acc) cs.Checksum.files [] in
-  List [ Entry ("signed", List [ Entry ("counter", Leaf (Int cs.Checksum.counter)) ;
-                                 Entry ("version", Leaf (Int cs.Checksum.version)) ;
-                                 Entry ("name", Leaf (String cs.Checksum.name)) ;
-                                 Entry ("files", List csums) ]) ;
-         Entry ("signatures", List (List.map signature_to_data cs.Checksum.signatures)) ]
+  List [ Entry ("counter", Leaf (Int cs.Checksum.counter)) ;
+         Entry ("version", Leaf (Int cs.Checksum.version)) ;
+         Entry ("name", Leaf (String cs.Checksum.name)) ;
+         Entry ("files", List csums) ]
 
 let data_to_checksums data =
-  let signed, signatures = parse_signed_data data in
-  let counter = extract_int_exn (get_exn signed "counter")
-  and version = extract_int_exn (get_exn signed "version")
-  and name = extract_string_exn (get_exn signed "name")
-  and sums = get_exn signed "files"
+  let counter = extract_int_exn (get_exn data "counter")
+  and version = extract_int_exn (get_exn data "version")
+  and name = extract_string_exn (get_exn data "name")
+  and sums = get_exn data "files"
   in
   let files = match sums with
     | List elements -> List.map data_to_checksum elements
     | _ -> invalid_arg "unknown files"
   in
-  Checksum.checksums ~counter ~version ~signatures name files
+  Checksum.checksums ~counter ~version name files
 
-let checksums_raw cs =
-  let data = checksums_to_data cs in
-  let signed, _ = parse_signed_data data in
-  normalise signed
+let checksums_raw c = normalise (checksums_to_data c)

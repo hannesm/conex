@@ -5,10 +5,10 @@ type t = private {
   version : int64 ;
   identifier : identifier ;
   resources : (name * resource * digest) list ;
-  signatures : Signature.t list ;
+  signature : Signature.t option ;
 }
 
-val index : ?counter:int64 -> ?version:int64 -> ?resources:((name * resource * digest) list) -> ?signatures:(Signature.t list) -> identifier -> t
+val index : ?counter:int64 -> ?version:int64 -> ?resources:((name * resource * digest) list) -> ?signature:Signature.t -> identifier -> t
 
 val pp_resource : Format.formatter -> (name * resource * digest) -> unit
 

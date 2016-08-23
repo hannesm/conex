@@ -22,7 +22,6 @@ type t = {
   keyid : identifier ;
   key : pub option ;
   role : role ;
-  signatures : Signature.t list
 }
 
 let equal a b =
@@ -36,27 +35,24 @@ let pp_publickey ppf p =
     | None -> Format.pp_print_string ppf "none"
     | Some x -> pp_key ppf x
   in
-  Format.fprintf ppf "keyid: %a@ role: %a@ counter: %Lu@ key: %a%a@."
+  Format.fprintf ppf "keyid: %a@ role: %a@ counter: %Lu@ key: %a@."
     pp_id p.keyid
     pp_role p.role
     p.counter
     pp_opt_key p.key
-    Signature.pp_signatures p.signatures
 
-let publickey ?(counter = 0L) ?(version = 0L) ?(role = `Author) ?(signatures = []) keyid key =
+let publickey ?(counter = 0L) ?(version = 0L) ?(role = `Author) keyid key =
   match key with
   | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p < 2048 -> Error "RSA key too small"
-  | _ -> Ok { counter ; version ; role ; signatures ; keyid ; key }
-
-let add_sig t s = { t with signatures = s :: t.signatures }
+  | _ -> Ok { counter ; version ; role ; keyid ; key }
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let verify pub resource data (id, sigval) =
+let verify pub data (id, sigval) =
   match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
   | None -> Error (`InvalidBase64Encoding (id, sigval))
   | Some signature ->
-    let data = Signature.extend_data data id resource in
+    let data = Signature.extend_data data id in
     let cs_data = Cstruct.of_string data in
     match pub.key with
     | Some (RSA_pub key) ->
@@ -64,5 +60,5 @@ let verify pub resource data (id, sigval) =
         Ok id
       else
         let s = Cstruct.to_string signature in
-        Error (`InvalidSignature (id, resource, s, data))
+        Error (`InvalidSignature (id, s, data))
     | None -> Error (`InvalidPublicKey id)

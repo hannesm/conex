@@ -1,5 +1,7 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
+module S : (Set.S with type elt = string)
+
 val pp_list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
 
 type file_type = File | Directory
@@ -25,7 +27,6 @@ type resource = [
   | `PublicKey
   | `Checksum
   | `Releases
-  | `JanitorIndex
   | `Authorisation
 ]
 val resource_to_string : resource -> string
@@ -38,16 +39,23 @@ val role_to_string : role -> string
 val string_to_role : string -> role
 val pp_role : Format.formatter -> role -> unit
 
-type error = [
+type verification_error = [
   | `InvalidBase64Encoding of identifier * string
-  | `InvalidSignature of identifier * resource * string * string
+  | `InvalidSignature of identifier * string * string
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
-  | `InvalidCounter of string * int64 * int64
-  | `InsufficientQuorum of string * identifier list
-  | `InvalidAuthorisation of string * string
-  | `InvalidReleases of string * string
-  | `NotAuthorised of identifier
+  | `NotAuthorised of identifier * identifier
+  | `NoSignature of identifier
+]
+
+val pp_verification_error : Format.formatter -> verification_error -> unit
+
+type error = [
+  | `InvalidName of name * name
+  | `InvalidResource of resource * resource
+  | `NotSigned of name * resource
+  | `InsufficientQuorum of identifier * S.t
+  | `MissingSignature of identifier
 ]
 
 val pp_error : Format.formatter -> error -> unit
