@@ -65,6 +65,8 @@ incremental:
   where either patch or repo will be given, and root will point to current head.
   initial distribution of trust anchors for default repo with opam, available
   via %root%/trust_anchors.txt <- specify file format of TA (multiple id/key/sig?)
+   --> who modifies TA/J files? conex! and where? in root? (need to be preserved,
+       and not modified by opam when moving stuff around)
   --> patch and VCS handling is inside of opam, not conex
 --> will this scale to timestamp server stuff?  there sth needs to know about
     git, how to extract data, and verification (including TA)
@@ -91,3 +93,14 @@ signature is done over <data> <identifier> <resource> to prevent reusing the sam
    OTOH reading all the keys just for role info seems bad (esp since it needs to
    be done on every startup) --> might just have a local janitors.txt (and if
    not present, do slow startup)
+
+- executables:
+ opam:
+  verify --root <oldrepo, containing TA/janitors> --patch <patchfile> --whole <repo>
+ authors:
+  sign (--key keyid) release
+  generate key (also signs)
+  apply_for_becoming_janitor
+  show_all_unsigned_in_local_repo
+ janitors:
+  accept <package|key|newjanitor>
