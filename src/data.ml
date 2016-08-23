@@ -176,14 +176,14 @@ let data_to_r = function
      | Some r -> (name, r, digest))
   | _ -> invalid_arg "bad resource"
 
-let janitorindex_to_data ji =
-  List [ Entry ("signed", List [ Entry ("counter"   , Leaf (Int ji.Janitorindex.counter)) ;
-                                 Entry ("version"   , Leaf (Int ji.Janitorindex.version)) ;
-                                 Entry ("identifier", Leaf (String ji.Janitorindex.identifier)) ;
-                                 Entry ("resources" , List (List.map r_to_data ji.Janitorindex.resources)) ]) ;
-         Entry ("signatures", List (List.map signature_to_data ji.Janitorindex.signatures)) ]
+let index_to_data i =
+  List [ Entry ("signed", List [ Entry ("counter"   , Leaf (Int i.Index.counter)) ;
+                                 Entry ("version"   , Leaf (Int i.Index.version)) ;
+                                 Entry ("identifier", Leaf (String i.Index.identifier)) ;
+                                 Entry ("resources" , List (List.map r_to_data i.Index.resources)) ]) ;
+         Entry ("signatures", List (List.map signature_to_data i.Index.signatures)) ]
 
-let data_to_janitorindex data =
+let data_to_index data =
   let signed, signatures = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
   and version = extract_int_exn (get_exn signed "version")
@@ -194,10 +194,10 @@ let data_to_janitorindex data =
     | List r -> List.map data_to_r r
     | _ -> invalid_arg "unknown resources"
   in
-  Janitorindex.janitorindex ~counter ~version ~resources ~signatures identifier
+  Index.index ~counter ~version ~resources ~signatures identifier
 
-let janitorindex_raw ji =
-  let data = janitorindex_to_data ji in
+let index_raw ji =
+  let data = index_to_data ji in
   let signed, _ = parse_signed_data data in
   normalise signed
 

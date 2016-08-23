@@ -106,11 +106,11 @@ let verify_releases repo a r =
   verify_data repo a.Authorisation.authorised `Releases raw signatures <<|>>
     has_quorum r.Releases.name repo `Releases raw
 
-let verify_janitorindex repo ji =
-  let raw = Data.janitorindex_raw ji
-  and signatures = ji.Janitorindex.signatures
+let verify_index repo i =
+  let raw = Data.index_raw i
+  and signatures = i.Index.signatures
   in
-  verify_data repo [ji.Janitorindex.identifier] `JanitorIndex raw signatures
+  verify_data repo [i.Index.identifier] `JanitorIndex raw signatures
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
@@ -140,19 +140,19 @@ let all_keyids repo = Layout.keys repo.data
 
 let all_janitors repo = Layout.janitors repo.data
 
-let read_janitorindex repo name =
-  match repo.data.Provider.read (Layout.janitorindex_path name) with
+let read_index repo name =
+  match repo.data.Provider.read (Layout.index_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    let r = Data.data_to_janitorindex (Data.parse data) in
-    if r.Janitorindex.identifier <> name then
-      Error (`NameMismatch (name, r.Janitorindex.identifier))
+    let r = Data.data_to_index (Data.parse data) in
+    if r.Index.identifier <> name then
+      Error (`NameMismatch (name, r.Index.identifier))
     else
       Ok r
 
-let write_janitorindex repo j =
-  let data = Data.janitorindex_to_data j in
-  let name = Layout.janitorindex_path j.Janitorindex.identifier in
+let write_index repo j =
+  let data = Data.index_to_data j in
+  let name = Layout.index_path j.Index.identifier in
   repo.data.Provider.write name (Data.normalise data)
 
 let read_authorisation repo name =
@@ -262,15 +262,15 @@ let add_csums repo janitor rs =
   { repo with janitor_checked }
 
 let load_janitor ?(verify = false) repo janitor =
-  match read_janitorindex repo janitor with
+  match read_index repo janitor with
   | Ok ji ->
     if verify then
       let repo = maybe_load repo [janitor] in
-      match verify_janitorindex repo ji with
-      | Ok _ -> add_csums repo janitor ji.Janitorindex.resources
+      match verify_index repo ji with
+      | Ok _ -> add_csums repo janitor ji.Index.resources
       | Error _ -> invalid_arg "verification failed"
     else
-      add_csums repo janitor ji.Janitorindex.resources
+      add_csums repo janitor ji.Index.resources
   | Error _ -> invalid_arg "unlikely to happen"
 
 let load_janitors ?(verify = false) repo =

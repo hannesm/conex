@@ -18,7 +18,7 @@ val verify_key : t -> Publickey.t -> res
 val verify_authorisation : t -> ?authorised:(identifier list) -> Authorisation.t -> res
 val verify_checksum : t -> Authorisation.t -> Checksum.t -> res
 val verify_releases : t -> Authorisation.t -> Releases.t -> res
-val verify_janitorindex : t -> Janitorindex.t -> res
+val verify_index : t -> Index.t -> res
 
 (* TODO: are these return types good? *)
 val load_keys : ?verify:bool -> t -> identifier list -> t
@@ -39,8 +39,8 @@ val pp_r_err : Format.formatter -> r_err -> unit
 val read_key : t -> identifier -> Publickey.t r_res
 val write_key : t -> Publickey.t -> unit
 
-val read_janitorindex : t -> identifier -> Janitorindex.t r_res
-val write_janitorindex : t -> Janitorindex.t -> unit
+val read_index : t -> identifier -> Index.t r_res
+val write_index : t -> Index.t -> unit
 
 val read_authorisation : t -> name -> Authorisation.t r_res
 val write_authorisation : t -> Authorisation.t -> unit

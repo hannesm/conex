@@ -58,10 +58,10 @@ let releases =
 
 let ji =
   let module M = struct
-    type t = Janitorindex.t
-    let pp = Janitorindex.pp_janitorindex
+    type t = Index.t
+    let pp = Index.pp_index
     let equal a b =
-      let open Janitorindex in
+      let open Index in
       a.counter = b.counter &&
       a.version = b.version &&
       a.identifier = b.identifier &&

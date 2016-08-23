@@ -186,7 +186,7 @@ let empty_r () =
   Alcotest.check (result releases re) "reading releases foo in empty repo fails"
     (Error (`NotFound "foo")) (Repository.read_releases r "foo") ;
   Alcotest.check (result ji re) "reading janitorindex foo in empty repo fails"
-    (Error (`NotFound "foo")) (Repository.read_janitorindex r "foo") ;
+    (Error (`NotFound "foo")) (Repository.read_index r "foo") ;
   Alcotest.check (result cs re) "reading checksum foo.0 in empty repo fails"
     (Error (`NotFound "foo.0")) (Repository.read_checksum r "foo.0") ;
   Alcotest.check (result cs re) "computing checksum foo.0 in empty repo fails"
@@ -239,44 +239,44 @@ let empty_ji_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let sign ji priv =
-    let raw = Data.janitorindex_raw ji in
+    let raw = Data.index_raw ji in
     let s = Private.sign "foo" priv `JanitorIndex raw in
-    Janitorindex.add_sig ji s
+    Index.add_sig ji s
   in
   let k, pk = gen_pub ~role:`Janitor "foo" in
-  let ji = Janitorindex.janitorindex "foo" in
+  let ji = Index.index "foo" in
   let ji = sign ji pk in
   Alcotest.check (result ok err) "janitorindex requires public key to be present"
-    (Error (`InvalidIdentifier "foo")) (Repository.verify_janitorindex r ji) ;
+    (Error (`InvalidIdentifier "foo")) (Repository.verify_index r ji) ;
   let r = Repository.add_trusted_key r k in
   Alcotest.check (result ok err) "janitorindex verifies good"
-    (Ok (`Identifier "foo")) (Repository.verify_janitorindex r ji)
+    (Ok (`Identifier "foo")) (Repository.verify_index r ji)
 
 let ji_key_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let sign_ji ji priv =
-    let raw = Data.janitorindex_raw ji in
+    let raw = Data.index_raw ji in
     let s = Private.sign "foo" priv `JanitorIndex raw in
-    Janitorindex.add_sig ji s
+    Index.add_sig ji s
   in
   let k, pk = gen_pub ~role:`Janitor "foo" in
   let ak, apk = gen_pub "foobar" in
   let raw = Data.publickey_raw ak in
   let resources = ["foobar", `PublicKey, digest raw] in
-  let ji = Janitorindex.janitorindex ~resources "foo" in
+  let ji = Index.index ~resources "foo" in
   let ji = sign_ji ji pk in
   let ak =
     Publickey.add_sig ak (Private.sign "foobar" apk `PublicKey raw)
   in
   let r = Repository.add_trusted_key r k in
   Alcotest.check (result ok err) "janitorindex verifies good"
-    (Ok (`Identifier "foo")) (Repository.verify_janitorindex r ji) ;
+    (Ok (`Identifier "foo")) (Repository.verify_index r ji) ;
   Alcotest.check (result ok err) "ak does not verify"
     (Error (`InsufficientQuorum ("foobar", [])))
     (Repository.verify_key r ak) ;
   Repository.write_key r k ; (* TODO: atm needed, but maybe get rid of this *)
-  Repository.write_janitorindex r ji ;
+  Repository.write_index r ji ;
   let r = Repository.load_janitor ~verify:true r "foo" in
   Alcotest.check (result ok err) "ak verifies"
     (Ok (`Both ("foobar", ["foo"])))
@@ -286,9 +286,9 @@ let auth_rel_key_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let sign_ji ji priv =
-    let raw = Data.janitorindex_raw ji in
+    let raw = Data.index_raw ji in
     let s = Private.sign "foo" priv `JanitorIndex raw in
-    Janitorindex.add_sig ji s
+    Index.add_sig ji s
   in
   let k, pk = gen_pub ~role:`Janitor "foo" in
   let ak, apk = gen_pub "foobar" in
@@ -299,7 +299,7 @@ let auth_rel_key_r () =
     "foobar", `PublicKey, digest ak_raw ;
     "barf", `Authorisation, digest auth_raw ]
   in
-  let ji = Janitorindex.janitorindex ~resources "foo" in
+  let ji = Index.index ~resources "foo" in
   let ji = sign_ji ji pk in
   let ak =
     Publickey.add_sig ak (Private.sign "foobar" apk `PublicKey ak_raw)
@@ -314,7 +314,7 @@ let auth_rel_key_r () =
   Repository.write_releases r releases ;
   Repository.write_key r k ; (* TODO: atm needed, but maybe get rid of this *)
   Repository.write_key r ak ;
-  Repository.write_janitorindex r ji ;
+  Repository.write_index r ji ;
   Alcotest.(check (list string) "authorisations list is non-empty"
     ["barf"] (Repository.all_authorisations r)) ;
   let r = Repository.add_trusted_key r k in

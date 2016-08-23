@@ -53,7 +53,7 @@ let keys p =
 let key_path id = [ key_dir ; id ]
 
 let jipath = "sigs"
-let janitorindex_path ji = [ jipath ; ji ]
+let index_path ji = [ jipath ; ji ]
 
 let janitors p =
   match p.Provider.read_dir [ jipath ] with
