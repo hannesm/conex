@@ -108,9 +108,10 @@ let verify_releases repo a r =
   | `Both b -> Ok (`Both b)
   | `Quorum js -> Ok (`Quorum js)
   | `NoQuorum (id, _) -> Ok (`Identifier id)
+  (* need to verify that package dir contains all mentioned releases! *)
 
 let verify_checksum repo a r cs =
-  (* XXX: different tag? *)
+  (* XXX: different tag for each guard? *)
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
   guard (List.mem cs.Checksum.name r.Releases.releases)
@@ -120,6 +121,7 @@ let verify_checksum repo a r cs =
   | `Both b -> Ok (`Both b)
   | `Quorum js -> Ok (`Quorum js)
   | `NoQuorum (id, _) -> Ok (`Identifier id)
+  (* still need to verify checksums against the concrete files *)
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
@@ -252,6 +254,7 @@ let add_csums repo id rs =
   { repo with valid }
 
 let add_index r idx =
+  (* XXX: replace with a convenience function : PK.t -> I.t -> or_error *)
   add_csums r idx.Index.identifier idx.Index.resources
 
 let maybe_load repo ids =

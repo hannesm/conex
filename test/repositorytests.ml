@@ -706,6 +706,9 @@ let cs () =
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
   let rel = Releases.releases ~releases:[v] pname in
   let cs = Checksum.checksums v [] in
+  Alcotest.check (result ok err) "checksum not signed"
+    (Error (`NotSigned (v, `Checksum, S.empty)))
+    (Repository.verify_checksum r auth rel cs) ;
   let resources = [
     pname, `Releases, digest (Data.releases_raw rel) ;
     v, `Checksum, digest (Data.checksums_raw cs)
@@ -715,10 +718,139 @@ let cs () =
   let r = Repository.add_index r sidx in
   Alcotest.check (result ok err) "good checksum"
     (Ok (`Identifier id))
+    (Repository.verify_checksum r auth rel cs) ;
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result ok err) "good checksum (both)"
+    (Ok (`Both (id, S.singleton jid)))
     (Repository.verify_checksum r auth rel cs)
 
+let cs_quorum () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let v = pname ^ ".0" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases ~releases:[v] pname in
+  let cs = Checksum.checksums v [] in
+  let resources = [
+    pname, `Releases, digest (Data.releases_raw rel) ;
+    v, `Checksum, digest (Data.checksums_raw cs)
+  ] in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result ok err) "good checksum (quorum)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_checksum r auth rel cs)
+
+let cs_bad_name () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let v = pname ^ ".0" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases ~releases:[v] v in
+  let cs = Checksum.checksums v [] in
+  let resources = [
+    v, `Releases, digest (Data.releases_raw rel) ;
+    v, `Checksum, digest (Data.checksums_raw cs)
+  ] in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result ok err) "bad name (auth != rel)"
+    (Error (`InvalidName (v, pname)))
+    (Repository.verify_checksum r auth rel cs)
+
+let cs_bad_name2 () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let v = pname ^ ".0" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases ~releases:[pname] pname in
+  let cs = Checksum.checksums v [] in
+  let resources = [
+    pname, `Releases, digest (Data.releases_raw rel) ;
+    v, `Checksum, digest (Data.checksums_raw cs)
+  ] in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result ok err) "bad name (not member of releases)"
+    (Error (`InvalidName (pname, v)))
+    (Repository.verify_checksum r auth rel cs)
+
+let cs_wrong_name () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let v = pname ^ ".0" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases ~releases:[v] pname in
+  let cs = Checksum.checksums v [] in
+  let resources = [
+    pname, `Releases, digest (Data.releases_raw rel) ;
+    pname, `Checksum, digest (Data.checksums_raw cs)
+  ] in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result ok err) "wrong name"
+    (Error (`InvalidName (v, pname)))
+    (Repository.verify_checksum r auth rel cs)
+
+let cs_wrong_resource () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let v = pname ^ ".0" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases ~releases:[v] pname in
+  let cs = Checksum.checksums v [] in
+  let resources = [
+    pname, `Releases, digest (Data.releases_raw rel) ;
+    v, `Releases, digest (Data.checksums_raw cs)
+  ] in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result ok err) "wrong resource"
+    (Error (`InvalidResource (`Checksum, `Releases)))
+    (Repository.verify_checksum r auth rel cs)
+
+
 let cs_repo_tests = [
-  "basic checksum", `Quick, cs
+  "basic checksum", `Quick, cs ;
+  "quorum checksum", `Quick, cs_quorum ;
+  "bad releases name", `Quick, cs_bad_name ;
+  "checksum name not in releases", `Quick, cs_bad_name2 ;
+  "wrong checksum name", `Quick, cs_wrong_name ;
+  "wrong checksum resource", `Quick, cs_wrong_resource ;
 ]
 
 let tests = [
