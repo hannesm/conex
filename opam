@@ -8,11 +8,11 @@ maintainer:   ["Hannes Mehnert <hannes@mehnert.org>"]
 license:      "BSD2"
 
 build: [
-  [ "./build.sh" "bin" ]
+  [ "./build" "bin" ]
 ]
 
 build-test: [
-  [ "./build.sh" "test" ]
+  [ "./build" "test" ]
   [ "./tests.native" ]
 ]
 
