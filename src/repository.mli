@@ -17,9 +17,9 @@ type res = (ok, error) result
 val pp_res : Format.formatter -> res -> unit
 
 val verify_key : t -> Publickey.t -> res
-val verify_authorisation : t -> ?authorised:S.t -> Authorisation.t -> res
-val verify_checksum : t -> Authorisation.t -> Checksum.t -> res
+val verify_authorisation : t -> Authorisation.t -> res
 val verify_releases : t -> Authorisation.t -> Releases.t -> res
+val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t -> res
 
 val add_index : t -> Index.t -> t
 

@@ -11,10 +11,12 @@ let decode_key data =
 let encode_key = function
   | RSA_pub pub -> Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub))
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_key ppf = function
   | RSA_pub p -> Format.fprintf ppf "%d bits RSA key:@.%s@."
                                 (Nocrypto.Rsa.pub_bits p)
                                 (encode_key (RSA_pub p))
+(*BISECT-IGNORE-END*)
 
 type t = {
   counter : int64 ;
@@ -30,6 +32,7 @@ let equal a b =
   a.role = b.role &&
   a.key = b.key
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_publickey ppf p =
   let pp_opt_key ppf = function
     | None -> Format.pp_print_string ppf "none"
@@ -40,6 +43,7 @@ let pp_publickey ppf p =
     pp_role p.role
     p.counter
     pp_opt_key p.key
+(*BISECT-IGNORE-END*)
 
 let publickey ?(counter = 0L) ?(version = 0L) ?(role = `Author) keyid key =
   match key with

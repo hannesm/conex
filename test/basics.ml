@@ -133,7 +133,7 @@ let multiple () =
   let s = Keystore.empty in
   let k1, _ = gen_pub "a"
   and k2, _ = gen_pub "b"
-  and k3, _ = gen_pub "a"
+  and k3, _ = gen_pub ~priv:(Private.generate ()) "a"
   in
   let s' = Keystore.add s k1 in
   Alcotest.(check int "multiple: inserting doesn't affect original" 0 (Keystore.size s)) ;

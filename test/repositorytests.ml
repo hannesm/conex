@@ -207,6 +207,33 @@ let key_r () =
   Alcotest.check (result publickey re) "reading key gives back right key"
     (Ok k) (Repository.read_key r "foo")
 
+let checks_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  p.write ["data"; "foo"; "foo.0"; "foo"] "bar" ;
+  p.write ["data"; "foo"; "foo.0"; "bar"] "foo" ;
+  p.write ["data"; "foo"; "foo.0"; "files"; "patch1"] "p1" ;
+  p.write ["data"; "foo"; "foo.0"; "files"; "patch2"] "p2" ;
+  (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
+  let csums = [
+    { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
+    { Checksum.filename = "foo" ; bytesize = 3L ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
+    { Checksum.filename = "files/patch1" ; bytesize = 2L ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
+    { Checksum.filename = "files/patch2" ; bytesize = 2L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
+  ]
+  in
+  let css = Checksum.checksums "foo.0" csums in
+  Alcotest.check (result cs re) "checksum computation works"
+    (Ok css) (Repository.compute_checksum r "foo.0")
+
+let basic_repo_tests = [
+  "empty repo", `Quick, empty_r ;
+  "key repo", `Quick, key_r ;
+  "checksum computation is sane", `Quick, checks_r ;
+]
+
+
 let idx_sign () =
   let p = Mem.mem_provider () in
   let r = Repository.repository p in
@@ -259,7 +286,7 @@ let empty_key () =
   in
   let r = Repository.add_trusted_key r jpub in
   Alcotest.check (result ok err) "not signed"
-    (Error (`NotSigned (id, `PublicKey)))
+    (Error (`NotSigned (id, `PublicKey, S.empty)))
     (Repository.verify_key r pub) ;
   let r' = Repository.add_index r jidx in
   Alcotest.check (result ok err) "empty publickey good"
@@ -284,7 +311,7 @@ let key_good () =
   in
   let r = Repository.add_trusted_key r jpub in
   Alcotest.check (result ok err) "not signed"
-    (Error (`NotSigned (id, `PublicKey)))
+    (Error (`NotSigned (id, `PublicKey, S.empty)))
     (Repository.verify_key r pub) ;
   let r' = Repository.add_index r jidx in
   Alcotest.check (result ok err) "publickey missing self-sig"
@@ -298,6 +325,39 @@ let key_good () =
   Alcotest.check (result ok err) "publickey is fine"
     (Ok (`Both (id, S.singleton jid)))
     (Repository.verify_key r''' pub)
+
+let key_good_quorum () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:3 p in
+  let id = "foo" in
+  let pub, priv = gen_pub id in
+  let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let idx =
+    let idx = Index.index ~resources id in
+    Private.sign_index idx priv
+  in
+  let r = Repository.add_index r idx in
+  Alcotest.check (result ok err) "publickey missing quorum 0"
+    (Error (`InsufficientQuorum (id, S.empty)))
+    (Repository.verify_key r pub) ;
+  let jidx r jid =
+    let jpub, jpriv = gen_pub ~role:`Janitor jid in
+    let idx = Index.index ~resources jid in
+    let idx = Private.sign_index idx jpriv in
+    Repository.add_index (Repository.add_trusted_key r jpub) idx
+  in
+  let r = jidx r "jana" in
+  Alcotest.check (result ok err) "publickey missing quorum 1"
+    (Error (`InsufficientQuorum (id, S.singleton "jana")))
+    (Repository.verify_key r pub) ;
+  let r = jidx r "janb" in
+  Alcotest.check (result ok err) "publickey missing quorum 2"
+    (Error (`InsufficientQuorum (id, S.add "janb" (S.singleton "jana"))))
+    (Repository.verify_key r pub) ;
+  let r = jidx r "janc" in
+  Alcotest.check (result ok err) "publickey is fine"
+    (Ok (`Both (id, S.add "janc" (S.add "janb" (S.singleton "jana")))))
+    (Repository.verify_key r pub)
 
 let no_janitor () =
   let p = Mem.mem_provider () in
@@ -330,10 +390,10 @@ let no_janitor () =
     (Error (`InsufficientQuorum (id, S.empty)))
     (Repository.verify_key r pub) ;
   Alcotest.check (result ok err) "missing quorum for empty"
-    (Error (`NotSigned (id', `PublicKey)))
+    (Error (`NotSigned (id', `PublicKey, S.empty)))
     (Repository.verify_key r pem)
 
-let wrong_resource () =
+let k_wrong_resource () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let jid = "aaa" in
@@ -356,7 +416,7 @@ let wrong_resource () =
     (Error (`InvalidResource (`PublicKey, `Checksum)))
     (Repository.verify_key r pub)
 
-let wrong_name () =
+let k_wrong_name () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let jid = "aaa" in
@@ -379,124 +439,293 @@ let wrong_name () =
     (Error (`InvalidName (id, jid)))
     (Repository.verify_key r pub)
 
-(*
-let ji_key_r () =
-  let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
-  let sign_ji ji priv =
-    let raw = Data.index_raw ji in
-    let s = Private.sign "foo" priv `JanitorIndex raw in
-    Index.add_sig ji s
-  in
-  let k, pk = gen_pub ~role:`Janitor "foo" in
-  let ak, apk = gen_pub "foobar" in
-  let raw = Data.publickey_raw ak in
-  let resources = ["foobar", `PublicKey, digest raw] in
-  let ji = Index.index ~resources "foo" in
-  let ji = sign_ji ji pk in
-  let ak =
-    Publickey.add_sig ak (Private.sign "foobar" apk `PublicKey raw)
-  in
-  let r = Repository.add_trusted_key r k in
-  Alcotest.check (result ok err) "janitorindex verifies good"
-    (Ok (`Identifier "foo")) (Repository.verify_index r ji) ;
-  Alcotest.check (result ok err) "ak does not verify"
-    (Error (`InsufficientQuorum ("foobar", [])))
-    (Repository.verify_key r ak) ;
-  Repository.write_key r k ; (* TODO: atm needed, but maybe get rid of this *)
-  Repository.write_index r ji ;
-  let r = Repository.load_janitor ~verify:true r "foo" in
-  Alcotest.check (result ok err) "ak verifies"
-    (Ok (`Both ("foobar", ["foo"])))
-    (Repository.verify_key r ak)
-
-let auth_rel_key_r () =
-  let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
-  let sign_ji ji priv =
-    let raw = Data.index_raw ji in
-    let s = Private.sign "foo" priv `JanitorIndex raw in
-    Index.add_sig ji s
-  in
-  let k, pk = gen_pub ~role:`Janitor "foo" in
-  let ak, apk = gen_pub "foobar" in
-  let ak_raw = Data.publickey_raw ak in
-  let auth = Authorisation.authorisation ~authorised:["foobar"] "barf" in
-  let auth_raw = Data.authorisation_raw auth in
-  let resources = [
-    "foobar", `PublicKey, digest ak_raw ;
-    "barf", `Authorisation, digest auth_raw ]
-  in
-  let ji = Index.index ~resources "foo" in
-  let ji = sign_ji ji pk in
-  let ak =
-    Publickey.add_sig ak (Private.sign "foobar" apk `PublicKey ak_raw)
-  in
-  let releases =
-    let r = Releases.releases "barf" in
-    let raw = Data.releases_raw r in
-    let s = Private.sign "foobar" apk `Releases raw in
-    Releases.add_sig r s
-  in
-  Repository.write_authorisation r auth ;
-  Repository.write_releases r releases ;
-  Repository.write_key r k ; (* TODO: atm needed, but maybe get rid of this *)
-  Repository.write_key r ak ;
-  Repository.write_index r ji ;
-  Alcotest.(check (list string) "authorisations list is non-empty"
-    ["barf"] (Repository.all_authorisations r)) ;
-  let r = Repository.add_trusted_key r k in
-  let r = Repository.load_janitors r in (* TODO: atm needed, but maybe get rid of this *)
-  Alcotest.check (result ok err) "key of foobar verifies"
-    (Ok (`Both ("foobar", ["foo"])))
-    (Repository.verify_key r ak) ;
-  Alcotest.check (result ok err) "auth verifies"
-    (Ok (`Quorum ["foo"]))
-    (Repository.verify_authorisation r auth) ;
-  let r = Repository.load_keys ~verify:true r ["foobar"] in
-  Alcotest.check (result ok err) "releases verifies"
-    (Ok (`Identifier "foobar"))
-    (Repository.verify_releases r auth releases)
-*)
-
-
-let checks_r () =
-  let open Provider in
-  let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
-  p.write ["data"; "foo"; "foo.0"; "foo"] "bar" ;
-  p.write ["data"; "foo"; "foo.0"; "bar"] "foo" ;
-  p.write ["data"; "foo"; "foo.0"; "files"; "patch1"] "p1" ;
-  p.write ["data"; "foo"; "foo.0"; "files"; "patch2"] "p2" ;
-  (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
-  let csums = [
-    { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
-    { Checksum.filename = "foo" ; bytesize = 3L ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
-    { Checksum.filename = "files/patch1" ; bytesize = 2L ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
-    { Checksum.filename = "files/patch2" ; bytesize = 2L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
-  ]
-  in
-  let css = Checksum.checksums "foo.0" csums in
-  Alcotest.check (result cs re) "checksum computation works"
-    (Ok css) (Repository.compute_checksum r "foo.0")
-
-let repo_tests = [
-  "empty repo", `Quick, empty_r ;
-  "key repo", `Quick, key_r ;
+let key_repo_tests = [
   "signed index", `Quick, idx_sign ;
   "empty key", `Quick, empty_key ;
   "key good", `Quick, key_good ;
+  "key good with quorum = 3", `Quick, key_good_quorum ;
   "no janitor", `Quick, no_janitor ;
-  "wrong resource", `Quick, wrong_resource ;
-  "wrong name", `Quick, wrong_name ;
-(*  "signed key repo", `Quick, key_sign_r ;
-  "signed ji repo", `Quick, empty_ji_r ;
-  "key in signed ji repo", `Quick, ji_key_r ;
-    "releases and authorisation in repo", `Quick, auth_rel_key_r ; *)
-  "checksum computation is sane", `Quick, checks_r ;
+  "wrong resource", `Quick, k_wrong_resource ;
+  "wrong name", `Quick, k_wrong_name ;
+]
+
+let auth () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let auth = Authorisation.authorisation pname in
+  Alcotest.check (result ok err) "auth missing quorum"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_authorisation r auth) ;
+  let resources = [
+    pname, `Authorisation, digest (Data.authorisation_raw auth)
+  ] in
+  let j_sign r jid =
+    let jpub, jpriv = gen_pub ~role:`Janitor jid in
+    let idx =
+      let i = Index.index ~resources jid in
+      Private.sign_index i jpriv
+    in
+    Repository.add_index (Repository.add_trusted_key r jpub) idx
+  in
+  let r = j_sign r "janitor" in
+  Alcotest.check (result ok err) "auth properly signed"
+    (Ok (`Quorum (S.singleton "janitor")))
+    (Repository.verify_authorisation r auth) ;
+  let r = Repository.repository ~quorum:2 p in
+  let r = j_sign r "janitor" in
+  Alcotest.check (result ok err) "auth missing quorum of 2"
+    (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
+    (Repository.verify_authorisation r auth) ;
+  let r = j_sign r "janitor2" in
+  Alcotest.check (result ok err) "auth quorum of 2 good"
+    (Ok (`Quorum (S.add "janitor2" (S.singleton "janitor"))))
+    (Repository.verify_authorisation r auth)
+
+let auth_self_signed () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let id = "foo" in
+  let pname = "foop" in
+  let auth = Authorisation.authorisation pname in
+  let pub, priv = gen_pub id in
+  let resources = [
+    pname, `Authorisation, digest (Data.authorisation_raw auth) ;
+    id, `PublicKey, digest (Data.publickey_raw pub)
+  ] in
+  let s_idx id priv =
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let idx = s_idx id priv in
+  let r = Repository.add_index r idx in
+  Alcotest.check (result ok err) "auth missing quorum"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_authorisation r auth) ;
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jidx = s_idx jid jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  Alcotest.check (result ok err) "auth ok"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_authorisation r auth)
+
+let a_wrong_resource () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let auth = Authorisation.authorisation pname in
+  let resources = [ pname, `Checksum, digest (Data.authorisation_raw auth) ] in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  Alcotest.check (result ok err) "wrong resource"
+    (Error (`InvalidResource (`Authorisation, `Checksum)))
+    (Repository.verify_authorisation r auth)
+
+let a_wrong_name () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let auth = Authorisation.authorisation pname in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let resources = [ "barf", `Authorisation, digest (Data.authorisation_raw auth) ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  Alcotest.check (result ok err) "wrong name"
+    (Error (`InvalidName (pname, "barf")))
+    (Repository.verify_authorisation r auth)
+
+let auth_repo_tests = [
+  "basic auth", `Quick, auth ;
+  "also self signed", `Quick, auth_self_signed ;
+  "wrong resource", `Quick, a_wrong_resource ;
+  "wrong name", `Quick, a_wrong_name ;
+]
+
+let rel () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases pname in
+  Alcotest.check (result ok err) "not signed"
+    (Error (`NotSigned (pname, `Releases, S.empty)))
+    (Repository.verify_releases r auth rel) ;
+  let _pub, priv = gen_pub id in
+  let sidx =
+    let resources = [
+      pname, `Releases, digest (Data.releases_raw rel)
+    ] in
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "properly signed"
+    (Ok (`Identifier id))
+    (Repository.verify_releases r auth rel)
+
+let rel_quorum () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases pname in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let resources = [
+    pname, `Releases, digest (Data.releases_raw rel)
+  ] in
+  let sidx =
+    Private.sign_index (Index.index ~resources jid) jpriv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "properly signed (quorum)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_releases r auth rel) ;
+  let _pub, priv = gen_pub id in
+  let sidx' =
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx' in
+  Alcotest.check (result ok err) "properly signed (both)"
+    (Ok (`Both (id, S.singleton jid)))
+    (Repository.verify_releases r auth rel)
+
+let rel_not_authorised () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton "foo") pname in
+  let rel = Releases.releases pname in
+  let _pub, priv = gen_pub id in
+  let sidx =
+    let resources = [
+      pname, `Releases, digest (Data.releases_raw rel)
+    ] in
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "not authorised"
+    (Error (`NotSigned (pname, `Releases, S.empty)))
+    (Repository.verify_releases r auth rel)
+
+let rel_name_mismatch () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) "foo" in
+  let rel = Releases.releases pname in
+  let _pub, priv = gen_pub id in
+  let sidx =
+    let resources = [
+      pname, `Releases, digest (Data.releases_raw rel)
+    ] in
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "releases and authorisation names do not match"
+    (* XXX: maybe renamed? *)
+    (Error (`InvalidName (pname, "foo")))
+    (Repository.verify_releases r auth rel)
+
+let rel_wrong_name () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases pname in
+  let _pub, priv = gen_pub id in
+  let sidx =
+    let resources = [
+      "foo", `Releases, digest (Data.releases_raw rel)
+    ] in
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "wrong name in releases"
+    (Error (`InvalidName (pname, "foo")))
+    (Repository.verify_releases r auth rel)
+
+let rel_wrong_resource () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases pname in
+  let _pub, priv = gen_pub id in
+  let sidx =
+    let resources = [
+      pname, `Authorisation, digest (Data.releases_raw rel)
+    ] in
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "wrong resource for releases"
+    (Error (`InvalidResource (`Releases, `Authorisation)))
+    (Repository.verify_releases r auth rel)
+
+let rel_repo_tests = [
+  "basic release", `Quick, rel ;
+  "quorum on releases", `Quick, rel_quorum ;
+  "not authorised", `Quick, rel_not_authorised ;
+  "name mismatch (releases and authorisation)", `Quick, rel_name_mismatch ;
+  "wrong name", `Quick, rel_wrong_name ;
+  "wrong resource", `Quick, rel_wrong_resource ;
+]
+
+let cs () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let v = pname ^ ".0" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = Releases.releases ~releases:[v] pname in
+  let cs = Checksum.checksums v [] in
+  let resources = [
+    pname, `Releases, digest (Data.releases_raw rel) ;
+    v, `Checksum, digest (Data.checksums_raw cs)
+  ] in
+  let _pub, priv = gen_pub id in
+  let sidx = Private.sign_index (Index.index ~resources id) priv in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result ok err) "good checksum"
+    (Ok (`Identifier id))
+    (Repository.verify_checksum r auth rel cs)
+
+let cs_repo_tests = [
+  "basic checksum", `Quick, cs
 ]
 
 let tests = [
-  "Memory provider", mem_provider_tests ;
-  "Repository", repo_tests ;
+  "MemoryProvider", mem_provider_tests ;
+  "RepositoryBasics", basic_repo_tests ;
+  "RepositoryKeys", key_repo_tests ;
+  "RepositoryAuthorisation", auth_repo_tests ;
+  "RepositoryReleases", rel_repo_tests ;
+  "RepositoryChecksums", cs_repo_tests ;
 ]

@@ -53,8 +53,8 @@ val pp_verification_error : Format.formatter -> verification_error -> unit
 type error = [
   | `InvalidName of name * name
   | `InvalidResource of resource * resource
-  | `NotSigned of name * resource
-  | `InsufficientQuorum of identifier * S.t
+  | `NotSigned of name * resource * S.t
+  | `InsufficientQuorum of name * S.t
   | `MissingSignature of identifier
 ]
 

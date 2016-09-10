@@ -2,6 +2,7 @@ type ('a, 'b) result = Ok of 'a | Error of 'b
 
 module S = Set.Make(String)
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_list pe ppf xs =
   Format.pp_print_string ppf "[" ;
   let rec p1 = function
@@ -10,6 +11,7 @@ let pp_list pe ppf xs =
     | x::xs -> Format.fprintf ppf "%a,@ " pe x ; p1 xs
   in
   p1 xs
+(*BISECT-IGNORE-END*)
 
 type file_type = File | Directory
 
@@ -31,21 +33,27 @@ let string_to_path str = Strhelper.cuts '/' str
 
 type name = string
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_name ppf x = Format.pp_print_string ppf x
+(*BISECT-IGNORE-END*)
 
 let name_equal a b = String.compare a b = 0
 
 
 type identifier = string
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_id ppf x = Format.pp_print_string ppf x
+(*BISECT-IGNORE-END*)
 
 let id_equal a b = String.compare a b = 0
 
 
 type digest = string
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_digest ppf x = Format.pp_print_string ppf x
+(*BISECT-IGNORE-END*)
 
 let digest data =
   let cs = Cstruct.of_string data in
@@ -81,7 +89,9 @@ let string_to_resource = function
   | "authorisation" -> Some `Authorisation
   | _ -> None
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_resource ppf k = Format.pp_print_string ppf (resource_to_string k)
+(*BISECT-IGNORE-END*)
 
 
 type role = [ `Author | `Janitor | `Other of string ]
@@ -96,7 +106,9 @@ let string_to_role = function
   | "janitor" -> `Janitor
   | x -> `Other x
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_role pp r = Format.pp_print_string pp (role_to_string r)
+(*BISECT-IGNORE-END*)
 
 type verification_error = [
   | `InvalidBase64Encoding of identifier * string
@@ -107,6 +119,7 @@ type verification_error = [
   | `NoSignature of identifier
 ]
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_verification_error ppf = function
   | `InvalidBase64Encoding (id, data) -> Format.fprintf ppf "%a signature is not in valid base64 encoding %s" pp_id id data
   | `InvalidSignature (id, signature, data) -> Format.fprintf ppf "%a signature is not valid %a, data %s" pp_id id Utils.pp_hex signature data
@@ -114,22 +127,25 @@ let pp_verification_error ppf = function
   | `InvalidIdentifier id -> Format.fprintf ppf "identifier %s was not found in keystore" id
   | `NotAuthorised (auth, sign) -> Format.fprintf ppf "only %a is authorised to sign this index, but it is signed by %a" pp_id auth pp_id sign
   | `NoSignature s -> Format.fprintf ppf "no signature found on index %a" pp_id s
+(*BISECT-IGNORE-END*)
 
 type error = [
   | `InvalidName of name * name
   | `InvalidResource of resource * resource
-  | `NotSigned of name * resource
-  | `InsufficientQuorum of identifier * S.t
+  | `NotSigned of name * resource * S.t
+  | `InsufficientQuorum of name * S.t
   | `MissingSignature of identifier
 ]
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_error ppf = function
   | `InvalidName (w, h) -> Format.fprintf ppf "invalid name, looking for %a but got %a" pp_name w pp_name h
   | `InvalidResource (w, h) -> Format.fprintf ppf "invalid resource, looking for %a but got %a" pp_resource w pp_resource h
-  | `NotSigned (n, r) -> Format.fprintf ppf "missing signature on %a, a %a" pp_name n pp_resource r
-  | `InsufficientQuorum (id, goods) ->
-    Format.fprintf ppf "quorum for %a not reached (valid: %s)" pp_id id (String.concat ", " (S.elements goods))
+  | `NotSigned (n, r, js) -> Format.fprintf ppf "missing signature on %a, a %a (quorum not reached: %s)" pp_name n pp_resource r (String.concat ", " (S.elements js))
+  | `InsufficientQuorum (name, goods) ->
+    Format.fprintf ppf "quorum for %a not reached (valid: %s)" pp_name name (String.concat ", " (S.elements goods))
   | `MissingSignature id -> Format.fprintf ppf "missing signature from %a" pp_id id
+(*BISECT-IGNORE-END*)
 
 let (>>=) a f =
   match a with

@@ -12,16 +12,21 @@ type t = {
 }
 
 type ok = [ `Identifier of identifier | `Quorum of S.t | `Both of identifier * S.t ]
+
+(*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
   | `Identifier id -> Format.fprintf ppf "id %s" id
   | `Both (id, js) -> Format.fprintf ppf "id %s and quorum %s" id (String.concat ", " (S.elements js))
   | `Quorum js -> Format.fprintf ppf "quorum %s" (String.concat ", " (S.elements js))
+(*BISECT-IGNORE-END*)
 
 type res = (ok, error) result
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_res ppf = function
   | Ok ok -> pp_ok ppf ok
   | Error e -> pp_error ppf e
+(*BISECT-IGNORE-END*)
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
   { store ; quorum ; data ; valid = SM.empty ; janitors = S.empty }
@@ -67,43 +72,62 @@ let verify_resource repo authorised name resource data =
   with
   | false, _    , _    , _     -> Error (`InvalidName (name, n))
   | true , false, _    , _     -> Error (`InvalidResource (resource, r))
-  | true , true , false, false -> Error (`NotSigned (n, r))
+  | true , true , false, false -> Error (`NotSigned (n, r, js))
   | true , true , false, true  -> Ok (`Quorum js)
-  | true , true , true , false -> Ok (`Identifier (id authorised))
+  | true , true , true , false -> Ok (`NoQuorum (id authorised, js))
   | true , true , true , true  -> Ok (`Both (id authorised, js))
 
 let verify_key repo key =
   let id = key.Publickey.keyid
   and raw = Data.publickey_raw key
   in
-  match verify_resource repo (S.singleton id) id `PublicKey raw with
-  | Error e -> Error e
-  | Ok (`Both b) -> Ok (`Both b)
-  | Ok (`Identifier id) -> Error (`InsufficientQuorum (id, S.empty))
-  | Ok (`Quorum js) when key.Publickey.key = None -> Ok (`Quorum js)
-  | Ok (`Quorum _) -> Error (`MissingSignature id)
-
-let verify_authorisation repo ?(authorised = S.empty) auth =
-  (* XXX: when to use a.Authorisation.authorised?? *)
-  let raw = Data.authorisation_raw auth in
-  verify_resource repo authorised auth.Authorisation.name `Authorisation raw >>= function
+  verify_resource repo (S.singleton id) id `PublicKey raw >>= function
   | `Both b -> Ok (`Both b)
-  | `Identifier id -> Error (`InsufficientQuorum (id, S.empty))
-  | `Quorum js -> Ok (`Quorum js)
+  | `NoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
+  | `Quorum js when key.Publickey.key = None -> Ok (`Quorum js)
+  | `Quorum _ -> Error (`MissingSignature id)
 
-let verify_checksum repo a cs =
-  let raw = Data.checksums_raw cs in
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw
+let verify_authorisation repo auth =
+  let raw = Data.authorisation_raw auth
+  and name = auth.Authorisation.name
+  in
+  match verify_resource repo S.empty name `Authorisation raw with
+  | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
+  | Error e -> Error e
+  | Ok (`Quorum js) -> Ok (`Quorum js)
+  (* the following two cases will never happen, since authorised is S.empty! *)
+  | Ok (`NoQuorum (_, js)) -> Error (`InsufficientQuorum (name, js))
+  | Ok (`Both b) -> Ok (`Both b)
 
 let verify_releases repo a r =
+  guard (name_equal a.Authorisation.name r.Releases.name)
+    (* XXX: maybe different tag? *)
+    (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
   let raw = Data.releases_raw r in
-  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw
+  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw >>= function
+  | `Both b -> Ok (`Both b)
+  | `Quorum js -> Ok (`Quorum js)
+  | `NoQuorum (id, _) -> Ok (`Identifier id)
+
+let verify_checksum repo a r cs =
+  (* XXX: different tag? *)
+  guard (name_equal a.Authorisation.name r.Releases.name)
+    (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
+  guard (List.mem cs.Checksum.name r.Releases.releases)
+    (`InvalidName (r.Releases.name, cs.Checksum.name)) >>= fun () ->
+  let raw = Data.checksums_raw cs in
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw >>= function
+  | `Both b -> Ok (`Both b)
+  | `Quorum js -> Ok (`Quorum js)
+  | `NoQuorum (id, _) -> Ok (`Identifier id)
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_r_err ppf = function
   | `NotFound x -> Format.fprintf ppf "%s was not found in repository" x
   | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
+(*BISECT-IGNORE-END*)
 
 type 'a r_res = ('a, r_err) result
 

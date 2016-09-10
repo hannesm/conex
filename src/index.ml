@@ -11,6 +11,7 @@ type t = {
 let index ?(counter = 0L) ?(version = 0L) ?(resources = []) ?signature identifier =
   { counter ; version ; identifier ; resources ; signature }
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_resource ppf (n, r, digest) =
   Format.fprintf ppf "name: %a@ resource: %a@ digest: %a@."
     pp_name n pp_resource r pp_digest digest
@@ -21,5 +22,6 @@ let pp_index ppf i =
     i.counter
     (pp_list pp_resource) i.resources
     Signature.pp_signature i.signature
+(*BISECT-IGNORE-END*)
 
 let add_sig i s = { i with signature = Some s }

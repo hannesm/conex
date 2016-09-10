@@ -6,9 +6,11 @@ type c = {
   checksum : digest ;
 }
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_checksum ppf c =
   Format.fprintf ppf "%a [%Lu bytes]: %a@ "
     pp_name c.filename c.bytesize pp_digest c.checksum
+(*BISECT-IGNORE-END*)
 
 let checksum_equal a b =
   a.filename = b.filename && a.bytesize = b.bytesize && a.checksum = b.checksum
@@ -26,10 +28,12 @@ type checksum_map = c M.t
 let fold f m acc = M.fold (fun _ c acc -> f c acc) m acc
 let find m id = M.find id m
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_checksum_map ppf cs =
   pp_list pp_checksum ppf
     (List.sort (fun a b -> String.compare a.filename b.filename)
        (snd (List.split (M.bindings cs))))
+(*BISECT-IGNORE-END*)
 
 type t = {
   counter : int64 ;
@@ -38,10 +42,12 @@ type t = {
   files : checksum_map ;
 }
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_checksums ppf c =
   Format.fprintf ppf "checksums for %a (counter %Lu) are:@.%a@."
     pp_name c.name c.counter
     pp_checksum_map c.files
+(*BISECT-IGNORE-END*)
 
 let checksums ?(counter = 0L) ?(version = 0L) name files =
   let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in

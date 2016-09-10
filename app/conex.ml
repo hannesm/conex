@@ -1,3 +1,4 @@
+(*
 open Core
 
 module Color = struct
@@ -598,3 +599,4 @@ let cmds = [sign_cmd ; generate_cmd ; verify_cmd ; show_cmd ; list_cmd ; help_cm
 let () =
   match Term.eval_choice default_cmd cmds
   with `Error _ -> exit 1 | _ -> exit 0
+*)

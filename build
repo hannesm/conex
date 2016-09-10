@@ -25,7 +25,7 @@ action ()
         default) action lib ; action test ;;
         bin) action lib ; $OCAMLBUILD app/conex.native ;;
         lib) $OCAMLBUILD conex.cmx conex.cmxa ;;
-        test) action lib ; $OCAMLBUILD test/tests.native ; ./tests.native ;;
+        test) action lib ; $OCAMLBUILD test/tests.native ; ./tests.native -q ;;
         coverage)
             action clean ;
             export OCAMLBUILD="$OCAMLBUILD -pkg bisect_ppx" ;
@@ -33,7 +33,7 @@ action ()
             $OCAMLBUILD test/tests.native ;
             ./tests.native ;
             bisect-ppx-report -I _build/ -html coverage/ bisect0001.out ;;
-        clean) $OCAMLBUILD -clean ; rm -rf _tests ; rm -f tests.native ; rm -f conex.native ;;
+        clean) $OCAMLBUILD -clean ; rm -rf _tests ; rm -f tests.native ; rm -f conex.native ; rm -rf coverage ; rm -f bisect*out ;;
         *) $OCAMLBUILD $* ;;
     esac
 }

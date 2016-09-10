@@ -1,6 +1,16 @@
 open Core
 
-let gen_pub ?counter ?role ?(priv = Private.generate ()) id =
+let privkey = ref None
+
+let gen_pub ?counter ?role ?priv id =
+  let priv = match priv, !privkey with
+    | Some p, _ -> p
+    | None, Some x -> x
+    | None, None ->
+      let p = Private.generate () in
+      privkey := Some p ;
+      p
+  in
   match Publickey.publickey ?counter ?role id (Some (Private.pub_of_priv priv)) with
   | Ok public -> (public, priv)
   | Error s -> invalid_arg s
@@ -89,7 +99,7 @@ let err =
       | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
       | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
       | `MissingSignature id, `MissingSignature id' -> id_equal id id'
-      | `NotSigned (n, r), `NotSigned (n', r') -> name_equal n n' && resource_equal r r'
+      | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)

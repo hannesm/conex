@@ -24,11 +24,13 @@ let encode_priv = function
      let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
      Cstruct.to_string pem
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_priv ppf p =
   match p with
   | RSA_priv pr ->
      let len = Nocrypto.Rsa.pub_bits (Nocrypto.Rsa.pub_of_priv pr) in
      Format.fprintf ppf "private %d bit RSA key@ %s" len (encode_priv p)
+(*BISECT-IGNORE-END*)
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
@@ -107,10 +109,13 @@ let write_private_key repo id key =
   Persistency.write_file ~mode:0o400 filename data
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list ]
+
+(*BISECT-IGNORE-BEGIN*)
 let pp_err ppf = function
   | `NotFound x -> Format.fprintf ppf "couldn't find private key %s" x
   | `NoPrivateKey -> Format.pp_print_string ppf "no private key found"
   | `MultiplePrivateKeys keys -> Format.fprintf ppf "multiple private keys found %s" (String.concat ", " keys)
+(*BISECT-IGNORE-END*)
 
 let read_private_key ?id repo =
   let read id =

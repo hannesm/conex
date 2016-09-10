@@ -17,8 +17,10 @@ type t = {
   exists : path -> bool ;
 }
 
+(*BISECT-IGNORE-BEGIN*)
 let pp_provider ppf t =
   Format.fprintf ppf "repository %s: %s@." t.name t.description
+(*BISECT-IGNORE-END*)
 
 let fs_provider basedir =
   let get path = path_to_string (basedir :: path) in
