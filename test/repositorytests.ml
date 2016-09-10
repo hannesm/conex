@@ -704,7 +704,7 @@ let cs () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
-  let rel = Releases.releases ~releases:[v] pname in
+  let rel = Releases.releases ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   Alcotest.check (result ok err) "checksum not signed"
     (Error (`NotSigned (v, `Checksum, S.empty)))
@@ -736,7 +736,7 @@ let cs_quorum () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
-  let rel = Releases.releases ~releases:[v] pname in
+  let rel = Releases.releases ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
     pname, `Releases, digest (Data.releases_raw rel) ;
@@ -759,7 +759,7 @@ let cs_bad_name () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
-  let rel = Releases.releases ~releases:[v] v in
+  let rel = Releases.releases ~releases:(S.singleton v) v in
   let cs = Checksum.checksums v [] in
   let resources = [
     v, `Releases, digest (Data.releases_raw rel) ;
@@ -782,7 +782,7 @@ let cs_bad_name2 () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
-  let rel = Releases.releases ~releases:[pname] pname in
+  let rel = Releases.releases ~releases:(S.singleton pname) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
     pname, `Releases, digest (Data.releases_raw rel) ;
@@ -805,7 +805,7 @@ let cs_wrong_name () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
-  let rel = Releases.releases ~releases:[v] pname in
+  let rel = Releases.releases ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
     pname, `Releases, digest (Data.releases_raw rel) ;
@@ -828,7 +828,7 @@ let cs_wrong_resource () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
-  let rel = Releases.releases ~releases:[v] pname in
+  let rel = Releases.releases ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
     pname, `Releases, digest (Data.releases_raw rel) ;
@@ -842,7 +842,6 @@ let cs_wrong_resource () =
   Alcotest.check (result ok err) "wrong resource"
     (Error (`InvalidResource (`Checksum, `Releases)))
     (Repository.verify_checksum r auth rel cs)
-
 
 let cs_repo_tests = [
   "basic checksum", `Quick, cs ;

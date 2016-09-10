@@ -60,8 +60,7 @@ let releases =
       a.counter = b.counter &&
       a.version = b.version &&
       a.name = b.name &&
-      List.length a.releases = List.length b.releases &&
-      List.for_all (fun n -> List.mem n b.releases) a.releases
+      S.equal a.releases b.releases
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 

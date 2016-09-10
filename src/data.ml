@@ -237,7 +237,7 @@ let releases_to_data r =
   List [ Entry ("name"     , Leaf (String r.Releases.name)) ;
          Entry ("counter"  , Leaf (Int r.Releases.counter)) ;
          Entry ("version"  , Leaf (Int r.Releases.version)) ;
-         Entry ("releases" , List (List.map id r.Releases.releases)) ]
+         Entry ("releases" , List (List.map id (S.elements r.Releases.releases))) ]
 
 let data_to_releases data =
   let id x = extract_string_exn x in
@@ -245,7 +245,7 @@ let data_to_releases data =
   and counter = extract_int_exn (get_exn data "counter")
   and version = extract_int_exn (get_exn data "version")
   and releases = match get_exn data "releases" with
-    | List es -> List.map id es
+    | List es -> S.of_list (List.map id es)
     | _ -> invalid_arg "releases not a list"
   in
   Releases.releases ~counter ~version ~releases name

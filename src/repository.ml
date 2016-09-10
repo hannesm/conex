@@ -114,7 +114,7 @@ let verify_checksum repo a r cs =
   (* XXX: different tag for each guard? *)
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
-  guard (List.mem cs.Checksum.name r.Releases.releases)
+  guard (S.mem cs.Checksum.name r.Releases.releases)
     (`InvalidName (r.Releases.name, cs.Checksum.name)) >>= fun () ->
   let raw = Data.checksums_raw cs in
   verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw >>= function
