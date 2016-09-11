@@ -160,10 +160,10 @@ type 'a r_res = ('a, r_err) result
 let read_key repo keyid =
   let doit data =
     let pubkey = Data.data_to_publickey (Data.parse data) in
-    if pubkey.Publickey.keyid <> keyid then
-      Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
-    else
+    if id_equal pubkey.Publickey.keyid keyid then
       Ok pubkey
+    else
+      Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
   in
   match repo.data.Provider.read (Layout.key_path keyid) with
   | Ok data -> doit data
@@ -192,10 +192,10 @@ let read_index repo name =
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     let r = Data.data_to_index (Data.parse data) in
-    if r.Index.identifier <> name then
-      Error (`NameMismatch (name, r.Index.identifier))
-    else
+    if id_equal r.Index.identifier name then
       Ok r
+    else
+      Error (`NameMismatch (name, r.Index.identifier))
 
 let write_index repo j =
   let data = Data.index_to_data j in
@@ -207,10 +207,10 @@ let read_authorisation repo name =
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     let auth = Data.data_to_authorisation (Data.parse data) in
-    if auth.Authorisation.name <> name then
-      Error (`NameMismatch (name, auth.Authorisation.name))
-    else
+    if name_equal auth.Authorisation.name name then
       Ok auth
+    else
+      Error (`NameMismatch (name, auth.Authorisation.name))
 
 let write_authorisation repo a =
   let data = Data.authorisation_to_data a in
@@ -225,10 +225,10 @@ let read_releases repo name =
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     let r = Data.data_to_releases (Data.parse data) in
-    if r.Releases.name <> name then
-      Error (`NameMismatch (name, r.Releases.name))
-    else
+    if name_equal r.Releases.name name then
       Ok r
+    else
+      Error (`NameMismatch (name, r.Releases.name))
 
 let write_releases repo r =
   let data = Data.releases_to_data r in
@@ -240,10 +240,10 @@ let read_checksum repo name =
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     let csum = Data.data_to_checksums (Data.parse data) in
-    if csum.Checksum.name <> name then
-      Error (`NameMismatch (name, csum.Checksum.name))
-    else
+    if name_equal csum.Checksum.name name then
       Ok csum
+    else
+      Error (`NameMismatch (name, csum.Checksum.name))
 
 let write_checksum repo csum =
   let data = Data.checksums_to_data csum in
