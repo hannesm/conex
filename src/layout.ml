@@ -52,11 +52,13 @@ let keys p =
 
 let key_path id = [ key_dir ; id ]
 
-let jipath = "sigs"
-let index_path ji = [ jipath ; ji ]
+let ipath = "index"
+let index_path ji = [ ipath ; ji ]
+
+let jkey_dir = "janitors"
 
 let janitors p =
-  match p.Provider.read_dir [ jipath ] with
+  match p.Provider.read_dir [ jkey_dir ] with
   | Error _ -> []
   | Ok data ->
     let f = function
@@ -64,6 +66,8 @@ let janitors p =
       | _ -> None
     in
     Utils.filter_map ~f data
+
+let janitor_path id = [ jkey_dir ; id ]
 
 let data_dir = "data"
 let authorisation_filename = "authorisation"

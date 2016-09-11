@@ -176,9 +176,10 @@ let re =
 let empty_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository p in
-  Alcotest.(check (list string) "empty repo has no keys" [] (Repository.all_keyids r)) ;
-  Alcotest.(check (list string) "empty repo has no janitors" [] (Repository.all_janitors r)) ;
-  Alcotest.(check (list string) "empty repo has no authorisations" [] (Repository.all_authorisations r)) ;
+  Alcotest.check sset "empty repo has no keys" S.empty (Repository.all_keyids r) ;
+  Alcotest.check sset "empty repo has no janitors" S.empty (Repository.all_janitors r) ;
+  Alcotest.check sset "empty repo has no authors" S.empty (Repository.all_authors r) ;
+  Alcotest.check sset "empty repo has no authorisations" S.empty (Repository.all_authorisations r) ;
   Alcotest.check (result publickey re) "reading key foo in empty repo fails"
     (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
@@ -195,17 +196,26 @@ let empty_r () =
 let key_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository p in
-  Alcotest.(check (list string) "empty key repo has no keys" [] (Repository.all_keyids r)) ;
   let k, _pk = gen_pub "foo" in
   Repository.write_key r k ;
-  Alcotest.(check (list string) "key repo has one key" ["foo"] (Repository.all_keyids r)) ;
+  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Repository.all_keyids r) ;
+  Alcotest.check sset "key repo has one author" (S.singleton "foo") (Repository.all_authors r) ;
+  Alcotest.check sset "key repo has no janitors" S.empty (Repository.all_janitors r) ;
   Repository.write_key r k ;
-  Alcotest.(check (list string) "key repo+ has one key" ["foo"] (Repository.all_keyids r)) ;
+  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Repository.all_keyids r) ;
+  Alcotest.check sset "key repo+ has one author" (S.singleton "foo") (Repository.all_authors r) ;
+  Alcotest.check sset "key repo+ has no janitors" S.empty (Repository.all_janitors r) ;
   let k2, _pk2 = gen_pub "foobar" in
   Repository.write_key r k2 ;
-  Alcotest.(check (list string) "key repo has two keys" ["foobar" ; "foo"] (Repository.all_keyids r)) ;
+  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Repository.all_keyids r) ;
+  Alcotest.check sset "key repo has no janitors" S.empty (Repository.all_janitors r) ;
   Alcotest.check (result publickey re) "reading key gives back right key"
-    (Ok k) (Repository.read_key r "foo")
+    (Ok k) (Repository.read_key r "foo") ;
+  let jk, _jpk = gen_pub ~role:`Janitor "janitor" in
+  Repository.write_key r jk ;
+  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Repository.all_keyids r) ;
+  Alcotest.check sset "key repo has two authors" (S.add "foobar" (S.singleton "foo")) (Repository.all_authors r) ;
+  Alcotest.check sset "key repo has one janitor" (S.singleton "janitor") (Repository.all_janitors r)
 
 let checks_r () =
   let open Provider in

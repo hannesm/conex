@@ -23,16 +23,12 @@ val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t -> res
 
 val add_index : t -> Index.t -> t
 
-(* TODO: are these return types good? *)
-val load_keys : ?verify:bool -> t -> identifier list -> t
-val load_janitor : ?verify:bool -> t -> identifier -> t
-val load_janitors : ?verify:bool -> t -> t
-
 val add_trusted_key : t -> Publickey.t -> t
 
-val all_keyids : t -> identifier list
-val all_janitors : t -> identifier list
-val all_authorisations : t -> string list
+val all_keyids : t -> S.t
+val all_authors : t -> S.t
+val all_janitors : t -> S.t
+val all_authorisations : t -> S.t
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 type 'a r_res = ('a, r_err) result

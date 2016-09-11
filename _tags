@@ -24,6 +24,7 @@ true : warn(+A-4-6-33-44-48-58)
 <src/publickey.{ml,mli}>: package(x509), package(nocrypto), package(cstruct), for-pack(Conex)
 
 <app/conex.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner), package(nocrypto.unix)
+<app/conex_verify.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner)
 
 <test/common.ml>: package(alcotest)
 <test/basics.ml>: package(alcotest)

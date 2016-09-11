@@ -1,5 +1,13 @@
 open Core
 
+let sset =
+  let module M = struct
+    type t = S.t
+    let pp ppf v = Format.fprintf ppf "%a" (pp_list pp_id) (S.elements v)
+    let equal = S.equal
+  end in
+  (module M: Alcotest.TESTABLE with type t = M.t)
+
 let privkey = ref None
 
 let gen_pub ?counter ?role ?priv id =

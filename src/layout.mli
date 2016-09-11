@@ -13,6 +13,7 @@ val items : Provider.t -> name -> name list
 
 val private_key_path : path -> identifier -> path
 val key_path : identifier -> path
+val janitor_path : identifier -> path
 val index_path : identifier -> path
 val authorisation_path : name -> path
 val releases_path : name -> path

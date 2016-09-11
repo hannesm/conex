@@ -110,6 +110,29 @@ let verify_releases repo a r =
   | `NoQuorum (id, _) -> Ok (`Identifier id)
   (* need to verify that package dir contains all mentioned releases! *)
 
+let compute_checksum repo name =
+  match repo.data.Provider.file_type (Layout.checksum_dir name) with
+  | Error _ -> Error (`NotFound name)
+  | Ok File -> Error (`NotFound name) (* more precise? *)
+  | Ok Directory ->
+    let files = Layout.checksum_files repo.data name in
+    let d = Layout.checksum_dir name in
+    let datas =
+      foldM
+        (fun acc f ->
+           match repo.data.Provider.read (d@f) with
+           | Error _ -> Error (`NotFound (path_to_string (d@f)))
+           | Ok data -> Ok (data :: acc))
+        []
+        files
+    in
+    let names = List.map path_to_string files in
+    match datas with
+    | Ok datas ->
+      let csums = List.map2 Checksum.checksum names (List.rev datas) in
+      Ok (Checksum.checksums name csums)
+    | Error e -> Error e
+
 let verify_checksum repo a r cs =
   (* XXX: different tag for each guard? *)
   guard (name_equal a.Authorisation.name r.Releases.name)
@@ -133,25 +156,36 @@ let pp_r_err ppf = function
 
 type 'a r_res = ('a, r_err) result
 
+(* storing keys in "keys/" and "janitors/" needs to ensure that no ID is present in both places *)
 let read_key repo keyid =
-  match repo.data.Provider.read (Layout.key_path keyid) with
-  | Error _ -> Error (`NotFound keyid)
-  | Ok data ->
+  let doit data =
     let pubkey = Data.data_to_publickey (Data.parse data) in
     if pubkey.Publickey.keyid <> keyid then
       Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
     else
       Ok pubkey
+  in
+  match repo.data.Provider.read (Layout.key_path keyid) with
+  | Ok data -> doit data
+  | Error _ -> match repo.data.Provider.read (Layout.janitor_path keyid) with
+    | Ok data -> doit data
+    | Error _ -> Error (`NotFound keyid)
 
 let write_key repo key =
-  let data = Data.publickey_to_data key in
-  repo.data.Provider.write
-    (Layout.key_path key.Publickey.keyid)
-    (Data.normalise data)
+  let data = Data.publickey_to_data key
+  and id = key.Publickey.keyid
+  in
+  let dst = match key.Publickey.role with
+    | `Janitor -> Layout.janitor_path id
+    | _ -> Layout.key_path id
+  in
+  repo.data.Provider.write dst (Data.normalise data)
 
-let all_keyids repo = Layout.keys repo.data
+let all_authors repo = S.of_list (Layout.keys repo.data)
 
-let all_janitors repo = Layout.janitors repo.data
+let all_janitors repo = S.of_list (Layout.janitors repo.data)
+
+let all_keyids repo = S.union (all_authors repo) (all_janitors repo)
 
 let read_index repo name =
   match repo.data.Provider.read (Layout.index_path name) with
@@ -184,7 +218,7 @@ let write_authorisation repo a =
     (Layout.authorisation_path a.Authorisation.name)
     (Data.normalise data)
 
-let all_authorisations repo = Layout.authorisations repo.data
+let all_authorisations repo = S.of_list (Layout.authorisations repo.data)
 
 let read_releases repo name =
   match repo.data.Provider.read (Layout.releases_path name) with
@@ -216,29 +250,6 @@ let write_checksum repo csum =
   let name = Layout.checksum_path csum.Checksum.name in
   repo.data.Provider.write name (Data.normalise data)
 
-let compute_checksum repo name =
-  match repo.data.Provider.file_type (Layout.checksum_dir name) with
-  | Error _ -> Error (`NotFound name)
-  | Ok File -> Error (`NotFound name) (* more precise? *)
-  | Ok Directory ->
-    let files = Layout.checksum_files repo.data name in
-    let d = Layout.checksum_dir name in
-    let datas =
-      foldM
-        (fun acc f ->
-           match repo.data.Provider.read (d@f) with
-           | Error _ -> Error (`NotFound (path_to_string (d@f)))
-           | Ok data -> Ok (data :: acc))
-        []
-        files
-    in
-    let names = List.map path_to_string files in
-    match datas with
-    | Ok datas ->
-      let csums = List.map2 Checksum.checksum names (List.rev datas) in
-      Ok (Checksum.checksums name csums)
-    | Error e -> Error e
-
 (* TODO: invalid_args are bad below!!! *)
 let add_csums repo id rs =
   let add_csum t (name, resource, hash) =
@@ -256,58 +267,3 @@ let add_csums repo id rs =
 let add_index r idx =
   (* XXX: replace with a convenience function : PK.t -> I.t -> or_error *)
   add_csums r idx.Index.identifier idx.Index.resources
-
-let maybe_load repo ids =
-  List.fold_left
-    (fun repo id ->
-       match read_key repo id with
-      | Error _ -> invalid_arg ("error while loading key " ^ id)
-      | Ok key ->
-        (* XXX: might only be able to do it afterwards... (sig of key k is in index i) *)
-        match verify_key repo key with
-        | Ok _ -> add_trusted_key repo key
-        | Error e -> pp_error Format.std_formatter e ; repo)
-    repo ids
-
-let load_keys ?(verify = false) repo ids =
-  let repo =
-    if verify then
-      maybe_load repo ids
-    else
-      List.fold_left
-        (fun repo id ->
-           match read_key repo id with
-           | Error _ -> invalid_arg ("could not find key " ^ id)
-           | Ok k -> add_trusted_key repo k)
-        repo ids
-  in
-  List.fold_left
-    (fun repo id ->
-       match read_index repo id with
-       | Ok i ->
-         begin match verify_index repo i with
-           | Ok _ -> add_csums repo id i.Index.resources
-           | Error _ -> invalid_arg "verification failed"
-         end
-       | Error _ -> invalid_arg "couldn't read index")
-    repo ids
-
-(* XXX: load janitor key as well! *)
-let load_janitor ?(verify = false) repo janitor =
-  match read_index repo janitor with
-  | Ok ji ->
-    let repo =
-      if verify then
-        let repo = maybe_load repo [janitor] in
-        match verify_index repo ji with
-        | Ok _ -> add_csums repo janitor ji.Index.resources
-        | Error _ -> invalid_arg "verification failed"
-      else
-        add_csums repo janitor ji.Index.resources
-    in
-    { repo with janitors = S.add janitor repo.janitors }
-  | Error _ -> invalid_arg "unlikely to happen, error reading index"
-
-let load_janitors ?(verify = false) repo =
-  let all = all_janitors repo in
-  List.fold_left (load_janitor ~verify) repo all
