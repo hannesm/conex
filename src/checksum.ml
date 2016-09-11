@@ -59,8 +59,4 @@ let set_counter cs counter = { cs with counter }
    then we can inform the user which checksum is offending *)
 
 let checksums_equal a b =
-  a.name = b.name &&
-    M.cardinal a.files = M.cardinal b.files &&
-      M.for_all
-        (fun k c -> if M.mem k b.files then checksum_equal (M.find k b.files) c else false)
-        a.files
+  a.name = b.name && M.equal checksum_equal a.files b.files

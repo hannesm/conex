@@ -137,14 +137,20 @@ let verify_checksum repo a r cs =
   (* XXX: different tag for each guard? *)
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
+  (* XXX *)
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`InvalidName (r.Releases.name, cs.Checksum.name)) >>= fun () ->
   let raw = Data.checksums_raw cs in
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw >>= function
-  | `Both b -> Ok (`Both b)
-  | `Quorum js -> Ok (`Quorum js)
-  | `NoQuorum (id, _) -> Ok (`Identifier id)
-  (* still need to verify checksums against the concrete files *)
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw >>= fun r ->
+  let name = cs.Checksum.name in
+  match compute_checksum repo name with
+  | Error (`NotFound x) -> Error (`InvalidName (x, x)) (* XXX *)
+  | Ok css ->
+    guard (Checksum.checksums_equal cs css) (`InvalidName (name, name)) (* XXX *) >>= fun () ->
+    match r with
+    | `Both b -> Ok (`Both b)
+    | `Quorum js -> Ok (`Quorum js)
+    | `NoQuorum (id, _) -> Ok (`Identifier id)
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 
@@ -156,21 +162,22 @@ let pp_r_err ppf = function
 
 type 'a r_res = ('a, r_err) result
 
-(* storing keys in "keys/" and "janitors/" needs to ensure that no ID is present in both places *)
 let read_key repo keyid =
   match repo.data.Provider.read (Layout.key_path keyid) with
   | Error _ -> Error (`NotFound keyid)
   | Ok data ->
-    let pubkey = Data.data_to_publickey (Data.parse data) in
-    if id_equal pubkey.Publickey.keyid keyid then
-      match pubkey.Publickey.role with
-      | `Janitor -> begin match repo.data.Provider.read (Layout.janitor_path keyid) with
-          | Error _ -> Error (`NotFound keyid) (* XXX: introduce another tag *)
-          | Ok _ -> Ok pubkey
-        end
-      | _ -> Ok pubkey
-    else
-      Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
+    match Data.data_to_publickey (Data.parse data) with
+    | Error _ -> Error (`NotFound keyid) (* XXX *)
+    | Ok pubkey ->
+      if id_equal pubkey.Publickey.keyid keyid then
+        match pubkey.Publickey.role with
+        | `Janitor -> begin match repo.data.Provider.read (Layout.janitor_path keyid) with
+            | Error _ -> Error (`NotFound keyid) (* XXX *)
+            | Ok _ -> Ok pubkey
+          end
+        | _ -> Ok pubkey
+      else
+        Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
 
 let write_key repo key =
   let data = Data.publickey_to_data key
@@ -224,11 +231,13 @@ let read_releases repo name =
   match repo.data.Provider.read (Layout.releases_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    let r = Data.data_to_releases (Data.parse data) in
-    if name_equal r.Releases.name name then
-      Ok r
-    else
-      Error (`NameMismatch (name, r.Releases.name))
+    match Data.data_to_releases (Data.parse data) with
+    | Error _ -> Error (`NotFound name) (* XXX *)
+    | Ok r ->
+      if name_equal r.Releases.name name then
+        Ok r
+      else
+        Error (`NameMismatch (name, r.Releases.name))
 
 let write_releases repo r =
   let data = Data.releases_to_data r in

@@ -39,6 +39,10 @@ let pp_name ppf x = Format.pp_print_string ppf x
 
 let name_equal a b = String.compare a b = 0
 
+let is_release a b =
+  let prefix = a ^ "." in
+  Strhelper.is_prefix ~prefix b
+
 
 type identifier = string
 

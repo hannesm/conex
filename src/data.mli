@@ -1,3 +1,5 @@
+open Core
+
 type t
 
 val parse : string -> t
@@ -11,11 +13,11 @@ val data_to_index : t -> Index.t
 val index_raw : Index.t -> string
 
 val publickey_to_data : Publickey.t -> t
-val data_to_publickey : t -> Publickey.t
+val data_to_publickey : t -> (Publickey.t, string) result
 val publickey_raw : Publickey.t -> string
 
 val releases_to_data : Releases.t -> t
-val data_to_releases : t -> Releases.t
+val data_to_releases : t -> (Releases.t, string) result
 val releases_raw : Releases.t -> string
 
 val authorisation_to_data : Authorisation.t -> t

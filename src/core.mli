@@ -13,6 +13,7 @@ val string_to_path : string -> path
 type name = string
 val pp_name : Format.formatter -> name -> unit
 val name_equal : name -> name -> bool
+val is_release : name -> name -> bool
 
 (* keyid (NOTE: maybe abstract, checking for printable ASCII characters, case-insensitive, make private!) *)
 type identifier = string

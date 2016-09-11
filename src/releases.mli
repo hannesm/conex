@@ -7,6 +7,6 @@ type t = private {
   releases : S.t ;
 }
 
-val releases : ?counter:int64 -> ?version:int64 -> ?releases:S.t -> name -> t
+val releases : ?counter:int64 -> ?version:int64 -> ?releases:S.t -> name -> (t, string) result
 
 val pp_releases : Format.formatter -> t -> unit

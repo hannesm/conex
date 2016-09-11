@@ -8,8 +8,10 @@ type t = {
 }
 
 let releases ?(counter = 0L) ?(version = 0L) ?(releases = S.empty) name =
-  (* XXX: should verify that all r.Releases.releases are good regarding r.Releases.name *)
-  { counter ; version ; name ; releases }
+  if S.for_all (is_release name) releases then
+    Ok { counter ; version ; name ; releases }
+  else
+    Error "all releases must have the same package name"
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_releases ppf r =

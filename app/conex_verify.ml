@@ -15,11 +15,12 @@ let load_trust_anchors repo dir =
         try
           let content = Persistency.read_file (Filename.concat dir f) in
           let data = Data.parse content in
-          let key = Data.data_to_publickey data in
-          key :: acc
+          match Data.data_to_publickey data with
+          | Ok key -> key :: acc
+          | Error e -> Format.fprintf out "error while constructing key %a: %s@." pp_id f e ; maybe_exit () ; acc
         with
         | Invalid_argument x ->
-          Format.fprintf out "error while loading %s: %s\n" f x ; maybe_exit () ; acc)
+          Format.fprintf out "error while loading %s: %s@." f x ; maybe_exit () ; acc)
       [] keys
   in
   let repo = List.fold_left Repository.add_trusted_key repo keys in

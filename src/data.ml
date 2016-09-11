@@ -225,9 +225,7 @@ let data_to_publickey data =
       | None -> invalid_arg "cannot decode public key"
   and role = string_to_role role
   in
-  match Publickey.publickey ~counter ~version ~role keyid key with
-  | Ok t -> t
-  | Error s -> invalid_arg s
+  Publickey.publickey ~counter ~version ~role keyid key
 
 let publickey_raw p = normalise (publickey_to_data p)
 
