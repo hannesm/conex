@@ -158,34 +158,34 @@ type 'a r_res = ('a, r_err) result
 
 (* storing keys in "keys/" and "janitors/" needs to ensure that no ID is present in both places *)
 let read_key repo keyid =
-  let doit data =
+  match repo.data.Provider.read (Layout.key_path keyid) with
+  | Error _ -> Error (`NotFound keyid)
+  | Ok data ->
     let pubkey = Data.data_to_publickey (Data.parse data) in
     if id_equal pubkey.Publickey.keyid keyid then
-      Ok pubkey
+      match pubkey.Publickey.role with
+      | `Janitor -> begin match repo.data.Provider.read (Layout.janitor_path keyid) with
+          | Error _ -> Error (`NotFound keyid) (* XXX: introduce another tag *)
+          | Ok _ -> Ok pubkey
+        end
+      | _ -> Ok pubkey
     else
       Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
-  in
-  match repo.data.Provider.read (Layout.key_path keyid) with
-  | Ok data -> doit data
-  | Error _ -> match repo.data.Provider.read (Layout.janitor_path keyid) with
-    | Ok data -> doit data
-    | Error _ -> Error (`NotFound keyid)
 
 let write_key repo key =
   let data = Data.publickey_to_data key
   and id = key.Publickey.keyid
   in
-  let dst = match key.Publickey.role with
-    | `Janitor -> Layout.janitor_path id
-    | _ -> Layout.key_path id
-  in
-  repo.data.Provider.write dst (Data.normalise data)
-
-let all_authors repo = S.of_list (Layout.keys repo.data)
+  repo.data.Provider.write (Layout.key_path id) (Data.normalise data) ;
+  match key.Publickey.role with
+    | `Janitor -> repo.data.Provider.write (Layout.janitor_path id) ""
+    | _ -> ()
 
 let all_janitors repo = S.of_list (Layout.janitors repo.data)
 
-let all_keyids repo = S.union (all_authors repo) (all_janitors repo)
+let all_authors repo = S.diff (S.of_list (Layout.keys repo.data)) (all_janitors repo)
+
+let all_keyids repo = S.of_list (Layout.keys repo.data)
 
 let read_index repo name =
   match repo.data.Provider.read (Layout.index_path name) with
