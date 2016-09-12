@@ -11,6 +11,12 @@ type t = {
 let index ?(counter = 0L) ?(version = 0L) ?(resources = []) ?signature identifier =
   { counter ; version ; identifier ; resources ; signature }
 
+let add_resource t r =
+  { t with resources = r :: t.resources ; counter = Int64.succ t.counter }
+
+let add_resources t rs =
+  { t with resources = rs @ t.resources ; counter = Int64.succ t.counter }
+
 (*BISECT-IGNORE-BEGIN*)
 let pp_resource ppf (n, r, digest) =
   Format.fprintf ppf "name: %a@ resource: %a@ digest: %a@."

@@ -3,7 +3,7 @@ open Core
 val unique_keyid : identifier list -> identifier -> bool
 val unique_data : name list -> name -> bool
 
-val authorisation_of_item : name -> name
+val authorisation_of_item : name -> name option
 
 val private_keys : Provider.t -> identifier list
 val keys : Provider.t -> identifier list

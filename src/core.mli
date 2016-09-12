@@ -13,7 +13,6 @@ val string_to_path : string -> path
 type name = string
 val pp_name : Format.formatter -> name -> unit
 val name_equal : name -> name -> bool
-val is_release : name -> name -> bool
 
 (* keyid (NOTE: maybe abstract, checking for printable ASCII characters, case-insensitive, make private!) *)
 type identifier = string
@@ -62,6 +61,5 @@ type error = [
 val pp_error : Format.formatter -> error -> unit
 
 val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-val (<<|>>) : ('a, 'b) result -> ('a, 'b) result -> ('a, 'b) result
 val guard : bool -> 'a -> (unit, 'a) result
 val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result

@@ -8,7 +8,11 @@ type t = {
 }
 
 let releases ?(counter = 0L) ?(version = 0L) ?(releases = S.empty) name =
-  if S.for_all (is_release name) releases then
+  let is_release a = match Layout.authorisation_of_item a with
+    | Some x when name_equal name x -> true
+    | _ -> false
+  in
+  if S.for_all is_release releases then
     Ok { counter ; version ; name ; releases }
   else
     Error "all releases must have the same package name"

@@ -39,10 +39,6 @@ let pp_name ppf x = Format.pp_print_string ppf x
 
 let name_equal a b = String.compare a b = 0
 
-let is_release a b =
-  let prefix = a ^ "." in
-  Strhelper.is_prefix ~prefix b
-
 
 type identifier = string
 
@@ -154,12 +150,6 @@ let (>>=) a f =
   match a with
   | Ok x -> f x
   | Error e -> Error e
-
-let (<<|>>) a b =
-  match a, b with
-  | Ok x, _ -> Ok x
-  | _, Ok x -> Ok x
-  | Error e, _ -> Error e
 
 let guard p err = if p then Ok () else Error err
 

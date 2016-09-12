@@ -10,4 +10,4 @@ type t = private {
 val authorisation : ?counter:int64 -> ?version:int64 -> ?authorised:S.t -> name -> t
 
 val pp_authorisation : Format.formatter -> t -> unit
-val pp_authorised : Format.formatter -> Core.identifier list -> unit
+val pp_authorised : Format.formatter -> S.t -> unit

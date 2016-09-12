@@ -796,7 +796,7 @@ let cs_bad_name () =
   let pname = "foop"
   and id = "id"
   in
-  let reln = pname ^ ".0" in
+  let reln = "foo" in
   let v = reln ^ ".0" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
   let rel = safe_rel ~releases:(S.singleton v) reln in

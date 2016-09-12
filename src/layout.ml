@@ -10,8 +10,8 @@ and unique_data = lowercase_equal
 
 let authorisation_of_item x =
   match Strhelper.cut '.' x with
-  | Some (pre, _) -> pre
-  | None -> assert false
+  | Some (pre, _) -> Some pre
+  | None -> None
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
@@ -100,15 +100,18 @@ let items p id =
     Utils.filter_map ~f data
 
 let checksum_dir p =
-  let d = authorisation_of_item p in
-  [ data_dir ; d ; p ]
+  match authorisation_of_item p with
+  | Some d -> [ data_dir ; d ; p ]
+  | None -> [ data_dir ; p ; p ]
 
 let checksum_path p =
   checksum_dir p @ [checksum_filename]
 
 let checksum_files p da =
-  let de = authorisation_of_item da in
-  let st = [ data_dir ; de ; da ] in
+  let st = match authorisation_of_item da with
+    | Some de -> [ data_dir ; de ; da ]
+    | None -> [ data_dir ; da ; da ]
+  in
   let rec collect1 acc d = function
     | `File f when d = [] && f = checksum_filename -> acc
     | `File f -> (d@[f]) :: acc
