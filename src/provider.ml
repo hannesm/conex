@@ -31,8 +31,10 @@ let fs_provider basedir =
       | x::xs ->
          let path = base @ [x] in
          let str = path_to_string path in
-         if not (Sys.is_directory str) then
+         if not (Persistency.exists str) then
            Unix.mkdir (path_to_string path) 0o755 ;
+         if not (Sys.is_directory str) then
+           invalid_arg (str ^ " is not a directory") ;
          mkdir path xs
     in
     mkdir [basedir] path

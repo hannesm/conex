@@ -104,8 +104,10 @@ let write_private_key repo id key =
      in
      Persistency.rename filename backup) ;
   let data = encode_priv key in
-  if not (Sys.is_directory private_dir) then
+  if not (Persistency.exists private_dir) then
     Unix.mkdir private_dir 0o700 ;
+  if not (Sys.is_directory private_dir) then
+    invalid_arg (private_dir ^ " is not a directory!") ;
   Persistency.write_file ~mode:0o400 filename data
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list ]

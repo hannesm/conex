@@ -167,7 +167,7 @@ let find_checksums copts =
     []
     rel_auths
 
-let list copts kind =
+let list copts kind = (* XXX missing indexes *)
   let rec exec kind =
     let out items =
       List.iter
@@ -402,6 +402,7 @@ let generate copts item name role ids =
             ~counter:(Int64.succ p.Publickey.counter)
             ~role name pub_opt)
      | Error _ ->
+       (* XXX need: if name = "" then missing argument! *)
        match Private.read_private_key ~id:name copts.repo with
        | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
                       Color.red name Color.endc ;
