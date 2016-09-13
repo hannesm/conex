@@ -13,7 +13,7 @@ let load_trust_anchors repo dir =
   let keys =
     List.fold_left (fun acc f ->
         try
-          let content = Persistency.read_file (Filename.concat dir f) in
+          let content = Persistency.read_file f in
           let data = Data.parse content in
           match Data.data_to_publickey data with
           | Ok key -> key :: acc

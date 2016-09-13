@@ -47,7 +47,7 @@ let load_tas copts =
      let keys = List.map (Filename.concat s) (Persistency.collect_dir s) in
      let keys =
        List.fold_left (fun acc f ->
-           let content = Persistency.read_file (Filename.concat s f) in
+           let content = Persistency.read_file f in
            let data = Data.parse content in
            match Data.data_to_publickey data with
            | Ok key -> if copts.debug then Format.fprintf copts.out "loaded trust anchor %s@ " f ; key :: acc
