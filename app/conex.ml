@@ -384,7 +384,7 @@ let generate copts item name role ids =
           Format.fprintf copts.out "dry run, nothing written.@."
         else
           Repository.write_key copts.repo p ;
-        Format.fprintf copts.out "generated new key for %s@." name ;
+        Format.fprintf copts.out "generated public key for %s@." name ;
         show_key copts p
       | Error s ->
         Format.fprintf copts.out "%s%s%s@." Color.red s Color.endc ;
@@ -615,7 +615,7 @@ let role =
     ((fun s -> try `Ok (Core.string_to_role s) with _ -> `Error "not a role"),
      Core.pp_role)
   in
-  Arg.(value & opt conv `Author & info ["role"; "r"] ~doc ~docv:"KEYS")
+  Arg.(value & opt conv `Author & info ["role"] ~doc ~docv:"KEYS")
 
 let valid =
   let doc = "Owners of this authorisation, defaults to own keyid." in
