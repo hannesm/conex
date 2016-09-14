@@ -37,21 +37,17 @@ let verify_index repo idx =
   | Some (id, _) -> Error (`NotAuthorised (aid, id))
   | None -> Error (`NoSignature aid)
 
-type ok = [ `Identifier of identifier | `Quorum of S.t | `Both of identifier * S.t ]
-
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
-  | `Identifier id -> Format.fprintf ppf "id %s" id
+  | `Signed id -> Format.fprintf ppf "id %s" id
   | `Both (id, js) -> Format.fprintf ppf "id %s and quorum %s" id (String.concat ", " (S.elements js))
   | `Quorum js -> Format.fprintf ppf "quorum %s" (String.concat ", " (S.elements js))
 (*BISECT-IGNORE-END*)
 
-type error = [
+type base_error = [
   | `InvalidName of name * name
   | `InvalidResource of resource * resource
   | `NotSigned of name * resource * S.t
-  | `InsufficientQuorum of name * S.t
-  | `MissingSignature of identifier
 ]
 
 (*BISECT-IGNORE-BEGIN*)
@@ -61,14 +57,6 @@ let pp_error ppf = function
   | `NotSigned (n, r, js) -> Format.fprintf ppf "missing signature on %a, a %a, quorum not reached (valid %a)" pp_name n pp_resource r (pp_list pp_id) (S.elements js)
   | `InsufficientQuorum (name, goods) -> Format.fprintf ppf "quorum for %a not reached (valid: %a)" pp_name name (pp_list pp_id) (S.elements goods)
   | `MissingSignature id -> Format.fprintf ppf "missing signature from %a" pp_id id
-(*BISECT-IGNORE-END*)
-
-type res = (ok, error) result
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_res ppf = function
-  | Ok ok -> pp_ok ppf ok
-  | Error e -> pp_error ppf e
 (*BISECT-IGNORE-END*)
 
 let verify_resource repo authorised name resource data =
@@ -113,8 +101,7 @@ let verify_authorisation repo auth =
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (`Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
-  | Ok (`IdNoQuorum (_, js)) -> Error (`InsufficientQuorum (name, js))
-  | Ok (`Both b) -> Ok (`Both b)
+  | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
 
 let verify_releases repo a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
@@ -124,7 +111,7 @@ let verify_releases repo a r =
   verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw >>= function
   | `Both b -> Ok (`Both b)
   | `Quorum js -> Ok (`Quorum js)
-  | `IdNoQuorum (id, _) -> Ok (`Identifier id)
+  | `IdNoQuorum (id, _) -> Ok (`Signed id)
   (* need to verify that package dir contains all mentioned releases! *)
 
 let compute_checksum repo name =
@@ -167,7 +154,7 @@ let verify_checksum repo a r cs =
     match r with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
-    | `IdNoQuorum (id, _) -> Ok (`Identifier id)
+    | `IdNoQuorum (id, _) -> Ok (`Signed id)
 
 type r_err = [ `NotFound of string | `NameMismatch of string * string ]
 

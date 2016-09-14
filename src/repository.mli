@@ -10,26 +10,31 @@ val change_provider : t -> Provider.t -> t
 
 val verify_index : t -> Index.t -> (identifier, verification_error) result
 
-type ok = [ `Identifier of identifier | `Quorum of S.t | `Both of identifier * S.t ]
-val pp_ok : Format.formatter -> ok -> unit
+val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 
-type error = [
+type base_error = [
   | `InvalidName of name * name
   | `InvalidResource of resource * resource
   | `NotSigned of name * resource * S.t
-  | `InsufficientQuorum of name * S.t
-  | `MissingSignature of identifier
 ]
 
-val pp_error : Format.formatter -> error -> unit
+val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ] -> unit
 
-type res = (ok, error) result
-val pp_res : Format.formatter -> res -> unit
+val verify_key : t -> Publickey.t ->
+  ([ `Quorum of S.t | `Both of identifier * S.t ],
+   [ base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
 
-val verify_key : t -> Publickey.t -> res
-val verify_authorisation : t -> Authorisation.t -> res
-val verify_releases : t -> Authorisation.t -> Releases.t -> res
-val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t -> res
+val verify_authorisation : t -> Authorisation.t ->
+  ([ `Quorum of S.t ],
+   [ base_error | `InsufficientQuorum of identifier * S.t ]) result
+
+val verify_releases : t -> Authorisation.t -> Releases.t ->
+  ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
+   base_error) result
+
+val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
+  ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
+   base_error) result
 
 val add_index : t -> Index.t -> t
 

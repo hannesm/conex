@@ -267,14 +267,27 @@ let idx_sign () =
   Alcotest.check (result Alcotest.string verr) "id not authorised"
     (Error (`NotAuthorised (id, oid))) (Repository.verify_index r signed')
 
-let ok =
+let k_ok =
   let module M = struct
-    type t = Repository.ok
+    type t = [ `Quorum of S.t | `Both of identifier * S.t ]
     let pp = Repository.pp_ok
     let equal a b = match a, b with
-      | `Identifier a, `Identifier b -> id_equal a b
       | `Quorum js, `Quorum is -> S.equal js is
       | `Both (a, js), `Both (b, is) -> id_equal a b && S.equal js is
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let k_err =
+  let module M = struct
+    type t = [ Repository.base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]
+    let pp = Repository.pp_error
+    let equal a b = match a, b with
+      | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
+      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
+      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `MissingSignature id, `MissingSignature id' -> id_equal id id'
+      | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -295,11 +308,11 @@ let empty_key () =
     Private.sign_index idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
-  Alcotest.check (result ok err) "not signed"
+  Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
     (Repository.verify_key r pub) ;
   let r' = Repository.add_index r jidx in
-  Alcotest.check (result ok err) "empty publickey good"
+  Alcotest.check (result k_ok k_err) "empty publickey good"
     (Ok (`Quorum (S.singleton jid)))
     (Repository.verify_key r' pub)
 
@@ -320,19 +333,19 @@ let key_good () =
     Private.sign_index idx priv
   in
   let r = Repository.add_trusted_key r jpub in
-  Alcotest.check (result ok err) "not signed"
+  Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
     (Repository.verify_key r pub) ;
   let r' = Repository.add_index r jidx in
-  Alcotest.check (result ok err) "publickey missing self-sig"
+  Alcotest.check (result k_ok k_err) "publickey missing self-sig"
     (Error (`MissingSignature id))
     (Repository.verify_key r' pub) ;
   let r'' = Repository.add_index r idx in
-  Alcotest.check (result ok err) "publickey missing quorum"
+  Alcotest.check (result k_ok k_err) "publickey missing quorum"
     (Error (`InsufficientQuorum (id, S.empty)))
     (Repository.verify_key r'' pub) ;
   let r''' = Repository.add_index r' idx in
-  Alcotest.check (result ok err) "publickey is fine"
+  Alcotest.check (result k_ok k_err) "publickey is fine"
     (Ok (`Both (id, S.singleton jid)))
     (Repository.verify_key r''' pub)
 
@@ -347,7 +360,7 @@ let key_good_quorum () =
     Private.sign_index idx priv
   in
   let r = Repository.add_index r idx in
-  Alcotest.check (result ok err) "publickey missing quorum 0"
+  Alcotest.check (result k_ok k_err) "publickey missing quorum 0"
     (Error (`InsufficientQuorum (id, S.empty)))
     (Repository.verify_key r pub) ;
   let jidx r jid =
@@ -357,15 +370,15 @@ let key_good_quorum () =
     Repository.add_index (Repository.add_trusted_key r jpub) idx
   in
   let r = jidx r "jana" in
-  Alcotest.check (result ok err) "publickey missing quorum 1"
+  Alcotest.check (result k_ok k_err) "publickey missing quorum 1"
     (Error (`InsufficientQuorum (id, S.singleton "jana")))
     (Repository.verify_key r pub) ;
   let r = jidx r "janb" in
-  Alcotest.check (result ok err) "publickey missing quorum 2"
+  Alcotest.check (result k_ok k_err) "publickey missing quorum 2"
     (Error (`InsufficientQuorum (id, S.add "janb" (S.singleton "jana"))))
     (Repository.verify_key r pub) ;
   let r = jidx r "janc" in
-  Alcotest.check (result ok err) "publickey is fine"
+  Alcotest.check (result k_ok k_err) "publickey is fine"
     (Ok (`Both (id, S.add "janc" (S.add "janb" (S.singleton "jana")))))
     (Repository.verify_key r pub)
 
@@ -396,10 +409,10 @@ let no_janitor () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
   let r = Repository.add_index r idx in
-  Alcotest.check (result ok err) "missing quorum"
+  Alcotest.check (result k_ok k_err) "missing quorum"
     (Error (`InsufficientQuorum (id, S.empty)))
     (Repository.verify_key r pub) ;
-  Alcotest.check (result ok err) "missing quorum for empty"
+  Alcotest.check (result k_ok k_err) "missing quorum for empty"
     (Error (`NotSigned (id', `PublicKey, S.empty)))
     (Repository.verify_key r pem)
 
@@ -431,7 +444,7 @@ let k_wrong_resource () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
   let r = Repository.add_index r idx in
-  Alcotest.check (result ok err) "wrong resource"
+  Alcotest.check (result k_ok k_err) "wrong resource"
     (Error (`InvalidResource (`PublicKey, `Checksum)))
     (Repository.verify_key r pub)
 
@@ -454,7 +467,7 @@ let k_wrong_name () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
   let r = Repository.add_index r idx in
-  Alcotest.check (result ok err) "wrong name"
+  Alcotest.check (result k_ok k_err) "wrong name"
     (Error (`InvalidName (id, jid)))
     (Repository.verify_key r pub)
 
@@ -469,12 +482,36 @@ let key_repo_tests = [
   "wrong name", `Quick, k_wrong_name ;
 ]
 
+
+let a_ok =
+  let module M = struct
+    type t = [ `Quorum of S.t ]
+    let pp = Repository.pp_ok
+    let equal a b = match a, b with
+      | `Quorum js, `Quorum is -> S.equal js is
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let a_err =
+  let module M = struct
+    type t = [ Repository.base_error | `InsufficientQuorum of name * S.t ]
+    let pp = Repository.pp_error
+    let equal a b = match a, b with
+      | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
+      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
+      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
 let auth () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
-  Alcotest.check (result ok err) "auth missing quorum"
+  Alcotest.check (result a_ok a_err) "auth missing quorum"
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_authorisation r auth) ;
   let resources = [
@@ -489,16 +526,16 @@ let auth () =
     Repository.add_index (Repository.add_trusted_key r jpub) idx
   in
   let r = j_sign r "janitor" in
-  Alcotest.check (result ok err) "auth properly signed"
+  Alcotest.check (result a_ok a_err) "auth properly signed"
     (Ok (`Quorum (S.singleton "janitor")))
     (Repository.verify_authorisation r auth) ;
   let r = Repository.repository ~quorum:2 p in
   let r = j_sign r "janitor" in
-  Alcotest.check (result ok err) "auth missing quorum of 2"
+  Alcotest.check (result a_ok a_err) "auth missing quorum of 2"
     (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
     (Repository.verify_authorisation r auth) ;
   let r = j_sign r "janitor2" in
-  Alcotest.check (result ok err) "auth quorum of 2 good"
+  Alcotest.check (result a_ok a_err) "auth quorum of 2 good"
     (Ok (`Quorum (S.add "janitor2" (S.singleton "janitor"))))
     (Repository.verify_authorisation r auth)
 
@@ -518,7 +555,7 @@ let auth_self_signed () =
   in
   let idx = s_idx id priv in
   let r = Repository.add_index r idx in
-  Alcotest.check (result ok err) "auth missing quorum"
+  Alcotest.check (result a_ok a_err) "auth missing quorum"
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_authorisation r auth) ;
   let jid = "janitor" in
@@ -526,7 +563,7 @@ let auth_self_signed () =
   let jidx = s_idx jid jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
-  Alcotest.check (result ok err) "auth ok"
+  Alcotest.check (result a_ok a_err) "auth ok"
     (Ok (`Quorum (S.singleton jid)))
     (Repository.verify_authorisation r auth)
 
@@ -544,7 +581,7 @@ let a_wrong_resource () =
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
-  Alcotest.check (result ok err) "wrong resource"
+  Alcotest.check (result a_ok a_err) "wrong resource"
     (Error (`InvalidResource (`Authorisation, `Checksum)))
     (Repository.verify_authorisation r auth)
 
@@ -562,7 +599,7 @@ let a_wrong_name () =
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
-  Alcotest.check (result ok err) "wrong name"
+  Alcotest.check (result a_ok a_err) "wrong name"
     (Error (`InvalidName (pname, "barf")))
     (Repository.verify_authorisation r auth)
 
@@ -572,6 +609,30 @@ let auth_repo_tests = [
   "wrong resource", `Quick, a_wrong_resource ;
   "wrong name", `Quick, a_wrong_name ;
 ]
+
+let r_ok =
+  let module M = struct
+    type t = [ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ]
+    let pp = Repository.pp_ok
+    let equal a b = match a, b with
+      | `Signed a, `Signed b -> id_equal a b
+      | `Quorum js, `Quorum is -> S.equal js is
+      | `Both (a, js), `Both (b, is) -> id_equal a b && S.equal js is
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let r_err =
+  let module M = struct
+    type t = Repository.base_error
+    let pp = Repository.pp_error
+    let equal a b = match a, b with
+      | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
+      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
 
 let safe_rel ?releases name =
   match Releases.releases ?releases name with
@@ -586,7 +647,7 @@ let rel () =
   in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
   let rel = safe_rel pname in
-  Alcotest.check (result ok err) "not signed"
+  Alcotest.check (result r_ok r_err) "not signed"
     (Error (`NotSigned (pname, `Releases, S.empty)))
     (Repository.verify_releases r auth rel) ;
   let _pub, priv = gen_pub id in
@@ -597,8 +658,8 @@ let rel () =
     Private.sign_index (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
-  Alcotest.check (result ok err) "properly signed"
-    (Ok (`Identifier id))
+  Alcotest.check (result r_ok r_err) "properly signed"
+    (Ok (`Signed id))
     (Repository.verify_releases r auth rel)
 
 let rel_quorum () =
@@ -619,7 +680,7 @@ let rel_quorum () =
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sidx in
-  Alcotest.check (result ok err) "properly signed (quorum)"
+  Alcotest.check (result r_ok r_err) "properly signed (quorum)"
     (Ok (`Quorum (S.singleton jid)))
     (Repository.verify_releases r auth rel) ;
   let _pub, priv = gen_pub id in
@@ -627,7 +688,7 @@ let rel_quorum () =
     Private.sign_index (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx' in
-  Alcotest.check (result ok err) "properly signed (both)"
+  Alcotest.check (result r_ok r_err) "properly signed (both)"
     (Ok (`Both (id, S.singleton jid)))
     (Repository.verify_releases r auth rel)
 
@@ -647,7 +708,7 @@ let rel_not_authorised () =
     Private.sign_index (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
-  Alcotest.check (result ok err) "not authorised"
+  Alcotest.check (result r_ok r_err) "not authorised"
     (Error (`NotSigned (pname, `Releases, S.empty)))
     (Repository.verify_releases r auth rel)
 
@@ -678,7 +739,7 @@ let rel_name_mismatch () =
     Private.sign_index (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
-  Alcotest.check (result ok err) "releases and authorisation names do not match"
+  Alcotest.check (result r_ok r_err) "releases and authorisation names do not match"
     (* XXX: maybe renamed? *)
     (Error (`InvalidName (pname, "foo")))
     (Repository.verify_releases r auth rel)
@@ -699,7 +760,7 @@ let rel_wrong_name () =
     Private.sign_index (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
-  Alcotest.check (result ok err) "wrong name in releases"
+  Alcotest.check (result r_ok r_err) "wrong name in releases"
     (Error (`InvalidName (pname, "foo")))
     (Repository.verify_releases r auth rel)
 
@@ -719,7 +780,7 @@ let rel_wrong_resource () =
     Private.sign_index (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
-  Alcotest.check (result ok err) "wrong resource for releases"
+  Alcotest.check (result r_ok r_err) "wrong resource for releases"
     (Error (`InvalidResource (`Releases, `Authorisation)))
     (Repository.verify_releases r auth rel)
 
@@ -733,6 +794,19 @@ let rel_repo_tests = [
   "wrong resource", `Quick, rel_wrong_resource ;
 ]
 
+
+let c_err =
+  let module M = struct
+    type t = Repository.base_error
+    let pp = Repository.pp_error
+    let equal a b = match a, b with
+      | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
+      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
 let cs () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
@@ -743,7 +817,7 @@ let cs () =
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
-  Alcotest.check (result ok err) "checksum not signed"
+  Alcotest.check (result r_ok c_err) "checksum not signed"
     (Error (`NotSigned (v, `Checksum, S.empty)))
     (Repository.verify_checksum r auth rel cs) ;
   let resources = [
@@ -754,15 +828,15 @@ let cs () =
   let sidx = Private.sign_index (Index.index ~resources id) priv in
   let r = Repository.add_index r sidx in
   p.Provider.write ["data"; pname; v; "checksum"] "" ;
-  Alcotest.check (result ok err) "good checksum"
-    (Ok (`Identifier id))
+  Alcotest.check (result r_ok c_err) "good checksum"
+    (Ok (`Signed id))
     (Repository.verify_checksum r auth rel cs) ;
   let jid = "janitor" in
   let jpub, jpriv = gen_pub ~role:`Janitor jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
-  Alcotest.check (result ok err) "good checksum (both)"
+  Alcotest.check (result r_ok c_err) "good checksum (both)"
     (Ok (`Both (id, S.singleton jid)))
     (Repository.verify_checksum r auth rel cs)
 
@@ -786,7 +860,7 @@ let cs_quorum () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
   p.Provider.write ["data"; pname; v; "checksum"] "" ;
-  Alcotest.check (result ok err) "good checksum (quorum)"
+  Alcotest.check (result r_ok c_err) "good checksum (quorum)"
     (Ok (`Quorum (S.singleton jid)))
     (Repository.verify_checksum r auth rel cs)
 
@@ -810,7 +884,7 @@ let cs_bad_name () =
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
-  Alcotest.check (result ok err) "bad name (auth != rel)"
+  Alcotest.check (result r_ok c_err) "bad name (auth != rel)"
     (Error (`InvalidName (reln, pname)))
     (Repository.verify_checksum r auth rel cs)
 
@@ -834,7 +908,7 @@ let cs_bad_name2 () =
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
-  Alcotest.check (result ok err) "bad name (not member of releases)"
+  Alcotest.check (result r_ok c_err) "bad name (not member of releases)"
     (Error (`InvalidName (pname, v)))
     (Repository.verify_checksum r auth rel cs)
 
@@ -857,7 +931,7 @@ let cs_wrong_name () =
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
-  Alcotest.check (result ok err) "wrong name"
+  Alcotest.check (result r_ok c_err) "wrong name"
     (Error (`InvalidName (v, pname)))
     (Repository.verify_checksum r auth rel cs)
 
@@ -880,7 +954,7 @@ let cs_wrong_resource () =
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
-  Alcotest.check (result ok err) "wrong resource"
+  Alcotest.check (result r_ok c_err) "wrong resource"
     (Error (`InvalidResource (`Checksum, `Releases)))
     (Repository.verify_checksum r auth rel cs)
 

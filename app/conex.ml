@@ -215,7 +215,9 @@ let verify copts kind =
       List.iter2
         (fun s v ->
            let c = Color.res_c v in
-           Format.fprintf copts.out "%s%s %a%s@." c s Repository.pp_res v Color.endc)
+           match v with
+           | Ok ok -> Format.fprintf copts.out "%s%s %a%s@." c s Repository.pp_ok ok Color.endc
+           | Error err -> Format.fprintf copts.out "%s%s %a%s@." c s Repository.pp_error err Color.endc)
         items verified
     in
     let _, kinds_pp = Cmdliner.Arg.enum kinds in
@@ -251,16 +253,28 @@ let verify copts kind =
          (fun (a, r, cs) ->
             let a_verified = Repository.verify_authorisation repo a in
             let c = Color.res_c a_verified in
-            Format.fprintf copts.out "%s%s (%d authorised: %a) (%a)%s@."
-              c a.Authorisation.name (List.length cs)
-              Authorisation.pp_authorised a.Authorisation.authorised
-              Repository.pp_res a_verified Color.endc ;
+            (match a_verified with
+             | Ok ok ->
+               Format.fprintf copts.out "%s%s (%d authorised: %a) (%a)%s@."
+                 c a.Authorisation.name (List.length cs)
+                 Authorisation.pp_authorised a.Authorisation.authorised
+                 Repository.pp_ok ok Color.endc
+             | Error err ->
+               Format.fprintf copts.out "%s%s (%d authorised: %a) (%a)%s@."
+                 c a.Authorisation.name (List.length cs)
+                 Authorisation.pp_authorised a.Authorisation.authorised
+                 Repository.pp_error err Color.endc) ;
             let verified = List.map (Repository.verify_checksum repo a r) cs in
             List.iter2
               (fun s v ->
                  let col = Color.res_c v in
-                 Format.fprintf copts.out "%s%s, %a%s@."
-                   col s.Checksum.name Repository.pp_res v Color.endc)
+                 match v with
+                 | Ok ok ->
+                   Format.fprintf copts.out "%s%s, %a%s@."
+                     col s.Checksum.name Repository.pp_ok ok Color.endc
+                 | Error err ->
+                   Format.fprintf copts.out "%s%s, %a%s@."
+                     col s.Checksum.name Repository.pp_error err Color.endc)
               cs verified)
          d_cs ;
        repo
@@ -277,7 +291,9 @@ let items = [ ("key", `Key) ; ("private", `Private) ; ("authorisation", `Authori
 
 let verified copts b =
   let c = Color.res_c b in
-  Format.fprintf copts.out "%s%a%s@." c Repository.pp_res b Color.endc
+  match b with
+  | Ok ok -> Format.fprintf copts.out "%s%a%s@." c Repository.pp_ok ok Color.endc
+  | Error err -> Format.fprintf copts.out "%s%a%s@." c Repository.pp_error err Color.endc
 
 let show_key copts key =
   Publickey.pp_publickey copts.out key ;

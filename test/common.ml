@@ -97,20 +97,6 @@ let cs =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let err =
-  let module M = struct
-    type t = Repository.error
-    let pp = Repository.pp_error
-    let equal a b = match a, b with
-      | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
-      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
-      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
-      | `MissingSignature id, `MissingSignature id' -> id_equal id id'
-      | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
-      | _ -> false
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
 let verr =
   let module M = struct
     type t = Core.verification_error
