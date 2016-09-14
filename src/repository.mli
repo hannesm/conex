@@ -13,6 +13,16 @@ val verify_index : t -> Index.t -> (identifier, verification_error) result
 type ok = [ `Identifier of identifier | `Quorum of S.t | `Both of identifier * S.t ]
 val pp_ok : Format.formatter -> ok -> unit
 
+type error = [
+  | `InvalidName of name * name
+  | `InvalidResource of resource * resource
+  | `NotSigned of name * resource * S.t
+  | `InsufficientQuorum of name * S.t
+  | `MissingSignature of identifier
+]
+
+val pp_error : Format.formatter -> error -> unit
+
 type res = (ok, error) result
 val pp_res : Format.formatter -> res -> unit
 
@@ -49,4 +59,6 @@ val write_releases : t -> Releases.t -> unit
 
 val read_checksum : t -> name -> Checksum.t r_res
 val write_checksum : t -> Checksum.t -> unit
+
+(* XXX: return value clearly wrong! *)
 val compute_checksum : t -> name -> Checksum.t r_res

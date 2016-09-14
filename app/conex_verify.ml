@@ -41,7 +41,7 @@ let load_id id r =
         if debug then Format.fprintf out "loaded index for %a@." pp_id id ;
         let r' = Repository.add_index r' i in
         match Repository.verify_key r' k with
-        | Error e -> pp_error out e ; maybe_exit () ; r
+        | Error e -> Repository.pp_error out e ; maybe_exit () ; r
         | Ok ok -> if debug then Repository.pp_ok out ok ; r'
 
 let verify_complete_repository directory trust =
@@ -66,19 +66,19 @@ let verify_complete_repository directory trust =
       match Repository.read_authorisation r name with
       | Error e -> Repository.pp_r_err out e ; maybe_exit ()
       | Ok auth -> match Repository.verify_authorisation r auth with
-        | Error e -> pp_error out e ; maybe_exit ()
+        | Error e -> Repository.pp_error out e ; maybe_exit ()
         | Ok ok -> if debug then Repository.pp_ok out ok ;
           match Repository.read_releases r name with
           | Error e -> Repository.pp_r_err out e ; maybe_exit ()
           | Ok rel -> match Repository.verify_releases r auth rel with
-            | Error e -> pp_error out e ; maybe_exit ()
+            | Error e -> Repository.pp_error out e ; maybe_exit ()
             | Ok ok -> if debug then Repository.pp_ok out ok ;
               let good = ref true in
               S.iter (fun rname ->
                   match Repository.read_checksum r rname with
                   | Error e -> Repository.pp_r_err out e ; good := false ; maybe_exit ()
                   | Ok cs -> match Repository.verify_checksum r auth rel cs with
-                    | Error e -> pp_error out e ; good := false ; maybe_exit ()
+                    | Error e -> Repository.pp_error out e ; good := false ; maybe_exit ()
                     | Ok ok -> if debug then Repository.pp_ok out ok)
                 rel.Releases.releases ;
               if !good then Format.fprintf out "verified %a@." pp_name name)

@@ -78,7 +78,7 @@ let load_id id copts =
           if copts.debug then Format.fprintf copts.out "loaded index for %a@." pp_id id ;
           let r' = Repository.add_index r' i in
           match Repository.verify_key r' k with
-          | Error e -> pp_error copts.out e ; r
+          | Error e -> Repository.pp_error copts.out e ; r
           | Ok ok -> if copts.debug then Repository.pp_ok copts.out ok ; r'
   in
   { copts with repo }

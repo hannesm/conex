@@ -99,8 +99,8 @@ let cs =
 
 let err =
   let module M = struct
-    type t = Core.error
-    let pp = Core.pp_error
+    type t = Repository.error
+    let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'

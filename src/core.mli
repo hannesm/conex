@@ -50,16 +50,6 @@ type verification_error = [
 
 val pp_verification_error : Format.formatter -> verification_error -> unit
 
-type error = [
-  | `InvalidName of name * name
-  | `InvalidResource of resource * resource
-  | `NotSigned of name * resource * S.t
-  | `InsufficientQuorum of name * S.t
-  | `MissingSignature of identifier
-]
-
-val pp_error : Format.formatter -> error -> unit
-
 val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
 val guard : bool -> 'a -> (unit, 'a) result
 val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result

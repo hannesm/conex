@@ -129,23 +129,6 @@ let pp_verification_error ppf = function
   | `NoSignature s -> Format.fprintf ppf "no signature found on index %a" pp_id s
 (*BISECT-IGNORE-END*)
 
-type error = [
-  | `InvalidName of name * name
-  | `InvalidResource of resource * resource
-  | `NotSigned of name * resource * S.t
-  | `InsufficientQuorum of name * S.t
-  | `MissingSignature of identifier
-]
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_error ppf = function
-  | `InvalidName (w, h) -> Format.fprintf ppf "invalid name, looking for %a but got %a" pp_name w pp_name h
-  | `InvalidResource (w, h) -> Format.fprintf ppf "invalid resource, looking for %a but got %a" pp_resource w pp_resource h
-  | `NotSigned (n, r, js) -> Format.fprintf ppf "missing signature on %a, a %a, quorum not reached (valid %a)" pp_name n pp_resource r (pp_list pp_id) (S.elements js)
-  | `InsufficientQuorum (name, goods) -> Format.fprintf ppf "quorum for %a not reached (valid: %a)" pp_name name (pp_list pp_id) (S.elements goods)
-  | `MissingSignature id -> Format.fprintf ppf "missing signature from %a" pp_id id
-(*BISECT-IGNORE-END*)
-
 let (>>=) a f =
   match a with
   | Ok x -> f x
