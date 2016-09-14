@@ -18,11 +18,11 @@ type base_error = [
   | `NotSigned of name * resource * S.t
 ]
 
-val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ] -> unit
+val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of identifier * S.t | `MissingSignature of identifier ] -> unit
 
 val verify_key : t -> Publickey.t ->
   ([ `Quorum of S.t | `Both of identifier * S.t ],
-   [ base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
+   [ base_error | `InsufficientQuorum of identifier * S.t | `MissingSignature of identifier ]) result
 
 val verify_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
