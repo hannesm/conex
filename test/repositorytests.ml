@@ -624,13 +624,14 @@ let r_ok =
 
 let r_err =
   let module M = struct
-    type t = [ Repository.base_error | `AuthRelMismatch of name * name ]
+    type t = [ Repository.base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]
     let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | `AuthRelMismatch (a, r), `AuthRelMismatch (a', r') -> name_equal a a' && name_equal r r'
+      | `InvalidReleases (n, h, w), `InvalidReleases (n', h', w') -> name_equal n n' && S.equal h h' && S.equal w w'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -724,6 +725,42 @@ let rel_bad_releases () =
     (Error "all releases must have the same package name")
     (Releases.releases ~releases:(S.singleton pname) pname)
 
+let rel_missing_releases () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let v = pname ^ ".0" in
+  let rel = safe_rel ~releases:(S.singleton v) pname in
+  let _pub, priv = gen_pub id in
+  let sidx =
+    let resources = [
+      pname, `Releases, digest (Data.releases_raw rel)
+    ] in
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let r = Repository.add_index r sidx in
+  Alcotest.check (result r_ok r_err) "missing on disk"
+    (Error (`InvalidReleases (pname, S.empty, S.singleton v)))
+    (Repository.verify_releases r auth rel) ;
+  p.Provider.write ["data"; pname; v; "checksum"] "" ;
+  Alcotest.check (result r_ok r_err) "all good"
+    (Ok (`Signed id))
+    (Repository.verify_releases r auth rel) ;
+  let v2 = pname ^ ".1" in
+  p.Provider.write ["data"; pname; v2; "checksum"] "" ;
+  Alcotest.check (result r_ok r_err) "missing in releases"
+    (Error (`InvalidReleases (pname, S.singleton v2, S.empty)))
+    (Repository.verify_releases r auth rel) ;
+  let v3 = pname ^ ".2" in
+  p.Provider.write ["data"; pname; v3; "checksum"] "" ;
+  Alcotest.check (result r_ok r_err) "missing in releases"
+    (Error (`InvalidReleases (pname, S.add v3 (S.singleton v2), S.empty)))
+    (Repository.verify_releases r auth rel)
+
+
 let rel_name_mismatch () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
@@ -789,6 +826,7 @@ let rel_repo_tests = [
   "quorum on releases", `Quick, rel_quorum ;
   "not authorised", `Quick, rel_not_authorised ;
   "bad release", `Quick, rel_bad_releases ;
+  "missing some releases", `Quick, rel_missing_releases ;
   "name mismatch (releases and authorisation)", `Quick, rel_name_mismatch ;
   "wrong name", `Quick, rel_wrong_name ;
   "wrong resource", `Quick, rel_wrong_resource ;

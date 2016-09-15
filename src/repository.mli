@@ -18,7 +18,7 @@ type base_error = [
   | `NotSigned of name * resource * S.t
 ]
 
-val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier | `AuthRelMismatch of name * name | `NotInReleases of name * S.t ] -> unit
+val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t | `NotInReleases of name * S.t ] -> unit
 
 val verify_key : t -> Publickey.t ->
   ([ `Quorum of S.t | `Both of identifier * S.t ],
@@ -30,7 +30,7 @@ val verify_authorisation : t -> Authorisation.t ->
 
 val verify_releases : t -> Authorisation.t -> Releases.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   [ base_error | `AuthRelMismatch of name * name ]) result
+   [ base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]) result
 
 val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],

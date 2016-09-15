@@ -58,6 +58,9 @@ let pp_error ppf = function
   | `InsufficientQuorum (name, goods) -> Format.fprintf ppf "quorum for %a not reached (valid: %a)" pp_name name (pp_list pp_id) (S.elements goods)
   | `MissingSignature id -> Format.fprintf ppf "missing self-signature on public key %a" pp_id id
   | `AuthRelMismatch (a, r) -> Format.fprintf ppf "the package name in the authorisation %a does not match the one in releases %a" pp_name a pp_name r
+  | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
+  | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
+  | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
   | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
 (*BISECT-IGNORE-END*)
 
@@ -105,15 +108,29 @@ let verify_authorisation repo auth =
   (* the following two cases will never happen, since authorised is S.empty! *)
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
 
+let ensure_releases repo r =
+  let dirs = Layout.items repo.data r.Releases.name in
+  let dirs = S.of_list dirs in
+  let rels = r.Releases.releases in
+  if S.equal rels dirs then
+    Ok ()
+  else
+    let have = S.diff dirs rels
+    and want = S.diff rels dirs
+    in
+    Error (have, want)
+
 let verify_releases repo a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   let raw = Data.releases_raw r in
-  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw >>= function
-  | `Both b -> Ok (`Both b)
-  | `Quorum js -> Ok (`Quorum js)
-  | `IdNoQuorum (id, _) -> Ok (`Signed id)
-  (* need to verify that on disk all dirs are part of r.releases! and all r.releases are there! *)
+  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw >>= fun res ->
+  match ensure_releases repo r with
+  | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
+  | Ok () -> match res with
+    | `Both b -> Ok (`Both b)
+    | `Quorum js -> Ok (`Quorum js)
+    | `IdNoQuorum (id, _) -> Ok (`Signed id)
 
 let compute_checksum repo name =
   match repo.data.Provider.file_type (Layout.checksum_dir name) with
