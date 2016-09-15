@@ -149,7 +149,7 @@ let compute_checksum repo name =
         match repo.data.Provider.read (d@f) with
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
         | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
-    let r = List.map2 Checksum.checksum (List.map path_to_string fs) (List.rev ds) in
+    let r = List.(map2 Checksum.checksum (map path_to_string fs) (rev ds)) in
     Ok (Checksum.checksums name r)
 
 let verify_checksum repo a r cs =
