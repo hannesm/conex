@@ -25,7 +25,11 @@ val checksums : ?counter:int64 -> ?version:int64 -> string -> c list -> t
 
 val set_counter : t -> int64 -> t
 
-val checksums_equal : t -> t -> bool
+val compare_checksums : t -> t ->
+  (unit,
+   [ `InvalidName of name * name
+   | `ChecksumsDiff of name * name list * name list * (c * c) list ])
+    result
 
 val fold : (c -> 'b -> 'b) -> checksum_map -> 'b -> 'b
 val find : checksum_map -> string -> c

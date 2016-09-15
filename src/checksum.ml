@@ -13,7 +13,7 @@ let pp_checksum ppf c =
 (*BISECT-IGNORE-END*)
 
 let checksum_equal a b =
-  a.filename = b.filename && a.bytesize = b.bytesize && a.checksum = b.checksum
+  name_equal a.filename b.filename && a.bytesize = b.bytesize && a.checksum = b.checksum
 
 let checksum filename data =
   let bytesize = Int64.of_int (String.length data)
@@ -55,8 +55,23 @@ let checksums ?(counter = 0L) ?(version = 0L) name files =
 
 let set_counter cs counter = { cs with counter }
 
-(* XXX: compare_checksums which returns a result type!
-   then we can inform the user which checksum is offending *)
-
-let checksums_equal a b =
-  a.name = b.name && M.equal checksum_equal a.files b.files
+let compare_checksums a b =
+  guard (name_equal a.name b.name) (`InvalidName (a.name, b.name)) >>= fun () ->
+  if M.equal checksum_equal a.files b.files then
+    Ok ()
+  else
+    let invalid, missing =
+      M.fold (fun k v (inv, miss) ->
+          if M.mem k b.files then
+            let c = M.find k b.files in
+            if checksum_equal c v then (inv, miss)
+            else ((c, v) :: inv, miss)
+          else (inv, k :: miss))
+        a.files ([], [])
+    and toomany =
+      M.fold (fun k _ acc ->
+          if M.mem k a.files then acc
+          else k :: acc)
+        b.files []
+    in
+    Error (`ChecksumsDiff (a.name, missing, toomany, invalid))

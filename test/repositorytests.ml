@@ -166,8 +166,19 @@ let re =
     type t = Repository.r_err
     let pp = Repository.pp_r_err
     let equal a b = match a, b with
-      | `NotFound x, `NotFound y -> x = y
-      | `NameMismatch _, `NameMismatch _ -> true
+      | `NotFound a, `NotFound a' -> name_equal a a'
+      | `NameMismatch (a, b), `NameMismatch (a', b') -> name_equal a a' && name_equal b b'
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let ch_err =
+  let module M = struct
+    type t = [ `FileNotFound of name | `NotADirectory of name ]
+    let pp = Repository.pp_error
+    let equal a b = match a, b with
+      | `FileNotFound a, `FileNotFound a' -> name_equal a a'
+      | `NotADirectory a, `NotADirectory a' -> name_equal a a'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -190,8 +201,8 @@ let empty_r () =
     (Error (`NotFound "foo")) (Repository.read_index r "foo") ;
   Alcotest.check (result cs re) "reading checksum foo.0 in empty repo fails"
     (Error (`NotFound "foo.0")) (Repository.read_checksum r "foo.0") ;
-  Alcotest.check (result cs re) "computing checksum foo.0 in empty repo fails"
-    (Error (`NotFound "foo.0")) (Repository.compute_checksum r "foo.0")
+  Alcotest.check (result cs ch_err) "computing checksum foo.0 in empty repo fails"
+    (Error (`FileNotFound "foo.0")) (Repository.compute_checksum r "foo.0")
 
 let key_r () =
   let p = Mem.mem_provider () in
@@ -234,7 +245,7 @@ let checks_r () =
   ]
   in
   let css = Checksum.checksums "foo.0" csums in
-  Alcotest.check (result cs re) "checksum computation works"
+  Alcotest.check (result cs ch_err) "checksum computation works"
     (Ok css) (Repository.compute_checksum r "foo.0")
 
 let basic_repo_tests = [
@@ -835,7 +846,7 @@ let rel_repo_tests = [
 
 let c_err =
   let module M = struct
-    type t = [ Repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t ]
+    type t = [ Repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t | `FileNotFound of name | `NotADirectory of name | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]
     let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
@@ -843,6 +854,14 @@ let c_err =
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | `AuthRelMismatch (a, r), `AuthRelMismatch (a', r') -> name_equal a a' && name_equal r r'
       | `NotInReleases (c, r), `NotInReleases (c', r') -> name_equal c c' && S.equal r r'
+      | `FileNotFound n, `FileNotFound n' -> name_equal n n'
+      | `NotADirectory n, `NotADirectory n' -> name_equal n n'
+      | `ChecksumsDiff (n, a, b, cs), `ChecksumsDiff (n', a', b', cs') ->
+        name_equal n n' &&
+        S.equal (S.of_list a) (S.of_list a') &&
+        S.equal (S.of_list b) (S.of_list b') &&
+        List.length cs = List.length cs' &&
+        List.for_all (fun (c, d) -> List.exists (fun (c', d') -> Checksum.checksum_equal c c' && Checksum.checksum_equal d d') cs) cs'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)

@@ -330,13 +330,16 @@ let show_checksum copts c =
           Format.fprintf copts.out "authorised: %a@ " Authorisation.pp_authorised a.Authorisation.authorised ;
           verified copts (Repository.verify_checksum copts.repo a r c)) ;
      (match Repository.compute_checksum copts.repo c.Checksum.name with
-      | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Repository.pp_r_err e Color.endc
+      | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Repository.pp_error e Color.endc
       | Ok computed ->
-        let eq = Checksum.checksums_equal computed c in
-        Format.fprintf copts.out "%schecksum %s%s@."
-          (if eq then Color.green else Color.red)
-          (if eq then "valid" else "invalid")
-          Color.endc)
+        match Checksum.compare_checksums computed c with
+        | Ok () ->
+          Format.fprintf copts.out "%schecksum %s%s@."
+            Color.green "valid" Color.endc
+        | Error e ->
+          Format.fprintf copts.out "%schecksum %s%s@."
+            Color.red "invalid" Color.endc ;
+          Repository.pp_error copts.out e)
    | None -> Format.fprintf copts.out "couldn't figure out package name for %s@." c.Checksum.name) ;
   `Ok ()
 
@@ -457,7 +460,7 @@ let generate copts item name role ids =
     (match Repository.compute_checksum copts.repo name with
      | Error e ->
        Format.fprintf copts.out "%scomputing checksum %a%s@."
-         Color.red Repository.pp_r_err e Color.endc ;
+         Color.red Repository.pp_error e Color.endc ;
        `Error (false, "while computing checksum")
      | Ok cs ->
        let cs = match Repository.read_checksum copts.repo name with

@@ -93,7 +93,7 @@ let cs =
   let module M = struct
     type t = Checksum.t
     let pp = Checksum.pp_checksums
-    let equal = Checksum.checksums_equal
+    let equal a b = match Checksum.compare_checksums a b with Ok () -> true | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 

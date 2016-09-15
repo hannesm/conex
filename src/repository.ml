@@ -51,6 +51,9 @@ type base_error = [
 ]
 
 (*BISECT-IGNORE-BEGIN*)
+let pp_cs ppf (a, b) =
+  Format.fprintf ppf "have %a want %a@ " Checksum.pp_checksum a Checksum.pp_checksum b
+
 let pp_error ppf = function
   | `InvalidName (w, h) -> Format.fprintf ppf "invalid name, looking for %a but got %a" pp_name w pp_name h
   | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource %a, looking for %a but got %a" pp_name n pp_resource w pp_resource h
@@ -62,6 +65,9 @@ let pp_error ppf = function
   | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
   | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
   | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
+  | `FileNotFound n -> Format.fprintf ppf "couldn't find file %a" pp_name n
+  | `NotADirectory n -> Format.fprintf ppf "expected %a to be a directory, but it is a file" pp_name n
+  | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
 (*BISECT-IGNORE-END*)
 
 let verify_resource repo authorised name resource data =
@@ -134,26 +140,17 @@ let verify_releases repo a r =
 
 let compute_checksum repo name =
   match repo.data.Provider.file_type (Layout.checksum_dir name) with
-  | Error _ -> Error (`NotFound name)
-  | Ok File -> Error (`NotFound name) (* more precise? *)
+  | Error _ -> Error (`FileNotFound name)
+  | Ok File -> Error (`NotADirectory name)
   | Ok Directory ->
-    let files = Layout.checksum_files repo.data name in
+    let fs = Layout.checksum_files repo.data name in
     let d = Layout.checksum_dir name in
-    let datas =
-      foldM
-        (fun acc f ->
-           match repo.data.Provider.read (d@f) with
-           | Error _ -> Error (`NotFound (path_to_string (d@f)))
-           | Ok data -> Ok (data :: acc))
-        []
-        files
-    in
-    let names = List.map path_to_string files in
-    match datas with
-    | Ok datas ->
-      let csums = List.map2 Checksum.checksum names (List.rev datas) in
-      Ok (Checksum.checksums name csums)
-    | Error e -> Error e
+    foldM (fun acc f ->
+        match repo.data.Provider.read (d@f) with
+        | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
+        | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
+    let r = List.map2 Checksum.checksum (List.map path_to_string fs) (List.rev ds) in
+    Ok (Checksum.checksums name r)
 
 let verify_checksum repo a r cs =
   guard (name_equal a.Authorisation.name r.Releases.name)
@@ -163,10 +160,11 @@ let verify_checksum repo a r cs =
   let raw = Data.checksums_raw cs in
   verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw >>= fun r ->
   let name = cs.Checksum.name in
-  match compute_checksum repo name with
-  | Error (`NotFound x) -> Error (`InvalidName (x, x)) (* XXX *)
-  | Ok css ->
-    guard (Checksum.checksums_equal cs css) (`InvalidName (name, name)) (* XXX *) >>= fun () ->
+  compute_checksum repo name >>= fun css ->
+  match Checksum.compare_checksums css cs with
+  | Error (`InvalidName (a, b)) -> Error (`InvalidName (a, b))
+  | Error (`ChecksumsDiff (a, b, c, d)) -> Error (`ChecksumsDiff (a, b, c, d))
+  | Ok () ->
     match r with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
