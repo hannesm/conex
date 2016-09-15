@@ -797,13 +797,14 @@ let rel_repo_tests = [
 
 let c_err =
   let module M = struct
-    type t = [ Repository.base_error  | `AuthRelMismatch of name * name ]
+    type t = [ Repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t ]
     let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | `AuthRelMismatch (a, r), `AuthRelMismatch (a', r') -> name_equal a a' && name_equal r r'
+      | `NotInReleases (c, r), `NotInReleases (c', r') -> name_equal c c' && S.equal r r'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -910,7 +911,7 @@ let cs_bad_name2 () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "bad name (not member of releases)"
-    (Error (`InvalidName (pname, v)))
+    (Error (`NotInReleases (v, rel.Releases.releases)))
     (Repository.verify_checksum r auth rel cs)
 
 let cs_wrong_name () =

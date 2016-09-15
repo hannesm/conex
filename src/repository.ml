@@ -57,7 +57,8 @@ let pp_error ppf = function
   | `NotSigned (n, r, js) -> Format.fprintf ppf "missing signature on %a, a %a, quorum not reached (valid %a)" pp_name n pp_resource r (pp_list pp_id) (S.elements js)
   | `InsufficientQuorum (name, goods) -> Format.fprintf ppf "quorum for %a not reached (valid: %a)" pp_name name (pp_list pp_id) (S.elements goods)
   | `MissingSignature id -> Format.fprintf ppf "missing self-signature on public key %a" pp_id id
-  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "the name in the authorisation %a does not match the one in releases %a" pp_name a pp_name r
+  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "the package name in the authorisation %a does not match the one in releases %a" pp_name a pp_name r
+  | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
 (*BISECT-IGNORE-END*)
 
 let verify_resource repo authorised name resource data =
@@ -112,6 +113,7 @@ let verify_releases repo a r =
   | `Both b -> Ok (`Both b)
   | `Quorum js -> Ok (`Quorum js)
   | `IdNoQuorum (id, _) -> Ok (`Signed id)
+  (* need to verify that on disk all dirs are part of r.releases! and all r.releases are there! *)
 
 let compute_checksum repo name =
   match repo.data.Provider.file_type (Layout.checksum_dir name) with
@@ -139,9 +141,8 @@ let compute_checksum repo name =
 let verify_checksum repo a r cs =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  (* XXX *)
   guard (S.mem cs.Checksum.name r.Releases.releases)
-    (`InvalidName (r.Releases.name, cs.Checksum.name)) >>= fun () ->
+    (`NotInReleases (cs.Checksum.name, r.Releases.releases)) >>= fun () ->
   let raw = Data.checksums_raw cs in
   verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum raw >>= fun r ->
   let name = cs.Checksum.name in
