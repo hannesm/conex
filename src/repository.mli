@@ -14,27 +14,27 @@ val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Bot
 
 type base_error = [
   | `InvalidName of name * name
-  | `InvalidResource of resource * resource
+  | `InvalidResource of name * resource * resource
   | `NotSigned of name * resource * S.t
 ]
 
-val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of identifier * S.t | `MissingSignature of identifier ] -> unit
+val pp_error : Format.formatter -> [< base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier | `AuthRelMismatch of name * name ] -> unit
 
 val verify_key : t -> Publickey.t ->
   ([ `Quorum of S.t | `Both of identifier * S.t ],
-   [ base_error | `InsufficientQuorum of identifier * S.t | `MissingSignature of identifier ]) result
+   [ base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
 
 val verify_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
-   [ base_error | `InsufficientQuorum of identifier * S.t ]) result
+   [ base_error | `InsufficientQuorum of name * S.t ]) result
 
 val verify_releases : t -> Authorisation.t -> Releases.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   base_error) result
+   [ base_error | `AuthRelMismatch of name * name ]) result
 
 val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   base_error) result
+   [ base_error | `AuthRelMismatch of name * name ]) result
 
 val add_index : t -> Index.t -> t
 

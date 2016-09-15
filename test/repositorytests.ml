@@ -284,10 +284,10 @@ let k_err =
     let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
-      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
-      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
-      | `MissingSignature id, `MissingSignature id' -> id_equal id id'
+      | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
+      | `MissingSignature id, `MissingSignature id' -> id_equal id id'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -445,7 +445,7 @@ let k_wrong_resource () =
   let r = Repository.add_index r jidx in
   let r = Repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "wrong resource"
-    (Error (`InvalidResource (`PublicKey, `Checksum)))
+    (Error (`InvalidResource (id, `PublicKey, `Checksum)))
     (Repository.verify_key r pub)
 
 let k_wrong_name () =
@@ -500,7 +500,7 @@ let a_err =
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
-      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | _ -> false
   end in
@@ -582,7 +582,7 @@ let a_wrong_resource () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong resource"
-    (Error (`InvalidResource (`Authorisation, `Checksum)))
+    (Error (`InvalidResource (pname, `Authorisation, `Checksum)))
     (Repository.verify_authorisation r auth)
 
 let a_wrong_name () =
@@ -624,12 +624,13 @@ let r_ok =
 
 let r_err =
   let module M = struct
-    type t = Repository.base_error
+    type t = [ Repository.base_error | `AuthRelMismatch of name * name ]
     let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
-      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | `AuthRelMismatch (a, r), `AuthRelMismatch (a', r') -> name_equal a a' && name_equal r r'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -740,8 +741,7 @@ let rel_name_mismatch () =
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "releases and authorisation names do not match"
-    (* XXX: maybe renamed? *)
-    (Error (`InvalidName (pname, "foo")))
+    (Error (`AuthRelMismatch ("foo", pname)))
     (Repository.verify_releases r auth rel)
 
 let rel_wrong_name () =
@@ -781,7 +781,7 @@ let rel_wrong_resource () =
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "wrong resource for releases"
-    (Error (`InvalidResource (`Releases, `Authorisation)))
+    (Error (`InvalidResource (pname, `Releases, `Authorisation)))
     (Repository.verify_releases r auth rel)
 
 let rel_repo_tests = [
@@ -797,12 +797,13 @@ let rel_repo_tests = [
 
 let c_err =
   let module M = struct
-    type t = Repository.base_error
+    type t = [ Repository.base_error  | `AuthRelMismatch of name * name ]
     let pp = Repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
-      | `InvalidResource (w, h), `InvalidResource (w', h') -> resource_equal w w' && resource_equal h h'
+      | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | `AuthRelMismatch (a, r), `AuthRelMismatch (a', r') -> name_equal a a' && name_equal r r'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -885,7 +886,7 @@ let cs_bad_name () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "bad name (auth != rel)"
-    (Error (`InvalidName (reln, pname)))
+    (Error (`AuthRelMismatch (pname, reln)))
     (Repository.verify_checksum r auth rel cs)
 
 let cs_bad_name2 () =
@@ -955,7 +956,7 @@ let cs_wrong_resource () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "wrong resource"
-    (Error (`InvalidResource (`Checksum, `Releases)))
+    (Error (`InvalidResource (v, `Checksum, `Releases)))
     (Repository.verify_checksum r auth rel cs)
 
 let cs_repo_tests = [

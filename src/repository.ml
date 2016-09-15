@@ -46,17 +46,18 @@ let pp_ok ppf = function
 
 type base_error = [
   | `InvalidName of name * name
-  | `InvalidResource of resource * resource
+  | `InvalidResource of name * resource * resource
   | `NotSigned of name * resource * S.t
 ]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_error ppf = function
   | `InvalidName (w, h) -> Format.fprintf ppf "invalid name, looking for %a but got %a" pp_name w pp_name h
-  | `InvalidResource (w, h) -> Format.fprintf ppf "invalid resource, looking for %a but got %a" pp_resource w pp_resource h
+  | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource %a, looking for %a but got %a" pp_name n pp_resource w pp_resource h
   | `NotSigned (n, r, js) -> Format.fprintf ppf "missing signature on %a, a %a, quorum not reached (valid %a)" pp_name n pp_resource r (pp_list pp_id) (S.elements js)
   | `InsufficientQuorum (name, goods) -> Format.fprintf ppf "quorum for %a not reached (valid: %a)" pp_name name (pp_list pp_id) (S.elements goods)
-  | `MissingSignature id -> Format.fprintf ppf "missing signature from %a" pp_id id
+  | `MissingSignature id -> Format.fprintf ppf "missing self-signature on public key %a" pp_id id
+  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "the name in the authorisation %a does not match the one in releases %a" pp_name a pp_name r
 (*BISECT-IGNORE-END*)
 
 let verify_resource repo authorised name resource data =
@@ -76,7 +77,7 @@ let verify_resource repo authorised name resource data =
     S.cardinal js >= repo.quorum
   with
   | false, _    , _    , _     -> Error (`InvalidName (name, n))
-  | true , false, _    , _     -> Error (`InvalidResource (resource, r))
+  | true , false, _    , _     -> Error (`InvalidResource (name, resource, r))
   | true , true , false, false -> Error (`NotSigned (n, r, js))
   | true , true , false, true  -> Ok (`Quorum js)
   | true , true , true , false -> Ok (`IdNoQuorum (id authorised, js))
@@ -105,14 +106,12 @@ let verify_authorisation repo auth =
 
 let verify_releases repo a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
-    (* XXX: maybe different tag? *)
-    (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
+    (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   let raw = Data.releases_raw r in
   verify_resource repo a.Authorisation.authorised r.Releases.name `Releases raw >>= function
   | `Both b -> Ok (`Both b)
   | `Quorum js -> Ok (`Quorum js)
   | `IdNoQuorum (id, _) -> Ok (`Signed id)
-  (* need to verify that package dir contains all mentioned releases! *)
 
 let compute_checksum repo name =
   match repo.data.Provider.file_type (Layout.checksum_dir name) with
@@ -138,9 +137,8 @@ let compute_checksum repo name =
     | Error e -> Error e
 
 let verify_checksum repo a r cs =
-  (* XXX: different tag for each guard? *)
   guard (name_equal a.Authorisation.name r.Releases.name)
-    (`InvalidName (r.Releases.name, a.Authorisation.name)) >>= fun () ->
+    (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   (* XXX *)
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`InvalidName (r.Releases.name, cs.Checksum.name)) >>= fun () ->
