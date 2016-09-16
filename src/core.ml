@@ -64,6 +64,7 @@ let digest data =
 
 type resource = [
   | `PublicKey
+  | `Team
   | `Checksum
   | `Releases
   | `Authorisation
@@ -71,6 +72,7 @@ type resource = [
 
 let resource_equal a b = match a, b with
   | `PublicKey, `PublicKey
+  | `Team, `Team
   | `Checksum, `Checksum
   | `Releases, `Releases
   | `Authorisation, `Authorisation -> true
@@ -78,12 +80,14 @@ let resource_equal a b = match a, b with
 
 let resource_to_string = function
   | `PublicKey -> "publickey"
+  | `Team -> "team"
   | `Checksum -> "checksum"
   | `Releases -> "releases"
   | `Authorisation -> "authorisation"
 
 let string_to_resource = function
   | "publickey" -> Some `PublicKey
+  | "team" -> Some `Team
   | "checksum" -> Some `Checksum
   | "releases" -> Some `Releases
   | "authorisation" -> Some `Authorisation
@@ -93,22 +97,6 @@ let string_to_resource = function
 let pp_resource ppf k = Format.pp_print_string ppf (resource_to_string k)
 (*BISECT-IGNORE-END*)
 
-
-type role = [ `Author | `Janitor | `Other of string ]
-
-let role_to_string = function
-  | `Author -> "author"
-  | `Janitor -> "janitor"
-  | `Other x -> x
-
-let string_to_role = function
-  | "author" -> `Author
-  | "janitor" -> `Janitor
-  | x -> `Other x
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_role pp r = Format.pp_print_string pp (role_to_string r)
-(*BISECT-IGNORE-END*)
 
 type verification_error = [
   | `InvalidBase64Encoding of identifier * string

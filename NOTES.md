@@ -55,10 +55,6 @@ incremental:
 - id & name private
 - custom base64?
 - API and when to check for counters being incremental?
-- API for sign
-- instead of having signatures spread over (which is fine if you want to mix up
-  new repos with those packages), use a central AuthorIndex file, similar to
-  JanitorIndex.  Pro: less bignum computations, key rollover is trivial.
 - integration with opam:  opam will let you specify a validate_repo command
   in .opam/config:
    "conex verify" --root <dir> --patch <filename> (OR --repo <dir>)
@@ -83,17 +79,6 @@ incremental:
 signature is done over <data> <identifier> <resource> to prevent reusing the same
  signature for other data resources or pretending another identifier
 
---> should janitors sign their packages in an authorindex?  or just put
-    everything in the janitorindex?
--> should there be a janitors/ and a authors/ for the indexes?  how to
-   up/downgrade roles?  central list of janitors (but who modifies + signs this)?
-   can a janitor also have an authorindex?   if not, the upgrade from author to
-   janitor gets troublesome:  first find quorum of js to include the modified role,
-   then merge role modification and move (maybe now modified) index elsewhere?
-   OTOH reading all the keys just for role info seems bad (esp since it needs to
-   be done on every startup) --> might just have a local janitors.txt (and if
-   not present, do slow startup)
-
 - executables:
  opam:
   verify --root <oldrepo, containing TA/janitors> --patch <patchfile> --whole <repo>
@@ -104,3 +89,61 @@ signature is done over <data> <identifier> <resource> to prevent reusing the sam
   show_all_unsigned_in_local_repo
  janitors:
   accept <package|key|newjanitor>
+
+
+-- from TODO on nuc
+ - reanimate patch.ml
+ - accounts in publickey
+ - functorise over data format, crypto provider
+ - multiple binaries: one for user [view/verify], one for author [generate/sign], one for janitor [quorum]
+ - timestamp notary
+ - use ji and releases for verification:
+     provide verify_XXX in Repository (and rely on them for verifying other bits and pieces)
+     provide UI in app/conex
+
+* proper documentation
+ - library docs lib
+ - cli man page
+ - examples
+* deletion of keys!
+* do FS magic only in layout
+  repo layout:
+   - find_key : id -> location
+   - find_keys : unit -> id list
+   - is_key : string -> bool
+   - find_delegate : name -> location
+   - find_delegates : unit -> name list
+   - is_delegate : string -> bool
+   - find_data : name -> location
+   - find_datas : unit -> name list
+   - is_data : string -> bool
+   - cs_of_path
+   - del_of_path / del_of_cs
+  uniqueness:
+   - when to check!? -- when reading data
+   - also important to privatize construction of name and ids (to check for well-formedness!)
+
+* what is the safety here?
+  -> provide a command to show me all the in-tree data without checksum
+  -> ... without delegate
+
+missing commands:
+ RM and dev tools:
+   adapt key role
+   adapt delegate owner (+/-)
+ filter list:
+   only unverified things
+   only verified things
+   only things requiring quorum (RM)
+
+too many invalid_arg! -- now contained to data, diff, patch (provider/repository)
+
+toools
+  show_trust_chain (transitive deps: whom do I trust) <package (release)> || <all packages> || <all installed>
+  explicitly don't trust <foo>
+  show center(s) of opam universe (hopefully the janitors)
+
+
+does the repo really need to know about layout and provider?
+  wouldn't the interface be simpler if it only consists of a keystore, and checksums?
+  (also, separation of concerns... or put the verification stuff into something different)

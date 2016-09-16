@@ -187,9 +187,7 @@ let ch_err =
 let empty_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository p in
-  Alcotest.check sset "empty repo has no keys" S.empty (Repository.all_keyids r) ;
-  Alcotest.check sset "empty repo has no janitors" S.empty (Repository.all_janitors r) ;
-  Alcotest.check sset "empty repo has no authors" S.empty (Repository.all_authors r) ;
+  Alcotest.check sset "empty repo has no keys" S.empty (Repository.all_ids r) ;
   Alcotest.check sset "empty repo has no authorisations" S.empty (Repository.all_authorisations r) ;
   Alcotest.check (result publickey re) "reading key foo in empty repo fails"
     (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
@@ -209,24 +207,26 @@ let key_r () =
   let r = Repository.repository p in
   let k, _pk = gen_pub "foo" in
   Repository.write_key r k ;
-  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Repository.all_keyids r) ;
-  Alcotest.check sset "key repo has one author" (S.singleton "foo") (Repository.all_authors r) ;
-  Alcotest.check sset "key repo has no janitors" S.empty (Repository.all_janitors r) ;
+  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Repository.all_ids r) ;
   Repository.write_key r k ;
-  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Repository.all_keyids r) ;
-  Alcotest.check sset "key repo+ has one author" (S.singleton "foo") (Repository.all_authors r) ;
-  Alcotest.check sset "key repo+ has no janitors" S.empty (Repository.all_janitors r) ;
+  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Repository.all_ids r) ;
   let k2, _pk2 = gen_pub "foobar" in
   Repository.write_key r k2 ;
-  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Repository.all_keyids r) ;
-  Alcotest.check sset "key repo has no janitors" S.empty (Repository.all_janitors r) ;
+  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Repository.all_ids r) ;
   Alcotest.check (result publickey re) "reading key gives back right key"
     (Ok k) (Repository.read_key r "foo") ;
-  let jk, _jpk = gen_pub ~role:`Janitor "janitor" in
+  let jk, _jpk = gen_pub "janitor" in
   Repository.write_key r jk ;
-  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Repository.all_keyids r) ;
-  Alcotest.check sset "key repo has two authors" (S.add "foobar" (S.singleton "foo")) (Repository.all_authors r) ;
-  Alcotest.check sset "key repo has one janitor" (S.singleton "janitor") (Repository.all_janitors r)
+  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Repository.all_ids r)
+
+let team_r () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:10 p in
+  Alcotest.(check int "quorum is correct" 10 (Repository.quorum r)) ;
+  Alcotest.check sset "team foo is empty" S.empty (Repository.team r "foo") ;
+  let t = Team.team ~members:(S.singleton "bar") "foo" in
+  let r = Repository.add_team r t in
+  Alcotest.check sset "team foo has one member" (S.singleton "bar") (Repository.team r "foo")
 
 let checks_r () =
   let open Provider in
@@ -251,6 +251,7 @@ let checks_r () =
 let basic_repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
+  "team", `Quick, team_r ;
   "checksum computation is sane", `Quick, checks_r ;
 ]
 
@@ -307,7 +308,7 @@ let empty_key () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let jid = "aaa" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub = match Publickey.publickey id None with
     | Ok p -> p
@@ -319,6 +320,7 @@ let empty_key () =
     Private.sign_index idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
     (Repository.verify_key r pub) ;
@@ -331,7 +333,7 @@ let key_good () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let jid = "aaa" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
   let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
@@ -344,6 +346,7 @@ let key_good () =
     Private.sign_index idx priv
   in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
     (Repository.verify_key r pub) ;
@@ -375,10 +378,15 @@ let key_good_quorum () =
     (Error (`InsufficientQuorum (id, S.empty)))
     (Repository.verify_key r pub) ;
   let jidx r jid =
-    let jpub, jpriv = gen_pub ~role:`Janitor jid in
+    let jpub, jpriv = gen_pub jid in
     let idx = Index.index ~resources jid in
     let idx = Private.sign_index idx jpriv in
-    Repository.add_index (Repository.add_trusted_key r jpub) idx
+    let r = Repository.add_trusted_key r jpub in
+    let r =
+      let mems = Repository.team r "janitors" in
+      Repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
+    in
+    Repository.add_index r idx
   in
   let r = jidx r "jana" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 1"
@@ -529,12 +537,17 @@ let auth () =
     pname, `Authorisation, digest (Data.authorisation_raw auth)
   ] in
   let j_sign r jid =
-    let jpub, jpriv = gen_pub ~role:`Janitor jid in
+    let jpub, jpriv = gen_pub jid in
     let idx =
       let i = Index.index ~resources jid in
       Private.sign_index i jpriv
     in
-    Repository.add_index (Repository.add_trusted_key r jpub) idx
+    let r = Repository.add_trusted_key r jpub in
+    let r =
+      let mems = Repository.team r "janitors" in
+      Repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
+    in
+    Repository.add_index r idx
   in
   let r = j_sign r "janitor" in
   Alcotest.check (result a_ok a_err) "auth properly signed"
@@ -570,9 +583,10 @@ let auth_self_signed () =
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_authorisation r auth) ;
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let jidx = s_idx jid jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "auth ok"
     (Ok (`Quorum (S.singleton jid)))
@@ -684,7 +698,7 @@ let rel_quorum () =
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
   let rel = safe_rel pname in
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let resources = [
     pname, `Releases, digest (Data.releases_raw rel)
   ] in
@@ -692,6 +706,7 @@ let rel_quorum () =
     Private.sign_index (Index.index ~resources jid) jpriv
   in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "properly signed (quorum)"
     (Ok (`Quorum (S.singleton jid)))
@@ -891,9 +906,10 @@ let cs () =
     (Ok (`Signed id))
     (Repository.verify_checksum r auth rel cs) ;
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "good checksum (both)"
     (Ok (`Both (id, S.singleton jid)))
@@ -914,9 +930,10 @@ let cs_quorum () =
     v, `Checksum, digest (Data.checksums_raw cs)
   ] in
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   p.Provider.write ["data"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok c_err) "good checksum (quorum)"
@@ -939,9 +956,10 @@ let cs_bad_name () =
     v, `Checksum, digest (Data.checksums_raw cs)
   ] in
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "bad name (auth != rel)"
     (Error (`AuthRelMismatch (pname, reln)))
@@ -963,9 +981,10 @@ let cs_bad_name2 () =
     v, `Checksum, digest (Data.checksums_raw cs)
   ] in
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "bad name (not member of releases)"
     (Error (`NotInReleases (v, rel.Releases.releases)))
@@ -986,9 +1005,10 @@ let cs_wrong_name () =
     pname, `Checksum, digest (Data.checksums_raw cs)
   ] in
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "wrong name"
     (Error (`InvalidName (v, pname)))
@@ -1009,9 +1029,10 @@ let cs_wrong_resource () =
     v, `Releases, digest (Data.checksums_raw cs)
   ] in
   let jid = "janitor" in
-  let jpub, jpriv = gen_pub ~role:`Janitor jid in
+  let jpub, jpriv = gen_pub jid in
   let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "wrong resource"
     (Error (`InvalidResource (v, `Checksum, `Releases)))

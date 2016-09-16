@@ -17,6 +17,7 @@ true : warn(+A-4-6-33-44-48-58)
 <src/repository.{ml,mli}>: for-pack(Conex)
 <src/signature.{ml,mli}>: for-pack(Conex)
 <src/strhelper.{ml,mli}>: for-pack(Conex)
+<src/team.{ml,mli}>: for-pack(Conex)
 <src/utils.ml>: package(cstruct), for-pack(Conex)
 
 <src/checksum.{ml,mli}>: package(nocrypto), package(cstruct), for-pack(Conex)

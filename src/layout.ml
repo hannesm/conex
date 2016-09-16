@@ -40,7 +40,7 @@ let private_key_path path id =
 
 let key_dir = "keys"
 
-let keys p =
+let ids p =
   match p.Provider.read_dir [ key_dir ] with
   | Error _ -> []
   | Ok data ->
@@ -54,20 +54,6 @@ let key_path id = [ key_dir ; id ]
 
 let ipath = "index"
 let index_path ji = [ ipath ; ji ]
-
-let jkey_dir = "janitors"
-
-let janitors p =
-  match p.Provider.read_dir [ jkey_dir ] with
-  | Error _ -> []
-  | Ok data ->
-    let f = function
-      | `File f -> Some f
-      | _ -> None
-    in
-    Utils.filter_map ~f data
-
-let janitor_path id = [ jkey_dir ; id ]
 
 let data_dir = "data"
 let authorisation_filename = "authorisation"

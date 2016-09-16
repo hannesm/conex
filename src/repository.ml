@@ -3,30 +3,37 @@ open Core
 module SM = Map.Make(String)
 type valid_resources = (name * resource * S.t) SM.t
 
+type teams = S.t SM.t
+
 type t = {
   store : Keystore.t ;
   quorum : int ;
   data : Provider.t ;
   valid : valid_resources ;
-  janitors : S.t
+  teams : teams ;
 }
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
-  { store ; quorum ; data ; valid = SM.empty ; janitors = S.empty }
+  { store ; quorum ; data ; valid = SM.empty ; teams = SM.empty }
 
 let quorum r = r.quorum
 
-let provider t = t.data
+let provider r = r.data
+
+let teams r = r.teams
+
+let team r id = try SM.find id r.teams with Not_found -> S.empty
+
+let janitors r = team r "janitors"
 
 let change_provider t data = { t with data }
 
 let add_trusted_key repo key =
   let store = Keystore.add repo.store key in
-  let janitors = match key.Publickey.role with
-    | `Janitor -> S.add key.Publickey.keyid repo.janitors
-    | _ -> repo.janitors
-  in
-  { repo with store ; janitors }
+  { repo with store }
+
+let add_team repo team =
+  { repo with teams = SM.add team.Team.name team.Team.members repo.teams }
 
 let verify_index repo idx =
   let data = Data.index_raw idx
@@ -70,7 +77,14 @@ let pp_error ppf = function
   | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
 (*BISECT-IGNORE-END*)
 
-let verify_resource repo authorised name resource data =
+let expand_owner r os =
+  S.fold
+    (fun id s ->
+       if SM.mem id r.teams then S.union s (SM.find id r.teams) else S.add id s)
+    os
+    S.empty
+
+let verify_resource repo owners name resource data =
   let csum = digest data in
   let n, r, s =
     if SM.mem csum repo.valid then
@@ -78,20 +92,21 @@ let verify_resource repo authorised name resource data =
     else
       (name, resource, S.empty)
   in
-  let js = S.filter (fun j -> S.mem j repo.janitors) s in
+  let js = S.filter (fun j -> S.mem j (janitors repo)) s in
+  let owners = expand_owner repo owners in
   let id a = S.choose (S.filter (fun a -> S.mem a s) a) in
   match
     name_equal n name,
     resource_equal r resource,
-    S.exists (fun a -> S.mem a s) authorised,
+    S.exists (fun a -> S.mem a s) owners,
     S.cardinal js >= repo.quorum
   with
   | false, _    , _    , _     -> Error (`InvalidName (name, n))
   | true , false, _    , _     -> Error (`InvalidResource (name, resource, r))
   | true , true , false, false -> Error (`NotSigned (n, r, js))
   | true , true , false, true  -> Ok (`Quorum js)
-  | true , true , true , false -> Ok (`IdNoQuorum (id authorised, js))
-  | true , true , true , true  -> Ok (`Both (id authorised, js))
+  | true , true , true , false -> Ok (`IdNoQuorum (id owners, js))
+  | true , true , true , true  -> Ok (`Both (id owners, js))
 
 let verify_key repo key =
   let id = key.Publickey.keyid
@@ -102,6 +117,18 @@ let verify_key repo key =
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
   | `Quorum js when key.Publickey.key = None -> Ok (`Quorum js)
   | `Quorum _ -> Error (`MissingSignature id)
+
+let verify_team repo team =
+  let id = team.Team.name
+  and raw = Data.team_raw team
+  in
+  match verify_resource repo S.empty id `Team raw with
+  | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
+  | Error e -> Error e
+  | Ok (`Quorum js) -> Ok (`Quorum js)
+  (* the following two cases will never happen, since authorised is S.empty! *)
+  | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
+  (* should verify that all members are on disk (and are keys, not teams, and no index files!!!) *)
 
 let verify_authorisation repo auth =
   let raw = Data.authorisation_raw auth
@@ -188,12 +215,7 @@ let read_key repo keyid =
     | Error _ -> Error (`NotFound keyid) (* XXX *)
     | Ok pubkey ->
       if id_equal pubkey.Publickey.keyid keyid then
-        match pubkey.Publickey.role with
-        | `Janitor -> begin match repo.data.Provider.read (Layout.janitor_path keyid) with
-            | Error _ -> Error (`NotFound keyid) (* XXX *)
-            | Ok _ -> Ok pubkey
-          end
-        | _ -> Ok pubkey
+        Ok pubkey
       else
         Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
 
@@ -201,16 +223,34 @@ let write_key repo key =
   let data = Data.publickey_to_data key
   and id = key.Publickey.keyid
   in
-  repo.data.Provider.write (Layout.key_path id) (Data.normalise data) ;
-  match key.Publickey.role with
-    | `Janitor -> repo.data.Provider.write (Layout.janitor_path id) ""
-    | _ -> ()
+  repo.data.Provider.write (Layout.key_path id) (Data.normalise data)
 
-let all_janitors repo = S.of_list (Layout.janitors repo.data)
+let read_team repo name =
+  match repo.data.Provider.read (Layout.key_path name) with
+  | Error _ -> Error (`NotFound name)
+  | Ok data ->
+    let team = Data.data_to_team (Data.parse data) in
+    if id_equal team.Team.name name then
+      Ok team
+    else
+      Error (`NameMismatch (name, team.Team.name))
 
-let all_authors repo = S.diff (S.of_list (Layout.keys repo.data)) (all_janitors repo)
+let write_team repo t =
+  let data = Data.team_to_data t
+  and id = t.Team.name
+  in
+  repo.data.Provider.write (Layout.key_path id) (Data.normalise data)
 
-let all_keyids repo = S.of_list (Layout.keys repo.data)
+let read_id repo id =
+  match read_key repo id with
+  | Ok key -> Ok (`Key key)
+  | Error (`NameMismatch (a, b)) -> Error (`NameMismatch (a, b))
+  | Error _ -> match read_team repo id with
+    | Ok team -> Ok (`Team team)
+    | Error (`NameMismatch (a, b)) -> Error (`NameMismatch (a, b))
+    | Error _ -> Error (`NotFound id)
+
+let all_ids repo = S.of_list (Layout.ids repo.data)
 
 let read_index repo name =
   match repo.data.Provider.read (Layout.index_path name) with
@@ -292,5 +332,4 @@ let add_csums repo id rs =
   { repo with valid }
 
 let add_index r idx =
-  (* XXX: replace with a convenience function : PK.t -> I.t -> or_error *)
   add_csums r idx.Index.identifier idx.Index.resources

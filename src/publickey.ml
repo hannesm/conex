@@ -23,13 +23,11 @@ type t = {
   version : int64 ;
   keyid : identifier ;
   key : pub option ;
-  role : role ;
 }
 
 let equal a b =
   a.counter = b.counter &&
-  a.keyid = b.keyid &&
-  a.role = b.role &&
+  id_equal a.keyid b.keyid &&
   a.key = b.key
 
 (*BISECT-IGNORE-BEGIN*)
@@ -38,17 +36,16 @@ let pp_publickey ppf p =
     | None -> Format.pp_print_string ppf "none"
     | Some x -> pp_key ppf x
   in
-  Format.fprintf ppf "keyid: %a@ role: %a@ counter: %Lu@ key: %a@."
+  Format.fprintf ppf "keyid: %a@ counter: %Lu@ key: %a@."
     pp_id p.keyid
-    pp_role p.role
     p.counter
     pp_opt_key p.key
 (*BISECT-IGNORE-END*)
 
-let publickey ?(counter = 0L) ?(version = 0L) ?(role = `Author) keyid key =
+let publickey ?(counter = 0L) ?(version = 0L) keyid key =
   match key with
   | Some (RSA_pub p) when Nocrypto.Rsa.pub_bits p < 2048 -> Error "RSA key too small"
-  | _ -> Ok { counter ; version ; role ; keyid ; key }
+  | _ -> Ok { counter ; version ; keyid ; key }
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 

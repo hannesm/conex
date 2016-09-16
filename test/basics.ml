@@ -4,7 +4,7 @@ open Common
 (* since Publickey.t is private, we've no way to properly test Publickey.publickey *)
 let good_publickey () =
   let apriv = Private.generate () in
-  let pk, _ = gen_pub ~counter:0L ~role:`Author ~priv:apriv "a" in
+  let pk, _ = gen_pub ~counter:0L ~priv:apriv "a" in
   Alcotest.check
     (result publickey Alcotest.string)
     "good key is good"
@@ -13,12 +13,12 @@ let good_publickey () =
 
 let good_publickey_2 () =
   let apriv = Private.generate ~bits:4096 () in
-  let pk, _ = gen_pub ~counter:100L ~role:`Janitor ~priv:apriv "a" in
+  let pk, _ = gen_pub ~counter:100L ~priv:apriv "a" in
   Alcotest.check
     (result publickey Alcotest.string)
     "good key is good"
     (Ok pk)
-    (Publickey.publickey ~counter:100L ~role:`Janitor "a" (Some (Private.pub_of_priv apriv)))
+    (Publickey.publickey ~counter:100L "a" (Some (Private.pub_of_priv apriv)))
 
 let bad_publickey () =
   let apriv = Private.generate ~bits:1024 () in
@@ -79,18 +79,16 @@ let check_sig prefix pub raw (id, sv) =
     (Publickey.verify pub "" (id, sv))
 
 let sign_single () =
-  let id = "a"
-  and role = `Author
-  in
-  let pub, priv = gen_pub ~role id in
+  let id = "a" in
+  let pub, priv = gen_pub id in
   let raw = Data.publickey_raw pub in
   let s = Private.sign id priv raw in
   check_sig "common" pub raw s
 
 let sig_good_role () =
   let pid = "foobar" in
-  let pub, p = gen_pub ~role:`Janitor pid in
-  let (id, sigval) = Private.sign pid p "bla" in
+  let pub, p = gen_pub pid in
+  let id, sigval = Private.sign pid p "bla" in
   Alcotest.(check string "id of sign is same as given" pid id) ;
   check_ver "signature is good" (Ok id) (Publickey.verify pub "bla" (id, sigval))
 

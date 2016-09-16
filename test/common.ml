@@ -10,7 +10,7 @@ let sset =
 
 let privkey = ref None
 
-let gen_pub ?counter ?role ?priv id =
+let gen_pub ?counter ?priv id =
   let priv = match priv, !privkey with
     | Some p, _ -> p
     | None, Some x -> x
@@ -19,7 +19,7 @@ let gen_pub ?counter ?role ?priv id =
       privkey := Some p ;
       p
   in
-  match Publickey.publickey ?counter ?role id (Some (Private.pub_of_priv priv)) with
+  match Publickey.publickey ?counter id (Some (Private.pub_of_priv priv)) with
   | Ok public -> (public, priv)
   | Error s -> invalid_arg s
 

@@ -10,12 +10,11 @@ type t = private {
   version : int64 ;
   keyid : identifier ;
   key : pub option ;
-  role : role ;
 }
 
 val pp_publickey : Format.formatter -> t -> unit
 
-val publickey : ?counter:int64 -> ?version:int64 -> ?role:role -> identifier -> pub option -> (t, string) result
+val publickey : ?counter:int64 -> ?version:int64 -> identifier -> pub option -> (t, string) result
 
 val equal : t -> t -> bool
 

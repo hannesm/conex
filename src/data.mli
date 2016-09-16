@@ -24,6 +24,10 @@ val authorisation_to_data : Authorisation.t -> t
 val data_to_authorisation : t -> Authorisation.t
 val authorisation_raw : Authorisation.t -> string
 
+val team_to_data : Team.t -> t
+val data_to_team : t -> Team.t
+val team_raw : Team.t -> string
+
 val checksums_to_data : Checksum.t -> t
 val data_to_checksums : t -> Checksum.t
 val checksums_raw : Checksum.t -> string

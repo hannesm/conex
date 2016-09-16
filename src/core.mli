@@ -25,6 +25,7 @@ val digest : string -> string
 
 type resource = [
   | `PublicKey
+  | `Team
   | `Checksum
   | `Releases
   | `Authorisation
@@ -33,11 +34,6 @@ val resource_to_string : resource -> string
 val string_to_resource : string -> resource option
 val pp_resource : Format.formatter -> resource -> unit
 val resource_equal : resource -> resource -> bool
-
-type role = [ `Author | `Janitor | `Other of string ]
-val role_to_string : role -> string
-val string_to_role : string -> role
-val pp_role : Format.formatter -> role -> unit
 
 type verification_error = [
   | `InvalidBase64Encoding of identifier * string

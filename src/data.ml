@@ -202,20 +202,17 @@ let publickey_to_data pubkey =
   let pem = match pubkey.Publickey.key with
     | None -> "NONE"
     | Some x -> Publickey.encode_key x
-  and role = role_to_string pubkey.Publickey.role
   in
   List [ Entry ("counter", Leaf (Int pubkey.Publickey.counter)) ;
          Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
          Entry ("keyid"  , Leaf (String pubkey.Publickey.keyid)) ;
-         Entry ("key"    , Leaf (String pem)) ;
-         Entry ("role"   , Leaf (String role)) ]
+         Entry ("key"    , Leaf (String pem)) ]
 
 let data_to_publickey data =
   let counter = extract_int_exn (get_exn data "counter")
   and version = extract_int_exn (get_exn data "version")
   and keyid = extract_string_exn (get_exn data "keyid")
   and key = extract_string_exn (get_exn data "key")
-  and role = extract_string_exn (get_exn data "role")
   in
   let key =
     match key with
@@ -223,9 +220,8 @@ let data_to_publickey data =
     | _ -> match Publickey.decode_key key with
       | Some k -> Some k
       | None -> invalid_arg "cannot decode public key"
-  and role = string_to_role role
   in
-  Publickey.publickey ~counter ~version ~role keyid key
+  Publickey.publickey ~counter ~version keyid key
 
 let publickey_raw p = normalise (publickey_to_data p)
 
@@ -270,6 +266,27 @@ let data_to_authorisation data =
   Authorisation.authorisation ~counter ~version ~authorised name
 
 let authorisation_raw a = normalise (authorisation_to_data a)
+
+
+let team_to_data d =
+  let id s = Leaf (String s) in
+  List [ Entry ("name"   , Leaf (String d.Team.name)) ;
+         Entry ("counter", Leaf (Int d.Team.counter)) ;
+         Entry ("version", Leaf (Int d.Team.version)) ;
+         Entry ("members", List (List.map id (S.elements d.Team.members))) ]
+
+let data_to_team data =
+  let id x = extract_string_exn x in
+  let name = extract_string_exn (get_exn data "name")
+  and counter = extract_int_exn (get_exn data "counter")
+  and version = extract_int_exn (get_exn data "version")
+  and members = match get_exn data "members" with
+    | List es -> S.of_list (List.map id es)
+    | _ -> invalid_arg "members not a list"
+  in
+  Team.team ~counter ~version ~members name
+
+let team_raw a = normalise (team_to_data a)
 
 
 let checksum_to_data c =
