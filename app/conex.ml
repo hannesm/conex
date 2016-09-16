@@ -56,10 +56,9 @@ let load_tas copts =
          keys
      in
      let repo = List.fold_left Repository.add_trusted_key copts.repo keys in
-     let pkey k = Printf.sprintf "%s as %s" k.Publickey.keyid (Core.role_to_string k.Publickey.role) in
-     Format.fprintf copts.out "Loaded %d trust anchors [%s] from %s@."
+     Format.fprintf copts.out "Loaded %d trust anchors %a from %s@."
                     (List.length keys)
-                    (String.concat ", " (List.map pkey keys))
+                    (pp_list pp_id) (List.map (fun k -> k.Publickey.keyid) keys)
                     s ;
      { copts with repo ; verify = true }
 
@@ -90,7 +89,7 @@ let find_keys copts =
           match Repository.read_key copts.repo f with
           | Error e -> Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.all_keyids copts.repo)))
+      (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun k -> k.Publickey.keyid = o) keys
@@ -208,8 +207,9 @@ let list copts kind = (* XXX missing indexes *)
 
 let verify copts kind =
   let copts = load_tas copts in
-  let copts = S.fold load_id (Repository.all_janitors copts.repo) copts in
-  let copts = S.fold load_id (Repository.all_authors copts.repo) copts in
+  (* janitor team.. verify.. rest.. *)
+  (*  let copts = S.fold load_id (Repository.all_janitors copts.repo) copts in *)
+  let copts = S.fold load_id (Repository.all_ids copts.repo) copts in
   let rec exec repo kind =
     let out items verified =
       List.iter2
@@ -345,8 +345,8 @@ let show_checksum copts c =
 
 let show copts item value =
   let copts = load_tas copts in
-  let copts = S.fold load_id (Repository.all_janitors copts.repo) copts in
-  let copts = S.fold load_id (Repository.all_authors copts.repo) copts in
+  (* load dance *)
+  let copts = S.fold load_id (Repository.all_ids copts.repo) copts in
   match item with
   | `Key -> (match Repository.read_key copts.repo value with
       | Ok k -> show_key copts k
@@ -385,7 +385,7 @@ let show copts item value =
              else
                `Error (false, "diff " ^ value ^ " not found")
 
-let generate copts item name role ids =
+let generate copts item name ids =
   match item with
   | `Private ->
      Nocrypto_entropy_unix.initialize () ;
@@ -419,7 +419,7 @@ let generate copts item name role ids =
        writeout
          (Publickey.publickey
             ~counter:(Int64.succ p.Publickey.counter)
-            ~role name pub_opt)
+            name pub_opt)
      | Error _ ->
        (* XXX need: if name = "" then missing argument! *)
        match Private.read_private_key ~id:name copts.repo with
@@ -427,7 +427,7 @@ let generate copts item name role ids =
                       Color.red name Color.endc ;
          `Error (false, "no private key and public does not exist")
        | Ok (_, k) ->
-         writeout (Publickey.publickey ~role name (Some (Private.pub_of_priv k))))
+         writeout (Publickey.publickey name (Some (Private.pub_of_priv k))))
   | `Authorisation ->
     let counter = match Repository.read_authorisation copts.repo name with
       | Error _ -> None
@@ -628,14 +628,6 @@ let show_cmd =
   Term.(ret (const show $ copts_t $ item $ value)),
   Term.info "show" ~doc ~man
 
-let role =
-  let doc = "Role of the key" in
-  let conv =
-    ((fun s -> try `Ok (Core.string_to_role s) with _ -> `Error "not a role"),
-     Core.pp_role)
-  in
-  Arg.(value & opt conv `Author & info ["role"] ~doc ~docv:"KEYS")
-
 let valid =
   let doc = "Owners of this authorisation, defaults to own keyid." in
   Arg.(value & opt_all string [] & info ["id"; "i"] ~doc ~docv:"KEYS")
@@ -646,10 +638,10 @@ let generate_cmd =
     [`S "DESCRIPTION";
      `P "Generates a single resource in the conex repository"]
   in
-  Term.(ret (const generate $ copts_t $ item $ value $ role $ valid)),
+  Term.(ret (const generate $ copts_t $ item $ value $ valid)),
   Term.info "generate" ~doc ~man
 
-(* modify_cmd = [key: role change ; authorisation: add/remove id] *)
+(* modify_cmd = [key: team change ; authorisation: add/remove id] *)
 
 let sign_cmd =
   let doc = "signs a resource in the repository" in
