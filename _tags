@@ -1,28 +1,13 @@
-true : annot, bin_annot
-true : safe_string
+true : bin_annot, safe_string, principal
 true : warn(+A-4-6-33-44-48-58)
 "src" : include
 
-<src/authorisation.{ml,mli}>: for-pack(Conex)
-<src/core.{ml,mli}>: package(cstruct), package(nocrypto), for-pack(Conex)
-<src/data.{ml,mli}>: for-pack(Conex)
-<src/diff.{ml,mli}>: for-pack(Conex)
-<src/index.{ml,mli}>: for-pack(Conex)
-<src/keystore.{ml,mli}>: for-pack(Conex)
-<src/layout.{ml,mli}>: for-pack(Conex)
-<src/patch.{ml,mli}>: for-pack(Conex)
-<src/persistency.{ml,mli}>: for-pack(Conex)
-<src/provider.{ml,mli}>: for-pack(Conex)
-<src/releases.{ml,mli}>: for-pack(Conex)
-<src/repository.{ml,mli}>: for-pack(Conex)
-<src/signature.{ml,mli}>: for-pack(Conex)
-<src/strhelper.{ml,mli}>: for-pack(Conex)
-<src/team.{ml,mli}>: for-pack(Conex)
-<src/utils.ml>: package(cstruct), for-pack(Conex)
+<src/core.{ml,mli}>: package(cstruct), package(nocrypto)
+<src/utils.ml>: package(cstruct)
 
-<src/checksum.{ml,mli}>: package(nocrypto), package(cstruct), for-pack(Conex)
-<src/private.{ml,mli}>: package(x509), package(nocrypto), package(cstruct), for-pack(Conex)
-<src/publickey.{ml,mli}>: package(x509), package(nocrypto), package(cstruct), for-pack(Conex)
+<src/checksum.{ml,mli}>: package(nocrypto), package(cstruct)
+<src/private.{ml,mli}>: package(x509), package(nocrypto), package(cstruct)
+<src/publickey.{ml,mli}>: package(x509), package(nocrypto), package(cstruct)
 
 <app/conex.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner), package(nocrypto.unix)
 <app/conex_verify.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner)
