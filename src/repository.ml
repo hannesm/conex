@@ -26,6 +26,9 @@ let team r id = try SM.find id r.teams with Not_found -> S.empty
 
 let janitors r = team r "janitors"
 
+let valid r digest =
+  try Some (SM.find digest r.valid) with Not_found -> None
+
 let change_provider t data = { t with data }
 
 let add_trusted_key repo key =

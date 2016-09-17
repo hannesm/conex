@@ -29,6 +29,8 @@ let help _copts man_format cmds = function
 let kinds =
   [ ("privatekeys", `Privates) ;
     ("keys", `Keys) ;
+    ("ids", `Ids) ;
+    ("teams", `Teams) ;
     ("authorisations", `Authorisations) ;
     ("releases", `Releases) ;
     ("checksums", `Checksums) ;
@@ -58,9 +60,61 @@ let find_keys copts =
       (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
-  | Some o, _ -> List.filter (fun k -> k.Publickey.keyid = o) keys
-  | None, Some _s -> keys (* XXX *)
+  | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.keyid o) keys
+  | None, Some s ->
+    let is k =
+      match Repository.valid copts.repo (digest (Data.publickey_to_string k)) with
+      | None -> false
+      | Some (_, _, sigs) -> S.mem s sigs
+    in
+    List.filter is keys
   | _ -> keys
+
+let find_teams copts =
+  let teams =
+    Utils.filter_map
+      ~f:(fun f ->
+          match Repository.read_team copts.repo f with
+          | Error e -> Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          | Ok x -> Some x)
+      (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
+  in
+  match copts.owner, copts.signed_by with
+  | Some o, _ -> List.filter (fun t -> id_equal t.Team.name o) teams
+  | None, Some s ->
+    let is k =
+      match Repository.valid copts.repo (digest (Data.team_to_string k)) with
+      | None -> false
+      | Some (_, _, sigs) -> S.mem s sigs
+    in
+    List.filter is teams
+  | _ -> teams
+
+let find_ids copts =
+  let ids =
+    Utils.filter_map
+      ~f:(fun f ->
+          match Repository.read_id copts.repo f with
+          | Error e -> Format.fprintf copts.out "%sid %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          | Ok x -> Some x)
+      (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
+  in
+  match copts.owner, copts.signed_by with
+  | Some o, _ ->
+    let is = id_equal o in
+    List.filter (function `Key k -> is k.Publickey.keyid | `Team t -> is t.Team.name) ids
+  | None, Some s ->
+    let is i =
+      let raw = match i with
+        | `Key k -> Data.publickey_to_string k
+        | `Team t -> Data.team_to_string t
+      in
+      match Repository.valid copts.repo (digest raw) with
+      | None -> false
+      | Some (_, _, sigs) -> S.mem s sigs
+    in
+    List.filter is ids
+  | _ -> ids
 
 let find_authorisations copts =
   let auths =
@@ -73,7 +127,12 @@ let find_authorisations copts =
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun d -> S.mem o d.Authorisation.authorised) auths
-  | None, Some _s -> auths (* XXX *)
+  | None, Some s ->
+    let is a = match Repository.valid copts.repo (Data.authorisation_to_string a) with
+      | None -> false
+      | Some (_, _, sigs) -> S.mem s sigs
+    in
+    List.filter is auths
   | None, None -> auths
 
 let find_releases copts =
@@ -132,28 +191,45 @@ let find_checksums copts =
     []
     rel_auths
 
-let list copts kind = (* XXX missing indexes *)
+let load_index id r =
+  match Repository.read_index r id with
+  | Error _ -> r
+  | Ok i -> Repository.add_index r i
+
+let list copts kind =
+  let repo = S.fold load_index (Repository.all_ids copts.repo) copts.repo in
+  let copts = { copts with repo } in
   let rec exec kind =
     let out items =
-      List.iter
-        (fun s -> Format.pp_print_string copts.out s ; Format.pp_print_newline copts.out ())
-        items
+      List.iter (fun s -> Format.fprintf copts.out "%s@." s) items
     in
     let _, kinds_pp = Cmdliner.Arg.enum kinds in
     Format.fprintf copts.out "listing %a" kinds_pp kind ;
     match kind with
     | `Privates ->
        let keys = find_private_keys copts in
-       Format.fprintf copts.out " (%d)@." (List.length keys) ; out keys
+       Format.fprintf copts.out " (%d)@." (List.length keys) ;
+       out keys
     | `Keys ->
        let keys = find_keys copts in
-       Format.fprintf copts.out " (%d)@." (List.length keys) ; out (List.map (fun k -> k.Publickey.keyid) keys)
+       Format.fprintf copts.out " (%d)@." (List.length keys) ;
+       out (List.map (fun k -> k.Publickey.keyid) keys)
+    | `Teams ->
+       let teams = find_teams copts in
+       Format.fprintf copts.out " (%d)@." (List.length teams) ;
+       out (List.map (fun t -> t.Team.name) teams)
+    | `Ids ->
+       let ids = find_ids copts in
+       Format.fprintf copts.out " (%d)@." (List.length ids) ;
+       out (List.map (function `Key k -> k.Publickey.keyid | `Team t -> t.Team.name) ids)
     | `Authorisations ->
        let auths = find_authorisations copts in
-       Format.fprintf copts.out " (%d)@." (List.length auths) ; out (List.map (fun a -> a.Authorisation.name) auths)
+       Format.fprintf copts.out " (%d)@." (List.length auths) ;
+       out (List.map (fun a -> a.Authorisation.name) auths)
     | `Releases ->
        let rels = find_releases copts in
-       Format.fprintf copts.out " (%d)@." (List.length rels) ; out (List.map (fun (_, r) -> r.Releases.name) rels)
+       Format.fprintf copts.out " (%d)@." (List.length rels) ;
+       out (List.map (fun (_, r) -> r.Releases.name) rels)
     | `Checksums ->
        let d_cs = find_checksums copts in
        Format.fprintf copts.out " (%d)@." (List.length d_cs) ;
@@ -203,6 +279,8 @@ let verify copts kind =
        Format.fprintf copts.out " (%d)@." (List.length verified) ;
        out (List.map (fun k -> k.Publickey.keyid) keys) verified ;
        repo
+    | `Teams -> repo (* XXX *)
+    | `Ids -> repo (* XXX *)
     | `Authorisations ->
        let auths = find_authorisations copts in
        let verified = List.map (Repository.verify_authorisation repo) auths in

@@ -11,6 +11,8 @@ val teams : t -> S.t SM.t
 
 val team : t -> string -> S.t
 
+val valid : t -> digest -> (name * resource * S.t) option
+
 val change_provider : t -> Provider.t -> t
 
 val verify_index : t -> Index.t -> (identifier, verification_error) result
