@@ -101,7 +101,11 @@ let sig_bad_data () =
   check_ver
     "verify fails (data)"
     (Error (`InvalidSignature (id, Signature.extend_data raw id)))
-    (Publickey.verify pub raw (id, sigval))
+    (Publickey.verify pub raw (id, sigval)) ;
+  let k' = match Publickey.publickey pid None with Ok p -> p | Error _ -> assert false in
+  check_ver "bad key cannot verify"
+    (Error (`InvalidPublicKey pid))
+    (Publickey.verify k' raw (id, sigval))
 
 let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
@@ -165,7 +169,11 @@ let idx_sign () =
     | Some x -> x
   in
   check_ver "signed index verifies" (Ok "a")
-    (Publickey.verify k (Data.index_to_string signed) signature)
+    (Publickey.verify k (Data.index_to_string signed) signature) ;
+  let idx' = Index.add_resource signed ("foo", `PublicKey, "2342") in
+  check_ver "signed modified index does not verify"
+    (Error (`InvalidSignature ("a", Signature.extend_data (Data.index_to_string idx') "a")))
+    (Publickey.verify k (Data.index_to_string idx') signature)
 
 let idx_sign_other () =
   (* this shows that Publickey.verify does not check
