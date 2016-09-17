@@ -48,8 +48,7 @@ let load_tas copts =
      let keys =
        List.fold_left (fun acc f ->
            let content = Persistency.read_file f in
-           let data = Data.parse content in
-           match Data.data_to_publickey data with
+           match Data.string_to_publickey content with
            | Ok key -> if copts.debug then Format.fprintf copts.out "loaded trust anchor %s@ " f ; key :: acc
            | Error s -> Format.fprintf copts.out "error while loading key %s: %s@." f s ; acc)
          []
@@ -494,7 +493,7 @@ let sign copts item name =
           Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok k ->
-          let idx = add_r (name, `PublicKey, digest (Data.publickey_raw k)) in
+          let idx = add_r (name, `PublicKey, digest (Data.publickey_to_string k)) in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else
@@ -508,7 +507,7 @@ let sign copts item name =
           Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok a ->
-          let idx = add_r (name, `Authorisation, digest (Data.authorisation_raw a)) in
+          let idx = add_r (name, `Authorisation, digest (Data.authorisation_to_string a)) in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else
@@ -522,7 +521,7 @@ let sign copts item name =
           Format.fprintf copts.out "%sreleases %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok r ->
-          let idx = add_r (name, `Releases, digest (Data.releases_raw r)) in
+          let idx = add_r (name, `Releases, digest (Data.releases_to_string r)) in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else
@@ -536,7 +535,7 @@ let sign copts item name =
           Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
-          let idx = add_r (name, `Checksum, digest (Data.checksums_raw c)) in
+          let idx = add_r (name, `Checksum, digest (Data.checksums_to_string c)) in
           if copts.dry then
             Format.fprintf copts.out "dry run, nothing written.@."
           else

@@ -81,7 +81,7 @@ let check_sig prefix pub raw (id, sv) =
 let sign_single () =
   let id = "a" in
   let pub, priv = gen_pub id in
-  let raw = Data.publickey_raw pub in
+  let raw = Data.publickey_to_string pub in
   let s = Private.sign id priv raw in
   check_sig "common" pub raw s
 
@@ -165,7 +165,7 @@ let idx_sign () =
     | Some x -> x
   in
   check_ver "signed index verifies" (Ok "a")
-    (Publickey.verify k (Data.index_raw signed) signature)
+    (Publickey.verify k (Data.index_to_string signed) signature)
 
 let idx_sign_other () =
   (* this shows that Publickey.verify does not check
@@ -179,7 +179,7 @@ let idx_sign_other () =
     | Some x -> x
   in
   check_ver "signed index verifies" (Ok "b")
-    (Publickey.verify k (Data.index_raw signed) signature)
+    (Publickey.verify k (Data.index_to_string signed) signature)
 
 let idx_sign_bad () =
   let k, p = gen_pub "a" in
@@ -190,7 +190,7 @@ let idx_sign_bad () =
     | Some x -> x
   in
   let idx' = Index.index "c" in
-  let raw = Data.index_raw idx' in
+  let raw = Data.index_to_string idx' in
   check_ver "signed index does not verify (wrong id)"
     (Error (`InvalidSignature ("b", "", Signature.extend_data raw "b")))
     (Publickey.verify k raw signature)
@@ -204,11 +204,11 @@ let idx_sign_bad2 () =
     | Some x -> x
   in
   let idx' = Index.index ~counter:23L "b" in
-  let raw = Data.index_raw idx' in
+  let raw = Data.index_to_string idx' in
   check_ver "signed index does not verify (wrong data)"
     (Error (`InvalidSignature ("a", "", Signature.extend_data raw "a")))
     (Publickey.verify k raw signature) ;
-  check_sig "index" k (Data.index_raw idx) signature
+  check_sig "index" k (Data.index_to_string idx) signature
 
 let idx_tests = [
   "good index", `Quick, idx_sign ;

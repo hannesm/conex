@@ -1,33 +1,19 @@
 open Core
 
-type t
+val string_to_index : string -> (Index.t, string) result
+val index_to_string : Index.t -> string
 
-val parse : string -> t
-val normalise : t -> string
+val string_to_publickey : string -> (Publickey.t, string) result
+val publickey_to_string : Publickey.t -> string
 
-val signature_to_data : Signature.t option -> t
-val data_to_signature : t -> Signature.t option
+val string_to_releases : string -> (Releases.t, string) result
+val releases_to_string : Releases.t -> string
 
-val index_to_data : Index.t -> t
-val data_to_index : t -> Index.t
-val index_raw : Index.t -> string
+val string_to_authorisation : string -> (Authorisation.t, string) result
+val authorisation_to_string : Authorisation.t -> string
 
-val publickey_to_data : Publickey.t -> t
-val data_to_publickey : t -> (Publickey.t, string) result
-val publickey_raw : Publickey.t -> string
+val string_to_team : string -> (Team.t, string) result
+val team_to_string : Team.t -> string
 
-val releases_to_data : Releases.t -> t
-val data_to_releases : t -> (Releases.t, string) result
-val releases_raw : Releases.t -> string
-
-val authorisation_to_data : Authorisation.t -> t
-val data_to_authorisation : t -> Authorisation.t
-val authorisation_raw : Authorisation.t -> string
-
-val team_to_data : Team.t -> t
-val data_to_team : t -> Team.t
-val team_raw : Team.t -> string
-
-val checksums_to_data : Checksum.t -> t
-val data_to_checksums : t -> Checksum.t
-val checksums_raw : Checksum.t -> string
+val string_to_checksums : string -> (Checksum.t, string) result
+val checksums_to_string : Checksum.t -> string

@@ -180,6 +180,11 @@ let index_to_data i =
                                  Entry ("resources" , List (List.map r_to_data i.Index.resources)) ]) ;
          Entry ("signature", signature_to_data i.Index.signature) ]
 
+let index_to_string i =
+  let data = index_to_data i in
+  let signed, _ = parse_signed_data data in
+  normalise signed
+
 let data_to_index data =
   let signed, signature = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
@@ -193,10 +198,9 @@ let data_to_index data =
   in
   Index.index ~counter ~version ~resources ?signature identifier
 
-let index_raw i =
-  let data = index_to_data i in
-  let signed, _ = parse_signed_data data in
-  normalise signed
+let string_to_index s =
+  try Ok (data_to_index (parse s)) with Invalid_argument a -> Error a
+
 
 let publickey_to_data pubkey =
   let pem = match pubkey.Publickey.key with
@@ -207,6 +211,8 @@ let publickey_to_data pubkey =
          Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
          Entry ("keyid"  , Leaf (String pubkey.Publickey.keyid)) ;
          Entry ("key"    , Leaf (String pem)) ]
+
+let publickey_to_string p = normalise (publickey_to_data p)
 
 let data_to_publickey data =
   let counter = extract_int_exn (get_exn data "counter")
@@ -223,7 +229,8 @@ let data_to_publickey data =
   in
   Publickey.publickey ~counter ~version keyid key
 
-let publickey_raw p = normalise (publickey_to_data p)
+let string_to_publickey s =
+  try data_to_publickey (parse s) with Invalid_argument a -> Error a
 
 
 let releases_to_data r =
@@ -232,6 +239,8 @@ let releases_to_data r =
          Entry ("counter"  , Leaf (Int r.Releases.counter)) ;
          Entry ("version"  , Leaf (Int r.Releases.version)) ;
          Entry ("releases" , List (List.map id (S.elements r.Releases.releases))) ]
+
+let releases_to_string r = normalise (releases_to_data r)
 
 let data_to_releases data =
   let id x = extract_string_exn x in
@@ -244,7 +253,8 @@ let data_to_releases data =
   in
   Releases.releases ~counter ~version ~releases name
 
-let releases_raw r = normalise (releases_to_data r)
+let string_to_releases s =
+  try data_to_releases (parse s) with Invalid_argument a -> Error a
 
 
 let authorisation_to_data d =
@@ -253,6 +263,8 @@ let authorisation_to_data d =
          Entry ("counter"   , Leaf (Int d.Authorisation.counter)) ;
          Entry ("version"   , Leaf (Int d.Authorisation.version)) ;
          Entry ("authorised", List (List.map id (S.elements d.Authorisation.authorised))) ]
+
+let authorisation_to_string a = normalise (authorisation_to_data a)
 
 let data_to_authorisation data =
   let id x = extract_string_exn x in
@@ -265,7 +277,8 @@ let data_to_authorisation data =
   in
   Authorisation.authorisation ~counter ~version ~authorised name
 
-let authorisation_raw a = normalise (authorisation_to_data a)
+let string_to_authorisation s =
+  try Ok (data_to_authorisation (parse s)) with Invalid_argument a -> Error a
 
 
 let team_to_data d =
@@ -274,6 +287,8 @@ let team_to_data d =
          Entry ("counter", Leaf (Int d.Team.counter)) ;
          Entry ("version", Leaf (Int d.Team.version)) ;
          Entry ("members", List (List.map id (S.elements d.Team.members))) ]
+
+let team_to_string a = normalise (team_to_data a)
 
 let data_to_team data =
   let id x = extract_string_exn x in
@@ -286,7 +301,8 @@ let data_to_team data =
   in
   Team.team ~counter ~version ~members name
 
-let team_raw a = normalise (team_to_data a)
+let string_to_team s =
+  try Ok (data_to_team (parse s)) with Invalid_argument a -> Error a
 
 
 let checksum_to_data c =
@@ -294,19 +310,21 @@ let checksum_to_data c =
          Entry ("byte-size", Leaf (Int c.Checksum.bytesize)) ;
          Entry ("sha256", Leaf (String c.Checksum.checksum)) ]
 
-let data_to_checksum data =
-  let filename = extract_string_exn (get_exn data "filename")
-  and bytesize = extract_int_exn (get_exn data "byte-size")
-  and checksum = extract_string_exn (get_exn data "sha256")
-  in
-  { Checksum.filename ; bytesize ; checksum }
-
 let checksums_to_data cs =
   let csums = Checksum.fold (fun c acc -> checksum_to_data c :: acc) cs.Checksum.files [] in
   List [ Entry ("counter", Leaf (Int cs.Checksum.counter)) ;
          Entry ("version", Leaf (Int cs.Checksum.version)) ;
          Entry ("name", Leaf (String cs.Checksum.name)) ;
          Entry ("files", List csums) ]
+
+let checksums_to_string c = normalise (checksums_to_data c)
+
+let data_to_checksum data =
+  let filename = extract_string_exn (get_exn data "filename")
+  and bytesize = extract_int_exn (get_exn data "byte-size")
+  and checksum = extract_string_exn (get_exn data "sha256")
+  in
+  { Checksum.filename ; bytesize ; checksum }
 
 let data_to_checksums data =
   let counter = extract_int_exn (get_exn data "counter")
@@ -320,4 +338,6 @@ let data_to_checksums data =
   in
   Checksum.checksums ~counter ~version name files
 
-let checksums_raw c = normalise (checksums_to_data c)
+let string_to_checksums s =
+  try Ok (data_to_checksums (parse s)) with Invalid_argument a -> Error a
+

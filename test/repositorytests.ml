@@ -314,7 +314,7 @@ let empty_key () =
     | Ok p -> p
     | _ -> assert false
   in
-  let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let resources = [ id, `PublicKey, digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
     Private.sign_index idx jpriv
@@ -336,7 +336,7 @@ let key_good () =
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let resources = [ id, `PublicKey, digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
     Private.sign_index idx jpriv
@@ -368,7 +368,7 @@ let key_good_quorum () =
   let r = Repository.repository ~quorum:3 p in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ id, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let resources = [ id, `PublicKey, digest (Data.publickey_to_string pub) ] in
   let idx =
     let idx = Index.index ~resources id in
     Private.sign_index idx priv
@@ -414,8 +414,8 @@ let no_janitor () =
     | _ -> assert false
   in
   let resources = [
-    id, `PublicKey, digest (Data.publickey_raw pub) ;
-    id', `PublicKey, digest (Data.publickey_raw pem)
+    id, `PublicKey, digest (Data.publickey_to_string pub) ;
+    id', `PublicKey, digest (Data.publickey_to_string pem)
   ] in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -451,7 +451,7 @@ let k_wrong_resource () =
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ id, `Checksum, digest (Data.publickey_raw pub) ] in
+  let resources = [ id, `Checksum, digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
     Private.sign_index idx jpriv
@@ -474,7 +474,7 @@ let k_wrong_name () =
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ jid, `PublicKey, digest (Data.publickey_raw pub) ] in
+  let resources = [ jid, `PublicKey, digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
     Private.sign_index idx jpriv
@@ -534,7 +534,7 @@ let auth () =
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_authorisation r auth) ;
   let resources = [
-    pname, `Authorisation, digest (Data.authorisation_raw auth)
+    pname, `Authorisation, digest (Data.authorisation_to_string auth)
   ] in
   let j_sign r jid =
     let jpub, jpriv = gen_pub jid in
@@ -571,8 +571,8 @@ let auth_self_signed () =
   let auth = Authorisation.authorisation pname in
   let pub, priv = gen_pub id in
   let resources = [
-    pname, `Authorisation, digest (Data.authorisation_raw auth) ;
-    id, `PublicKey, digest (Data.publickey_raw pub)
+    pname, `Authorisation, digest (Data.authorisation_to_string auth) ;
+    id, `PublicKey, digest (Data.publickey_to_string pub)
   ] in
   let s_idx id priv =
     Private.sign_index (Index.index ~resources id) priv
@@ -597,7 +597,7 @@ let a_wrong_resource () =
   let r = Repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
-  let resources = [ pname, `Checksum, digest (Data.authorisation_raw auth) ] in
+  let resources = [ pname, `Checksum, digest (Data.authorisation_to_string auth) ] in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let jidx =
@@ -617,7 +617,7 @@ let a_wrong_name () =
   let auth = Authorisation.authorisation pname in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
-  let resources = [ "barf", `Authorisation, digest (Data.authorisation_raw auth) ] in
+  let resources = [ "barf", `Authorisation, digest (Data.authorisation_to_string auth) ] in
   let jidx =
     let idx = Index.index ~resources jid in
     Private.sign_index idx jpriv
@@ -680,7 +680,7 @@ let rel () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_raw rel)
+      pname, `Releases, digest (Data.releases_to_string rel)
     ] in
     Private.sign_index (Index.index ~resources id) priv
   in
@@ -700,7 +700,7 @@ let rel_quorum () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let resources = [
-    pname, `Releases, digest (Data.releases_raw rel)
+    pname, `Releases, digest (Data.releases_to_string rel)
   ] in
   let sidx =
     Private.sign_index (Index.index ~resources jid) jpriv
@@ -731,7 +731,7 @@ let rel_not_authorised () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_raw rel)
+      pname, `Releases, digest (Data.releases_to_string rel)
     ] in
     Private.sign_index (Index.index ~resources id) priv
   in
@@ -763,7 +763,7 @@ let rel_missing_releases () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_raw rel)
+      pname, `Releases, digest (Data.releases_to_string rel)
     ] in
     Private.sign_index (Index.index ~resources id) priv
   in
@@ -798,7 +798,7 @@ let rel_name_mismatch () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_raw rel)
+      pname, `Releases, digest (Data.releases_to_string rel)
     ] in
     Private.sign_index (Index.index ~resources id) priv
   in
@@ -818,7 +818,7 @@ let rel_wrong_name () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      "foo", `Releases, digest (Data.releases_raw rel)
+      "foo", `Releases, digest (Data.releases_to_string rel)
     ] in
     Private.sign_index (Index.index ~resources id) priv
   in
@@ -838,7 +838,7 @@ let rel_wrong_resource () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Authorisation, digest (Data.releases_raw rel)
+      pname, `Authorisation, digest (Data.releases_to_string rel)
     ] in
     Private.sign_index (Index.index ~resources id) priv
   in
@@ -895,8 +895,8 @@ let cs () =
     (Error (`NotSigned (v, `Checksum, S.empty)))
     (Repository.verify_checksum r auth rel cs) ;
   let resources = [
-    pname, `Releases, digest (Data.releases_raw rel) ;
-    v, `Checksum, digest (Data.checksums_raw cs)
+    pname, `Releases, digest (Data.releases_to_string rel) ;
+    v, `Checksum, digest (Data.checksums_to_string cs)
   ] in
   let _pub, priv = gen_pub id in
   let sidx = Private.sign_index (Index.index ~resources id) priv in
@@ -926,8 +926,8 @@ let cs_quorum () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_raw rel) ;
-    v, `Checksum, digest (Data.checksums_raw cs)
+    pname, `Releases, digest (Data.releases_to_string rel) ;
+    v, `Checksum, digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -952,8 +952,8 @@ let cs_bad_name () =
   let rel = safe_rel ~releases:(S.singleton v) reln in
   let cs = Checksum.checksums v [] in
   let resources = [
-    reln, `Releases, digest (Data.releases_raw rel) ;
-    v, `Checksum, digest (Data.checksums_raw cs)
+    reln, `Releases, digest (Data.releases_to_string rel) ;
+    v, `Checksum, digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -977,8 +977,8 @@ let cs_bad_name2 () =
   let rel = safe_rel ~releases:(S.singleton reln) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_raw rel) ;
-    v, `Checksum, digest (Data.checksums_raw cs)
+    pname, `Releases, digest (Data.releases_to_string rel) ;
+    v, `Checksum, digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1001,8 +1001,8 @@ let cs_wrong_name () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_raw rel) ;
-    pname, `Checksum, digest (Data.checksums_raw cs)
+    pname, `Releases, digest (Data.releases_to_string rel) ;
+    pname, `Checksum, digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1025,8 +1025,8 @@ let cs_wrong_resource () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_raw rel) ;
-    v, `Releases, digest (Data.checksums_raw cs)
+    pname, `Releases, digest (Data.releases_to_string rel) ;
+    v, `Releases, digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in

@@ -14,8 +14,7 @@ let load_trust_anchors dir =
     List.fold_left (fun acc f ->
         try
           let content = Persistency.read_file f in
-          let data = Data.parse content in
-          match Data.data_to_publickey data with
+          match Data.string_to_publickey content with
           | Ok key -> key :: acc
           | Error e -> Format.fprintf out "error while constructing key %a: %s@." pp_id f e ; maybe_exit () ; acc
         with

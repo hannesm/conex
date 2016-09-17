@@ -49,7 +49,7 @@ let sign id priv data =
   (id, sigval)
 
 let sign_index idx priv =
-  let signature = sign idx.Index.identifier priv (Data.index_raw idx) in
+  let signature = sign idx.Index.identifier priv (Data.index_to_string idx) in
   Index.add_sig idx signature
 
 
