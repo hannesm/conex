@@ -60,6 +60,5 @@ let verify pub data (id, sigval) =
       if Pss_sha256.verify ~key ~signature cs_data then
         Ok id
       else
-        let s = Cstruct.to_string signature in
-        Error (`InvalidSignature (id, s, data))
+        Error (`InvalidSignature (id, data))
     | None -> Error (`InvalidPublicKey id)

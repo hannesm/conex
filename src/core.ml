@@ -100,7 +100,7 @@ let pp_resource ppf k = Format.pp_print_string ppf (resource_to_string k)
 
 type verification_error = [
   | `InvalidBase64Encoding of identifier * string
-  | `InvalidSignature of identifier * string * string
+  | `InvalidSignature of identifier * string
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `NotAuthorised of identifier * identifier
@@ -110,7 +110,7 @@ type verification_error = [
 (*BISECT-IGNORE-BEGIN*)
 let pp_verification_error ppf = function
   | `InvalidBase64Encoding (id, data) -> Format.fprintf ppf "%a signature is not in valid base64 encoding %s" pp_id id data
-  | `InvalidSignature (id, signature, data) -> Format.fprintf ppf "%a signature is not valid %a, data %s" pp_id id Utils.pp_hex signature data
+  | `InvalidSignature (id, data) -> Format.fprintf ppf "%a signature is not valid data %s" pp_id id data
   | `InvalidPublicKey id -> Format.fprintf ppf "keystore contained no valid public key for %s" id
   | `InvalidIdentifier id -> Format.fprintf ppf "identifier %s was not found in keystore" id
   | `NotAuthorised (auth, sign) -> Format.fprintf ppf "only %a is authorised to sign this index, but it is signed by %a" pp_id auth pp_id sign

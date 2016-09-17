@@ -37,7 +37,7 @@ val resource_equal : resource -> resource -> bool
 
 type verification_error = [
   | `InvalidBase64Encoding of identifier * string
-  | `InvalidSignature of identifier * string * string
+  | `InvalidSignature of identifier * string
   | `InvalidPublicKey of identifier
   | `InvalidIdentifier of identifier
   | `NotAuthorised of identifier * identifier

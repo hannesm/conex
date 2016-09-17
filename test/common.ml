@@ -126,7 +126,7 @@ let verr =
     let pp = Core.pp_verification_error
     let equal a b = match a, b with
       | `InvalidBase64Encoding (id, _), `InvalidBase64Encoding (id', _) -> id_equal id id'
-      | `InvalidSignature (id, _, data), `InvalidSignature (id', _, data') -> id_equal id id' && String.compare data data' = 0
+      | `InvalidSignature (id, data), `InvalidSignature (id', data') -> id_equal id id' && String.compare data data' = 0
       | `InvalidPublicKey id, `InvalidPublicKey id' -> id_equal id id'
       | `InvalidIdentifier id, `InvalidIdentifier id' -> id_equal id id'
       | `NotAuthorised (a, s), `NotAuthorised (a', s') -> id_equal a a' && id_equal s s'
