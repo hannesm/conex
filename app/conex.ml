@@ -37,49 +37,16 @@ let kinds =
 let find_private_keys copts =
   let keys = List.sort String.compare (Private.all_private_keys copts.repo) in
   let keys = Utils.option keys (fun _ -> []) copts.signed_by in
-  Utils.option keys (fun s -> List.filter ((=) s) keys) copts.owner
+  Utils.option keys (fun s -> List.filter (id_equal s) keys) copts.owner
 
 let load_tas copts =
   match copts.trust_anchors with
   | None ->
-     Format.fprintf copts.out "WARNING: treating repository as trusted, maybe you forgot --trust-anchors?@." ; copts
+    Format.fprintf copts.out "WARNING: treating repository as trusted, maybe you forgot --trust-anchors?@." ;
+    copts
   | Some s ->
-     let keys = List.map (Filename.concat s) (Persistency.collect_dir s) in
-     let keys =
-       List.fold_left (fun acc f ->
-           let content = Persistency.read_file f in
-           match Data.string_to_publickey content with
-           | Ok key -> if copts.debug then Format.fprintf copts.out "loaded trust anchor %s@ " f ; key :: acc
-           | Error s -> Format.fprintf copts.out "error while loading key %s: %s@." f s ; acc)
-         []
-         keys
-     in
-     let repo = List.fold_left Repository.add_trusted_key copts.repo keys in
-     Format.fprintf copts.out "Loaded %d trust anchors %a from %s@."
-                    (List.length keys)
-                    (pp_list pp_id) (List.map (fun k -> k.Publickey.keyid) keys)
-                    s ;
-     { copts with repo ; verify = true }
-
-let load_id id copts =
-  let r = copts.repo in
-  let repo =
-    match Repository.read_key r id with
-    | Error e -> Repository.pp_r_err copts.out e ; r
-    | Ok k -> match Repository.read_index r id with
-      | Error e -> Repository.pp_r_err copts.out e ; r
-      | Ok i ->
-        let r' = Repository.add_trusted_key r k in
-        match Repository.verify_index r' i with
-        | Error e -> pp_verification_error copts.out e ; r
-        | Ok id ->
-          if copts.debug then Format.fprintf copts.out "loaded index for %a@." pp_id id ;
-          let r' = Repository.add_index r' i in
-          match Repository.verify_key r' k with
-          | Error e -> Repository.pp_error copts.out e ; r
-          | Ok ok -> if copts.debug then Repository.pp_ok copts.out ok ; r'
-  in
-  { copts with repo }
+    let repo = Conex_common.load_anchors_janitors copts.repo copts.out copts.debug (fun () -> ()) s in
+    { copts with repo ; verify = true }
 
 let find_keys copts =
   let keys =
@@ -206,9 +173,12 @@ let list copts kind = (* XXX missing indexes *)
 
 let verify copts kind =
   let copts = load_tas copts in
-  (* janitor team.. verify.. rest.. *)
-  (*  let copts = S.fold load_id (Repository.all_janitors copts.repo) copts in *)
-  let copts = S.fold load_id (Repository.all_ids copts.repo) copts in
+  let repo = S.fold
+      (Conex_common.load_id copts.out copts.debug (fun () -> ()))
+      (S.diff (Repository.all_ids copts.repo) (Repository.team copts.repo "janitors"))
+      copts.repo
+  in
+  let copts = { copts with repo } in
   let rec exec repo kind =
     let out items verified =
       List.iter2
@@ -344,8 +314,12 @@ let show_checksum copts c =
 
 let show copts item value =
   let copts = load_tas copts in
-  (* load dance *)
-  let copts = S.fold load_id (Repository.all_ids copts.repo) copts in
+  let repo = S.fold
+      (Conex_common.load_id copts.out copts.debug (fun () -> ()))
+      (S.diff (Repository.all_ids copts.repo) (Repository.team copts.repo "janitors"))
+      copts.repo
+  in
+  let copts = { copts with repo } in
   match item with
   | `Key -> (match Repository.read_key copts.repo value with
       | Ok k -> show_key copts k

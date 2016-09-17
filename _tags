@@ -9,6 +9,7 @@ true : warn(+A-4-6-33-44-48-58)
 <src/private.{ml,mli}>: package(x509), package(nocrypto), package(cstruct)
 <src/publickey.{ml,mli}>: package(x509), package(nocrypto), package(cstruct)
 
+"app" : include
 <app/conex.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner), package(nocrypto.unix)
 <app/conex_verify.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner)
 
