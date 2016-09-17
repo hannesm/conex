@@ -753,11 +753,60 @@ let team_wrong_name () =
     (Error (`InvalidName (pname, "barf")))
     (Repository.verify_team r team)
 
+let team_dyn () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let team = Team.team pname in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub jid in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors")
+  in
+  let j_sign resources =
+    let idx =
+      let i = Index.index ~resources jid in
+      Private.sign_index i jpriv
+    in
+    Repository.add_index r idx
+  in
+  let resources = [
+    pname, `Team, digest (Data.team_to_string team)
+  ] in
+  let r = j_sign resources in
+  Alcotest.check (result a_ok a_err) "team properly signed"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_team r team) ;
+  let team = Team.add team "foobar" in
+  Alcotest.check (result a_ok a_err) "team not properly signed"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_team r team) ;
+  let resources = [
+    pname, `Team, digest (Data.team_to_string team)
+  ] in
+  let r = j_sign resources in
+  Alcotest.check (result a_ok a_err) "team properly signed"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_team r team) ;
+  let team = Team.remove team "foo" in
+  Alcotest.check (result a_ok a_err) "team properly signed (nothing changed)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_team r team) ;
+  let team = Team.add team "foobar" in
+  Alcotest.check (result a_ok a_err) "team properly signed (nothing changed)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_team r team) ;
+  let team = Team.remove team "foobar" in
+  Alcotest.check (result a_ok a_err) "team not properly signed (rm'ed, counter incr)"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_team r team)
+
 let team_repo_tests = [
   "basic team", `Quick, team ;
   "also self signed", `Quick, team_self_signed ;
   "wrong resource", `Quick, team_wrong_resource ;
   "wrong name", `Quick, team_wrong_name ;
+  "dynamic team", `Quick, team_dyn
 ]
 
 
@@ -864,11 +913,61 @@ let a_wrong_name () =
     (Error (`InvalidName (pname, "barf")))
     (Repository.verify_authorisation r auth)
 
+let auth_dyn () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let auth = Authorisation.authorisation pname in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub jid in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors")
+  in
+  let j_sign resources =
+    let idx =
+      let i = Index.index ~resources jid in
+      Private.sign_index i jpriv
+    in
+    Repository.add_index r idx
+  in
+  let resources = [
+    pname, `Authorisation, digest (Data.authorisation_to_string auth)
+  ] in
+  let r = j_sign resources in
+  Alcotest.check (result a_ok a_err) "authorisation properly signed"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_authorisation r auth) ;
+  let auth = Authorisation.add auth "foobar" in
+  Alcotest.check (result a_ok a_err) "authorisation not properly signed"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_authorisation r auth) ;
+  let resources = [
+    pname, `Authorisation, digest (Data.authorisation_to_string auth)
+  ] in
+  let r = j_sign resources in
+  Alcotest.check (result a_ok a_err) "authorisation properly signed"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_authorisation r auth) ;
+  let auth = Authorisation.remove auth "foo" in
+  Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_authorisation r auth) ;
+  let auth = Authorisation.add auth "foobar" in
+  Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_authorisation r auth) ;
+  let auth = Authorisation.remove auth "foobar" in
+  Alcotest.check (result a_ok a_err) "authorisation not properly signed (rm'ed, counter incr)"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_authorisation r auth)
+
+
 let auth_repo_tests = [
   "basic auth", `Quick, auth ;
   "also self signed", `Quick, auth_self_signed ;
   "wrong resource", `Quick, a_wrong_resource ;
   "wrong name", `Quick, a_wrong_name ;
+  "dynamic authorisation", `Quick, auth_dyn ;
 ]
 
 let r_ok =

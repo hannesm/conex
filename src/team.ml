@@ -11,10 +11,16 @@ let team ?(counter = 0L) ?(version = 0L) ?(members = S.empty) name =
   { counter ; version ; members ; name }
 
 let add t id =
-  { t with counter = Int64.succ t.counter ; members = S.add id t.members }
+  if S.mem id t.members then
+    t
+  else
+    { t with counter = Int64.succ t.counter ; members = S.add id t.members }
 
 let remove t id =
-  { t with counter = Int64.succ t.counter ; members = S.remove id t.members }
+  if S.mem id t.members then
+    { t with counter = Int64.succ t.counter ; members = S.remove id t.members }
+  else
+    t
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
