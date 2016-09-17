@@ -80,7 +80,7 @@ let find_teams copts =
       (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
-  | Some o, _ -> List.filter (fun t -> id_equal t.Team.name o) teams
+  | Some o, _ -> List.filter (fun t -> S.mem o t.Team.members) teams
   | None, Some s ->
     let is k =
       match Repository.valid copts.repo (digest (Data.team_to_string k)) with
@@ -101,8 +101,10 @@ let find_ids copts =
   in
   match copts.owner, copts.signed_by with
   | Some o, _ ->
-    let is = id_equal o in
-    List.filter (function `Key k -> is k.Publickey.keyid | `Team t -> is t.Team.name) ids
+    List.filter (function
+        | `Key k -> id_equal k.Publickey.keyid o
+        | `Team t -> S.mem o t.Team.members)
+      ids
   | None, Some s ->
     let is i =
       let raw = match i with
@@ -128,7 +130,7 @@ let find_authorisations copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun d -> S.mem o d.Authorisation.authorised) auths
   | None, Some s ->
-    let is a = match Repository.valid copts.repo (Data.authorisation_to_string a) with
+    let is a = match Repository.valid copts.repo (digest (Data.authorisation_to_string a)) with
       | None -> false
       | Some (_, _, sigs) -> S.mem s sigs
     in
@@ -152,11 +154,15 @@ let find_releases copts =
           | Ok x -> Some (a, x))
       auths
   in
-  releases
-(*  match copts.owner, copts.signed_by with
-  | Some o, _ -> (* List.filter (fun d -> S.mem o d.Authorisation.authorised) auths *)
-  | None, Some _s -> auths (* XXX *)
-    | None, None -> auths *)
+  match copts.owner, copts.signed_by with
+  | Some o, _ -> List.filter (fun (a, _) -> S.mem o a.Authorisation.authorised) releases
+  | None, Some s ->
+    let is (_, r) = match Repository.valid copts.repo (digest (Data.releases_to_string r)) with
+      | None -> false
+      | Some (_, _, sigs) -> S.mem s sigs
+    in
+    List.filter is releases
+  | None, None -> releases
 
 let find_checksums copts =
   let rel_auths =
@@ -179,11 +185,15 @@ let find_checksums copts =
                | Ok x -> Some x)
            all
        in
-       all_cs
-(* XXX       Utils.option
+       Utils.option
          all_cs
-         (fun s -> List.filter (fun c -> has_signature_of c.Checksum.signatures s) all_cs)
-         copts.signed_by *)
+         (fun s ->
+            let is c = match Repository.valid copts.repo (digest (Data.checksums_to_string c)) with
+              | None -> false
+              | Some (_, _, sigs) -> S.mem s sigs
+            in
+            List.filter is all_cs)
+         copts.signed_by
      in
      match cs with
      | [] -> acc
