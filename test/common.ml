@@ -46,6 +46,29 @@ let publickey =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
+let team_eq a b =
+  let open Team in
+  id_equal a.name b.name && a.counter = b.counter && S.equal a.members b.members
+
+let team =
+  let module M = struct
+    type t = Team.t
+    let pp = Team.pp_team
+    let equal = team_eq
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let id =
+  let module M = struct
+    type t = [ `Key of Publickey.t | `Team of Team.t ]
+    let pp ppf = function `Team t -> Team.pp_team ppf t | `Key k -> Publickey.pp_publickey ppf k
+    let equal a b = match a, b with
+      | `Team t, `Team t' -> team_eq t t'
+      | `Key k, `Key k' -> Publickey.equal k k'
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
 let auth =
   let module M = struct
     type t = Authorisation.t

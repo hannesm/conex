@@ -178,8 +178,8 @@ let verify_checksum repo a r cs =
   verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum (Data.checksums_to_string cs) >>= fun r ->
   let name = cs.Checksum.name in
   compute_checksum repo name >>= fun css ->
-  match Checksum.compare_checksums css cs with
-  | Error (`InvalidName (a, b)) -> Error (`InvalidName (a, b))
+  match Checksum.compare_checksums cs css with
+  | Error (`InvalidName (a, b)) -> Error (`InvalidName (a, b)) (* this can never happen since name is taken from cs *)
   | Error (`ChecksumsDiff (a, b, c, d)) -> Error (`ChecksumsDiff (a, b, c, d))
   | Ok () ->
     match r with

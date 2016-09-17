@@ -55,7 +55,7 @@ let key_path id = [ key_dir ; id ]
 let ipath = "index"
 let index_path ji = [ ipath ; ji ]
 
-let data_dir = "data"
+let data_dir = "packages"
 let authorisation_filename = "authorisation"
 
 let authorisations p =

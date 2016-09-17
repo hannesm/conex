@@ -131,29 +131,29 @@ let basic_p () =
 let more_p () =
   let open Provider in
   let p = Mem.mem_provider () in
-  p.write ["data"; "foo"] "bar" ;
-  Alcotest.check Alcotest.bool "data in more store" true (p.exists ["data"]) ;
-  Alcotest.check Alcotest.bool "data/foo in more store" true (p.exists ["data"; "foo"]) ;
-  Alcotest.check Alcotest.bool "data/foo/bar not in more store" false (p.exists ["data"; "foo"; "bar"]) ;
-  p.write ["data"; "foo2"] "bar2" ;
-  Alcotest.check (result (Alcotest.list it) perr) "read_dir of 'data' in more mem store"
-    (Ok [ `File "foo2" ; `File "foo" ]) (p.read_dir ["data"]) ;
-  p.write ["data"; "foo3"] "bar3" ;
-  p.write ["data"; "foo4"] "bar4" ;
-  Alcotest.check (result (Alcotest.list it) perr) "read_dir of 'data' in even more mem store"
-    (Ok [ `File "foo4" ; `File "foo3" ; `File "foo2" ; `File "foo" ]) (p.read_dir ["data"]) ;
-  Alcotest.check (result (Alcotest.list it) perr) "read_dir of 'data2' in even more mem store"
-    (Error `NotFound) (p.read_dir ["data2"]) ;
-  Alcotest.check (result Alcotest.string perr) "foo contains bar in more store" (Ok "bar") (p.read ["data";"foo"]) ;
-  Alcotest.check (result Alcotest.string perr) "foo2 contains bar2 in more store" (Ok "bar2") (p.read ["data"; "foo2"]) ;
-  Alcotest.check (result Alcotest.string perr) "foo3 contains bar3 in more store" (Ok "bar3") (p.read ["data"; "foo3"]) ;
-  Alcotest.check (result Alcotest.string perr) "foo4 contains bar4 in more store" (Ok "bar4") (p.read ["data"; "foo4"]) ;
-  Alcotest.check (result Alcotest.string perr) "foo5 not contained in more store" (Error `NotFound) (p.read ["data"; "foo5"]) ;
-  p.write ["data"; "foobar" ; "barfoo" ; "foobar" ; "foo"] "foobar" ;
-  Alcotest.check (result Alcotest.string perr) "data/foobar/barfoo/foobar/foo contained in more store"
-    (Ok "foobar") (p.read ["data"; "foobar" ; "barfoo" ; "foobar" ; "foo"]) ;
-  Alcotest.check Alcotest.bool "data/foobar/barfoo/foobar contained in more store"
-    true (p.exists ["data"; "foobar" ; "barfoo" ; "foobar"])
+  p.write ["packages"; "foo"] "bar" ;
+  Alcotest.check Alcotest.bool "packages in more store" true (p.exists ["packages"]) ;
+  Alcotest.check Alcotest.bool "packages/foo in more store" true (p.exists ["packages"; "foo"]) ;
+  Alcotest.check Alcotest.bool "packages/foo/bar not in more store" false (p.exists ["packages"; "foo"; "bar"]) ;
+  p.write ["packages"; "foo2"] "bar2" ;
+  Alcotest.check (result (Alcotest.list it) perr) "read_dir of 'packages' in more mem store"
+    (Ok [ `File "foo2" ; `File "foo" ]) (p.read_dir ["packages"]) ;
+  p.write ["packages"; "foo3"] "bar3" ;
+  p.write ["packages"; "foo4"] "bar4" ;
+  Alcotest.check (result (Alcotest.list it) perr) "read_dir of 'packages' in even more mem store"
+    (Ok [ `File "foo4" ; `File "foo3" ; `File "foo2" ; `File "foo" ]) (p.read_dir ["packages"]) ;
+  Alcotest.check (result (Alcotest.list it) perr) "read_dir of 'packages2' in even more mem store"
+    (Error `NotFound) (p.read_dir ["packages2"]) ;
+  Alcotest.check (result Alcotest.string perr) "foo contains bar in more store" (Ok "bar") (p.read ["packages";"foo"]) ;
+  Alcotest.check (result Alcotest.string perr) "foo2 contains bar2 in more store" (Ok "bar2") (p.read ["packages"; "foo2"]) ;
+  Alcotest.check (result Alcotest.string perr) "foo3 contains bar3 in more store" (Ok "bar3") (p.read ["packages"; "foo3"]) ;
+  Alcotest.check (result Alcotest.string perr) "foo4 contains bar4 in more store" (Ok "bar4") (p.read ["packages"; "foo4"]) ;
+  Alcotest.check (result Alcotest.string perr) "foo5 not contained in more store" (Error `NotFound) (p.read ["packages"; "foo5"]) ;
+  p.write ["packages"; "foobar" ; "barfoo" ; "foobar" ; "foo"] "foobar" ;
+  Alcotest.check (result Alcotest.string perr) "packages/foobar/barfoo/foobar/foo contained in more store"
+    (Ok "foobar") (p.read ["packages"; "foobar" ; "barfoo" ; "foobar" ; "foo"]) ;
+  Alcotest.check Alcotest.bool "packages/foobar/barfoo/foobar contained in more store"
+    true (p.exists ["packages"; "foobar" ; "barfoo" ; "foobar"])
 
 let mem_provider_tests = [
   "empty provider", `Quick, empty_p ;
@@ -168,6 +168,7 @@ let re =
     let equal a b = match a, b with
       | `NotFound a, `NotFound a' -> name_equal a a'
       | `NameMismatch (a, b), `NameMismatch (a', b') -> name_equal a a' && name_equal b b'
+      | `ParseError (n, _), `ParseError (n', _) -> name_equal n n'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -232,10 +233,10 @@ let checks_r () =
   let open Provider in
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
-  p.write ["data"; "foo"; "foo.0"; "foo"] "bar" ;
-  p.write ["data"; "foo"; "foo.0"; "bar"] "foo" ;
-  p.write ["data"; "foo"; "foo.0"; "files"; "patch1"] "p1" ;
-  p.write ["data"; "foo"; "foo.0"; "files"; "patch2"] "p2" ;
+  p.write ["packages"; "foo"; "foo.0"; "foo"] "bar" ;
+  p.write ["packages"; "foo"; "foo.0"; "bar"] "foo" ;
+  p.write ["packages"; "foo"; "foo.0"; "files"; "patch1"] "p1" ;
+  p.write ["packages"; "foo"; "foo.0"; "files"; "patch2"] "p2" ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
     { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
@@ -248,11 +249,135 @@ let checks_r () =
   Alcotest.check (result cs ch_err) "checksum computation works"
     (Ok css) (Repository.compute_checksum r "foo.0")
 
+let bad_id_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  Alcotest.check (result publickey re) "key foo not found"
+    (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
+  Alcotest.check (result team re) "team foo not found"
+    (Error (`NotFound "foo")) (Repository.read_team r "foo") ;
+  Alcotest.check (result id re) "ID foo not found"
+    (Error (`NotFound "foo")) (Repository.read_id r "foo") ;
+  p.write ["keys"; "foo"] "barf" ;
+  Alcotest.check (result publickey re) "parse error on key foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_key r "foo") ;
+  Alcotest.check (result team re) "parse error on team foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_team r "foo") ;
+  Alcotest.check (result id re) "parse error on id foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_id r "foo") ;
+  let key = match Publickey.publickey "foo" None with Ok x -> x | Error _ -> assert false in
+  Repository.write_key r key ;
+  Alcotest.check (result team re) "parse error on team foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_team r "foo") ;
+  Alcotest.check (result publickey re) "key foo parses"
+    (Ok key) (Repository.read_key r "foo") ;
+  Alcotest.check (result id re) "id foo parses"
+    (Ok (`Key key)) (Repository.read_id r "foo") ;
+  p.write ["keys"; "foobar"] (Data.publickey_to_string key) ;
+  Alcotest.check (result team re) "parse error on team foobar"
+    (Error (`ParseError ("foobar", ""))) (Repository.read_team r "foobar") ;
+  Alcotest.check (result publickey re) "key foobar namemismatch"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_key r "foobar") ;
+  Alcotest.check (result id re) "namemismatch id foobar"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_id r "foobar") ;
+  let t = Team.team "foo" in
+  Repository.write_team r t ;
+  Alcotest.check (result publickey re) "parse error on key foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_key r "foo") ;
+  Alcotest.check (result team re) "team foo parses"
+    (Ok t) (Repository.read_team r "foo") ;
+  Alcotest.check (result id re) "id foo parses"
+    (Ok (`Team t)) (Repository.read_id r "foo") ;
+  p.write ["keys"; "foobar"] (Data.team_to_string t) ;
+  Alcotest.check (result publickey re) "parse error on key foobar"
+    (Error (`ParseError ("foobar", ""))) (Repository.read_key r "foobar") ;
+  Alcotest.check (result team re) "name mismatch on team foobar"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_team r "foobar") ;
+  Alcotest.check (result id re) "name mismatch on id foo"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_id r "foobar")
+
+let bad_idx_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  Alcotest.check (result ji re) "index foo not found"
+    (Error (`NotFound "foo")) (Repository.read_index r "foo") ;
+  p.write ["index"; "foo"] "bla" ;
+  Alcotest.check (result ji re) "good index foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_index r "foo") ;
+  let idx = Index.index "foo" in
+  Repository.write_index r idx ;
+  Alcotest.check (result ji re) "good index foo"
+    (Ok idx) (Repository.read_index r "foo") ;
+  p.write ["index"; "foobar"] (Data.index_to_string idx) ;
+  Alcotest.check (result ji re) "name mismatch in foobar"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_index r "foobar")
+
+let bad_auth_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  Alcotest.check (result auth re) "authorisation foo not found"
+    (Error (`NotFound "foo")) (Repository.read_authorisation r "foo") ;
+  p.write ["packages"; "foo"; "authorisation"] "foobar" ;
+  Alcotest.check (result auth re) "parse error on authorisation foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_authorisation r "foo") ;
+  let a = Authorisation.authorisation "foo" in
+  Repository.write_authorisation r a ;
+  Alcotest.check (result auth re) "authorisation foo good"
+    (Ok a) (Repository.read_authorisation r "foo") ;
+  p.write ["packages"; "foobar"; "authorisation"] (Data.authorisation_to_string a) ;
+  Alcotest.check (result auth re) "name mismatch on authorisation foobar"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_authorisation r "foobar")
+
+let bad_rel_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  Alcotest.check (result releases re) "releases foo not found"
+    (Error (`NotFound "foo")) (Repository.read_releases r "foo") ;
+  p.write ["packages"; "foo"; "releases"] "foobar" ;
+  Alcotest.check (result releases re) "parse error on releases foo"
+    (Error (`ParseError ("foo", ""))) (Repository.read_releases r "foo") ;
+  let rel = match Releases.releases "foo" with Ok r -> r | Error _ -> assert false in
+  Repository.write_releases r rel ;
+  Alcotest.check (result releases re) "releases foo good"
+    (Ok rel) (Repository.read_releases r "foo") ;
+  p.write ["packages"; "foobar"; "releases"] (Data.releases_to_string rel) ;
+  Alcotest.check (result releases re) "name mismatch on releases foobar"
+    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_releases r "foobar")
+
+let bad_cs_r () =
+  let open Provider in
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  Alcotest.check (result cs re) "checksum foo not found"
+    (Error (`NotFound "foo")) (Repository.read_checksum r "foo") ;
+  p.write ["packages"; "foo"; "foo.0"; "checksum"] "foobar" ;
+  Alcotest.check (result cs re) "parse error on checksum foo.0"
+    (Error (`ParseError ("foo.0", ""))) (Repository.read_checksum r "foo.0") ;
+  let c = Checksum.checksums "foo.0" [] in
+  Repository.write_checksum r c ;
+  Alcotest.check (result cs re) "checksum foo.0 good"
+    (Ok c) (Repository.read_checksum r "foo.0") ;
+  p.write ["packages"; "foo"; "foo.1"; "checksum"] (Data.checksums_to_string c) ;
+  Alcotest.check (result cs re) "name mismatch on checksum foo.1"
+    (Error (`NameMismatch ("foo.1", "foo.0"))) (Repository.read_checksum r "foo.1") ;
+  p.write ["packages"; "foo"; "foo.2"] "blubb" ;
+  Alcotest.check (result cs ch_err) "checksum is a file, should be a directory"
+    (Error (`NotADirectory "foo.2")) (Repository.compute_checksum r "foo.2")
+
 let basic_repo_tests = [
   "empty repo", `Quick, empty_r ;
   "key repo", `Quick, key_r ;
   "team", `Quick, team_r ;
   "checksum computation is sane", `Quick, checks_r ;
+  "bad id in repo", `Quick, bad_id_r ;
+  "bad idx in repo", `Quick, bad_idx_r ;
+  "bad auth in repo", `Quick, bad_auth_r ;
+  "bad rel in repo", `Quick, bad_rel_r ;
+  "bad cs in repo", `Quick, bad_cs_r ;
 ]
 
 
@@ -525,6 +650,117 @@ let a_err =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
+let team () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let team = Team.team pname in
+  Alcotest.check (result a_ok a_err) "team missing quorum"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_team r team) ;
+  let resources = [
+    pname, `Team, digest (Data.team_to_string team)
+  ] in
+  let j_sign r jid =
+    let jpub, jpriv = gen_pub jid in
+    let idx =
+      let i = Index.index ~resources jid in
+      Private.sign_index i jpriv
+    in
+    let r = Repository.add_trusted_key r jpub in
+    let r =
+      let mems = Repository.team r "janitors" in
+      Repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
+    in
+    Repository.add_index r idx
+  in
+  let r = j_sign r "janitor" in
+  Alcotest.check (result a_ok a_err) "team properly signed"
+    (Ok (`Quorum (S.singleton "janitor")))
+    (Repository.verify_team r team) ;
+  let r = Repository.repository ~quorum:2 p in
+  let r = j_sign r "janitor" in
+  Alcotest.check (result a_ok a_err) "team missing quorum of 2"
+    (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
+    (Repository.verify_team r team) ;
+  let r = j_sign r "janitor2" in
+  Alcotest.check (result a_ok a_err) "team quorum of 2 good"
+    (Ok (`Quorum (S.add "janitor2" (S.singleton "janitor"))))
+    (Repository.verify_team r team)
+
+let team_self_signed () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let id = "foo" in
+  let pname = "foop" in
+  let team = Team.team pname in
+  let pub, priv = gen_pub id in
+  let resources = [
+    pname, `Team, digest (Data.team_to_string team) ;
+    id, `PublicKey, digest (Data.publickey_to_string pub)
+  ] in
+  let s_idx id priv =
+    Private.sign_index (Index.index ~resources id) priv
+  in
+  let idx = s_idx id priv in
+  let r = Repository.add_index r idx in
+  Alcotest.check (result a_ok a_err) "team missing quorum"
+    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Repository.verify_team r team) ;
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub jid in
+  let jidx = s_idx jid jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Repository.add_index r jidx in
+  Alcotest.check (result a_ok a_err) "team ok"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_team r team)
+
+let team_wrong_resource () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let team = Team.team pname in
+  let resources = [ pname, `Checksum, digest (Data.team_to_string team) ] in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  Alcotest.check (result a_ok a_err) "wrong resource"
+    (Error (`InvalidResource (pname, `Team, `Checksum)))
+    (Repository.verify_team r team)
+
+let team_wrong_name () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let pname = "foop" in
+  let team = Team.team pname in
+  let jid = "aaa" in
+  let jpub, jpriv = gen_pub jid in
+  let resources = [ "barf", `Team, digest (Data.team_to_string team) ] in
+  let jidx =
+    let idx = Index.index ~resources jid in
+    Private.sign_index idx jpriv
+  in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_index r jidx in
+  Alcotest.check (result a_ok a_err) "wrong name"
+    (Error (`InvalidName (pname, "barf")))
+    (Repository.verify_team r team)
+
+let team_repo_tests = [
+  "basic team", `Quick, team ;
+  "also self signed", `Quick, team_self_signed ;
+  "wrong resource", `Quick, team_wrong_resource ;
+  "wrong name", `Quick, team_wrong_name ;
+]
+
+
 let auth () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
@@ -771,17 +1007,17 @@ let rel_missing_releases () =
   Alcotest.check (result r_ok r_err) "missing on disk"
     (Error (`InvalidReleases (pname, S.empty, S.singleton v)))
     (Repository.verify_releases r auth rel) ;
-  p.Provider.write ["data"; pname; v; "checksum"] "" ;
+  p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok r_err) "all good"
     (Ok (`Signed id))
     (Repository.verify_releases r auth rel) ;
   let v2 = pname ^ ".1" in
-  p.Provider.write ["data"; pname; v2; "checksum"] "" ;
+  p.Provider.write ["packages"; pname; v2; "checksum"] "" ;
   Alcotest.check (result r_ok r_err) "missing in releases"
     (Error (`InvalidReleases (pname, S.singleton v2, S.empty)))
     (Repository.verify_releases r auth rel) ;
   let v3 = pname ^ ".2" in
-  p.Provider.write ["data"; pname; v3; "checksum"] "" ;
+  p.Provider.write ["packages"; pname; v3; "checksum"] "" ;
   Alcotest.check (result r_ok r_err) "missing in releases"
     (Error (`InvalidReleases (pname, S.add v3 (S.singleton v2), S.empty)))
     (Repository.verify_releases r auth rel)
@@ -881,7 +1117,7 @@ let c_err =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let cs () =
+let cs_base () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   let pname = "foop"
@@ -901,7 +1137,7 @@ let cs () =
   let _pub, priv = gen_pub id in
   let sidx = Private.sign_index (Index.index ~resources id) priv in
   let r = Repository.add_index r sidx in
-  p.Provider.write ["data"; pname; v; "checksum"] "" ;
+  p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok c_err) "good checksum"
     (Ok (`Signed id))
     (Repository.verify_checksum r auth rel cs) ;
@@ -935,10 +1171,64 @@ let cs_quorum () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
-  p.Provider.write ["data"; pname; v; "checksum"] "" ;
+  p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok c_err) "good checksum (quorum)"
     (Ok (`Quorum (S.singleton jid)))
     (Repository.verify_checksum r auth rel cs)
+
+let cs_bad () =
+  let p = Mem.mem_provider () in
+  let r = Repository.repository ~quorum:1 p in
+  let open Provider in
+  let pname = "foo" in
+  let v = pname ^ ".0" in
+  p.write ["packages"; pname; v; "foo"] "bar" ;
+  p.write ["packages"; pname; v; "bar"] "foo" ;
+  p.write ["packages"; pname; v; "files"; "patch1"] "p1" ;
+  p.write ["packages"; pname; v; "files"; "patch2"] "p2" ;
+  (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
+  let csums = [
+    { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
+    { Checksum.filename = "foo" ; bytesize = 3L ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
+    { Checksum.filename = "files/patch1" ; bytesize = 2L ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
+    { Checksum.filename = "files/patch2" ; bytesize = 2L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
+  ]
+  in
+  let css = Checksum.checksums v csums in
+  Alcotest.check (result cs ch_err) "checksum computation works"
+    (Ok css) (Repository.compute_checksum r "foo.0") ;
+  let css' = Checksum.checksums v (List.tl csums) in
+  let css'' = Checksum.checksums v ({ Checksum.filename = "foobar" ; bytesize = 3L ; checksum = "" } :: csums) in
+  let other = { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" } in
+  let css''' = Checksum.checksums v (other :: List.tl csums) in
+  let id = "id" in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let rel = safe_rel ~releases:(S.singleton v) pname in
+  let resources = [
+    pname, `Releases, digest (Data.releases_to_string rel) ;
+    v, `Checksum, digest (Data.checksums_to_string css) ;
+    v, `Checksum, digest (Data.checksums_to_string css') ;
+    v, `Checksum, digest (Data.checksums_to_string css'') ;
+    v, `Checksum, digest (Data.checksums_to_string css''') ;
+  ] in
+  let jid = "janitor" in
+  let jpub, jpriv = gen_pub jid in
+  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let r = Repository.add_trusted_key r jpub in
+  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Repository.add_index r sjidx in
+  Alcotest.check (result r_ok c_err) "good checksum (quorum)"
+    (Ok (`Quorum (S.singleton jid)))
+    (Repository.verify_checksum r auth rel css) ;
+  Alcotest.check (result r_ok c_err) "bad checksum (missing in cs file)"
+    (Error (`ChecksumsDiff (v, [], ["bar"], [])))
+    (Repository.verify_checksum r auth rel css') ;
+  Alcotest.check (result r_ok c_err) "bad checksum (missing on disk)"
+    (Error (`ChecksumsDiff (v, ["foobar"], [], [])))
+    (Repository.verify_checksum r auth rel css'') ;
+  Alcotest.check (result r_ok c_err) "bad checksum (differ)"
+    (Error (`ChecksumsDiff (v, [], [], [(List.hd csums, other)])))
+    (Repository.verify_checksum r auth rel css''')
 
 let cs_bad_name () =
   let p = Mem.mem_provider () in
@@ -1039,8 +1329,9 @@ let cs_wrong_resource () =
     (Repository.verify_checksum r auth rel cs)
 
 let cs_repo_tests = [
-  "basic checksum", `Quick, cs ;
+  "basic checksum", `Quick, cs_base ;
   "quorum checksum", `Quick, cs_quorum ;
+  "bad checksum", `Quick, cs_bad ;
   "bad releases name", `Quick, cs_bad_name ;
   "checksum name not in releases", `Quick, cs_bad_name2 ;
   "wrong checksum name", `Quick, cs_wrong_name ;
@@ -1051,6 +1342,7 @@ let tests = [
   "MemoryProvider", mem_provider_tests ;
   "RepositoryBasics", basic_repo_tests ;
   "RepositoryKeys", key_repo_tests ;
+  "RepositoryTeam", team_repo_tests ;
   "RepositoryAuthorisation", auth_repo_tests ;
   "RepositoryReleases", rel_repo_tests ;
   "RepositoryChecksums", cs_repo_tests ;
