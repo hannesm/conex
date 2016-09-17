@@ -7,39 +7,27 @@
 
 current state:
 - Checksum module includes type c = { name ; size ; digest }, computes digest over data
-- Janitorindex includes (name * resource * digest), digest over data
+- Index includes (name * resource * digest), digest over data
 
 * What to sign?
 
 - signature is just a tuple (identity * signature data)
 - verify : publickey -> role -> resource -> data -> (identity * signature data) -> (id, err) result
--> data is extended (String.concat " " [raw data; id; resource]) --> neither of them may include ' '... or different separator?
+-> data is extended (String.concat " " [raw data; id]) --> neither of them may include ' '... or different separator?
 --> this is fine for now! but we might want to add a timestamp (for UI)
 
 * Verification strategy
 
---> empty ji is useless (apart from initial)
---> ji always signed by its j, no quorum
+--> empty i is useless (apart from if publickey == None (initial should contain PK))
+--> i always signed by its owner, no quorum
 
 ----> process for upgrading an author to janitor:
- -> author changes public key role, add janitorindex, PR
- -> janitors sign in their JIs the new public key, once quorum, PR can be merged
+ -> author adds itself to janitor team, PR
+ -> janitors sign in their Is the new team, once quorum, PR can be merged
 
 ----> process for downgrading:
- -> janitors PR downgrade of role (checksum signed by quorum)
- -> remove ji
-
-full repo verification:
- - take TA
- all based on TA + janitor keys only!!!
- - verify janitor keys (self-signed + quorum)
- - verify Janitorindexes (self-signed)
- - verify authorisation (quorum)
- use author keys now
- - verify pubkeys (self + quorum)
- - verify releases (either signed by delegate, or by janitor quorum <- no PK op anymore, we already have a map)
- - verify checksum files (see above)
- - verify presence of files and their concrete checksums
+ -> PR removal of i in janitor team (checksum signed by quorum)
+ -> merge PR
 
 incremental:
  - take repo as trusted
@@ -76,8 +64,8 @@ incremental:
   no need to handle it specially (also pro: only run conex during update, no
   need to run during installation!)
 
-signature is done over <data> <identifier> <resource> to prevent reusing the same
- signature for other data resources or pretending another identifier
+signature is done over <data> <identifier> to prevent reusing the same
+ signature for other identifiers
 
 - executables:
  opam:
@@ -94,49 +82,21 @@ signature is done over <data> <identifier> <resource> to prevent reusing the sam
 -- from TODO on nuc
  - reanimate patch.ml
  - accounts in publickey
- - functorise over data format, crypto provider
+ - functorise (no!) over data format, crypto provider
  - multiple binaries: one for user [view/verify], one for author [generate/sign], one for janitor [quorum]
  - timestamp notary
- - use ji and releases for verification:
-     provide verify_XXX in Repository (and rely on them for verifying other bits and pieces)
-     provide UI in app/conex
 
 * proper documentation
  - library docs lib
  - cli man page
  - examples
 * deletion of keys!
-* do FS magic only in layout
-  repo layout:
-   - find_key : id -> location
-   - find_keys : unit -> id list
-   - is_key : string -> bool
-   - find_delegate : name -> location
-   - find_delegates : unit -> name list
-   - is_delegate : string -> bool
-   - find_data : name -> location
-   - find_datas : unit -> name list
-   - is_data : string -> bool
-   - cs_of_path
-   - del_of_path / del_of_cs
-  uniqueness:
-   - when to check!? -- when reading data
-   - also important to privatize construction of name and ids (to check for well-formedness!)
 
 * what is the safety here?
   -> provide a command to show me all the in-tree data without checksum
   -> ... without delegate
 
-missing commands:
- RM and dev tools:
-   adapt key role
-   adapt delegate owner (+/-)
- filter list:
-   only unverified things
-   only verified things
-   only things requiring quorum (RM)
-
-too many invalid_arg! -- now contained to data, diff, patch (provider/repository)
+too many invalid_arg! -- now contained to diff, patch (data is guarded)
 
 toools
   show_trust_chain (transitive deps: whom do I trust) <package (release)> || <all packages> || <all installed>
