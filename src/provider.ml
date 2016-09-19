@@ -23,6 +23,8 @@ let pp_provider ppf t =
 (*BISECT-IGNORE-END*)
 
 let fs_provider basedir =
+  if not (Persistency.exists basedir) then
+    Unix.mkdir basedir 0o755 ;
   let get path = path_to_string (basedir :: path) in
   let ensure_dir path =
     let rec mkdir base = function
