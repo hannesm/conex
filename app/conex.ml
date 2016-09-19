@@ -289,8 +289,21 @@ let verify copts kind =
        Format.fprintf copts.out " (%d)@." (List.length verified) ;
        out (List.map (fun k -> k.Publickey.keyid) keys) verified ;
        repo
-    | `Teams -> repo (* XXX *)
-    | `Ids -> repo (* XXX *)
+    | `Teams ->
+       let teams = find_teams copts in
+       let verified = List.map (Repository.verify_team repo) teams in
+       Format.fprintf copts.out " (%d)@." (List.length verified) ;
+       out (List.map (fun t -> t.Team.name) teams) verified ;
+       repo
+    | `Ids ->
+       let keys = find_keys copts in
+       let kverified = List.map (Repository.verify_key repo) keys in
+       let teams = find_teams copts in
+       let tverified = List.map (Repository.verify_team repo) teams in
+       Format.fprintf copts.out " (%d keys, %d teams)@." (List.length kverified) (List.length tverified) ;
+       out (List.map (fun k -> k.Publickey.keyid) keys) kverified ;
+       out (List.map (fun t -> t.Team.name) teams) tverified ;
+       repo
     | `Authorisations ->
        let auths = find_authorisations copts in
        let verified = List.map (Repository.verify_authorisation repo) auths in
@@ -344,7 +357,16 @@ let verify copts kind =
   let _ = exec copts.repo kind in
   `Ok ()
 
-let items = [ ("key", `Key) ; ("private", `Private) ; ("authorisation", `Authorisation) ; ("releases", `Releases) ; ("checksum", `Checksum) ; ("diff", `Diff) ]
+(* XXX id, index *)
+let items = [
+  ("key", `Key) ;
+  ("team", `Team) ;
+  ("private", `Private) ;
+  ("authorisation", `Authorisation) ;
+  ("releases", `Releases) ;
+  ("checksum", `Checksum) ;
+  ("diff", `Diff)
+]
 
 let verified copts b =
   let c = Color.res_c b in
@@ -355,6 +377,11 @@ let verified copts b =
 let show_key copts key =
   Publickey.pp_publickey copts.out key ;
   verified copts (Repository.verify_key copts.repo key) ;
+  `Ok ()
+
+let show_team copts team =
+  Team.pp_team copts.out team ;
+  verified copts (Repository.verify_team copts.repo team) ;
   `Ok ()
 
 let show_private copts (id, priv) =
@@ -413,6 +440,11 @@ let show copts item value =
       | Ok k -> show_key copts k
       | Error e ->
         Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+        `Error (false, "error"))
+  | `Team -> (match Repository.read_team copts.repo value with
+      | Ok t -> show_team copts t
+      | Error e ->
+        Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
   | `Private -> (match Private.read_private_key ~id:value copts.repo with
       | Ok k -> show_private copts k
@@ -489,6 +521,18 @@ let generate copts item name ids =
          `Error (false, "no private key and public does not exist")
        | Ok (_, k) ->
          writeout (Publickey.publickey name (Some (Private.pub_of_priv k))))
+  | `Team ->
+    let counter = match Repository.read_team copts.repo name with
+      | Error _ -> None
+      | Ok t' -> Some (Int64.succ t'.Team.counter)
+    in
+    let t = Team.team ~members:(S.of_list ids) ?counter name in
+    if copts.dry then
+      Format.fprintf copts.out "dry run, nothing written.@."
+    else
+      Repository.write_team copts.repo t ;
+    Format.fprintf copts.out "updated team %s@." name ;
+    show_team copts t
   | `Authorisation ->
     let counter = match Repository.read_authorisation copts.repo name with
       | Error _ -> None
@@ -563,6 +607,20 @@ let sign copts item name =
           Format.fprintf copts.out "signed key %s@." name ;
           let copts = { copts with repo = Repository.add_index copts.repo idx } in
           show_key copts k)
+
+    | `Team -> (match Repository.read_team copts.repo name with
+        | Error e ->
+          Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          `Error (false, "error")
+        | Ok t ->
+          let idx = add_r (name, `Team, digest (Data.team_to_string t)) in
+          if copts.dry then
+            Format.fprintf copts.out "dry run, nothing written.@."
+          else
+            Repository.write_index copts.repo idx ;
+          Format.fprintf copts.out "signed team %s@." name ;
+          let copts = { copts with repo = Repository.add_index copts.repo idx } in
+          show_team copts t)
 
     | `Authorisation -> (match Repository.read_authorisation copts.repo name with
         | Error e ->
