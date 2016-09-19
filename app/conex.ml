@@ -26,6 +26,7 @@ let help _copts man_format cmds = function
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
 
+(* XXX packages! *)
 let kinds =
   [ ("privatekeys", `Privates) ;
     ("keys", `Keys) ;
@@ -352,7 +353,7 @@ let verify copts kind =
        let provider = Repository.provider copts.repo in
        Format.pp_print_newline copts.out () ;
        Provider.pp_provider copts.out provider ;
-       List.fold_left exec repo (List.filter ((<>) `Repository) (snd (List.split kinds)))
+       List.fold_left exec repo (List.filter (function `Repository -> false | `Ids -> false | _ -> true) (snd (List.split kinds)))
   in
   let _ = exec copts.repo kind in
   `Ok ()
