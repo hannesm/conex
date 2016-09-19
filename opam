@@ -9,6 +9,8 @@ license:      "BSD2"
 
 build: [
   [ "./build" "bin" ]
+  [ "cp" "conex.native" "%{bin}%/conex" ]
+  [ "cp" "conex_verify.native" "%{bin}%/conex_verify" ]
 ]
 
 build-test: [
