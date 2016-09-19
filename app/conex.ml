@@ -26,6 +26,8 @@ let help _copts man_format cmds = function
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
 
+(* XXX: revise debug: errors should be reported for failed command, but not too many errors *)
+
 (* XXX packages! *)
 let kinds =
   [ ("privatekeys", `Privates) ;
