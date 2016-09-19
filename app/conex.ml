@@ -44,7 +44,7 @@ let find_private_keys copts =
 let load_tas copts =
   match copts.trust_anchors with
   | None ->
-    Format.fprintf copts.out "WARNING: treating repository as trusted, maybe you forgot --trust-anchors?@." ;
+    Format.fprintf copts.out "WARNING: maybe you forgot --trust-anchors?@." ;
     copts
   | Some s ->
     let repo = Conex_common.load_anchors_janitors copts.repo copts.out copts.debug (fun () -> ()) s in
