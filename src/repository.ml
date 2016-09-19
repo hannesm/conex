@@ -257,7 +257,7 @@ let read_index repo name =
 
 let write_index repo i =
   let name = Layout.index_path i.Index.identifier in
-  repo.data.Provider.write name (Data.index_to_string i)
+  repo.data.Provider.write name (Data.index_to_raw i)
 
 let read_authorisation repo name =
   match repo.data.Provider.read (Layout.authorisation_path name) with

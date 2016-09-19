@@ -3,6 +3,8 @@ open Core
 val string_to_index : string -> (Index.t, string) result
 val index_to_string : Index.t -> string
 
+val index_to_raw : Index.t -> string
+
 val string_to_publickey : string -> (Publickey.t, string) result
 val publickey_to_string : Publickey.t -> string
 

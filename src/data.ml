@@ -185,6 +185,8 @@ let index_to_string i =
   let signed, _ = parse_signed_data data in
   normalise signed
 
+let index_to_raw i = normalise (index_to_data i)
+
 let data_to_index data =
   let signed, signature = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
