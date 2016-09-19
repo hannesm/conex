@@ -55,7 +55,7 @@ let find_keys copts =
     Utils.filter_map
       ~f:(fun f ->
           match Repository.read_key copts.repo f with
-          | Error e -> Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          | Error e -> if copts.debug then Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
       (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
   in
@@ -75,7 +75,7 @@ let find_teams copts =
     Utils.filter_map
       ~f:(fun f ->
           match Repository.read_team copts.repo f with
-          | Error e -> Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          | Error e -> if copts.debug then Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
       (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
   in
