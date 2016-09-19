@@ -4,7 +4,7 @@ open Conex_common
 
 let out = Format.std_formatter
 
-let debug = true
+let debug = false
 
 let strict = false
 
@@ -37,22 +37,23 @@ let verify_complete_repository directory trust =
         | Ok ok -> if debug then Repository.pp_ok out ok ;
           match Repository.read_releases r name with
           | Error e -> Repository.pp_r_err out e ; maybe_exit ()
-          | Ok rel -> match Repository.verify_releases r auth rel with
-            | Error e -> Repository.pp_error out e ; maybe_exit ()
-            | Ok ok -> if debug then Repository.pp_ok out ok ;
-              let good = ref true in
-              S.iter (fun rname ->
-                  match Repository.read_checksum r rname with
-                  | Error e -> Repository.pp_r_err out e ; good := false ; maybe_exit ()
-                  | Ok cs -> match Repository.verify_checksum r auth rel cs with
-                    | Error e -> Repository.pp_error out e ; good := false ; maybe_exit ()
-                    | Ok ok -> if debug then Repository.pp_ok out ok)
-                rel.Releases.releases ;
-              if !good then Format.fprintf out "verified %a@." pp_name name)
+          | Ok rel ->
+            let good = ref true in
+            (match Repository.verify_releases r auth rel with
+             | Error e -> Repository.pp_error out e ; good := false ; maybe_exit ()
+             | Ok ok -> if debug then Repository.pp_ok out ok) ;
+            S.iter (fun rname ->
+                match Repository.read_checksum r rname with
+                | Error e -> Repository.pp_r_err out e ; good := false ; maybe_exit ()
+                | Ok cs -> match Repository.verify_checksum r auth rel cs with
+                  | Error e -> Repository.pp_error out e ; good := false ; maybe_exit ()
+                  | Ok ok -> if debug then Repository.pp_ok out ok)
+              rel.Releases.releases ;
+            if !good then Format.fprintf out "verified %a@." pp_name name)
     (Repository.all_authorisations r) ;
   exit 0
 
 let () =
   match Sys.argv with
   | [| _ ; directory ; trust |] -> verify_complete_repository directory trust
-  | _ -> Printf.eprintf "expecting two arguments: <directory> <trust anchors>"
+  | _ -> Printf.eprintf "expecting two arguments: <directory> <trust anchors>\n"
