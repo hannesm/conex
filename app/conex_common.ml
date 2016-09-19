@@ -10,21 +10,21 @@ let load_trust_anchors out maybe_exit dir =
       [] keys
   in
   Format.fprintf out "Loaded %s, found %d trust anchors: %a@."
-    dir (List.length keys) (pp_list Publickey.pp_publickey) keys ;
+    dir (List.length keys) (pp_list pp_id) (List.map (fun k -> k.Publickey.keyid) keys) ;
   keys
 
 let load_verify_idx out debug maybe_exit r k id =
   match Repository.read_index r id with
-  | Error e -> Repository.pp_r_err out e ; maybe_exit () ; r
+  | Error e -> if debug then Repository.pp_r_err out e ; maybe_exit () ; r
   | Ok i ->
     let r' = Repository.add_trusted_key r k in
     match Repository.verify_index r' i with
-    | Error e -> pp_verification_error out e ; maybe_exit () ; r
+    | Error e -> if debug then pp_verification_error out e ; maybe_exit () ; r
     | Ok id ->
       if debug then Format.fprintf out "loaded index for %a@." pp_id id ;
       let r' = Repository.add_index r' i in
       match Repository.verify_key r' k with
-      | Error e -> Repository.pp_error out e ; maybe_exit () ; r
+      | Error e -> if debug then Repository.pp_error out e ; maybe_exit () ; r
       | Ok ok -> if debug then Repository.pp_ok out ok ; r'
 
 let load_key_idx out debug maybe_exit id r =
@@ -34,11 +34,11 @@ let load_key_idx out debug maybe_exit id r =
 
 let load_id out debug maybe_exit id r =
   match Repository.read_id r id with
-  | Error e -> Repository.pp_r_err out e ; maybe_exit () ; r
+  | Error e -> if debug then Repository.pp_r_err out e ; maybe_exit () ; r
   | Ok (`Team t) ->
     begin match Repository.verify_team r t with
-      | Ok _ -> Repository.add_team r t
-      | Error e -> Repository.pp_error out e ; maybe_exit () ; r
+      | Ok _ -> if debug then Format.fprintf out "loaded team %a@." pp_id t.Team.name ; Repository.add_team r t
+      | Error e -> if debug then Repository.pp_error out e ; maybe_exit () ; r
     end
   | Ok (`Key k) -> load_verify_idx out debug maybe_exit r k id
 
