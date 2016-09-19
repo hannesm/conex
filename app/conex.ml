@@ -256,7 +256,7 @@ let list copts kind =
        let provider = Repository.provider copts.repo in
        Format.pp_print_newline copts.out () ;
        Provider.pp_provider copts.out provider ;
-       List.iter exec (List.filter ((<>) `Repository) (snd (List.split kinds)))
+       List.iter exec (List.filter (function `Repository -> false | `Ids -> false | _ -> true) (snd (List.split kinds)))
   in
   exec kind ; `Ok ()
 
