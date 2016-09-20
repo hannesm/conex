@@ -1,3 +1,8 @@
+(* XXX: revise debug: errors should be reported for failed command, but not too many errors *)
+(* XXX: packages as a useful show/verify/sign target *)
+(* XXX: commands to dynamically add/remove members to authorisation and teams *)
+(* XXX: key rollover and key revocation *)
+
 open Core
 
 module Color = struct
@@ -26,9 +31,6 @@ let help _copts man_format cmds = function
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
 
-(* XXX: revise debug: errors should be reported for failed command, but not too many errors *)
-
-(* XXX packages! *)
 let kinds =
   [ ("privatekeys", `Privates) ;
     ("keys", `Keys) ;

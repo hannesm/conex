@@ -36,7 +36,7 @@ let extract_int_exn = function
 
 let rec to_string = function
   | Entry (k, v) -> k ^ ":" ^ (to_string v)
-  | List xs -> "[" ^ (String.concat ","  (List.map to_string xs)) ^ "]"
+  | List xs -> "[" ^ (String.concat ",\n"  (List.map to_string xs)) ^ "]"
   | Leaf (String s) -> "\"" ^ s ^ "\""
   | Leaf (Int i) -> Int64.to_string i
 
