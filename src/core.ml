@@ -6,8 +6,8 @@ module S = Set.Make(String)
 let pp_list pe ppf xs =
   Format.pp_print_string ppf "[" ;
   let rec p1 = function
-    | [] -> Format.pp_print_string ppf "]"
-    | [x] -> Format.fprintf ppf "%a]@." pe x
+    | [] -> Format.fprintf ppf "]@ "
+    | [x] -> Format.fprintf ppf "%a]@ " pe x
     | x::xs -> Format.fprintf ppf "%a,@ " pe x ; p1 xs
   in
   p1 xs
