@@ -2,18 +2,17 @@ true : bin_annot, safe_string, principal
 true : warn(+A-4-6-33-44-48-58)
 "src" : include
 
-<src/core.{ml,mli}>: package(cstruct), package(nocrypto)
+<src/core.{ml,mli}>: package(cstruct nocrypto)
 <src/utils.ml>: package(cstruct)
-
-<src/checksum.{ml,mli}>: package(nocrypto), package(cstruct)
-<src/private.{ml,mli}>: package(x509), package(nocrypto), package(cstruct)
-<src/publickey.{ml,mli}>: package(x509), package(nocrypto), package(cstruct)
+<src/checksum.{ml,mli}>: package(nocrypto cstruct)
+<src/private.{ml,mli}>: package(x509 nocrypto cstruct)
+<src/publickey.{ml,mli}>: package(x509 nocrypto cstruct)
 
 "app" : include
-<app/conex.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner), package(nocrypto.unix)
-<app/conex_verify.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(cmdliner)
+<app/conex.{ml,native}>: package(cstruct nocrypto x509 cmdliner nocrypto.unix)
+<app/conex_verify.{ml,native}>: package(cstruct nocrypto x509 cmdliner)
 
 <test/common.ml>: package(alcotest)
 <test/basics.ml>: package(alcotest)
 <test/repositorytests.ml>: package(alcotest)
-<test/tests.{ml,native}>: package(cstruct), package(nocrypto), package(x509), package(alcotest), package(nocrypto.unix)
+<test/tests.{ml,native}>: package(cstruct nocrypto x509 alcotest nocrypto.unix)
