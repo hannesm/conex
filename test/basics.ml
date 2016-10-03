@@ -164,9 +164,9 @@ let idx_sign () =
   let k, p = gen_pub "a" in
   let idx = Index.index "a" in
   let signed = Private.sign_index idx p in
-  let signature = match signed.Index.signature with
-    | None -> assert false
-    | Some x -> x
+  let signature = match signed.Index.signatures with
+    | [x] -> x
+    | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "a")
     (Publickey.verify k (Data.index_to_string signed) signature) ;
@@ -182,9 +182,9 @@ let idx_sign_other () =
   let k, p = gen_pub "a" in
   let idx = Index.index "b" in
   let signed = Private.sign_index idx p in
-  let signature = match signed.Index.signature with
-    | None -> assert false
-    | Some x -> x
+  let signature = match signed.Index.signatures with
+    | [x] -> x
+    | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "b")
     (Publickey.verify k (Data.index_to_string signed) signature)
@@ -193,9 +193,9 @@ let idx_sign_bad () =
   let k, p = gen_pub "a" in
   let idx = Index.index "b" in
   let signed = Private.sign_index idx p in
-  let signature = match signed.Index.signature with
-    | None -> assert false
-    | Some x -> x
+  let signature = match signed.Index.signatures with
+    | [x] -> x
+    | _ -> assert false
   in
   let idx' = Index.index "c" in
   let raw = Data.index_to_string idx' in
@@ -207,9 +207,9 @@ let idx_sign_bad2 () =
   let k, p = gen_pub "a" in
   let idx = Index.index "a" in
   let signed = Private.sign_index idx p in
-  let signature = match signed.Index.signature with
-    | None -> assert false
-    | Some x -> x
+  let signature = match signed.Index.signatures with
+    | [x] -> x
+    | _ -> assert false
   in
   let idx' = Index.index ~counter:23L "b" in
   let raw = Data.index_to_string idx' in

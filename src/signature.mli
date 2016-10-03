@@ -5,4 +5,4 @@ type t = identifier * string
 
 val extend_data : string -> identifier -> string
 
-val pp_signature : Format.formatter -> t option -> unit
+val pp_signature : Format.formatter -> t -> unit

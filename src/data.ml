@@ -134,28 +134,22 @@ let parse data =
 let normalise = to_string
 
 
-let signature_to_data = function
-  | None -> List []
-  | Some (id, signature) ->
-    List [ Entry ("keyid", Leaf (String id)) ;
-           Entry ("sig", Leaf (String signature)) ]
+let signature_to_data (id, s) =
+  List [ Entry ("keyid", Leaf (String id)) ; Entry ("sig", Leaf (String s)) ]
 
 let data_to_signature signature =
-  try
-    let keyid = extract_string_exn (get_exn signature "keyid")
-    and sigval = extract_string_exn (get_exn signature "sig")
-    in
-    Some (keyid, sigval)
-  with Invalid_argument _ -> None
+  let keyid = extract_string_exn (get_exn signature "keyid")
+  and sigval = extract_string_exn (get_exn signature "sig")
+  in
+  (keyid, sigval)
 
-(* not sure where this belongs *)
 let parse_signed_data data =
-  match get data "signature" with
-  | Some t ->
+  match get data "signatures" with
+  | Some (List t) ->
      let signed = get_exn data "signed" in
-     (signed, data_to_signature t)
-  | None ->
-     (data, None)
+     (signed, List.map data_to_signature t)
+  | Some _ -> invalid_arg "signatures must be a list"
+  | None -> (data, [])
 
 let r_to_data (name, resource, digest) =
   List [ Leaf (String name) ;
@@ -178,7 +172,7 @@ let index_to_data i =
                                  Entry ("version"   , Leaf (Int i.Index.version)) ;
                                  Entry ("identifier", Leaf (String i.Index.identifier)) ;
                                  Entry ("resources" , List (List.map r_to_data i.Index.resources)) ]) ;
-         Entry ("signature", signature_to_data i.Index.signature) ]
+         Entry ("signatures", List (List.map signature_to_data i.Index.signatures)) ]
 
 let index_to_string i =
   let data = index_to_data i in
@@ -188,7 +182,7 @@ let index_to_string i =
 let index_to_raw i = normalise (index_to_data i)
 
 let data_to_index data =
-  let signed, signature = parse_signed_data data in
+  let signed, signatures = parse_signed_data data in
   let counter = extract_int_exn (get_exn signed "counter")
   and version = extract_int_exn (get_exn signed "version")
   and identifier = extract_string_exn (get_exn signed "identifier")
@@ -198,7 +192,7 @@ let data_to_index data =
     | List r -> List.map data_to_r r
     | _ -> invalid_arg "unknown resources"
   in
-  Index.index ~counter ~version ~resources ?signature identifier
+  Index.index ~counter ~version ~resources ~signatures identifier
 
 let string_to_index s =
   try Ok (data_to_index (parse s)) with Invalid_argument a -> Error a

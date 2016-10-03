@@ -397,9 +397,9 @@ let idx_sign () =
     (Ok id) (Repository.verify_index r signed_idx) ;
   let oid = "bar" in
   let signed' =
-    match signed_idx.Index.signature with
-    | None -> assert false
-    | Some (_, s) -> Index.add_sig idx (oid, s)
+    match signed_idx.Index.signatures with
+    | [(_, s)] -> Index.add_sig idx (oid, s)
+    | _ -> assert false
   in
   Alcotest.check (result Alcotest.string verr) "id not authorised"
     (Error (`NotAuthorised (id, oid))) (Repository.verify_index r signed')

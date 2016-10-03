@@ -40,10 +40,16 @@ let add_team repo team =
 
 let verify_index repo idx =
   let aid = idx.Index.identifier in
-  match idx.Index.signature with
-  | Some (id, s) when id_equal id aid -> Keystore.verify repo.store (Data.index_to_string idx) (id, s)
-  | Some (id, _) -> Error (`NotAuthorised (aid, id))
-  | None -> Error (`NoSignature aid)
+  let to_consider, others =
+    List.partition (fun (id, _) -> id_equal id aid) idx.Index.signatures
+  in
+  let verify = Keystore.verify repo.store (Data.index_to_string idx) in
+  let err = match others with
+    | [] -> `NoSignature aid
+    | (xid,_)::_ -> `NotAuthorised (aid, xid)
+  in
+  List.fold_left (fun r s -> match r, verify s with Ok x, _ -> Ok x | _, b -> b)
+    (Error err) to_consider
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
