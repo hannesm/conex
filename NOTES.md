@@ -4,6 +4,9 @@
   -- implicit synchronised clocks: say at repo creation when counter = 0 was done, and what (lower bound of) update interval of the notary is
   -- each janitor includes latest timestamp counter in its index file --> window of opportunity shrinks
   -- each janitor adds TS to each resource in index, and latest counter --> you see some freshness (and roughly synchronised clocks [at least XXX at janitor Y])
+  -- how do blockchains and others (diplomat? tuf?) do that?  maybe depending on synchronised clocks is in the end ok?
+     --> pow and signature with timestamp --> only valid if clock of client is >= timestamp
+     --> debian has a valid-until in their packages (see https://wiki.debian.org/RepositoryFormat (search for valid-until))
 
 --> include a timestamp (as string) into signature! (maybe?)
 
@@ -12,6 +15,11 @@
     --> index is really problematic: there may be items multiple times, and the current ones are the ones to keep, but also newer ones...
     (but not older ones)
     --> how would anyone get the newer ones in any case?  needs access to the full diff of the PR in question, apply it, sign the resources
+
+- Int64.t ++ wraparounds, pls solve!
+- PBKDF enc private keys
+- use opam lib (format parser + writer) ; package name validation ; package name + version -> package name
+
 
 * What to include in checksums?
 
