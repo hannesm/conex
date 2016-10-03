@@ -5,32 +5,36 @@ module S = Set.Make(String)
 
 let apply_diff provider diff =
   let read path =
-    let orig = provider.Provider.read path in
     if Diff.file diff = path_to_string path then
-      Diff.apply orig diff
+      match provider.Provider.read path with
+      | Ok data -> Ok (Diff.apply (Some data) diff)
+      | Error _ -> Ok (Diff.apply None diff)
     else
-      orig
+      provider.Provider.read path
   and file_type path =
     let pn = path_to_string path
     and name = Diff.file diff
     in
     if pn = name then
-      `File
+      Ok File
     else if Strhelper.is_prefix ~prefix:(pn ^ "/") name then
-      `Directory
+      Ok Directory
     else
       provider.Provider.file_type path
   and read_dir path =
-    let old = try provider.Provider.read_dir path with Unix.Unix_error _ -> [] in
     let name = List.rev (string_to_path (Diff.file diff))
     and path = List.rev path
     in
     (* XXX: unlikely to be correct... *)
     let data = match name with
-      | fn::xs when xs = path -> (`File fn) :: old
-      | _ -> old
+      | fn::xs when xs = path -> Some (`File fn)
+      | _ -> None
     in
-    data
+    match provider.Provider.read_dir path, data with
+      | Ok files, Some data -> Ok (data :: files)
+      | Ok files, None -> Ok files
+      | Error _, Some data -> Ok [data]
+      | Error e, None -> Error e
   and write _ = invalid_arg "cannot write on a diff provider, is read-only!"
   and exists path =
     let pn = path_to_string path

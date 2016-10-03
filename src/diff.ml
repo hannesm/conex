@@ -126,4 +126,4 @@ let to_diffs data =
 let apply filedata diff =
   let lines = match filedata with None -> [] | Some x -> to_lines x in
   let lines = List.fold_left apply_hunk lines diff.hunks in
-  Some (String.concat "\n" lines)
+  String.concat "\n" lines

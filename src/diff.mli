@@ -7,5 +7,5 @@ type diff = {
 }
 
 val file : diff -> string
-val apply : string option -> diff -> string option
+val apply : string option -> diff -> string
 val to_diffs : string -> diff list
