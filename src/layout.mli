@@ -20,6 +20,7 @@ val checksum_dir : name -> path
 
 val checksum_files : Provider.t -> string -> path list
 
+val is_index : path -> identifier option
 val is_key : path -> identifier option
 val is_authorisation : path -> name option
 val is_item : path -> (name * name) option

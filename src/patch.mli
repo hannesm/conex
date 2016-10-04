@@ -1,4 +1,6 @@
-(* open Core *)
+open Core
 
-(* val verify_diff : Repository.t -> string -> [ `Ok of Repository.t | `Error of string ] *)
+val apply : Repository.t -> Diff.diff -> Repository.t
+
+val verify_diff : Repository.t -> string -> (Repository.t, string) result
 

@@ -119,6 +119,10 @@ let checksum_files p da =
       []
       data
 
+let is_index = function
+  | idx ::id :: [] when idx = ipath -> Some id
+  | _ -> None
+
 let is_key = function
   | kd :: id :: [] when kd = key_dir -> Some id
   | _ -> None
