@@ -51,7 +51,7 @@ module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
 let verify pub data (id, ts, sigval) =
   match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
-  | None -> Error (`InvalidBase64Encoding (id, sigval))
+  | None -> Error (`InvalidBase64Encoding id)
   | Some signature ->
     let data = Signature.extend_data data id ts in
     let cs_data = Cstruct.of_string data in
@@ -60,5 +60,5 @@ let verify pub data (id, ts, sigval) =
       if Pss_sha256.verify ~key ~signature cs_data then
         Ok id
       else
-        Error (`InvalidSignature (id, data))
+        Error (`InvalidSignature id)
     | None -> Error (`InvalidPublicKey id)

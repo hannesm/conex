@@ -58,27 +58,26 @@ let check_sig prefix pub raw (id, ts, sv) =
   check_ver (prefix ^ " signature can be verified") (Ok id)
     (Publickey.verify pub raw (id, ts, sv)) ;
   check_ver (prefix ^ " signature of other id")
-    (Error (`InvalidSignature ("foo", Signature.extend_data raw "foo" ts)))
+    (Error (`InvalidSignature "foo"))
     (Publickey.verify pub raw ("foo", ts, sv)) ;
-  let sigdata = Signature.extend_data raw id ts in
   check_ver (prefix ^ " signature empty")
-    (Error (`InvalidSignature (id, sigdata)))
+    (Error (`InvalidSignature id))
     (Publickey.verify pub raw (id, ts, "")) ;
   check_ver (prefix ^ " signature is bad (b64prefix)")
-    (Error (`InvalidBase64Encoding (id, "")))
+    (Error (`InvalidBase64Encoding id))
     (Publickey.verify pub raw (id, ts, "\000" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (prefix)")
-    (Error (`InvalidSignature (id, sigdata)))
+    (Error (`InvalidSignature id))
     (Publickey.verify pub raw (id, ts, "abcd" ^ sv)) ;
   check_ver (prefix ^ " signature is bad (postfix)")
     (* should be invalid_b64 once nocrypto >0.5.3 is released *)
-    (Error (`InvalidSignature (id, sigdata)))
+    (Error (`InvalidSignature id))
     (Publickey.verify pub raw (id, ts, sv ^ "abcd")) ;
   check_ver (prefix ^ " signature is bad (raw)")
-    (Error (`InvalidSignature (id, Signature.extend_data "" id ts)))
+    (Error (`InvalidSignature id))
     (Publickey.verify pub "" (id, ts, sv)) ;
   check_ver (prefix ^ " signature is bad (wrong TS)")
-    (Error (`InvalidSignature (id, Signature.extend_data raw id 0L)))
+    (Error (`InvalidSignature id))
     (Publickey.verify pub raw (id, 0L, sv))
 
 let sign_single () =
@@ -103,7 +102,7 @@ let sig_bad_data () =
   let raw = "blabb" in
   check_ver
     "verify fails (data)"
-    (Error (`InvalidSignature (id, Signature.extend_data raw id ts)))
+    (Error (`InvalidSignature id))
     (Publickey.verify pub raw (id, ts, sigval)) ;
   let k' = match Publickey.publickey pid None with Ok p -> p | Error _ -> assert false in
   check_ver "bad key cannot verify"
@@ -175,7 +174,7 @@ let idx_sign () =
     (Publickey.verify k (Data.index_to_string signed) (sid, ts, sigval)) ;
   let idx' = Index.add_resource signed ("foo", `PublicKey, "2342") in
   check_ver "signed modified index does not verify"
-    (Error (`InvalidSignature ("a", Signature.extend_data (Data.index_to_string idx') "a" ts)))
+    (Error (`InvalidSignature "a"))
     (Publickey.verify k (Data.index_to_string idx') (sid, ts, sigval))
 
 let idx_sign_other () =
@@ -203,7 +202,7 @@ let idx_sign_bad () =
   let idx' = Index.index "c" in
   let raw = Data.index_to_string idx' in
   check_ver "signed index does not verify (wrong id)"
-    (Error (`InvalidSignature ("b", Signature.extend_data raw "b" ts)))
+    (Error (`InvalidSignature "b"))
     (Publickey.verify k raw (sid, ts, sigval))
 
 let idx_sign_bad2 () =
@@ -217,7 +216,7 @@ let idx_sign_bad2 () =
   let idx' = Index.index ~counter:23L "b" in
   let raw = Data.index_to_string idx' in
   check_ver "signed index does not verify (wrong data)"
-    (Error (`InvalidSignature ("a", Signature.extend_data raw "a" ts)))
+    (Error (`InvalidSignature "a"))
     (Publickey.verify k raw (sid, ts, sigval)) ;
   check_sig "index" k (Data.index_to_string idx) (sid, ts, sigval)
 
