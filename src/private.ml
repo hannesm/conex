@@ -44,9 +44,10 @@ let primitive_sign priv data =
   Cstruct.to_string b64
 
 let sign id priv data =
-  let data = Signature.extend_data data id in
+  let now = Int64.of_float (Unix.time ()) in
+  let data = Signature.extend_data data id now in
   let sigval = primitive_sign priv data in
-  (id, sigval)
+  (id, now, sigval)
 
 let sign_index idx priv =
   let signature = sign idx.Index.identifier priv (Data.index_to_string idx) in

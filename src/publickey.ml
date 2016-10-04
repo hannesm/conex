@@ -49,11 +49,11 @@ let publickey ?(counter = 0L) ?(version = 0L) keyid key =
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let verify pub data (id, sigval) =
+let verify pub data (id, ts, sigval) =
   match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
   | None -> Error (`InvalidBase64Encoding (id, sigval))
   | Some signature ->
-    let data = Signature.extend_data data id in
+    let data = Signature.extend_data data id ts in
     let cs_data = Cstruct.of_string data in
     match pub.key with
     | Some (RSA_pub key) ->

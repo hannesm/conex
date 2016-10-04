@@ -134,14 +134,19 @@ let parse data =
 let normalise = to_string
 
 
-let signature_to_data (id, s) =
-  List [ Entry ("keyid", Leaf (String id)) ; Entry ("sig", Leaf (String s)) ]
+let signature_to_data (id, ts, s) =
+  List [
+    Entry ("keyid", Leaf (String id)) ;
+    Entry ("created", Leaf (Int ts)) ;
+    Entry ("sig", Leaf (String s))
+  ]
 
 let data_to_signature signature =
   let keyid = extract_string_exn (get_exn signature "keyid")
+  and created = extract_int_exn (get_exn signature "created")
   and sigval = extract_string_exn (get_exn signature "sig")
   in
-  (keyid, sigval)
+  (keyid, created, sigval)
 
 let parse_signed_data data =
   match get data "signatures" with

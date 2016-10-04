@@ -398,7 +398,7 @@ let idx_sign () =
   let oid = "bar" in
   let signed' =
     match signed_idx.Index.signatures with
-    | [(_, s)] -> Index.add_sig idx (oid, s)
+    | [(_, s, ts)] -> Index.add_sig idx (oid, s, ts)
     | _ -> assert false
   in
   Alcotest.check (result Alcotest.string verr) "id not authorised"
