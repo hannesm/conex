@@ -15,7 +15,7 @@ val valid : t -> digest -> (name * resource * S.t) option
 
 val change_provider : t -> Provider.t -> t
 
-val verify_index : t -> Index.t -> (identifier, verification_error) result
+val verify_index : t -> Index.t -> (identifier, [> verification_error ]) result
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 
@@ -39,25 +39,25 @@ val pp_error : Format.formatter ->
 
 val verify_key : t -> Publickey.t ->
   ([ `Quorum of S.t | `Both of identifier * S.t ],
-   [ base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
+   [> base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
 
 val verify_team : t -> Team.t ->
   ([ `Quorum of S.t ],
-   [ base_error | `InsufficientQuorum of name * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * S.t ]) result
 
 val verify_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
-   [ base_error | `InsufficientQuorum of name * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * S.t ]) result
 
 val verify_releases : t -> Authorisation.t -> Releases.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   [ base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]) result
+   [> base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]) result
 
 val compute_checksum : t -> name -> (Checksum.t, [ `FileNotFound of name | `NotADirectory of name ]) result
 
 val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   [ base_error
+   [> base_error
    | `AuthRelMismatch of name * name
    | `NotInReleases of name * S.t
    | `FileNotFound of name
@@ -74,26 +74,27 @@ val all_ids : t -> S.t
 val all_authorisations : t -> S.t
 
 type r_err = [ `NotFound of string | `ParseError of name * string | `NameMismatch of string * string ]
-type 'a r_res = ('a, r_err) result
 
 val pp_r_err : Format.formatter -> r_err -> unit
 
-val read_id : t -> identifier -> [ `Key of Publickey.t | `Team of Team.t ] r_res
+val read_id : t -> identifier ->
+  ([ `Key of Publickey.t | `Team of Team.t ],
+   [> r_err ]) result
 
-val read_key : t -> identifier -> Publickey.t r_res
+val read_key : t -> identifier -> (Publickey.t, [> r_err ]) result
 val write_key : t -> Publickey.t -> unit
 
-val read_team : t -> identifier -> Team.t r_res
+val read_team : t -> identifier -> (Team.t, [> r_err ]) result
 val write_team : t -> Team.t -> unit
 
-val read_index : t -> identifier -> Index.t r_res
+val read_index : t -> identifier -> (Index.t, [> r_err ]) result
 val write_index : t -> Index.t -> unit
 
-val read_authorisation : t -> name -> Authorisation.t r_res
+val read_authorisation : t -> name -> (Authorisation.t, [> r_err ]) result
 val write_authorisation : t -> Authorisation.t -> unit
 
-val read_releases : t -> name -> Releases.t r_res
+val read_releases : t -> name -> (Releases.t, [> r_err ]) result
 val write_releases : t -> Releases.t -> unit
 
-val read_checksum : t -> name -> Checksum.t r_res
+val read_checksum : t -> name -> (Checksum.t, [> r_err ]) result
 val write_checksum : t -> Checksum.t -> unit

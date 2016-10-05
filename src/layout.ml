@@ -3,10 +3,18 @@ open Core
 let lowercase_equal names name =
   let name = Strhelper.lowercase_string name in
   (* check that name is good, here a case-insensitive comparison *)
-  not (List.mem name (List.map Strhelper.lowercase_string names))
+  not (S.exists
+         (fun n -> String.compare (Strhelper.lowercase_string n) name = 0)
+         names)
 
 let unique_keyid = lowercase_equal
 and unique_data = lowercase_equal
+
+let valid_keyid id = Strhelper.is_ascii id
+
+let valid_name package =
+  let p = function '-' | '_' -> true | _ -> false in
+  Strhelper.is_ascii ~p package
 
 let authorisation_of_item x =
   match Strhelper.cut '.' x with

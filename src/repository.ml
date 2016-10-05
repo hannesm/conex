@@ -187,14 +187,11 @@ let verify_checksum repo a r cs =
   verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum (Data.checksums_to_string cs) >>= fun r ->
   let name = cs.Checksum.name in
   compute_checksum repo name >>= fun css ->
-  match Checksum.compare_checksums cs css with
-  | Error (`InvalidName (a, b)) -> Error (`InvalidName (a, b)) (* this can never happen since name is taken from cs *)
-  | Error (`ChecksumsDiff (a, b, c, d)) -> Error (`ChecksumsDiff (a, b, c, d))
-  | Ok () ->
-    match r with
-    | `Both b -> Ok (`Both b)
-    | `Quorum js -> Ok (`Quorum js)
-    | `IdNoQuorum (id, _) -> Ok (`Signed id)
+  Checksum.compare_checksums cs css >>= fun () ->
+  match r with
+  | `Both b -> Ok (`Both b)
+  | `Quorum js -> Ok (`Quorum js)
+  | `IdNoQuorum (id, _) -> Ok (`Signed id)
 
 type r_err = [ `NotFound of string | `ParseError of name * string | `NameMismatch of string * string ]
 
@@ -204,8 +201,6 @@ let pp_r_err ppf = function
   | `ParseError (n, e) -> Format.fprintf ppf "parse error while parsing %a: %s" pp_name n e
   | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
 (*BISECT-IGNORE-END*)
-
-type 'a r_res = ('a, r_err) result
 
 let read_key repo keyid =
   match repo.data.Provider.read (Layout.key_path keyid) with

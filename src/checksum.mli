@@ -27,7 +27,7 @@ val set_counter : t -> int64 -> t
 
 val compare_checksums : t -> t ->
   (unit,
-   [ `InvalidName of name * name
+   [> `InvalidName of name * name
    | `ChecksumsDiff of name * name list * name list * (c * c) list ])
     result
 

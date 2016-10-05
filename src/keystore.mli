@@ -14,4 +14,4 @@ val add : t -> Publickey.t -> t
 val remove : t -> identifier -> t
 
 (* verify a signature, given a store, and some data *)
-val verify : t -> string -> Signature.t -> (identifier, verification_error) result
+val verify : t -> string -> Signature.t -> (identifier, [> verification_error ]) result

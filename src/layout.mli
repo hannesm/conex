@@ -1,7 +1,11 @@
 open Core
 
-val unique_keyid : identifier list -> identifier -> bool
-val unique_data : name list -> name -> bool
+val unique_keyid : S.t -> identifier -> bool
+val unique_data : S.t -> name -> bool
+
+(* if we make the constructor private, no need for this anymore *)
+val valid_keyid : identifier -> bool
+val valid_name : identifier -> bool
 
 val authorisation_of_item : name -> name option
 

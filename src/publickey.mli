@@ -18,4 +18,4 @@ val publickey : ?counter:int64 -> ?version:int64 -> identifier -> pub option -> 
 
 val equal : t -> t -> bool
 
-val verify : t -> string -> Signature.t -> (identifier, verification_error) result
+val verify : t -> string -> Signature.t -> (identifier, [> verification_error ]) result
