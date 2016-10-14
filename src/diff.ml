@@ -33,6 +33,7 @@ let to_start_len data =
   (* input being "?19,23" *)
   match Strhelper.cut ',' (Strhelper.slice ~start:1 data) with
   | None when data = "+1" -> (0, 1)
+  | None when data = "-1" -> (0, 1)
   | None -> invalid_arg ("start_len broken in " ^ data)
   | Some (start, len) ->
      let start = int_of_string start in
@@ -121,7 +122,6 @@ let to_diffs data =
             doit (diff :: acc) rest
   in
   doit [] lines
-
 
 let apply filedata diff =
   let lines = match filedata with None -> [] | Some x -> to_lines x in

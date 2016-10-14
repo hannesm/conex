@@ -8,9 +8,9 @@ true : warn(+A-4-6-33-44-48-58)
 <src/private.{ml,mli}>: package(x509 nocrypto cstruct)
 <src/publickey.{ml,mli}>: package(x509 nocrypto cstruct)
 
-"app" : include
 <app/conex.{ml,native}>: package(cstruct nocrypto x509 cmdliner nocrypto.unix)
 <app/conex_verify.{ml,native}>: package(cstruct nocrypto x509 cmdliner)
+<app/conex_stats.{ml,native}>: package(cstruct nocrypto x509 cmdliner)
 
 <test/common.ml>: package(alcotest)
 <test/basics.ml>: package(alcotest)

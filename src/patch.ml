@@ -57,22 +57,34 @@ type component =
   | Authorisation of name * Diff.diff
   | Dir of name * name * Diff.diff list
 
+let pp_component pp = function
+  | Idx (id, _) -> Format.fprintf pp "index of %a@." pp_id id
+  | Id (id, _) -> Format.fprintf pp "public key or team of %a@." pp_id id
+  | Authorisation (name, _) -> Format.fprintf pp "authorisation of %a@." pp_name name
+  | Dir (pn, vn, xs) -> Format.fprintf pp "directory %a (%a with %d changes)@." pp_name pn pp_name vn (List.length xs)
+
 let categorise diff =
   let p = string_to_path (Diff.file diff) in
-  match Layout.(is_index p, is_key p, is_authorisation p, is_item p) with
-  | Some id, None, None, None ->
+  match Layout.(is_index p, is_key p, is_authorisation p, is_item p, is_compiler p) with
+  | Some id, None, None, None, None ->
     Printf.printf "found an index in diff %s\n" id;
-    Idx (id, diff)
-  | None, Some id, None, None ->
+    Some (Idx (id, diff))
+  | None, Some id, None, None, None ->
     Printf.printf "found an id in diff %s\n" id;
-    Id (id, diff)
-  | None, None, Some id, None ->
+    Some (Id (id, diff))
+  | None, None, Some id, None, None ->
     Printf.printf "found an authorisation in diff %s\n" id;
-    Authorisation (id, diff)
-  | None, None, None, Some (d, p) ->
+    Some (Authorisation (id, diff))
+  | None, None, None, Some (d, p), None ->
     Printf.printf "found a dir in diff %s %s\n" d p;
-    Dir (d, p, [ diff ])
-  | _ -> invalid_arg ("couldn't categorise " ^ (path_to_string p))
+    Some (Dir (d, p, [ diff ]))
+  | None, None, None, None, Some (d, p) ->
+    Printf.printf "found a compiler in diff %s %s\n" d p;
+    None
+  | _ ->
+    (* XXX: handle error properly! *)
+    Printf.printf "couldn't categorise %s\n" (path_to_string p) ;
+    None
 
 let diffs_to_components diffs =
   let pdir p v =
@@ -80,12 +92,13 @@ let diffs_to_components diffs =
   in
   List.fold_left (fun acc diff ->
       match categorise diff with
-      | Dir (p, v, d) as ele ->
+      | Some (Dir (p, v, d)) ->
         (match List.partition (pdir p v) acc with
          | [Dir (_, _, ds)], others -> Dir (p, v, d @ ds) :: others
-         | [], others -> ele :: others
+         | [], others -> Dir (p, v, d) :: others
          | _, _ -> invalid_arg "unexpected thing here")
-     | x -> x :: acc)
+      | Some x -> x :: acc
+      | None -> acc)
     [] diffs
 
 

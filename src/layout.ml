@@ -143,3 +143,7 @@ let is_authorisation = function
 let is_item = function
   | dd :: id :: id2 :: _ when dd = data_dir -> Some (id, id2)
   | _ -> None
+
+let is_compiler = function
+  | cc :: v :: vm :: _ when cc = "compilers" -> Some (v, vm)
+  | _ -> None

@@ -23,7 +23,7 @@ action ()
 {
     case $1 in
         default) action lib ; action bin ; action test ;;
-        bin) action lib ; $OCAMLBUILD app/conex.native ; $OCAMLBUILD app/conex_verify.native ;;
+        bin) action lib ; $OCAMLBUILD app/conex.native ; $OCAMLBUILD app/conex_verify.native ; $OCAMLBUILD app/conex_stats.native ;;
         lib) $OCAMLBUILD conex.cma conex.cmxa ;;
         test) action lib ; $OCAMLBUILD test/tests.native ; ./tests.native -q ;;
         coverage)
