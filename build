@@ -22,8 +22,9 @@ fi
 action ()
 {
     case $1 in
-        default) action lib ; action bin ; action test ;;
-        bin) action lib ; $OCAMLBUILD app/conex.native ; $OCAMLBUILD app/conex_verify.native ; $OCAMLBUILD app/conex_stats.native ;;
+        default) action lib ; action bin ; action analysis ; action test ;;
+        analysis) action lib ; $OCAMLBUILD analysis/opam_repo_stats.native ;;
+        bin) action lib ; $OCAMLBUILD app/conex.native ; $OCAMLBUILD app/conex_verify.native ;;
         lib) $OCAMLBUILD conex.cma conex.cmxa ;;
         test) action lib ; $OCAMLBUILD test/tests.native ; ./tests.native -q ;;
         coverage)
