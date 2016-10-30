@@ -7,6 +7,10 @@
   -- how do blockchains and others (diplomat? tuf?) do that?  maybe depending on synchronised clocks is in the end ok?
      --> pow and signature with timestamp --> only valid if clock of client is >= timestamp
      --> debian has a valid-until in their packages (see https://wiki.debian.org/RepositoryFormat (search for valid-until))
+ -- freshness between repo and timestamp notary: unclear?!? -- back channel from timestamp to janitor would be nice, but we won't get that
+   -> put a timestamp on each signature, created-at, and leave it to clients to do something useful with it
+   --> done!
+
 
 --> include a timestamp (as string) into signature! (maybe?)
 
