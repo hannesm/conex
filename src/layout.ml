@@ -140,8 +140,20 @@ let is_authorisation = function
     Some id
   | _ -> None
 
+let compare_insensitive a b = Strhelper.lowercase_string a = Strhelper.lowercase_string b
+
 let is_item = function
-  | dd :: id :: id2 :: _ when dd = data_dir -> Some (id, id2)
+  | dd :: id :: id2 :: _ when dd = data_dir ->
+    (match authorisation_of_item id2 with
+     | Some x when compare_insensitive x id -> Some (id, id2)
+     | _ -> None)
+  | _ -> None
+
+let is_old_item = function
+  | dd :: id :: _ when dd = data_dir ->
+    (match authorisation_of_item id with
+     | Some x -> Some (x, id)
+     | _ -> None)
   | _ -> None
 
 let is_compiler = function

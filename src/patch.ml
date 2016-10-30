@@ -56,29 +56,34 @@ type component =
   | Id of identifier * Diff.diff
   | Authorisation of name * Diff.diff
   | Dir of name * name * Diff.diff list
+  | OldDir of name * name * Diff.diff list
 
 let pp_component pp = function
   | Idx (id, _) -> Format.fprintf pp "index of %a@." pp_id id
   | Id (id, _) -> Format.fprintf pp "public key or team of %a@." pp_id id
   | Authorisation (name, _) -> Format.fprintf pp "authorisation of %a@." pp_name name
   | Dir (pn, vn, xs) -> Format.fprintf pp "directory %a (%a with %d changes)@." pp_name pn pp_name vn (List.length xs)
+  | OldDir (pn, vn, xs) -> Format.fprintf pp "old directory %a (%a with %d changes)@." pp_name pn pp_name vn (List.length xs)
 
 let categorise diff =
   let p = string_to_path (Diff.file diff) in
-  match Layout.(is_index p, is_key p, is_authorisation p, is_item p, is_compiler p) with
-  | Some id, None, None, None, None ->
+  match Layout.(is_index p, is_key p, is_authorisation p, is_item p, is_old_item p, is_compiler p) with
+  | Some id, None, None, None, None, None ->
     Printf.printf "found an index in diff %s\n" id;
     Some (Idx (id, diff))
-  | None, Some id, None, None, None ->
+  | None, Some id, None, None, None, None ->
     Printf.printf "found an id in diff %s\n" id;
     Some (Id (id, diff))
-  | None, None, Some id, None, None ->
+  | None, None, Some id, None, None, None ->
     Printf.printf "found an authorisation in diff %s\n" id;
     Some (Authorisation (id, diff))
-  | None, None, None, Some (d, p), None ->
+  | None, None, None, Some (d, p), None, None ->
     Printf.printf "found a dir in diff %s %s\n" d p;
     Some (Dir (d, p, [ diff ]))
-  | None, None, None, None, Some (d, p) ->
+  | None, None, None, None, Some (d, p), None ->
+    Printf.printf "found an olddir in diff %s %s\n" d p;
+    Some (OldDir (d, p, [ diff ]))
+  | None, None, None, None, None, Some (d, p) ->
     Printf.printf "found a compiler in diff %s %s\n" d p;
     None
   | _ ->
@@ -87,8 +92,12 @@ let categorise diff =
     None
 
 let diffs_to_components diffs =
-  let pdir p v =
-    function Dir (p', v', _) when p = p' && v = v' -> true | _ -> false
+  let pdir p v = function
+    | Dir (p', v', _) when p = p' && v = v' -> true
+    | _ -> false
+  and polddir p v = function
+    | OldDir (p', v', _) when p = p' && v = v' -> true
+    | _ -> false
   in
   List.fold_left (fun acc diff ->
       match categorise diff with
@@ -96,6 +105,11 @@ let diffs_to_components diffs =
         (match List.partition (pdir p v) acc with
          | [Dir (_, _, ds)], others -> Dir (p, v, d @ ds) :: others
          | [], others -> Dir (p, v, d) :: others
+         | _, _ -> invalid_arg "unexpected thing here")
+      | Some (OldDir (p, v, d)) ->
+        (match List.partition (polddir p v) acc with
+         | [OldDir (_, _, ds)], others -> OldDir (p, v, d @ ds) :: others
+         | [], others -> OldDir (p, v, d) :: others
          | _, _ -> invalid_arg "unexpected thing here")
       | Some x -> x :: acc
       | None -> acc)
@@ -231,6 +245,8 @@ let verify repo = function
       | Error _, _, _ -> Error (`MissingAuthorisation p)
       | Ok _, _, Error e -> Error e
     end
+
+  | OldDir _ -> Ok repo
 
 let verify_patch repo patch =
   List.fold_left

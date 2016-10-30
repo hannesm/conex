@@ -104,13 +104,15 @@ let to_diff data =
   (* first locate --- and +++ lines *)
   let cut4 = Strhelper.slice ~start:4 in
   let rec find_start = function
-    | [] -> invalid_arg "unexpected empty list"
-    | x::y::xs when Strhelper.is_prefix ~prefix:"---" x -> (cut4 x, cut4 y, xs)
+    | [] -> None
+    | x::y::xs when Strhelper.is_prefix ~prefix:"---" x -> Some (cut4 x, cut4 y, xs)
     | _::xs -> find_start xs
   in
-  let mine_name, their_name, rest = find_start data in
-  let hunks, rest = to_hunks [] rest in
-  ({ mine_name ; their_name ; hunks }, rest)
+  match find_start data with
+  | Some (mine_name, their_name, rest) ->
+    let hunks, rest = to_hunks [] rest in
+    Some ({ mine_name ; their_name ; hunks }, rest)
+  | None -> None
 
 let to_lines = Strhelper.cuts '\n'
 
@@ -118,8 +120,9 @@ let to_diffs data =
   let lines = to_lines data in
   let rec doit acc = function
     | [] -> List.rev acc
-    | xs -> let diff, rest = to_diff xs in
-            doit (diff :: acc) rest
+    | xs -> match to_diff xs with
+      | None -> acc
+      | Some (diff, rest) -> doit (diff :: acc) rest
   in
   doit [] lines
 

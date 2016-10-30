@@ -5,6 +5,7 @@ type component =
   | Id of identifier * Diff.diff
   | Authorisation of name * Diff.diff
   | Dir of name * name * Diff.diff list
+  | OldDir of name * name * Diff.diff list
 
 val pp_component : Format.formatter -> component -> unit
 
