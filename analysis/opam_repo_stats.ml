@@ -43,9 +43,9 @@ let handle_one base filename github mail maps =
         in
         let (map, ret) =
           if List.mem mail ms then
-            (valid, fun v -> invalid, v)
+            (fst valid, fun v -> invalid, (v, succ (snd valid)))
           else
-            (invalid, fun i -> i, valid)
+            (fst invalid, fun i -> (i, succ (snd invalid)), valid)
         in
         let mymails, mails, pl =
           if SM.mem github map then
@@ -63,7 +63,7 @@ let handle_prs dir =
   let base = Filename.concat dir "prs" in
   let prs = Persistency.collect_dir base in
   let total = List.length prs in
-  let (invalid, valid), _ = List.fold_left
+  let ((invalid, icnt), (valid, vcnt)), _ = List.fold_left
       (fun (map, i) pr ->
          Printf.printf "%d/%d\n%!" i total ;
          let data = Persistency.read_file (Filename.concat base pr) in
@@ -73,7 +73,7 @@ let handle_prs dir =
          and mail = List.nth eles 2
          in
          handle_one dir cid gid mail map, succ i)
-      ((SM.empty, SM.empty), 0)
+      (((SM.empty, 0), (SM.empty, 0)), 0)
       prs
   in
   let print p_m map =
@@ -86,12 +86,9 @@ let handle_prs dir =
           (String.concat ", " (S.elements pl)))
       sorted
   in
-  print_endline "" ;
-  print_endline "RESULTS:";
-  print_endline "invalid" ;
+  Printf.printf "\nRESULTS\n%d invalid\n" icnt ;
   print true invalid ;
-  print_endline "" ;
-  print_endline "valid" ;
+  Printf.printf "\n%d valid\n" vcnt ;
   print false valid ;
   print_endline "" ;
   print_endline "github id to mail" ;
