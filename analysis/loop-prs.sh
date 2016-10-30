@@ -2,6 +2,8 @@
 
 CMD=$(git log --merges --topo-order --pretty=format:%H  13f3ab9dd3129306b8d062a06f0373a41937dc12..HEAD)
 
+#fails to parse ea2ea38a5349a27788d2d5b812aa5002bad70387
+
 for x in $CMD; do
     echo "working on $x"
     git show $x > /dev/null

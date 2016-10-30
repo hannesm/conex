@@ -24,13 +24,14 @@ command line:
 module SM = Map.Make(String)
 module S = Set.Make(String)
 
-let handle_one base filename github mail map =
+let handle_one base filename github mail maps =
+  Format.fprintf Format.std_formatter "handle_one %s@." filename ;
   let content = Persistency.read_file
       (Filename.concat base (Filename.concat "diffs" (filename ^ ".diff")))
   in
   let diffs = Diff.to_diffs content in
   let comps = Patch.diffs_to_components diffs in
-  List.fold_left (fun map d ->
+  List.fold_left (fun (invalid, valid) d ->
       Format.fprintf Format.std_formatter "handling %a@." Patch.pp_component d ;
       match d with
       | Patch.Dir (p, _, _)
@@ -40,20 +41,21 @@ let handle_one base filename github mail map =
           | Some (Sexplib.Type.List xs) -> List.map Sexplib.Conv.string_of_sexp xs
           | _ -> []
         in
-        if List.mem mail ms then
-          map
-        else
-          begin
-            let pl =
-              if SM.mem github map then
-                snd (SM.find github map)
-              else
-                S.empty
-            in
-            SM.add github (mail, S.add p pl) map
-          end
-      | _ -> Printf.printf "ignoring\n"; map)
-    map comps
+        let (map, ret) =
+          if List.mem mail ms then
+            (valid, fun v -> invalid, v)
+          else
+            (invalid, fun i -> i, valid)
+        in
+        let mymails, mails, pl =
+          if SM.mem github map then
+            SM.find github map
+          else
+            S.empty, S.empty, S.empty
+        in
+        ret (SM.add github (S.add mail mymails, S.union (S.of_list ms) mails, S.add p pl) map)
+      | _ -> Printf.printf "ignoring\n"; (invalid, valid))
+    maps comps
 
 (* what do I want in the end? *)
 (* map GitHub ID -> (email, package list) [of invalid pushes] *)
@@ -61,7 +63,7 @@ let handle_prs dir =
   let base = Filename.concat dir "prs" in
   let prs = Persistency.collect_dir base in
   let total = List.length prs in
-  let map, _ = List.fold_left
+  let (invalid, valid), _ = List.fold_left
       (fun (map, i) pr ->
          Printf.printf "%d/%d\n%!" i total ;
          let data = Persistency.read_file (Filename.concat base pr) in
@@ -71,14 +73,37 @@ let handle_prs dir =
          and mail = List.nth eles 2
          in
          handle_one dir cid gid mail map, succ i)
-      (SM.empty, 0)
+      ((SM.empty, SM.empty), 0)
       prs
   in
-  let bindings = SM.bindings map in
-  let sorted = List.sort (fun (_, (_, x)) (_, (_, y)) -> compare (S.cardinal x) (S.cardinal y)) bindings in
-  List.iter (fun (gid, (mail, pl)) ->
-      Printf.printf "%s (%s): %s\n" gid mail (String.concat ", " (S.elements pl)))
-    sorted
+  let print p_m map =
+    let bindings = SM.bindings map in
+    let sorted = List.sort (fun (_, (_, _, x)) (_, (_, _, y)) -> compare (S.cardinal x) (S.cardinal y)) bindings in
+    List.iter (fun (gid, (mymails, others, pl)) ->
+        Printf.printf "%s (%s%s): %s\n" gid
+          (String.concat ", " (S.elements mymails))
+          (if p_m then " allowed: " ^ String.concat ", " (S.elements others) else "")
+          (String.concat ", " (S.elements pl)))
+      sorted
+  in
+  print_endline "" ;
+  print_endline "RESULTS:";
+  print_endline "invalid" ;
+  print true invalid ;
+  print_endline "" ;
+  print_endline "valid" ;
+  print false valid ;
+  print_endline "" ;
+  print_endline "github id to mail" ;
+  let users =
+    SM.fold (fun k (m, _, _) acc -> SM.add k m acc)
+  in
+  let u = users invalid SM.empty in
+  let u = users valid u in
+  let bind = SM.bindings u in
+  List.iter
+    (fun (g, m) -> Printf.printf "%s -> %s\n" g (String.concat ", " (S.elements m)))
+    (List.sort (fun (a, _) (b, _) -> String.compare a b) bind)
 
 let () =
   match Sys.argv with
