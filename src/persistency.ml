@@ -16,11 +16,16 @@ let file_type filename =
 let read_file filename =
   let open Unix in
   let fd = openfile filename [ O_RDONLY ] 0 in
-  let stat = fstat fd in
-  let buf = Bytes.create stat.st_size in
-  let r = read fd buf 0 stat.st_size in
-  assert (r = stat.st_size) ;
-  close fd ;
+  let len = (fstat fd).st_size in
+  let buf = Bytes.create len in
+  let rec rread idx =
+    let r = read fd buf idx (len - idx) in
+    if r + idx = len then
+      close fd
+    else
+      rread (r + idx)
+  in
+  rread 0 ;
   Bytes.to_string buf
 
 let write_file ?(mode = 0o644) filename data =
