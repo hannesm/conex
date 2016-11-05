@@ -7,9 +7,7 @@ true : warn(+A-4-6-33-44-48-58)
 <app/conex.{ml,native}>: package(cstruct nocrypto x509 cmdliner nocrypto.unix)
 <app/conex_verify.{ml,native}>: package(cstruct nocrypto x509 cmdliner)
 
-<test/common.ml>: package(alcotest)
-<test/basics.ml>: package(alcotest)
-<test/repositorytests.ml>: package(alcotest)
-<test/tests.{ml,native}>: package(cstruct nocrypto x509 alcotest nocrypto.unix)
+<test/*.{ml,byte,native}>: package(alcotest)
+<test/tests.{ml,native}>: package(cstruct nocrypto x509 nocrypto.unix)
 
 <analysis/opam_repo_stats.{ml,native}>: package(cstruct nocrypto x509 cmdliner sexplib astring)
