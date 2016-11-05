@@ -4,6 +4,7 @@
 (* XXX: key rollover and key revocation *)
 
 open Core
+open Conex_resource
 
 module Color = struct
   let endc = "\027[m"
@@ -68,7 +69,7 @@ let find_keys copts =
   | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.keyid o) keys
   | None, Some s ->
     let is k =
-      match Repository.valid copts.repo (digest (Data.publickey_to_string k)) with
+      match Repository.valid copts.repo (Conex_nocrypto.digest (Data.publickey_to_string k)) with
       | None -> false
       | Some (_, _, sigs) -> S.mem s sigs
     in
@@ -88,7 +89,7 @@ let find_teams copts =
   | Some o, _ -> List.filter (fun t -> S.mem o t.Team.members) teams
   | None, Some s ->
     let is k =
-      match Repository.valid copts.repo (digest (Data.team_to_string k)) with
+      match Repository.valid copts.repo (Conex_nocrypto.digest (Data.team_to_string k)) with
       | None -> false
       | Some (_, _, sigs) -> S.mem s sigs
     in
@@ -116,7 +117,7 @@ let find_ids copts =
         | `Key k -> Data.publickey_to_string k
         | `Team t -> Data.team_to_string t
       in
-      match Repository.valid copts.repo (digest raw) with
+      match Repository.valid copts.repo (Conex_nocrypto.digest raw) with
       | None -> false
       | Some (_, _, sigs) -> S.mem s sigs
     in
@@ -135,7 +136,7 @@ let find_authorisations copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun d -> S.mem o d.Authorisation.authorised) auths
   | None, Some s ->
-    let is a = match Repository.valid copts.repo (digest (Data.authorisation_to_string a)) with
+    let is a = match Repository.valid copts.repo (Conex_nocrypto.digest (Data.authorisation_to_string a)) with
       | None -> false
       | Some (_, _, sigs) -> S.mem s sigs
     in
@@ -162,7 +163,7 @@ let find_releases copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun (a, _) -> S.mem o a.Authorisation.authorised) releases
   | None, Some s ->
-    let is (_, r) = match Repository.valid copts.repo (digest (Data.releases_to_string r)) with
+    let is (_, r) = match Repository.valid copts.repo (Conex_nocrypto.digest (Data.releases_to_string r)) with
       | None -> false
       | Some (_, _, sigs) -> S.mem s sigs
     in
@@ -193,7 +194,7 @@ let find_checksums copts =
        Utils.option
          all_cs
          (fun s ->
-            let is c = match Repository.valid copts.repo (digest (Data.checksums_to_string c)) with
+            let is c = match Repository.valid copts.repo (Conex_nocrypto.digest (Data.checksums_to_string c)) with
               | None -> false
               | Some (_, _, sigs) -> S.mem s sigs
             in
@@ -390,7 +391,8 @@ let show_team copts team =
   `Ok ()
 
 let show_private copts (id, priv) =
-  Format.fprintf copts.out "keyid: %s,@ %a@." id Private.pp_priv priv ;
+  let raw = match priv with `Priv p -> p in
+  Format.fprintf copts.out "keyid: %s,@ %s@." id raw ;
   `Ok ()
 
 let show_authorisation copts a =
@@ -487,7 +489,7 @@ let generate copts item name ids =
   match item with
   | `Private ->
      Nocrypto_entropy_unix.initialize () ;
-     let priv = Private.generate () in
+     let priv = Conex_nocrypto.generate () in
      if copts.dry then
        Format.fprintf copts.out "dry run, nothing written.@."
      else
@@ -495,24 +497,22 @@ let generate copts item name ids =
      Format.fprintf copts.out "generated new private key for %s@." name ;
      show_private copts (name, priv)
   | `Key ->
-    let writeout = function
-      | Ok p ->
-        if copts.dry then
-          Format.fprintf copts.out "dry run, nothing written.@."
-        else
-          Repository.write_key copts.repo p ;
-        Format.fprintf copts.out "generated public key for %s@." name ;
-        show_key copts p
-      | Error s ->
-        Format.fprintf copts.out "%s%s%s@." Color.red s Color.endc ;
-        `Error (false, s)
+    let writeout p =
+      if copts.dry then
+        Format.fprintf copts.out "dry run, nothing written.@."
+      else
+        Repository.write_key copts.repo p ;
+      Format.fprintf copts.out "generated public key for %s@." name ;
+      show_key copts p
     in
     (match Repository.read_key copts.repo name with
      | Ok p ->
        let pub_opt =
          match Private.read_private_key ~id:name copts.repo with
          | Error _ -> None
-          | Ok (_, priv) -> Some (Private.pub_of_priv priv)
+         | Ok (_, priv) -> match Conex_nocrypto.pub_of_priv priv with
+           | Ok x -> Some x
+           | Error _ -> None
        in
        writeout
          (Publickey.publickey
@@ -524,8 +524,12 @@ let generate copts item name ids =
        | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
                       Color.red name Color.endc ;
          `Error (false, "no private key and public does not exist")
-       | Ok (_, k) ->
-         writeout (Publickey.publickey name (Some (Private.pub_of_priv k))))
+       | Ok (_, k) -> match Conex_nocrypto.pub_of_priv k with
+         | Error e ->
+           Format.fprintf copts.out "%scouldn't decode private key for %s: %s%s@."
+             Color.red name e Color.endc ;
+           `Error (false, "decoding of private key failed")
+         | Ok p -> writeout (Publickey.publickey name (Some p)))
   | `Team ->
     let counter = match Repository.read_team copts.repo name with
       | Error _ -> None
@@ -604,70 +608,90 @@ let sign copts item name =
           Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok k ->
-          let idx = add_r (name, `PublicKey, digest (Data.publickey_to_string k)) in
-          if copts.dry then
-            Format.fprintf copts.out "dry run, nothing written.@."
-          else
-            Repository.write_index copts.repo idx ;
-          Format.fprintf copts.out "signed key %s@." name ;
-          let copts = { copts with repo = Repository.add_index copts.repo idx } in
-          show_key copts k)
+          match add_r (name, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string k)) with
+          | Ok idx ->
+            if copts.dry then
+              Format.fprintf copts.out "dry run, nothing written.@."
+            else
+              Repository.write_index copts.repo idx ;
+            Format.fprintf copts.out "signed key %s@." name ;
+            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            show_key copts k
+          | Error e ->
+            Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
+            `Error (false, "error"))
 
     | `Team -> (match Repository.read_team copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok t ->
-          let idx = add_r (name, `Team, digest (Data.team_to_string t)) in
-          if copts.dry then
-            Format.fprintf copts.out "dry run, nothing written.@."
-          else
-            Repository.write_index copts.repo idx ;
-          Format.fprintf copts.out "signed team %s@." name ;
-          let copts = { copts with repo = Repository.add_index copts.repo idx } in
-          show_team copts t)
+          match add_r (name, `Team, Conex_nocrypto.digest (Data.team_to_string t)) with
+          | Ok idx ->
+            if copts.dry then
+              Format.fprintf copts.out "dry run, nothing written.@."
+            else
+              Repository.write_index copts.repo idx ;
+            Format.fprintf copts.out "signed team %s@." name ;
+            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            show_team copts t
+          | Error e ->
+            Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
+            `Error (false, "error"))
 
     | `Authorisation -> (match Repository.read_authorisation copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok a ->
-          let idx = add_r (name, `Authorisation, digest (Data.authorisation_to_string a)) in
-          if copts.dry then
-            Format.fprintf copts.out "dry run, nothing written.@."
-          else
-            Repository.write_index copts.repo idx ;
-          Format.fprintf copts.out "signed authorisation %s@." name ;
-          let copts = { copts with repo = Repository.add_index copts.repo idx } in
-          show_authorisation copts a)
+          match add_r (name, `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string a)) with
+          | Ok idx ->
+            if copts.dry then
+              Format.fprintf copts.out "dry run, nothing written.@."
+            else
+              Repository.write_index copts.repo idx ;
+            Format.fprintf copts.out "signed authorisation %s@." name ;
+            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            show_authorisation copts a
+          | Error e ->
+            Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
+            `Error (false, "error"))
 
     | `Releases -> (match Repository.read_releases copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%sreleases %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok r ->
-          let idx = add_r (name, `Releases, digest (Data.releases_to_string r)) in
-          if copts.dry then
-            Format.fprintf copts.out "dry run, nothing written.@."
-          else
-            Repository.write_index copts.repo idx ;
-          Format.fprintf copts.out "signed releases %s@." name ;
-          let copts = { copts with repo = Repository.add_index copts.repo idx } in
-          show_releases copts r)
+          match add_r (name, `Releases, Conex_nocrypto.digest (Data.releases_to_string r)) with
+          | Ok idx ->
+            if copts.dry then
+              Format.fprintf copts.out "dry run, nothing written.@."
+            else
+              Repository.write_index copts.repo idx ;
+            Format.fprintf copts.out "signed releases %s@." name ;
+            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            show_releases copts r
+          | Error e ->
+            Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
+            `Error (false, "error"))
 
     | `Checksum -> (match Repository.read_checksum copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
-          let idx = add_r (name, `Checksum, digest (Data.checksums_to_string c)) in
-          if copts.dry then
-            Format.fprintf copts.out "dry run, nothing written.@."
-          else
-            Repository.write_index copts.repo idx ;
-          Format.fprintf copts.out "signed checksum %s@." name ;
-          let copts = { copts with repo = Repository.add_index copts.repo idx } in
-          show_checksum copts c)
+          match add_r (name, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string c)) with
+          | Ok idx ->
+            if copts.dry then
+              Format.fprintf copts.out "dry run, nothing written.@."
+            else
+              Repository.write_index copts.repo idx ;
+            Format.fprintf copts.out "signed checksum %s@." name ;
+            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            show_checksum copts c
+          | Error e ->
+            Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
+            `Error (false, "error"))
 
     | _ -> `Error (false, "dunno what to sign")
 

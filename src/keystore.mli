@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 (* our keystore *)
 type t
@@ -12,6 +13,3 @@ val find : t -> identifier -> Publickey.t
 (* common modification *)
 val add : t -> Publickey.t -> t
 val remove : t -> identifier -> t
-
-(* verify a signature, given a store, and some data *)
-val verify : t -> string -> Signature.t -> (identifier, [> verification_error ]) result

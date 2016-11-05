@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 (* crappy data implementation using "structured" strings *)
 type key = string
@@ -206,7 +207,7 @@ let string_to_index s =
 let publickey_to_data pubkey =
   let pem = match pubkey.Publickey.key with
     | None -> "NONE"
-    | Some x -> Publickey.encode_key x
+    | Some (`Pub x) -> x
   in
   List [ Entry ("counter", Leaf (Int pubkey.Publickey.counter)) ;
          Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
@@ -224,11 +225,9 @@ let data_to_publickey data =
   let key =
     match key with
     | "NONE" -> None
-    | _ -> match Publickey.decode_key key with
-      | Some k -> Some k
-      | None -> invalid_arg "cannot decode public key"
+    | x -> Some (`Pub x)
   in
-  Publickey.publickey ~counter ~version keyid key
+  Ok (Publickey.publickey ~counter ~version keyid key)
 
 let string_to_publickey s =
   try data_to_publickey (parse s) with Invalid_argument a -> Error a

@@ -1,6 +1,7 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
 module S = Set.Make(String)
+module M = Map.Make(String)
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_list pe ppf xs =
@@ -31,6 +32,10 @@ let path_to_string path =
 let string_to_path str = Strhelper.cuts '/' str
 
 
+type pub = [ `Pub of string ]
+type priv = [ `Priv of string ]
+
+
 type name = string
 
 (*BISECT-IGNORE-BEGIN*)
@@ -54,12 +59,6 @@ type digest = string
 (*BISECT-IGNORE-BEGIN*)
 let pp_digest ppf x = Format.pp_print_string ppf x
 (*BISECT-IGNORE-END*)
-
-let digest data =
-  let cs = Cstruct.of_string data in
-  let check = Nocrypto.Hash.digest `SHA256 cs in
-  let b64 = Nocrypto.Base64.encode check in
-  Cstruct.to_string b64
 
 
 type resource = [
@@ -116,6 +115,8 @@ let pp_verification_error ppf = function
   | `NotAuthorised (auth, sign) -> Format.fprintf ppf "only %a is authorised to sign this index, but it is signed by %a" pp_id auth pp_id sign
   | `NoSignature s -> Format.fprintf ppf "no signature found on index %a" pp_id s
 (*BISECT-IGNORE-END*)
+
+type base_v_err = [ `InvalidBase64 | `InvalidPubKey | `InvalidSig ]
 
 let (>>=) a f =
   match a with

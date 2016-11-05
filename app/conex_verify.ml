@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 open Conex_common
 

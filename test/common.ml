@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 let sset =
   let module M = struct
@@ -15,13 +16,13 @@ let gen_pub ?counter ?priv id =
     | Some p, _ -> p
     | None, Some x -> x
     | None, None ->
-      let p = Private.generate () in
+      let p = Conex_nocrypto.generate () in
       privkey := Some p ;
       p
   in
-  match Publickey.publickey ?counter id (Some (Private.pub_of_priv priv)) with
-  | Ok public -> (public, priv)
-  | Error s -> invalid_arg s
+  match Conex_nocrypto.pub_of_priv priv with
+  | Ok pub -> (Publickey.publickey ?counter id (Some pub), priv)
+  | Error e -> invalid_arg e
 
 let result (type a) (type e) a e =
   let (module A: Alcotest.TESTABLE with type t = a) = a in
@@ -38,11 +39,16 @@ let result (type a) (type e) a e =
   end in
   (module M: Alcotest.TESTABLE with type t = M.t)
 
+let pkey_eq a b =
+  a.Publickey.counter = b.Publickey.counter &&
+  id_equal a.Publickey.keyid b.Publickey.keyid &&
+  a.Publickey.key = b.Publickey.key
+
 let publickey =
   let module M = struct
     type t = Publickey.t
     let pp = Publickey.pp_publickey
-    let equal = Publickey.equal
+    let equal = pkey_eq
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
@@ -64,7 +70,7 @@ let id =
     let pp ppf = function `Team t -> Team.pp_team ppf t | `Key k -> Publickey.pp_publickey ppf k
     let equal a b = match a, b with
       | `Team t, `Team t' -> team_eq t t'
-      | `Key k, `Key k' -> Publickey.equal k k'
+      | `Key k, `Key k' -> pkey_eq k k'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -134,3 +140,8 @@ let verr =
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
+
+let sign_idx idx p =
+  match Private.sign_index idx p with
+  | Ok idx -> idx
+  | Error e -> Alcotest.fail e

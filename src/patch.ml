@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 let apply_diff provider diff =
   let read path =

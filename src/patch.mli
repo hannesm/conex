@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 type component =
   | Idx of identifier * Diff.diff

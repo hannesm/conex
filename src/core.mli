@@ -1,6 +1,7 @@
 type ('a, 'b) result = Ok of 'a | Error of 'b
 
 module S : (Set.S with type elt = string)
+module M : (Map.S with type key = string)
 
 val pp_list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
 
@@ -9,6 +10,9 @@ type file_type = File | Directory
 type path = string list
 val path_to_string : path -> string
 val string_to_path : string -> path
+
+type pub = [ `Pub of string ]
+type priv = [ `Priv of string ]
 
 type name = string
 val pp_name : Format.formatter -> name -> unit
@@ -21,7 +25,6 @@ val id_equal : identifier -> identifier -> bool
 
 type digest = string
 val pp_digest : Format.formatter -> digest -> unit
-val digest : string -> string
 
 type resource = [
   | `PublicKey
@@ -45,6 +48,8 @@ type verification_error = [
 ]
 
 val pp_verification_error : Format.formatter -> verification_error -> unit
+
+type base_v_err = [ `InvalidBase64 | `InvalidPubKey | `InvalidSig ]
 
 val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
 val guard : bool -> 'a -> (unit, 'a) result

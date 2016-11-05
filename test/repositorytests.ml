@@ -1,4 +1,6 @@
 open Core
+open Conex_resource
+
 open Common
 
 module Mem = struct
@@ -266,7 +268,7 @@ let bad_id_r () =
     (Error (`ParseError ("foo", ""))) (Repository.read_team r "foo") ;
   Alcotest.check (result id re) "parse error on id foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_id r "foo") ;
-  let key = match Publickey.publickey "foo" None with Ok x -> x | Error _ -> assert false in
+  let key = Publickey.publickey "foo" None in
   Repository.write_key r key ;
   Alcotest.check (result team re) "parse error on team foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_team r "foo") ;
@@ -389,7 +391,7 @@ let idx_sign () =
   Alcotest.check (result Alcotest.string verr) "index must be signed"
     (Error (`NoSignature id)) (Repository.verify_index r idx) ;
   let pub, priv = gen_pub id in
-  let signed_idx = Private.sign_index idx priv in
+  let signed_idx = sign_idx idx priv in
   Alcotest.check (result Alcotest.string verr) "id must be in keystore"
     (Error (`InvalidIdentifier id)) (Repository.verify_index r signed_idx) ;
   let r = Repository.add_trusted_key r pub in
@@ -435,14 +437,11 @@ let empty_key () =
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
-  let pub = match Publickey.publickey id None with
-    | Ok p -> p
-    | _ -> assert false
-  in
-  let resources = [ id, `PublicKey, digest (Data.publickey_to_string pub) ] in
+  let pub = Publickey.publickey id None in
+  let resources = [ id, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -461,14 +460,14 @@ let key_good () =
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ id, `PublicKey, digest (Data.publickey_to_string pub) ] in
+  let resources = [ id, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let idx =
     let idx = Index.index ~resources id in
-    Private.sign_index idx priv
+    sign_idx idx priv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -493,10 +492,10 @@ let key_good_quorum () =
   let r = Repository.repository ~quorum:3 p in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ id, `PublicKey, digest (Data.publickey_to_string pub) ] in
+  let resources = [ id, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub) ] in
   let idx =
     let idx = Index.index ~resources id in
-    Private.sign_index idx priv
+    sign_idx idx priv
   in
   let r = Repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 0"
@@ -505,7 +504,7 @@ let key_good_quorum () =
   let jidx r jid =
     let jpub, jpriv = gen_pub jid in
     let idx = Index.index ~resources jid in
-    let idx = Private.sign_index idx jpriv in
+    let idx = sign_idx idx jpriv in
     let r = Repository.add_trusted_key r jpub in
     let r =
       let mems = Repository.team r "janitors" in
@@ -534,21 +533,18 @@ let no_janitor () =
   let id = "foo" in
   let pub, priv = gen_pub id in
   let id' = "bar" in
-  let pem = match Publickey.publickey id' None with
-    | Ok p -> p
-    | _ -> assert false
-  in
+  let pem = Publickey.publickey id' None in
   let resources = [
-    id, `PublicKey, digest (Data.publickey_to_string pub) ;
-    id', `PublicKey, digest (Data.publickey_to_string pem)
+    id, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub) ;
+    id', `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pem)
   ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let idx =
     let idx = Index.index ~resources id in
-    Private.sign_index idx priv
+    sign_idx idx priv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -560,15 +556,6 @@ let no_janitor () =
     (Error (`NotSigned (id', `PublicKey, S.empty)))
     (Repository.verify_key r pem)
 
-let k_bad () =
-  let pub p = Some (Private.pub_of_priv p) in
-  Alcotest.check (result Alcotest.pass Alcotest.string) "key too small"
-    (Error "RSA key too small")
-    (Publickey.publickey "foo" (pub (Private.generate ~bits:512 ()))) ;
-  Alcotest.check (result Alcotest.pass Alcotest.string) "key too small"
-    (Error "RSA key too small")
-    (Publickey.publickey "foo" (pub (Private.generate ~bits:1024 ())))
-
 let k_wrong_resource () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
@@ -576,14 +563,14 @@ let k_wrong_resource () =
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ id, `Checksum, digest (Data.publickey_to_string pub) ] in
+  let resources = [ id, `Checksum, Conex_nocrypto.digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let idx =
     let idx = Index.index ~resources id in
-    Private.sign_index idx priv
+    sign_idx idx priv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -599,14 +586,14 @@ let k_wrong_name () =
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
   let pub, priv = gen_pub id in
-  let resources = [ jid, `PublicKey, digest (Data.publickey_to_string pub) ] in
+  let resources = [ jid, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub) ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let idx =
     let idx = Index.index ~resources id in
-    Private.sign_index idx priv
+    sign_idx idx priv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -621,7 +608,6 @@ let key_repo_tests = [
   "key good", `Quick, key_good ;
   "key good with quorum = 3", `Quick, key_good_quorum ;
   "no janitor", `Quick, no_janitor ;
-  "key too small", `Quick, k_bad ;
   "wrong resource", `Quick, k_wrong_resource ;
   "wrong name", `Quick, k_wrong_name ;
 ]
@@ -659,13 +645,13 @@ let team () =
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_team r team) ;
   let resources = [
-    pname, `Team, digest (Data.team_to_string team)
+    pname, `Team, Conex_nocrypto.digest (Data.team_to_string team)
   ] in
   let j_sign r jid =
     let jpub, jpriv = gen_pub jid in
     let idx =
       let i = Index.index ~resources jid in
-      Private.sign_index i jpriv
+      sign_idx i jpriv
     in
     let r = Repository.add_trusted_key r jpub in
     let r =
@@ -696,11 +682,11 @@ let team_self_signed () =
   let team = Team.team pname in
   let pub, priv = gen_pub id in
   let resources = [
-    pname, `Team, digest (Data.team_to_string team) ;
-    id, `PublicKey, digest (Data.publickey_to_string pub)
+    pname, `Team, Conex_nocrypto.digest (Data.team_to_string team) ;
+    id, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub)
   ] in
   let s_idx id priv =
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let idx = s_idx id priv in
   let r = Repository.add_index r idx in
@@ -722,12 +708,12 @@ let team_wrong_resource () =
   let r = Repository.repository ~quorum:1 p in
   let pname = "foop" in
   let team = Team.team pname in
-  let resources = [ pname, `Checksum, digest (Data.team_to_string team) ] in
+  let resources = [ pname, `Checksum, Conex_nocrypto.digest (Data.team_to_string team) ] in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -742,10 +728,10 @@ let team_wrong_name () =
   let team = Team.team pname in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
-  let resources = [ "barf", `Team, digest (Data.team_to_string team) ] in
+  let resources = [ "barf", `Team, Conex_nocrypto.digest (Data.team_to_string team) ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -766,12 +752,12 @@ let team_dyn () =
   let j_sign resources =
     let idx =
       let i = Index.index ~resources jid in
-      Private.sign_index i jpriv
+      sign_idx i jpriv
     in
     Repository.add_index r idx
   in
   let resources = [
-    pname, `Team, digest (Data.team_to_string team)
+    pname, `Team, Conex_nocrypto.digest (Data.team_to_string team)
   ] in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "team properly signed"
@@ -782,7 +768,7 @@ let team_dyn () =
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_team r team) ;
   let resources = [
-    pname, `Team, digest (Data.team_to_string team)
+    pname, `Team, Conex_nocrypto.digest (Data.team_to_string team)
   ] in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "team properly signed"
@@ -819,13 +805,13 @@ let auth () =
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_authorisation r auth) ;
   let resources = [
-    pname, `Authorisation, digest (Data.authorisation_to_string auth)
+    pname, `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string auth)
   ] in
   let j_sign r jid =
     let jpub, jpriv = gen_pub jid in
     let idx =
       let i = Index.index ~resources jid in
-      Private.sign_index i jpriv
+      sign_idx i jpriv
     in
     let r = Repository.add_trusted_key r jpub in
     let r =
@@ -856,11 +842,11 @@ let auth_self_signed () =
   let auth = Authorisation.authorisation pname in
   let pub, priv = gen_pub id in
   let resources = [
-    pname, `Authorisation, digest (Data.authorisation_to_string auth) ;
-    id, `PublicKey, digest (Data.publickey_to_string pub)
+    pname, `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string auth) ;
+    id, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string pub)
   ] in
   let s_idx id priv =
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let idx = s_idx id priv in
   let r = Repository.add_index r idx in
@@ -882,12 +868,12 @@ let a_wrong_resource () =
   let r = Repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
-  let resources = [ pname, `Checksum, digest (Data.authorisation_to_string auth) ] in
+  let resources = [ pname, `Checksum, Conex_nocrypto.digest (Data.authorisation_to_string auth) ] in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -902,10 +888,10 @@ let a_wrong_name () =
   let auth = Authorisation.authorisation pname in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
-  let resources = [ "barf", `Authorisation, digest (Data.authorisation_to_string auth) ] in
+  let resources = [ "barf", `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string auth) ] in
   let jidx =
     let idx = Index.index ~resources jid in
-    Private.sign_index idx jpriv
+    sign_idx idx jpriv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
@@ -926,12 +912,12 @@ let auth_dyn () =
   let j_sign resources =
     let idx =
       let i = Index.index ~resources jid in
-      Private.sign_index i jpriv
+      sign_idx i jpriv
     in
     Repository.add_index r idx
   in
   let resources = [
-    pname, `Authorisation, digest (Data.authorisation_to_string auth)
+    pname, `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string auth)
   ] in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "authorisation properly signed"
@@ -942,7 +928,7 @@ let auth_dyn () =
     (Error (`InsufficientQuorum (pname, S.empty)))
     (Repository.verify_authorisation r auth) ;
   let resources = [
-    pname, `Authorisation, digest (Data.authorisation_to_string auth)
+    pname, `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string auth)
   ] in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "authorisation properly signed"
@@ -1015,9 +1001,9 @@ let rel () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_to_string rel)
+      pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel)
     ] in
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "properly signed"
@@ -1035,10 +1021,10 @@ let rel_quorum () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel)
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel)
   ] in
   let sidx =
-    Private.sign_index (Index.index ~resources jid) jpriv
+    sign_idx (Index.index ~resources jid) jpriv
   in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -1048,7 +1034,7 @@ let rel_quorum () =
     (Repository.verify_releases r auth rel) ;
   let _pub, priv = gen_pub id in
   let sidx' =
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx' in
   Alcotest.check (result r_ok r_err) "properly signed (both)"
@@ -1066,9 +1052,9 @@ let rel_not_authorised () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_to_string rel)
+      pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel)
     ] in
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "not authorised"
@@ -1098,9 +1084,9 @@ let rel_missing_releases () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_to_string rel)
+      pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel)
     ] in
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "missing on disk"
@@ -1133,9 +1119,9 @@ let rel_name_mismatch () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Releases, digest (Data.releases_to_string rel)
+      pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel)
     ] in
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "releases and authorisation names do not match"
@@ -1153,9 +1139,9 @@ let rel_wrong_name () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      "foo", `Releases, digest (Data.releases_to_string rel)
+      "foo", `Releases, Conex_nocrypto.digest (Data.releases_to_string rel)
     ] in
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "wrong name in releases"
@@ -1173,9 +1159,9 @@ let rel_wrong_resource () =
   let _pub, priv = gen_pub id in
   let sidx =
     let resources = [
-      pname, `Authorisation, digest (Data.releases_to_string rel)
+      pname, `Authorisation, Conex_nocrypto.digest (Data.releases_to_string rel)
     ] in
-    Private.sign_index (Index.index ~resources id) priv
+    sign_idx (Index.index ~resources id) priv
   in
   let r = Repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "wrong resource for releases"
@@ -1230,11 +1216,11 @@ let cs_base () =
     (Error (`NotSigned (v, `Checksum, S.empty)))
     (Repository.verify_checksum r auth rel cs) ;
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel) ;
-    v, `Checksum, digest (Data.checksums_to_string cs)
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string cs)
   ] in
   let _pub, priv = gen_pub id in
-  let sidx = Private.sign_index (Index.index ~resources id) priv in
+  let sidx = sign_idx (Index.index ~resources id) priv in
   let r = Repository.add_index r sidx in
   p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok c_err) "good checksum"
@@ -1242,7 +1228,7 @@ let cs_base () =
     (Repository.verify_checksum r auth rel cs) ;
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
@@ -1261,12 +1247,12 @@ let cs_quorum () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel) ;
-    v, `Checksum, digest (Data.checksums_to_string cs)
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
@@ -1304,15 +1290,15 @@ let cs_bad () =
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel) ;
-    v, `Checksum, digest (Data.checksums_to_string css) ;
-    v, `Checksum, digest (Data.checksums_to_string css') ;
-    v, `Checksum, digest (Data.checksums_to_string css'') ;
-    v, `Checksum, digest (Data.checksums_to_string css''') ;
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string css) ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string css') ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string css'') ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string css''') ;
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
@@ -1341,12 +1327,12 @@ let cs_bad_name () =
   let rel = safe_rel ~releases:(S.singleton v) reln in
   let cs = Checksum.checksums v [] in
   let resources = [
-    reln, `Releases, digest (Data.releases_to_string rel) ;
-    v, `Checksum, digest (Data.checksums_to_string cs)
+    reln, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
@@ -1366,12 +1352,12 @@ let cs_bad_name2 () =
   let rel = safe_rel ~releases:(S.singleton reln) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel) ;
-    v, `Checksum, digest (Data.checksums_to_string cs)
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    v, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
@@ -1390,12 +1376,12 @@ let cs_wrong_name () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel) ;
-    pname, `Checksum, digest (Data.checksums_to_string cs)
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    pname, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
@@ -1414,12 +1400,12 @@ let cs_wrong_resource () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   let resources = [
-    pname, `Releases, digest (Data.releases_to_string rel) ;
-    v, `Releases, digest (Data.checksums_to_string cs)
+    pname, `Releases, Conex_nocrypto.digest (Data.releases_to_string rel) ;
+    v, `Releases, Conex_nocrypto.digest (Data.checksums_to_string cs)
   ] in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let sjidx = Private.sign_index (Index.index ~resources jid) jpriv in
+  let sjidx = sign_idx (Index.index ~resources jid) jpriv in
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in

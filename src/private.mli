@@ -1,17 +1,6 @@
 open Core
 
-type priv
-
-val pp_priv : Format.formatter -> priv -> unit
-
-(* how's the public? *)
-val pub_of_priv : priv -> Publickey.pub
-(* generate a new private *)
-val generate : ?bits:int -> unit -> priv
-(* sign a piece of data *)
-val sign : identifier -> priv -> string -> Signature.t
-
-val sign_index : Index.t -> priv -> Index.t
+val sign_index : Conex_resource.Index.t -> priv -> (Conex_resource.Index.t, string) result
 
 val write_private_key : Repository.t -> string -> priv -> unit
 

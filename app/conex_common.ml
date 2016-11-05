@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 let load_trust_anchors out maybe_exit dir =
   let keys = List.map (Filename.concat dir) (Persistency.collect_dir dir) in

@@ -1,4 +1,5 @@
 open Core
+open Conex_resource
 
 module SM = Map.Make(String)
 type valid_resources = (name * resource * S.t) SM.t
@@ -38,12 +39,30 @@ let add_trusted_key repo key =
 let add_team repo team =
   { repo with teams = SM.add team.Team.name team.Team.members repo.teams }
 
+let verify pub data (id, ts, sigval) =
+  let data = Signature.extend_data data id ts in
+  match pub.Publickey.key with
+  | None -> Error (`InvalidPublicKey id)
+  | Some key ->
+    match Conex_nocrypto.verify key data sigval with
+    | Ok () -> Ok id
+    | Error `InvalidBase64 -> Error (`InvalidBase64Encoding id)
+    | Error `InvalidPubKey -> Error (`InvalidPublicKey id)
+    | Error `InvalidSig -> Error (`InvalidSignature id)
+
+let verify_ks store data (id, ts, signature) =
+  if Keystore.mem store id then
+    let pub = Keystore.find store id in
+    verify pub data (id, ts, signature)
+  else
+    Error (`InvalidIdentifier id)
+
 let verify_index repo idx =
   let aid = idx.Index.identifier in
   let to_consider, others =
     List.partition (fun (id, _, _) -> id_equal id aid) idx.Index.signatures
   in
-  let verify = Keystore.verify repo.store (Data.index_to_string idx) in
+  let verify = verify_ks repo.store (Data.index_to_string idx) in
   let err = match others with
     | [] -> `NoSignature aid
     | (xid, _, _)::_ -> `NotAuthorised (aid, xid)
@@ -92,7 +111,7 @@ let expand_owner r os =
     S.empty
 
 let verify_resource repo owners name resource data =
-  let csum = digest data in
+  let csum = Conex_nocrypto.digest data in
   let n, r, s =
     if SM.mem csum repo.valid then
       SM.find csum repo.valid

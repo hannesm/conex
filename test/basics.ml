@@ -1,119 +1,122 @@
 open Core
+open Conex_resource
+
 open Common
 
-(* since Publickey.t is private, we've no way to properly test Publickey.publickey *)
-let good_publickey () =
-  let apriv = Private.generate () in
-  let pk, _ = gen_pub ~counter:0L ~priv:apriv "a" in
-  Alcotest.check
-    (result publickey Alcotest.string)
-    "good key is good"
-    (Ok pk)
-    (Publickey.publickey "a" (Some (Private.pub_of_priv apriv)))
+let raw_sign p d = match Conex_nocrypto.sign p d with
+  | Ok s -> s
+  | Error e -> Alcotest.fail e
 
-let good_publickey_2 () =
-  let apriv = Private.generate ~bits:4096 () in
-  let pk, _ = gen_pub ~counter:100L ~priv:apriv "a" in
-  Alcotest.check
-    (result publickey Alcotest.string)
-    "good key is good"
-    (Ok pk)
-    (Publickey.publickey ~counter:100L "a" (Some (Private.pub_of_priv apriv)))
+let base_v_err =
+  let module M = struct
+    type t = Core.base_v_err
+    let pp ppf x =
+      let str = match x with
+        | `InvalidBase64 -> "base64"
+        | `InvalidPubKey -> "pubkey"
+        | `InvalidSig -> "signature"
+      in
+      Format.pp_print_string ppf str
+    let equal a b = match a, b with
+      | `InvalidBase64, `InvalidBase64 -> true
+      | `InvalidSig, `InvalidSig -> true
+      | `InvalidPubKey, `InvalidPubKey -> true
+      | _ -> false
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
 
-let bad_publickey () =
-  let apriv = Private.generate ~bits:1024 () in
-  Alcotest.check
-    (result publickey Alcotest.string)
-    "small key is rejected"
-    (Error "RSA key too small")
-    (Publickey.publickey "a" (Some (Private.pub_of_priv apriv)))
-
-let pubkey_enc_dec () =
-  let apriv = Private.generate () in
-  let apub = Private.pub_of_priv apriv in
-  let enc = Publickey.encode_key apub in
-  Alcotest.(check string "encoding and decoding works"
-              enc
-              (match Publickey.decode_key enc with
-               | None -> invalid_arg "invalid data"
-               | Some x -> Publickey.encode_key x))
-
-let public_tests = [
-  "good publickey", `Quick, good_publickey ;
-  "good publickey explicit", `Slow, good_publickey_2 ;
-  "bad publickey", `Quick, bad_publickey ;
-  "encode/decode publickey", `Quick, pubkey_enc_dec ;
-]
-
-let check_ver = Alcotest.check (result Alcotest.string verr)
 
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub pid in
-  let (id, ts, sigval) = Private.sign pid p "bla" in
-  Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver "signature is good" (Ok id) (Publickey.verify pub "bla" (id, ts, sigval))
-
-let check_sig prefix pub raw (id, ts, sv) =
-  check_ver (prefix ^ " signature can be verified") (Ok id)
-    (Publickey.verify pub raw (id, ts, sv)) ;
-  check_ver (prefix ^ " signature of other id")
-    (Error (`InvalidSignature "foo"))
-    (Publickey.verify pub raw ("foo", ts, sv)) ;
-  check_ver (prefix ^ " signature empty")
-    (Error (`InvalidSignature id))
-    (Publickey.verify pub raw (id, ts, "")) ;
-  check_ver (prefix ^ " signature is bad (b64prefix)")
-    (Error (`InvalidBase64Encoding id))
-    (Publickey.verify pub raw (id, ts, "\000" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (prefix)")
-    (Error (`InvalidSignature id))
-    (Publickey.verify pub raw (id, ts, "abcd" ^ sv)) ;
-  check_ver (prefix ^ " signature is bad (postfix)")
-    (* should be invalid_b64 once nocrypto >0.5.3 is released *)
-    (Error (`InvalidSignature id))
-    (Publickey.verify pub raw (id, ts, sv ^ "abcd")) ;
-  check_ver (prefix ^ " signature is bad (raw)")
-    (Error (`InvalidSignature id))
-    (Publickey.verify pub "" (id, ts, sv)) ;
-  check_ver (prefix ^ " signature is bad (wrong TS)")
-    (Error (`InvalidSignature id))
-    (Publickey.verify pub raw (id, 0L, sv))
+  let d = Signature.extend_data "bla" pid 0L in
+  let sigval = raw_sign p d in
+  let public = match pub.Publickey.key with None -> Alcotest.fail "expected some key" | Some x -> x in
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature is good" (Ok ())
+    (Conex_nocrypto.verify public d sigval)
 
 let sign_single () =
   let id = "a" in
   let pub, priv = gen_pub id in
   let raw = Data.publickey_to_string pub in
-  let s = Private.sign id priv raw in
-  check_sig "common" pub raw s
+  let sv = raw_sign priv raw in
+  let pub = match pub.Publickey.key with None -> Alcotest.fail "expected some key" | Some x -> x
+  in
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature can be verified"
+    (Ok ())
+    (Conex_nocrypto.verify pub raw sv) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature empty"
+    (Error `InvalidSig)
+    (Conex_nocrypto.verify pub raw "") ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature is bad (b64prefix)"
+    (Error `InvalidBase64)
+    (Conex_nocrypto.verify pub raw ("\000" ^ sv)) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature is bad (prefix)"
+    (Error `InvalidSig)
+    (Conex_nocrypto.verify pub raw ("abcd" ^ sv)) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature is bad (postfix)"
+    (* should be invalid_b64 once nocrypto >0.5.3 is released *)
+    (Error `InvalidSig)
+    (Conex_nocrypto.verify pub raw (sv ^ "abcd")) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "signature is bad (raw)"
+    (Error `InvalidSig)
+    (Conex_nocrypto.verify pub "" sv) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "public key is bad (empty)"
+    (Error `InvalidPubKey)
+    (Conex_nocrypto.verify (`Pub "") raw sv) ;
+  let pub = match pub with `Pub p -> p in
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "public key is bad (prepended)"
+    (Error `InvalidPubKey)
+    (Conex_nocrypto.verify (`Pub ("\000" ^ pub)) raw sv) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "public key is bad (prepended)"
+    (Error `InvalidPubKey)
+    (Conex_nocrypto.verify (`Pub ("abcd" ^ pub)) raw sv) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "public key is bad (appended)"
+    (Error `InvalidPubKey)
+    (Conex_nocrypto.verify (`Pub (pub ^ "abcd")) raw sv) ;
+  Alcotest.check (result Alcotest.unit base_v_err)
+    "public key is bad (appended)"
+    (Error `InvalidPubKey)
+    (Conex_nocrypto.verify (`Pub (pub ^ "\000")) raw sv)
 
-let sig_good_role () =
-  let pid = "foobar" in
-  let pub, p = gen_pub pid in
-  let id, ts, sigval = Private.sign pid p "bla" in
-  Alcotest.(check string "id of sign is same as given" pid id) ;
-  check_ver "signature is good" (Ok id) (Publickey.verify pub "bla" (id, ts, sigval))
-
-let sig_bad_data () =
-  let pid = "foobar" in
-  let pub, p = gen_pub pid in
-  let id, ts, sigval = Private.sign pid p "bla" in
-  Alcotest.(check string "id of sign is same as given" pid id) ;
-  let raw = "blabb" in
-  check_ver
-    "verify fails (data)"
-    (Error (`InvalidSignature id))
-    (Publickey.verify pub raw (id, ts, sigval)) ;
-  let k' = match Publickey.publickey pid None with Ok p -> p | Error _ -> assert false in
-  check_ver "bad key cannot verify"
-    (Error (`InvalidPublicKey pid))
-    (Publickey.verify k' raw (id, ts, sigval))
+let bad_priv () =
+  let id = "a" in
+  let pub, priv = gen_pub id in
+  let raw = Data.publickey_to_string pub in
+  Alcotest.check (result Alcotest.string Alcotest.string)
+    "sign with broken key is broken"
+    (Error "couldn't decode private key")
+    (Conex_nocrypto.sign (`Priv "") raw) ;
+  let get_pub p = match Conex_nocrypto.pub_of_priv (`Priv p) with
+    | Ok (`Pub p) -> Ok p
+    | Error e -> Error e
+  in
+  Alcotest.check (result Alcotest.string Alcotest.string)
+    "pub_of_priv with broken key is broken"
+    (Error "couldn't decode private key")
+    (get_pub "") ;
+  let mypriv = match priv with `Priv p -> p in
+  let mypub = match pub.Publickey.key with Some (`Pub p) -> p | _ -> Alcotest.fail "expected key" in
+  Alcotest.check (result Alcotest.string Alcotest.string)
+    "pub_of_priv works fine"
+    (Ok mypub)
+    (get_pub mypriv)
 
 let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
-  "sign and verify is good", `Quick, sig_good_role ;
   "self-sign is good", `Quick, sign_single ;
-  "bad signature (data)", `Quick, sig_bad_data ;
+  "bad priv is bad", `Quick, bad_priv ;
 ]
 
 let empty () =
@@ -137,7 +140,7 @@ let multiple () =
   let s = Keystore.empty in
   let k1, _ = gen_pub "a"
   and k2, _ = gen_pub "b"
-  and k3, _ = gen_pub ~priv:(Private.generate ()) "a"
+  and k3, _ = gen_pub ~priv:(Conex_nocrypto.generate ()) "a"
   in
   let s' = Keystore.add s k1 in
   Alcotest.(check int "multiple: inserting doesn't affect original" 0 (Keystore.size s)) ;
@@ -162,20 +165,22 @@ let ks_tests = [
   "multiple keys", `Quick, multiple ;
 ]
 
+let check_ver = Alcotest.check (result Alcotest.string verr)
+
 let idx_sign () =
   let k, p = gen_pub "a" in
   let idx = Index.index "a" in
-  let signed = Private.sign_index idx p in
+  let signed = sign_idx idx p in
   let (sid, ts, sigval) = match signed.Index.signatures with
     | [x] -> x
     | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "a")
-    (Publickey.verify k (Data.index_to_string signed) (sid, ts, sigval)) ;
+    (Repository.verify k (Data.index_to_string signed) (sid, ts, sigval)) ;
   let idx' = Index.add_resource signed ("foo", `PublicKey, "2342") in
   check_ver "signed modified index does not verify"
     (Error (`InvalidSignature "a"))
-    (Publickey.verify k (Data.index_to_string idx') (sid, ts, sigval))
+    (Repository.verify k (Data.index_to_string idx') (sid, ts, sigval))
 
 let idx_sign_other () =
   (* this shows that Publickey.verify does not check
@@ -183,18 +188,18 @@ let idx_sign_other () =
      cause it does not get the index *)
   let k, p = gen_pub "a" in
   let idx = Index.index "b" in
-  let signed = Private.sign_index idx p in
+  let signed = sign_idx idx p in
   let signature = match signed.Index.signatures with
     | [x] -> x
     | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "b")
-    (Publickey.verify k (Data.index_to_string signed) signature)
+    (Repository.verify k (Data.index_to_string signed) signature)
 
 let idx_sign_bad () =
   let k, p = gen_pub "a" in
   let idx = Index.index "b" in
-  let signed = Private.sign_index idx p in
+  let signed = sign_idx idx p in
   let (sid, ts, sigval) = match signed.Index.signatures with
     | [x] -> x
     | _ -> assert false
@@ -203,12 +208,12 @@ let idx_sign_bad () =
   let raw = Data.index_to_string idx' in
   check_ver "signed index does not verify (wrong id)"
     (Error (`InvalidSignature "b"))
-    (Publickey.verify k raw (sid, ts, sigval))
+    (Repository.verify k raw (sid, ts, sigval))
 
 let idx_sign_bad2 () =
   let k, p = gen_pub "a" in
   let idx = Index.index "a" in
-  let signed = Private.sign_index idx p in
+  let signed = sign_idx idx p in
   let (sid, ts, sigval) = match signed.Index.signatures with
     | [x] -> x
     | _ -> assert false
@@ -217,8 +222,7 @@ let idx_sign_bad2 () =
   let raw = Data.index_to_string idx' in
   check_ver "signed index does not verify (wrong data)"
     (Error (`InvalidSignature "a"))
-    (Publickey.verify k raw (sid, ts, sigval)) ;
-  check_sig "index" k (Data.index_to_string idx) (sid, ts, sigval)
+    (Repository.verify k raw (sid, ts, sigval))
 
 let idx_tests = [
   "good index", `Quick, idx_sign ;
@@ -228,7 +232,6 @@ let idx_tests = [
 ]
 
 let tests = [
-  ("Publickey", public_tests) ;
   ("Signature", sign_tests) ;
   ("Keystore", ks_tests) ;
   ("Index", idx_tests)

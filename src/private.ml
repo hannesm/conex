@@ -1,58 +1,13 @@
 open Core
 
-type priv =
-  | RSA_priv of Nocrypto.Rsa.priv
-
-let pub_of_priv = function
-  | RSA_priv k ->
-     let pub = Nocrypto.Rsa.pub_of_priv k in
-     let pem = X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub) in
-     let str = Cstruct.to_string pem in
-     match Publickey.decode_key str with
-     | Some pk -> pk
-     | None -> invalid_arg "X509 public key decoding and encoding not identity"
-
-let generate ?(bits = 2048) () = RSA_priv (Nocrypto.Rsa.generate bits)
-
-let decode_priv data =
-  match X509.Encoding.Pem.Private_key.of_pem_cstruct (Cstruct.of_string data) with
-  | [ `RSA priv ] -> Some (RSA_priv priv)
-  | _ -> None
-
-let encode_priv = function
-  | RSA_priv priv ->
-     let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
-     Cstruct.to_string pem
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_priv ppf p =
-  match p with
-  | RSA_priv pr ->
-     let len = Nocrypto.Rsa.pub_bits (Nocrypto.Rsa.pub_of_priv pr) in
-     Format.fprintf ppf "private %d bit RSA key@ %s" len (encode_priv p)
-(*BISECT-IGNORE-END*)
-
-module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
-
-let primitive_sign priv data =
-  let cs = Cstruct.of_string data in
-  let signature =
-    match priv with
-    | RSA_priv key -> Pss_sha256.sign ~key cs
-  in
-  let b64 = Nocrypto.Base64.encode signature in
-  Cstruct.to_string b64
-
-let sign id priv data =
-  let now = Int64.of_float (Unix.time ()) in
-  let data = Signature.extend_data data id now in
-  let sigval = primitive_sign priv data in
-  (id, now, sigval)
-
 let sign_index idx priv =
-  let signature = sign idx.Index.identifier priv (Data.index_to_string idx) in
-  Index.add_sig idx signature
-
+  let data = Data.index_to_string idx
+  and now = Int64.of_float (Unix.time ())
+  and id = idx.Conex_resource.Index.identifier
+  in
+  let data = Conex_resource.Signature.extend_data data id now in
+  Conex_nocrypto.sign priv data >>= fun signature ->
+  Ok (Conex_resource.Index.add_sig idx (id, now, signature))
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
@@ -104,11 +59,11 @@ let write_private_key repo id key =
          backup
      in
      Persistency.rename filename backup) ;
-  let data = encode_priv key in
   if not (Persistency.exists private_dir) then
     Unix.mkdir private_dir 0o700 ;
   if not (Sys.is_directory private_dir) then
     invalid_arg (private_dir ^ " is not a directory!") ;
+  let data = match key with `Priv k -> k in
   Persistency.write_file ~mode:0o400 filename data
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list ]
@@ -125,9 +80,7 @@ let read_private_key ?id repo =
     let fn = Filename.concat private_dir (private_filename repo id) in
     if Persistency.exists fn then
       let key = Persistency.read_file fn in
-      match decode_priv key with
-      | Some k -> Ok (id, k)
-      | None -> Error `NoPrivateKey
+      Ok (id, `Priv key)
     else
       Error (`NotFound id)
   in
