@@ -3,7 +3,6 @@ true : warn(+A-4-6-33-44-48-58)
 "src" : include
 
 <src/core.{ml,mli}>: package(cstruct nocrypto)
-<src/utils.ml>: package(cstruct)
 <src/checksum.{ml,mli}>: package(nocrypto cstruct)
 <src/private.{ml,mli}>: package(x509 nocrypto cstruct)
 <src/publickey.{ml,mli}>: package(x509 nocrypto cstruct)
