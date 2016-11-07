@@ -40,7 +40,7 @@ let sig_good () =
 let sign_single () =
   let id = "a" in
   let pub, priv = gen_pub id in
-  let raw = Data.publickey_to_string pub in
+  let raw = Data.encode (Conex_data_persistency.publickey_to_t pub) in
   let sv = raw_sign priv raw in
   let pub = match pub.Publickey.key with None -> Alcotest.fail "expected some key" | Some x -> x
   in
@@ -94,7 +94,7 @@ let sign_single () =
 let bad_priv () =
   let id = "a" in
   let pub, priv = gen_pub id in
-  let raw = Data.publickey_to_string pub in
+  let raw = Data.encode (Conex_data_persistency.publickey_to_t pub) in
   Alcotest.check (result Alcotest.string Alcotest.string)
     "sign with broken key is broken"
     (Error "couldn't decode private key")
@@ -177,11 +177,15 @@ let idx_sign () =
     | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "a")
-    (Repository.verify k (Data.index_to_string signed) (sid, ts, sigval)) ;
+    (Repository.verify k
+       (Data.encode (Conex_data_persistency.index_to_t signed))
+       (sid, ts, sigval)) ;
   let idx' = Index.add_resource signed ("foo", `PublicKey, "2342") in
   check_ver "signed modified index does not verify"
     (Error (`InvalidSignature "a"))
-    (Repository.verify k (Data.index_to_string idx') (sid, ts, sigval))
+    (Repository.verify k
+       (Data.encode (Conex_data_persistency.index_to_t idx'))
+       (sid, ts, sigval))
 
 let idx_sign_other () =
   (* this shows that Publickey.verify does not check
@@ -195,7 +199,9 @@ let idx_sign_other () =
     | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "b")
-    (Repository.verify k (Data.index_to_string signed) signature)
+    (Repository.verify k
+       (Data.encode (Conex_data_persistency.index_to_t signed))
+       signature)
 
 let idx_sign_bad () =
   let k, p = gen_pub "a" in
@@ -206,7 +212,7 @@ let idx_sign_bad () =
     | _ -> assert false
   in
   let idx' = Index.index "c" in
-  let raw = Data.index_to_string idx' in
+  let raw = Data.encode (Conex_data_persistency.index_to_t idx') in
   check_ver "signed index does not verify (wrong id)"
     (Error (`InvalidSignature "b"))
     (Repository.verify k raw (sid, ts, sigval))
@@ -220,7 +226,7 @@ let idx_sign_bad2 () =
     | _ -> assert false
   in
   let idx' = Index.index ~counter:23L "b" in
-  let raw = Data.index_to_string idx' in
+  let raw = Data.encode (Conex_data_persistency.index_to_t idx') in
   check_ver "signed index does not verify (wrong data)"
     (Error (`InvalidSignature "a"))
     (Repository.verify k raw (sid, ts, sigval))

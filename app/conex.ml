@@ -57,6 +57,11 @@ let load_tas copts =
     let repo = Conex_common.load_anchors_janitors copts.repo copts.out copts.debug (fun () -> ()) s in
     { copts with repo ; verify = true }
 
+let valid copts s t =
+  match Repository.valid copts.repo (Conex_nocrypto.digest (Data.encode t)) with
+  | None -> false
+  | Some (_, _, sigs) -> S.mem s sigs
+
 let find_keys copts =
   let keys =
     Utils.filter_map
@@ -69,11 +74,7 @@ let find_keys copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.keyid o) keys
   | None, Some s ->
-    let is k =
-      match Repository.valid copts.repo (Conex_nocrypto.digest (Data.publickey_to_string k)) with
-      | None -> false
-      | Some (_, _, sigs) -> S.mem s sigs
-    in
+    let is k = valid copts s (Conex_data_persistency.publickey_to_t k) in
     List.filter is keys
   | _ -> keys
 
@@ -89,11 +90,7 @@ let find_teams copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun t -> S.mem o t.Team.members) teams
   | None, Some s ->
-    let is k =
-      match Repository.valid copts.repo (Conex_nocrypto.digest (Data.team_to_string k)) with
-      | None -> false
-      | Some (_, _, sigs) -> S.mem s sigs
-    in
+    let is t = valid copts s (Conex_data_persistency.team_to_t t) in
     List.filter is teams
   | _ -> teams
 
@@ -114,13 +111,11 @@ let find_ids copts =
       ids
   | None, Some s ->
     let is i =
-      let raw = match i with
-        | `Key k -> Data.publickey_to_string k
-        | `Team t -> Data.team_to_string t
+      let t = match i with
+        | `Key k -> Conex_data_persistency.publickey_to_t k
+        | `Team t -> Conex_data_persistency.team_to_t t
       in
-      match Repository.valid copts.repo (Conex_nocrypto.digest raw) with
-      | None -> false
-      | Some (_, _, sigs) -> S.mem s sigs
+      valid copts s t
     in
     List.filter is ids
   | _ -> ids
@@ -137,10 +132,7 @@ let find_authorisations copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun d -> S.mem o d.Authorisation.authorised) auths
   | None, Some s ->
-    let is a = match Repository.valid copts.repo (Conex_nocrypto.digest (Data.authorisation_to_string a)) with
-      | None -> false
-      | Some (_, _, sigs) -> S.mem s sigs
-    in
+    let is a = valid copts s (Conex_data_persistency.authorisation_to_t a) in
     List.filter is auths
   | None, None -> auths
 
@@ -164,10 +156,7 @@ let find_releases copts =
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun (a, _) -> S.mem o a.Authorisation.authorised) releases
   | None, Some s ->
-    let is (_, r) = match Repository.valid copts.repo (Conex_nocrypto.digest (Data.releases_to_string r)) with
-      | None -> false
-      | Some (_, _, sigs) -> S.mem s sigs
-    in
+    let is (_, r) = valid copts s (Conex_data_persistency.releases_to_t r) in
     List.filter is releases
   | None, None -> releases
 
@@ -195,10 +184,7 @@ let find_checksums copts =
        Utils.option
          all_cs
          (fun s ->
-            let is c = match Repository.valid copts.repo (Conex_nocrypto.digest (Data.checksums_to_string c)) with
-              | None -> false
-              | Some (_, _, sigs) -> S.mem s sigs
-            in
+            let is c = valid copts s (Conex_data_persistency.checksums_to_t c) in
             List.filter is all_cs)
          copts.signed_by
      in
@@ -602,14 +588,17 @@ let sign copts item name =
       | Error e -> Repository.pp_r_err copts.out e ; Index.index id
       | Ok idx -> idx
     in
-    let add_r r = Private.sign_index (Index.add_resource idx r) p in
+    let add_r (name, k, data) =
+      let digest = Conex_nocrypto.digest (Data.encode data) in
+      Private.sign_index (Index.add_resource idx (name, k, digest)) p
+    in
     match item with
     | `Key -> (match Repository.read_key copts.repo name with
         | Error e ->
           Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok k ->
-          match add_r (name, `PublicKey, Conex_nocrypto.digest (Data.publickey_to_string k)) with
+          match add_r (name, `PublicKey, Conex_data_persistency.publickey_to_t k) with
           | Ok idx ->
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
@@ -627,7 +616,7 @@ let sign copts item name =
           Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok t ->
-          match add_r (name, `Team, Conex_nocrypto.digest (Data.team_to_string t)) with
+          match add_r (name, `Team, Conex_data_persistency.team_to_t t) with
           | Ok idx ->
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
@@ -645,7 +634,7 @@ let sign copts item name =
           Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok a ->
-          match add_r (name, `Authorisation, Conex_nocrypto.digest (Data.authorisation_to_string a)) with
+          match add_r (name, `Authorisation, Conex_data_persistency.authorisation_to_t a) with
           | Ok idx ->
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
@@ -663,7 +652,7 @@ let sign copts item name =
           Format.fprintf copts.out "%sreleases %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok r ->
-          match add_r (name, `Releases, Conex_nocrypto.digest (Data.releases_to_string r)) with
+          match add_r (name, `Releases, Conex_data_persistency.releases_to_t r) with
           | Ok idx ->
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
@@ -681,7 +670,7 @@ let sign copts item name =
           Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
-          match add_r (name, `Checksum, Conex_nocrypto.digest (Data.checksums_to_string c)) with
+          match add_r (name, `Checksum, Conex_data_persistency.checksums_to_t c) with
           | Ok idx ->
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."

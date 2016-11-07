@@ -6,7 +6,7 @@ let load_trust_anchors out maybe_exit dir =
   let keys = List.map (Filename.concat dir) (Persistency.collect_dir dir) in
   let keys =
     List.fold_left (fun acc f ->
-        match Data.string_to_publickey (Persistency.read_file f) with
+        match Data.decode (Persistency.read_file f) >>= Conex_data_persistency.t_to_publickey with
         | Ok key -> key :: acc
         | Error e -> Format.fprintf out "error while constructing key %a: %s@." pp_id f e ; maybe_exit () ; acc)
       [] keys

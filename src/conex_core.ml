@@ -1,6 +1,9 @@
 open Conex_result
 
 module S = Set.Make(String)
+
+let s_of_list es = List.fold_left (fun s v -> S.add v s) S.empty es
+
 module M = Map.Make(String)
 
 (*BISECT-IGNORE-BEGIN*)

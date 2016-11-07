@@ -1,6 +1,9 @@
 open Conex_result
 
 module S : (Set.S with type elt = string)
+
+val s_of_list : string list -> S.t
+
 module M : (Map.S with type key = string)
 
 val pp_list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
