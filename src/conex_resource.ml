@@ -1,3 +1,4 @@
+open Conex_result
 open Conex_core
 
 module Signature = struct

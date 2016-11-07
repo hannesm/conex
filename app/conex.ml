@@ -3,6 +3,7 @@
 (* XXX: commands to dynamically add/remove members to authorisation and teams *)
 (* XXX: key rollover and key revocation *)
 
+open Conex_result
 open Conex_core
 open Conex_resource
 

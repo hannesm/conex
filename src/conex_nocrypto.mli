@@ -1,3 +1,4 @@
+open Conex_result
 open Conex_core
 
 val verify : pub -> string -> string -> (unit, base_v_err) result

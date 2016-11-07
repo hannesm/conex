@@ -1,3 +1,4 @@
+open Conex_result
 open Conex_core
 
 val sign_index : Conex_resource.Index.t -> priv -> (Conex_resource.Index.t, string) result

@@ -1,3 +1,4 @@
+open Conex_result
 open Conex_core
 
 let lowercase_equal names name =

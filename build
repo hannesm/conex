@@ -8,15 +8,12 @@ OCAMLBUILD=${OCAMLBUILD:="ocamlbuild -tag debug -classic-display \
                           -use-ocamlfind -cflags -warn-error,+A" }
 
 # hack to avoid depending on result package
-RESULT="src/core.ml src/core.mli"
+RESULT="src/conex_result.mli"
 V=$(ocamlc -version)
 MAJOR=$(echo $V | cut -d '.' -f 1)
 MINOR=$(echo $V | cut -d '.' -f 2)
 if [ $MAJOR -ge 4 -a $MINOR -ge 3 ] ; then
-    for x in $RESULT ; do
-        cat $x | grep -v "type ('a, 'b) result" > $x.tmp
-        mv $x.tmp $x
-    done
+    echo > $RESULT
 fi
 
 action ()
@@ -45,9 +42,5 @@ else action $*; fi
 
 # hack to avoid depending on result package
 if [ $MAJOR -ge 4 -a $MINOR -ge 3 ] ; then
-    for x in $RESULT ; do
-        echo "type ('a, 'b) result = Ok of 'a | Error of 'b" > $x.tmp
-        cat $x >> $x.tmp
-        mv $x.tmp $x
-    done
+    echo "type ('a, 'b) result = Ok of 'a | Error of 'b" > $RESULT
 fi

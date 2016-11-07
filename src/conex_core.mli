@@ -1,4 +1,4 @@
-type ('a, 'b) result = Ok of 'a | Error of 'b
+open Conex_result
 
 module S : (Set.S with type elt = string)
 module M : (Map.S with type key = string)

@@ -1,4 +1,4 @@
-type ('a, 'b) result = Ok of 'a | Error of 'b
+open Conex_result
 
 module S = Set.Make(String)
 module M = Map.Make(String)

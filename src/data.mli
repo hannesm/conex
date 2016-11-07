@@ -1,4 +1,4 @@
-open Conex_core
+open Conex_result
 open Conex_resource
 
 val string_to_index : string -> (Index.t, string) result
