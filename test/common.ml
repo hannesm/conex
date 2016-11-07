@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 open Conex_resource
 
 let sset =
@@ -128,8 +128,8 @@ let cs =
 
 let verr =
   let module M = struct
-    type t = Core.verification_error
-    let pp = Core.pp_verification_error
+    type t = verification_error
+    let pp = pp_verification_error
     let equal a b = match a, b with
       | `InvalidBase64Encoding id, `InvalidBase64Encoding id' -> id_equal id id'
       | `InvalidSignature id, `InvalidSignature id' -> id_equal id id'

@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 module Signature = struct
   type t = identifier * int64 * string

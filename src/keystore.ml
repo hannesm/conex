@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 open Conex_resource
 
 type t = Publickey.t M.t

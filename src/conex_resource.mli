@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 module Signature : sig
   (* a signature is a tuple *)

@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 type nc_pub =
   | RSA_pub of Nocrypto.Rsa.pub

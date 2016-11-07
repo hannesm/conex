@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 open Conex_resource
 
 let apply_diff provider diff =
@@ -127,8 +127,8 @@ type err = [ verification_error
            | `NotADirectory of name
            | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list
            | `NameMismatch of string * string
-           | `ParseError of Core.name * string
-           | `MissingSignature of Core.identifier
+           | `ParseError of name * string
+           | `MissingSignature of identifier
            | `NotFound of string
            | `CounterNotIncreased
            | `CounterNotZero

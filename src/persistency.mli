@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 val exists : string -> bool
 val remove : string -> unit

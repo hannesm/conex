@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 open Conex_resource
 
 open Common
@@ -9,7 +9,7 @@ let raw_sign p d = match Conex_nocrypto.sign p d with
 
 let base_v_err =
   let module M = struct
-    type t = Core.base_v_err
+    type t = base_v_err
     let pp ppf x =
       let str = match x with
         | `InvalidBase64 -> "base64"

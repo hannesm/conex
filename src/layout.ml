@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 let lowercase_equal names name =
   let name = Strhelper.lowercase_string name in

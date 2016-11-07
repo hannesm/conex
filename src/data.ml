@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 open Conex_resource
 
 (* crappy data implementation using "structured" strings *)

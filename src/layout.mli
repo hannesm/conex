@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 val unique_keyid : S.t -> identifier -> bool
 val unique_data : S.t -> name -> bool

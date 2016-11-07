@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 open Conex_resource
 
 let load_trust_anchors out maybe_exit dir =

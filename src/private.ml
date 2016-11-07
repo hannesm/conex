@@ -1,4 +1,4 @@
-open Core
+open Conex_core
 
 let sign_index idx priv =
   let data = Data.index_to_string idx
