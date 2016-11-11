@@ -11,9 +11,6 @@
    -> put a timestamp on each signature, created-at, and leave it to clients to do something useful with it
    --> done!
 
-
---> include a timestamp (as string) into signature! (maybe?)
-
 - index GC: sets + maps are not ordered :( --> diffs are unreadable (same for checksums)
   --> but we can "simply" define a lexicographic order for the serialisation (and preserve an id while parsing for index)
     --> index is really problematic: there may be items multiple times, and the current ones are the ones to keep, but also newer ones...
@@ -23,25 +20,6 @@
 - Int64.t ++ wraparounds, pls solve!
 - PBKDF enc private keys
 - use opam lib (format parser + writer) ; package name validation ; package name + version -> package name
-
-
-* What to include in checksums?
-
-- byte size pretty useless, since the digest algorithm already appends the input size as part of its output
-- filename?  otherwise can be reused with a different file, but should not matter since everything is public anyways (in contrast to signatures)
-- resource? see above
-- what is the maximum length here? that one of a cstruct?  String.length? int32? 31 bit? 63 bit? int64?
-
-current state:
-- Checksum module includes type c = { name ; size ; digest }, computes digest over data
-- Index includes (name * resource * digest), digest over data
-
-* What to sign?
-
-- signature is just a tuple (identity * signature data)
-- verify : publickey -> role -> resource -> data -> (identity * signature data) -> (id, err) result
--> data is extended (String.concat " " [raw data; id]) --> neither of them may include ' '... or different separator?
---> this is fine for now! but we might want to add a timestamp (for UI)
 
 * Verification strategy
 
@@ -106,13 +84,6 @@ signature is done over <data> <identifier> to prevent reusing the same
   accept <package|key|newjanitor>
 
 
--- from TODO on nuc
- - reanimate patch.ml
- - accounts in publickey
- - functorise (no!) over data format, crypto provider
- - multiple binaries: one for user [view/verify], one for author [generate/sign], one for janitor [quorum]
- - timestamp notary
-
 * proper documentation
  - library docs lib
  - cli man page
@@ -129,7 +100,6 @@ toools
   show_trust_chain (transitive deps: whom do I trust) <package (release)> || <all packages> || <all installed>
   explicitly don't trust <foo>
   show center(s) of opam universe (hopefully the janitors)
-
 
 does the repo really need to know about layout and provider?
   wouldn't the interface be simpler if it only consists of a keystore, and checksums?
