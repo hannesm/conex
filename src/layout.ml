@@ -1,24 +1,25 @@
 open Conex_result
 open Conex_core
+open Conex_utils
 
 let lowercase_equal names name =
-  let name = Strhelper.lowercase_string name in
+  let name = String.to_lower name in
   (* check that name is good, here a case-insensitive comparison *)
   not (S.exists
-         (fun n -> String.compare (Strhelper.lowercase_string n) name = 0)
+         (fun n -> compare (String.to_lower n) name = 0)
          names)
 
 let unique_keyid = lowercase_equal
 and unique_data = lowercase_equal
 
-let valid_keyid id = Strhelper.is_ascii id
+let valid_keyid id = String.is_ascii id
 
 let valid_name package =
   let p = function '-' | '_' -> true | _ -> false in
-  Strhelper.is_ascii ~p package
+  String.is_ascii ~p package
 
 let authorisation_of_item x =
-  match Strhelper.cut '.' x with
+  match String.cut '.' x with
   | Some (pre, _) -> Some pre
   | None -> None
 
@@ -26,17 +27,16 @@ let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
 let private_keys p =
   let is_private s =
-    if Strhelper.is_suffix ~suffix:".private" s then
+    if String.is_suffix ~suffix:".private" s then
       let p = string_to_path (p.Provider.name) in
-      match List.rev (Strhelper.cuts '.' s) with
+      match List.rev (String.cuts '.' s) with
       | _::id::path when p = List.rev path -> Some id
       | _ -> None
     else
       None
   in
   List.fold_left
-    (fun acc s ->
-       Utils.option acc (fun s -> s :: acc) (is_private s))
+    (fun acc s -> option acc (fun s -> s :: acc) (is_private s))
     []
     (Persistency.collect_dir private_dir)
 
@@ -57,7 +57,7 @@ let ids p =
       | `File f -> Some f
       | _ -> None
     in
-    Utils.filter_map ~f data
+    filter_map ~f data
 
 let key_path id = [ key_dir ; id ]
 
@@ -75,7 +75,7 @@ let authorisations p =
       | `Dir d -> Some d
       | `File _ -> None
     in
-    Utils.filter_map ~f data
+    filter_map ~f data
 
 let authorisation_path id = [ data_dir ; id ; authorisation_filename ]
 
@@ -92,7 +92,7 @@ let items p id =
       | `Dir d -> Some d
       | `File _ -> None
     in
-    Utils.filter_map ~f data
+    filter_map ~f data
 
 let checksum_dir p =
   match authorisation_of_item p with
@@ -141,12 +141,10 @@ let is_authorisation = function
     Some id
   | _ -> None
 
-let compare_insensitive a b = Strhelper.lowercase_string a = Strhelper.lowercase_string b
-
 let is_item = function
   | dd :: id :: id2 :: _ when dd = data_dir ->
     (match authorisation_of_item id2 with
-     | Some x when compare_insensitive x id -> Some (id, id2)
+     | Some x when String.compare_insensitive x id -> Some (id, id2)
      | _ -> None)
   | _ -> None
 

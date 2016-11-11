@@ -1,11 +1,11 @@
 open Conex_result
 open Conex_core
 open Conex_resource
+open Conex_utils
 
-module SM = Map.Make(String)
-type valid_resources = (name * int64 * resource * S.t) SM.t
+type valid_resources = (name * int64 * resource * S.t) M.t
 
-type teams = S.t SM.t
+type teams = S.t M.t
 
 type t = {
   store : Keystore.t ;
@@ -16,7 +16,7 @@ type t = {
 }
 
 let repository ?(store = Keystore.empty) ?(quorum = 3) data =
-  { store ; quorum ; data ; valid = SM.empty ; teams = SM.empty }
+  { store ; quorum ; data ; valid = M.empty ; teams = M.empty }
 
 let quorum r = r.quorum
 
@@ -24,12 +24,12 @@ let provider r = r.data
 
 let teams r = r.teams
 
-let team r id = try SM.find id r.teams with Not_found -> S.empty
+let team r id = try M.find id r.teams with Not_found -> S.empty
 
 let janitors r = team r "janitors"
 
 let valid r digest =
-  try Some (SM.find digest r.valid) with Not_found -> None
+  try Some (M.find digest r.valid) with Not_found -> None
 
 let change_provider t data = { t with data }
 
@@ -38,7 +38,7 @@ let add_trusted_key repo key =
   { repo with store }
 
 let add_team repo team =
-  { repo with teams = SM.add team.Team.name team.Team.members repo.teams }
+  { repo with teams = M.add team.Team.name team.Team.members repo.teams }
 
 let verify pub data (id, ts, sigval) =
   let data = Signature.extend_data data id ts in
@@ -107,15 +107,15 @@ let pp_error ppf = function
 let expand_owner r os =
   S.fold
     (fun id s ->
-       if SM.mem id r.teams then S.union s (SM.find id r.teams) else S.add id s)
+       if M.mem id r.teams then S.union s (M.find id r.teams) else S.add id s)
     os
     S.empty
 
 let verify_resource repo owners name resource data =
   let csum = Conex_nocrypto.digest data in
   let n, _s, r, ids =
-    if SM.mem csum repo.valid then
-      SM.find csum repo.valid
+    if M.mem csum repo.valid then
+      M.find csum repo.valid
     else
       (name, Int64.of_int (String.length data), resource, S.empty)
   in
@@ -336,14 +336,14 @@ let add_csums repo id rs =
   let open Index in
   let add_csum t res =
     try
-      let n, s, r, ids = SM.find res.digest t in
+      let n, s, r, ids = M.find res.digest t in
       (* TODO: remove asserts here, deal with errors! *)
       assert (name_equal n res.name) ;
       assert (resource_equal r res.resource) ;
       assert (s = res.size) ;
-      SM.add res.digest (n, s, r, S.add id ids) t
+      M.add res.digest (n, s, r, S.add id ids) t
     with Not_found ->
-      SM.add res.digest (res.name, res.size, res.resource, S.singleton id) t
+      M.add res.digest (res.name, res.size, res.resource, S.singleton id) t
   in
   let valid = List.fold_left add_csum repo.valid rs in
   { repo with valid }

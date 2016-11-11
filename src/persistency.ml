@@ -32,8 +32,9 @@ let read_file filename =
 let write_file ?(mode = 0o644) filename data =
   let open Unix in
   let fd = openfile filename [ O_WRONLY ; O_EXCL ; O_CREAT ] mode in
-  let length = String.length data in
-  let written = write fd (Bytes.of_string data) 0 length in
+  let bytes = Bytes.of_string data in
+  let length = Bytes.length bytes in
+  let written = write fd bytes 0 length in
   assert (length = written) ;
   close fd
 

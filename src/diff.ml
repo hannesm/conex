@@ -1,3 +1,4 @@
+open Conex_utils
 
 type hunk = {
   mine_start : int ;
@@ -31,7 +32,7 @@ let apply_hunk data hunk =
 
 let to_start_len data =
   (* input being "?19,23" *)
-  match Strhelper.cut ',' (Strhelper.slice ~start:1 data) with
+  match String.cut ',' (String.slice ~start:1 data) with
   | None when data = "+1" -> (0, 1)
   | None when data = "-1" -> (0, 1)
   | None -> invalid_arg ("start_len broken in " ^ data)
@@ -41,13 +42,13 @@ let to_start_len data =
      (st, int_of_string len)
 
 let count_to_sl_sl data =
-  if Strhelper.is_prefix ~prefix:"@@" data then
+  if String.is_prefix ~prefix:"@@" data then
     (* input: "@@ -19,23 +19,12 @@ bla" *)
     (* output: ((19,23), (19, 12)) *)
-    match Strhelper.cuts '@' data with
+    match String.cuts '@' data with
     | numbers::_ ->
        let nums = String.trim numbers in
-       (match Strhelper.cut ' ' nums with
+       (match String.cut ' ' nums with
         | None -> invalid_arg "couldn't find space in count"
         | Some (mine, theirs) -> Some (to_start_len mine, to_start_len theirs))
     | _ -> invalid_arg "broken line!"
@@ -55,7 +56,7 @@ let count_to_sl_sl data =
     None
 
 let sort_into_bags mine their str =
-  match String.get str 0, Strhelper.slice ~start:1 str with
+  match String.get str 0, String.slice ~start:1 str with
   | ' ', data -> Some ((data :: mine), (data :: their))
   | '+', data -> Some (mine, (data :: their))
   | '-', data -> Some ((data :: mine), their)
@@ -95,17 +96,17 @@ let file diff =
     | a, "/dev/null" -> a
     | a, _ -> a
   in
-  if Strhelper.is_prefix ~prefix:"a/" name || Strhelper.is_prefix ~prefix:"b/" name then
-    Strhelper.slice ~start:2 name
+  if String.is_prefix ~prefix:"a/" name || String.is_prefix ~prefix:"b/" name then
+    String.slice ~start:2 name
   else
     name
 
 let to_diff data =
   (* first locate --- and +++ lines *)
-  let cut4 = Strhelper.slice ~start:4 in
+  let cut4 = String.slice ~start:4 in
   let rec find_start = function
     | [] -> None
-    | x::y::xs when Strhelper.is_prefix ~prefix:"---" x -> Some (cut4 x, cut4 y, xs)
+    | x::y::xs when String.is_prefix ~prefix:"---" x -> Some (cut4 x, cut4 y, xs)
     | _::xs -> find_start xs
   in
   match find_start data with
@@ -114,7 +115,7 @@ let to_diff data =
     Some ({ mine_name ; their_name ; hunks }, rest)
   | None -> None
 
-let to_lines = Strhelper.cuts '\n'
+let to_lines = String.cuts '\n'
 
 let to_diffs data =
   let lines = to_lines data in

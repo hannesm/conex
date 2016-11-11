@@ -4,12 +4,10 @@ open Conex_resource
 
 type t
 
-module SM : (Map.S with type key = string)
-
 val repository : ?store:Keystore.t -> ?quorum:int -> Provider.t -> t
 val provider : t -> Provider.t
 val quorum : t -> int
-val teams : t -> S.t SM.t
+val teams : t -> S.t M.t
 
 val team : t -> string -> S.t
 

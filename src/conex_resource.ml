@@ -1,5 +1,6 @@
 open Conex_result
 open Conex_core
+open Conex_utils
 
 module Signature = struct
   type t = identifier * int64 * string

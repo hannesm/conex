@@ -43,7 +43,9 @@ let fs_provider basedir =
     mkdir [basedir] path
   in
   let file_type path =
-    Utils.option (Error `NotFound) (fun x -> Ok x)
+    Conex_utils.option
+      (Error `NotFound)
+      (fun x -> Ok x)
       (Persistency.file_type (get path))
   and read path =
     let fn = get path in

@@ -1,4 +1,5 @@
 open Conex_result
+open Conex_utils
 
 module S = Set.Make(String)
 
@@ -32,7 +33,7 @@ let path_to_string path =
                   | d, f -> Filename.concat d f)
                  "" path
 
-let string_to_path str = Strhelper.cuts '/' str
+let string_to_path str = String.cuts '/' str
 
 
 type pub = [ `Pub of string ]
@@ -45,7 +46,7 @@ type name = string
 let pp_name ppf x = Format.pp_print_string ppf x
 (*BISECT-IGNORE-END*)
 
-let name_equal a b = String.compare a b = 0
+let name_equal a b = String.compare_insensitive a b
 
 
 type identifier = string
@@ -54,7 +55,7 @@ type identifier = string
 let pp_id ppf x = Format.pp_print_string ppf x
 (*BISECT-IGNORE-END*)
 
-let id_equal a b = String.compare a b = 0
+let id_equal a b = String.compare_insensitive a b
 
 
 type digest = string

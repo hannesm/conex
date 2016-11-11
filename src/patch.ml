@@ -16,7 +16,7 @@ let apply_diff provider diff =
     in
     if pn = name then
       Ok File
-    else if Strhelper.is_prefix ~prefix:(pn ^ "/") name then
+    else if Conex_utils.String.is_prefix ~prefix:(pn ^ "/") name then
       Ok Directory
     else
       provider.Provider.file_type path

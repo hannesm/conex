@@ -7,6 +7,17 @@ open Conex_result
 open Conex_core
 open Conex_resource
 
+let option none some = function
+  | None   -> none
+  | Some x -> some x
+
+let rec filter_map ~f = function
+  | []    -> []
+  | x::xs ->
+      match f x with
+      | None    ->       filter_map ~f xs
+      | Some x' -> x' :: filter_map ~f xs
+
 module Color = struct
   let endc = "\027[m"
   let red = "\027[31m"
@@ -45,8 +56,8 @@ let kinds =
 
 let find_private_keys copts =
   let keys = List.sort String.compare (Private.all_private_keys copts.repo) in
-  let keys = Utils.option keys (fun _ -> []) copts.signed_by in
-  Utils.option keys (fun s -> List.filter (id_equal s) keys) copts.owner
+  let keys = option keys (fun _ -> []) copts.signed_by in
+  option keys (fun s -> List.filter (id_equal s) keys) copts.owner
 
 let load_tas copts =
   match copts.trust_anchors with
@@ -64,7 +75,7 @@ let valid copts s t =
 
 let find_keys copts =
   let keys =
-    Utils.filter_map
+    filter_map
       ~f:(fun f ->
           match Repository.read_key copts.repo f with
           | Error e -> if copts.debug then Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
@@ -80,7 +91,7 @@ let find_keys copts =
 
 let find_teams copts =
   let teams =
-    Utils.filter_map
+    filter_map
       ~f:(fun f ->
           match Repository.read_team copts.repo f with
           | Error e -> if copts.debug then Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
@@ -96,7 +107,7 @@ let find_teams copts =
 
 let find_ids copts =
   let ids =
-    Utils.filter_map
+    filter_map
       ~f:(fun f ->
           match Repository.read_id copts.repo f with
           | Error e -> Format.fprintf copts.out "%sid %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
@@ -122,7 +133,7 @@ let find_ids copts =
 
 let find_authorisations copts =
   let auths =
-    Utils.filter_map
+    filter_map
       ~f:(fun f ->
           match Repository.read_authorisation copts.repo f with
           | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
@@ -140,13 +151,13 @@ let find_releases copts =
   (* won't capture those dirs with releases but no authorisation!!! *)
   let auths =
     let auths = find_authorisations { copts with signed_by = None } in
-    Utils.option
+    option
       auths
       (fun o -> List.filter (fun a -> a.Authorisation.name = o) auths)
       copts.name
   in
   let releases =
-    Utils.filter_map
+    filter_map
       ~f:(fun a ->
           match Repository.read_releases copts.repo a.Authorisation.name with
           | Error e -> Format.fprintf copts.out "%sreleases %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
@@ -163,7 +174,7 @@ let find_releases copts =
 let find_checksums copts =
   let rel_auths =
     let rel_auths = find_releases { copts with signed_by = None } in
-    Utils.option
+    option
       rel_auths
       (fun o -> List.filter (fun (a, _) -> a.Authorisation.name = o) rel_auths)
       copts.name
@@ -174,14 +185,14 @@ let find_checksums copts =
        let items = Layout.items (Repository.provider copts.repo) a.Authorisation.name in
        let all = List.sort String.compare items in
        let all_cs =
-         Utils.filter_map
+         filter_map
            ~f:(fun f ->
                match Repository.read_checksum copts.repo f with
                | Error e -> Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
                | Ok x -> Some x)
            all
        in
-       Utils.option
+       option
          all_cs
          (fun s ->
             let is c = valid copts s (Conex_data_persistency.checksums_to_t c) in

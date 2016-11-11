@@ -1,5 +1,6 @@
 open Conex_result
 open Conex_core
+open Conex_utils
 
 let sign_index idx priv =
   let data = Data.encode (Conex_data_persistency.index_to_t idx)
@@ -19,9 +20,9 @@ let private_filename repo id =
 
 let all_private_keys repo =
   let is_private s =
-    if Strhelper.is_suffix ~suffix:private_suffix s then
+    if String.is_suffix ~suffix:private_suffix s then
       let p = string_to_path (Repository.provider repo).Provider.name in
-      match List.rev (Strhelper.cuts '.' s) with
+      match List.rev (String.cuts '.' s) with
       | _::id::path when p = List.rev path -> Some id
       | _ -> None
     else
@@ -29,7 +30,7 @@ let all_private_keys repo =
   in
   if Persistency.exists private_dir then
     List.fold_left
-      (fun acc s -> Utils.option acc (fun s -> s :: acc) (is_private s))
+      (fun acc s -> option acc (fun s -> s :: acc) (is_private s))
       []
       (Persistency.collect_dir private_dir)
   else
