@@ -112,9 +112,9 @@ let ji =
       a.version = b.version &&
       a.identifier = b.identifier &&
       List.length a.resources = List.length b.resources &&
-      List.for_all (fun (n, k, d) ->
-          List.exists (fun (n', k', d') -> n = n' && k = k' && d = d')
-            b.resources)
+      List.for_all (fun r -> List.exists (fun r' ->
+          r.name = r'.name && r.size = r'.size && r.digest = r'.digest && r.digest = r'.digest)
+          b.resources)
         a.resources
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)

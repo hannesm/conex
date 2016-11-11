@@ -3,7 +3,7 @@ open Conex_core
 open Conex_resource
 
 module SM = Map.Make(String)
-type valid_resources = (name * resource * S.t) SM.t
+type valid_resources = (name * int64 * resource * S.t) SM.t
 
 type teams = S.t SM.t
 
@@ -113,19 +113,19 @@ let expand_owner r os =
 
 let verify_resource repo owners name resource data =
   let csum = Conex_nocrypto.digest data in
-  let n, r, s =
+  let n, _s, r, ids =
     if SM.mem csum repo.valid then
       SM.find csum repo.valid
     else
-      (name, resource, S.empty)
+      (name, Int64.of_int (String.length data), resource, S.empty)
   in
-  let js = S.filter (fun j -> S.mem j (janitors repo)) s in
+  let js = S.filter (fun j -> S.mem j (janitors repo)) ids in
   let owners = expand_owner repo owners in
-  let id a = S.choose (S.filter (fun a -> S.mem a s) a) in
+  let id a = S.choose (S.filter (fun a -> S.mem a ids) a) in
   match
     name_equal n name,
     resource_equal r resource,
-    S.exists (fun a -> S.mem a s) owners,
+    S.exists (fun a -> S.mem a ids) owners,
     S.cardinal js >= repo.quorum
   with
   | false, _    , _    , _     -> Error (`InvalidName (name, n))
@@ -333,14 +333,17 @@ let write_checksum repo csum =
 
 (* TODO: invalid_args are bad below!!! *)
 let add_csums repo id rs =
-  let add_csum t (name, resource, hash) =
+  let open Index in
+  let add_csum t res =
     try
-      let n, r, ids = SM.find hash t in
+      let n, s, r, ids = SM.find res.digest t in
       (* TODO: remove asserts here, deal with errors! *)
-      assert (name_equal n name) ; assert (resource_equal r resource) ;
-      SM.add hash (n, r, S.add id ids) t
+      assert (name_equal n res.name) ;
+      assert (resource_equal r res.resource) ;
+      assert (s = res.size) ;
+      SM.add res.digest (n, s, r, S.add id ids) t
     with Not_found ->
-      SM.add hash (name, resource, S.singleton id) t
+      SM.add res.digest (res.name, res.size, res.resource, S.singleton id) t
   in
   let valid = List.fold_left add_csum repo.valid rs in
   { repo with valid }

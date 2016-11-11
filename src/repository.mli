@@ -13,7 +13,7 @@ val teams : t -> S.t SM.t
 
 val team : t -> string -> S.t
 
-val valid : t -> digest -> (name * resource * S.t) option
+val valid : t -> digest -> (name * int64 * resource * S.t) option
 
 val change_provider : t -> Provider.t -> t
 

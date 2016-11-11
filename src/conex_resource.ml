@@ -207,16 +207,36 @@ module Checksum = struct
 end
 
 module Index = struct
+  type r = {
+    index : int64 ;
+    name : string ;
+    size : int64 ;
+    resource : resource ;
+    digest : digest ;
+  }
+
+  let r index name size resource digest =
+    { index ; name ; size ; resource ; digest }
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_resource ppf { index ; name ; size ; resource ; digest } =
+    Format.fprintf ppf "idx: %Ld@ name: %a@ size: %Ld@ resource: %a@ digest: %a@."
+      index pp_name name size pp_resource resource pp_digest digest
+  (*BISECT-IGNORE-END*)
+
   type t = {
     counter : int64 ;
     version : int64 ;
     identifier : identifier ;
-    resources : (name * resource * digest) list ; (* should be a Set? should include file size for better error reporting? *)
+    resources : r list ;
     signatures : Signature.t list ;
   }
 
   let index ?(counter = 0L) ?(version = 0L) ?(resources = []) ?(signatures = []) identifier =
     { counter ; version ; identifier ; resources ; signatures }
+
+  let next_id idx =
+    Int64.succ (List.fold_left max 0L (List.map (fun r -> r.index) idx.resources))
 
   let add_resource t r =
     { t with resources = r :: t.resources ; counter = Int64.succ t.counter }
@@ -225,10 +245,6 @@ module Index = struct
     { t with resources = rs @ t.resources ; counter = Int64.succ t.counter }
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_resource ppf (n, r, digest) =
-    Format.fprintf ppf "name: %a@ resource: %a@ digest: %a@."
-      pp_name n pp_resource r pp_digest digest
-
   let pp_index ppf i =
     Format.fprintf ppf "identifier: %a@ counter: %Lu@ resources:@ %a@ %a@."
       pp_id i.identifier

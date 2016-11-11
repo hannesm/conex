@@ -180,7 +180,8 @@ let idx_sign () =
     (Repository.verify k
        (Data.encode (Conex_data_persistency.index_to_t signed))
        (sid, ts, sigval)) ;
-  let idx' = Index.add_resource signed ("foo", `PublicKey, "2342") in
+  let r = Index.r (Index.next_id idx) "foo" 4L `PublicKey "2342" in
+  let idx' = Index.add_resource signed r in
   check_ver "signed modified index does not verify"
     (Error (`InvalidSignature "a"))
     (Repository.verify k

@@ -60,7 +60,7 @@ let load_tas copts =
 let valid copts s t =
   match Repository.valid copts.repo (Conex_nocrypto.digest (Data.encode t)) with
   | None -> false
-  | Some (_, _, sigs) -> S.mem s sigs
+  | Some (_, _, _, sigs) -> S.mem s sigs
 
 let find_keys copts =
   let keys =
@@ -589,8 +589,13 @@ let sign copts item name =
       | Ok idx -> idx
     in
     let add_r (name, k, data) =
-      let digest = Conex_nocrypto.digest (Data.encode data) in
-      Private.sign_index (Index.add_resource idx (name, k, digest)) p
+      let digest, size =
+        let data = Data.encode data in
+        (Conex_nocrypto.digest data, Int64.of_int (String.length data))
+      in
+      let index = Index.next_id idx in
+      let r = Index.r index name size k digest in
+      Private.sign_index (Index.add_resource idx r) p
     in
     match item with
     | `Key -> (match Repository.read_key copts.repo name with

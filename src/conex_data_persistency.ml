@@ -153,18 +153,22 @@ let signature_to_t (id, ts, s) =
 
 
 let t_to_resource data =
+  extract_int data "index" >>= fun index ->
   extract_string data "name" >>= fun name ->
-  extract_string data "kind" >>= fun r ->
+  extract_int data "size" >>= fun size ->
+  extract_string data "resource" >>= fun r ->
   (match string_to_resource r with
    | Some r -> Ok r
-   | None -> Error "unknown resource") >>= fun r ->
+   | None -> Error "unknown resource") >>= fun resource ->
   extract_string data "digest" >>= fun digest ->
-  Ok (name, r, digest)
+  Ok (Index.r index name size resource digest)
 
-let resource_to_t (name, resource, digest) =
+let resource_to_t { Index.index ; name ; size ; resource ; digest } =
   List [
+    Entry ("index", Leaf (Int index)) ;
     Entry ("name", Leaf (String name)) ;
-    Entry ("kind", Leaf (String (resource_to_string resource))) ;
+    Entry ("size", Leaf (Int size)) ;
+    Entry ("resource", Leaf (String (resource_to_string resource))) ;
     Entry ("digest", Leaf (String digest))
   ]
 

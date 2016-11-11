@@ -106,21 +106,33 @@ module Checksum : sig
 end
 
 module Index : sig
+  type r = private {
+    index : int64 ;
+    name : string ;
+    size : int64 ;
+    resource : resource ;
+    digest : digest ;
+  }
+
+  val r : int64 -> string -> int64 -> resource -> digest -> r
+
+  val pp_resource : Format.formatter -> r -> unit
+
   type t = private {
     counter : int64 ;
     version : int64 ;
     identifier : identifier ;
-    resources : (name * resource * digest) list ;
+    resources : r list ;
     signatures : Signature.t list ;
   }
 
-  val index : ?counter:int64 -> ?version:int64 -> ?resources:((name * resource * digest) list) -> ?signatures:(Signature.t list) -> identifier -> t
+  val index : ?counter:int64 -> ?version:int64 -> ?resources:(r list) -> ?signatures:(Signature.t list) -> identifier -> t
 
-  val add_resource : t -> name * resource * digest -> t
+  val next_id : t -> int64
 
-  val add_resources : t -> (name * resource * digest) list -> t
+  val add_resource : t -> r -> t
 
-  val pp_resource : Format.formatter -> (name * resource * digest) -> unit
+  val add_resources : t -> r list -> t
 
   val pp_index : Format.formatter -> t -> unit
 
