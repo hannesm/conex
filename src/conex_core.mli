@@ -1,5 +1,25 @@
 open Conex_result
 
+module Uint : sig
+  type t
+
+  val zero : t
+
+  val sub : t -> t -> t
+
+  val compare : t -> t -> int
+
+  val succ : t -> t
+
+  val to_string : t -> string
+
+  val of_string : string -> t
+
+  val of_float : float -> t
+
+  val of_int : int -> t
+end
+
 module S : (Set.S with type elt = string)
 
 val s_of_list : string list -> S.t

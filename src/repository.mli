@@ -11,7 +11,7 @@ val teams : t -> S.t M.t
 
 val team : t -> string -> S.t
 
-val valid : t -> digest -> (name * int64 * resource * S.t) option
+val valid : t -> digest -> (name * Uint.t * resource * S.t) option
 
 val change_provider : t -> Provider.t -> t
 

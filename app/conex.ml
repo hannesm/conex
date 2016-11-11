@@ -514,7 +514,7 @@ let generate copts item name ids =
        in
        writeout
          (Publickey.publickey
-            ~counter:(Int64.succ p.Publickey.counter)
+            ~counter:(Uint.succ p.Publickey.counter)
             name pub_opt)
      | Error _ ->
        (* XXX need: if name = "" then missing argument! *)
@@ -531,7 +531,7 @@ let generate copts item name ids =
   | `Team ->
     let counter = match Repository.read_team copts.repo name with
       | Error _ -> None
-      | Ok t' -> Some (Int64.succ t'.Team.counter)
+      | Ok t' -> Some (Uint.succ t'.Team.counter)
     in
     let t = Team.team ~members:(S.of_list ids) ?counter name in
     if copts.dry then
@@ -543,7 +543,7 @@ let generate copts item name ids =
   | `Authorisation ->
     let counter = match Repository.read_authorisation copts.repo name with
       | Error _ -> None
-      | Ok a' -> Some (Int64.succ a'.Authorisation.counter)
+      | Ok a' -> Some (Uint.succ a'.Authorisation.counter)
     in
     let a = Authorisation.authorisation ~authorised:(S.of_list ids) ?counter name in
     if copts.dry then
@@ -555,7 +555,7 @@ let generate copts item name ids =
   | `Releases ->
     let counter = match Repository.read_releases copts.repo name with
       | Error _ -> None
-      | Ok r' -> Some (Int64.succ r'.Releases.counter)
+      | Ok r' -> Some (Uint.succ r'.Releases.counter)
     in
     (match Releases.releases ~releases:(S.of_list ids) ?counter name with
      | Ok r ->
@@ -577,7 +577,7 @@ let generate copts item name ids =
      | Ok cs ->
        let cs = match Repository.read_checksum copts.repo name with
          | Error _ -> cs
-         | Ok o -> Checksum.set_counter cs (Int64.succ o.Checksum.counter)
+         | Ok o -> Checksum.set_counter cs (Uint.succ o.Checksum.counter)
        in
        if copts.dry then
          Format.fprintf copts.out "dry run, nothing written.@."
@@ -602,7 +602,7 @@ let sign copts item name =
     let add_r (name, k, data) =
       let digest, size =
         let data = Data.encode data in
-        (Conex_nocrypto.digest data, Int64.of_int (String.length data))
+        (Conex_nocrypto.digest data, Uint.of_int (String.length data))
       in
       let index = Index.next_id idx in
       let r = Index.r index name size k digest in

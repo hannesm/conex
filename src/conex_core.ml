@@ -1,6 +1,36 @@
 open Conex_result
 open Conex_utils
 
+module Uint = struct
+  type t = int64
+
+  let zero = 0L
+
+  (* XXX *)
+  let sub a _b = a
+
+  (* XXX *)
+  let compare _a _b = 1
+
+  let succ = Int64.succ
+
+  let to_string s = Printf.sprintf "%Lx" s
+
+  let of_string s = Scanf.sscanf s "%Lx" (fun x -> x)
+
+  let of_float f =
+    if f < 0. then
+      invalid_arg "reading floating point smaller 0 not supported"
+    else
+      Int64.of_float f
+
+  let of_int i =
+    if i < 0 then
+      invalid_arg "of_int with < 0 not supported"
+    else
+      Int64.of_int i
+end
+
 module S = Set.Make(String)
 
 let s_of_list es = List.fold_left (fun s v -> S.add v s) S.empty es

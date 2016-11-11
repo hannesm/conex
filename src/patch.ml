@@ -156,7 +156,7 @@ let verify repo = function
         Repository.verify_index repo idx' >>= fun _ ->
         Ok (Repository.add_index repo' idx')
       | Error _, Ok idx' ->
-        guard (idx'.Index.counter = 0L) `CounterNotZero >>= fun () ->
+        guard (idx'.Index.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Layout.valid_keyid id) `IllegalId >>= fun () ->
         guard (Layout.unique_keyid (Repository.all_ids repo) id) `IllegalId >>= fun () ->
         Repository.verify_index repo idx' >>= fun _ ->
@@ -175,7 +175,7 @@ let verify repo = function
         Repository.verify_key repo k' >>= fun _ ->
         Ok (Repository.add_trusted_key repo' k')
       | Error _, Ok (`Key k') ->
-        guard (k'.Publickey.counter = 0L) `CounterNotZero >>= fun () ->
+        guard (k'.Publickey.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Layout.valid_keyid id) `IllegalId >>= fun () ->
         guard (Layout.unique_keyid (Repository.all_ids repo) id) `IllegalId >>= fun () ->
         Repository.verify_key repo k' >>= fun _ ->
@@ -185,7 +185,7 @@ let verify repo = function
         Repository.verify_team repo t' >>= fun _ ->
         Ok (Repository.add_team repo' t')
       | Error _, Ok (`Team t') ->
-        guard (t'.Team.counter = 0L) `CounterNotZero >>= fun () ->
+        guard (t'.Team.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Layout.valid_keyid id) `IllegalId >>= fun () ->
         guard (Layout.unique_keyid (Repository.all_ids repo) id) `IllegalId >>= fun () ->
         Repository.verify_team repo t' >>= fun _ ->
@@ -206,7 +206,7 @@ let verify repo = function
         Repository.verify_authorisation repo a' >>= fun _ ->
         Ok repo'
       | Error _, Ok a' ->
-        guard (a'.Authorisation.counter = 0L) `CounterNotZero >>= fun () ->
+        guard (a'.Authorisation.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Layout.valid_name name) `IllegalName >>= fun () ->
         guard (Layout.unique_data (Repository.all_authorisations repo) name) `IllegalName >>= fun () ->
         Repository.verify_authorisation repo a' >>= fun _ ->
@@ -225,7 +225,7 @@ let verify repo = function
         Repository.verify_checksum repo' a r cs' >>= fun _ ->
         Ok repo'
       | Error _, Ok cs' ->
-        guard (cs'.Checksum.counter = 0L) `CounterNotZero >>= fun () ->
+        guard (cs'.Checksum.counter = Uint.zero) `CounterNotZero >>= fun () ->
         Repository.verify_checksum repo' a r cs' >>= fun _ ->
         Ok repo'
       | Ok _, Error _ -> Ok repo' (* deletion *)
@@ -241,7 +241,7 @@ let verify repo = function
         Repository.verify_releases repo' a r' >>= fun _ ->
         cs_ok a r'
       | Ok a, Error _, Ok r' ->
-        guard (r'.Releases.counter = 0L) `CounterNotZero >>= fun () ->
+        guard (r'.Releases.counter = Uint.zero) `CounterNotZero >>= fun () ->
         Repository.verify_releases repo' a r' >>= fun _ ->
         cs_ok a r'
       | Error _, _, _ -> Error (`MissingAuthorisation p)

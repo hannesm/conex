@@ -30,7 +30,7 @@ let base_v_err =
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub pid in
-  let d = Signature.extend_data "bla" pid 0L in
+  let d = Signature.extend_data "bla" pid Uint.zero in
   let sigval = raw_sign p d in
   let public = match pub.Publickey.key with None -> Alcotest.fail "expected some key" | Some x -> x in
   Alcotest.check (result Alcotest.unit base_v_err)
@@ -180,7 +180,7 @@ let idx_sign () =
     (Repository.verify k
        (Data.encode (Conex_data_persistency.index_to_t signed))
        (sid, ts, sigval)) ;
-  let r = Index.r (Index.next_id idx) "foo" 4L `PublicKey "2342" in
+  let r = Index.r (Index.next_id idx) "foo" (Uint.of_int 4) `PublicKey "2342" in
   let idx' = Index.add_resource signed r in
   check_ver "signed modified index does not verify"
     (Error (`InvalidSignature "a"))
@@ -226,7 +226,7 @@ let idx_sign_bad2 () =
     | [x] -> x
     | _ -> assert false
   in
-  let idx' = Index.index ~counter:23L "b" in
+  let idx' = Index.index ~counter:(Uint.of_int 23) "b" in
   let raw = Data.encode (Conex_data_persistency.index_to_t idx') in
   check_ver "signed index does not verify (wrong data)"
     (Error (`InvalidSignature "a"))

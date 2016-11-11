@@ -3,7 +3,7 @@ open Conex_core
 open Conex_resource
 open Conex_utils
 
-type valid_resources = (name * int64 * resource * S.t) M.t
+type valid_resources = (name * Uint.t * resource * S.t) M.t
 
 type teams = S.t M.t
 
@@ -117,7 +117,7 @@ let verify_resource repo owners name resource data =
     if M.mem csum repo.valid then
       M.find csum repo.valid
     else
-      (name, Int64.of_int (String.length data), resource, S.empty)
+      (name, Uint.of_int (String.length data), resource, S.empty)
   in
   let js = S.filter (fun j -> S.mem j (janitors repo)) ids in
   let owners = expand_owner repo owners in

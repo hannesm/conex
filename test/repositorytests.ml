@@ -242,10 +242,10 @@ let checks_r () =
   p.write ["packages"; "foo"; "foo.0"; "files"; "patch2"] "p2" ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
-    { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
-    { Checksum.filename = "foo" ; bytesize = 3L ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
-    { Checksum.filename = "files/patch1" ; bytesize = 2L ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
-    { Checksum.filename = "files/patch2" ; bytesize = 2L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
+    { Checksum.filename = "bar" ; bytesize = Uint.of_int 3 ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
+    { Checksum.filename = "foo" ; bytesize = Uint.of_int 3 ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
+    { Checksum.filename = "files/patch1" ; bytesize = Uint.of_int 2 ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
+    { Checksum.filename = "files/patch2" ; bytesize = Uint.of_int 2 ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
   ]
   in
   let css = Checksum.checksums "foo.0" csums in
@@ -436,7 +436,7 @@ let k_err =
 
 let res d =
   let data = Data.encode d in
-  (Int64.of_int (String.length data), Conex_nocrypto.digest data)
+  (Uint.of_int (String.length data), Conex_nocrypto.digest data)
 
 let empty_key () =
   let p = Mem.mem_provider () in
@@ -447,7 +447,7 @@ let empty_key () =
   let pub = Publickey.publickey id None in
   let resources =
     let s, d = res (publickey_to_t pub) in
-    [ Index.r 0L id s `PublicKey d ] in
+    [ Index.r Uint.zero id s `PublicKey d ] in
   let jidx =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
@@ -471,7 +471,7 @@ let key_good () =
   let pub, priv = gen_pub id in
   let resources =
     let s, d = res (publickey_to_t pub) in
-    [ Index.r 0L id s `PublicKey d ] in
+    [ Index.r Uint.zero id s `PublicKey d ] in
   let jidx =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
@@ -505,7 +505,7 @@ let key_good_quorum () =
   let pub, priv = gen_pub id in
   let resources =
     let s, d = res (publickey_to_t pub) in
-    [ Index.r 0L id s `PublicKey d ] in
+    [ Index.r Uint.zero id s `PublicKey d ] in
   let idx =
     let idx = Index.index ~resources id in
     sign_idx idx priv
@@ -551,7 +551,7 @@ let no_janitor () =
     let s, d = res (publickey_to_t pub)
     and s', d' = res (publickey_to_t pem)
     in
-    [ Index.r 0L id s `PublicKey d ; Index.r 1L id' s' `PublicKey d' ]
+    [ Index.r Uint.zero id s `PublicKey d ; Index.r (Uint.of_int 1) id' s' `PublicKey d' ]
   in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -580,7 +580,7 @@ let k_wrong_resource () =
   let pub, priv = gen_pub id in
   let resources =
     let s, d = res (publickey_to_t pub) in
-    [ Index.r 0L id s `Checksums d ]
+    [ Index.r Uint.zero id s `Checksums d ]
   in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -606,7 +606,7 @@ let k_wrong_name () =
   let pub, priv = gen_pub id in
   let resources =
     let s, d = res (publickey_to_t pub) in
-    [ Index.r 0L jid s `PublicKey d ]
+    [ Index.r Uint.zero jid s `PublicKey d ]
   in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -667,7 +667,7 @@ let team () =
     (Repository.verify_team r team) ;
   let resources =
     let s, d = res (team_to_t team) in
-    [ Index.r 0L pname s `Team d ]
+    [ Index.r Uint.zero pname s `Team d ]
   in
   let j_sign r jid =
     let jpub, jpriv = gen_pub jid in
@@ -707,7 +707,7 @@ let team_self_signed () =
     let s, d = res (team_to_t team)
     and s', d' = res (publickey_to_t pub)
     in
-    [ Index.r 0L pname s `Team d ; Index.r 1L id s' `PublicKey d' ]
+    [ Index.r Uint.zero pname s `Team d ; Index.r (Uint.of_int 1) id s' `PublicKey d' ]
   in
   let s_idx id priv =
     sign_idx (Index.index ~resources id) priv
@@ -734,7 +734,7 @@ let team_wrong_resource () =
   let team = Team.team pname in
   let resources =
     let s, d = res (team_to_t team) in
-    [ Index.r 0L pname s `Checksums d ]
+    [ Index.r Uint.zero pname s `Checksums d ]
   in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
@@ -757,7 +757,7 @@ let team_wrong_name () =
   let jpub, jpriv = gen_pub jid in
   let resources =
     let s, d = res (team_to_t team) in
-    [ Index.r 0L "barf" s `Team d ]
+    [ Index.r Uint.zero "barf" s `Team d ]
   in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -788,7 +788,7 @@ let team_dyn () =
   in
   let resources =
     let s, d = res (team_to_t team) in
-    [ Index.r 0L pname s `Team d ]
+    [ Index.r Uint.zero pname s `Team d ]
   in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "team properly signed"
@@ -800,7 +800,7 @@ let team_dyn () =
     (Repository.verify_team r team) ;
   let resources =
     let s, d = res (team_to_t team) in
-    [ Index.r 0L pname s `Team d ]
+    [ Index.r Uint.zero pname s `Team d ]
   in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "team properly signed"
@@ -838,7 +838,7 @@ let auth () =
     (Repository.verify_authorisation r auth) ;
   let resources =
     let s, d = res (authorisation_to_t auth) in
-    [ Index.r 0L pname s `Authorisation d ]
+    [ Index.r Uint.zero pname s `Authorisation d ]
   in
   let j_sign r jid =
     let jpub, jpriv = gen_pub jid in
@@ -878,7 +878,7 @@ let auth_self_signed () =
     let s, d = res (authorisation_to_t auth)
     and s', d' = res (publickey_to_t pub)
     in
-    [ Index.r 0L pname s `Authorisation d ; Index.r 1L id s' `PublicKey d' ]
+    [ Index.r Uint.zero pname s `Authorisation d ; Index.r (Uint.of_int 1) id s' `PublicKey d' ]
   in
   let s_idx id priv =
     sign_idx (Index.index ~resources id) priv
@@ -905,7 +905,7 @@ let a_wrong_resource () =
   let auth = Authorisation.authorisation pname in
   let resources =
     let s, d = res (authorisation_to_t auth) in
-    [ Index.r 0L pname s `Checksums d ]
+    [ Index.r Uint.zero pname s `Checksums d ]
   in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
@@ -928,7 +928,7 @@ let a_wrong_name () =
   let jpub, jpriv = gen_pub jid in
   let resources =
     let s, d = res (authorisation_to_t auth) in
-    [ Index.r 0L "barf" s `Authorisation d ]
+    [ Index.r Uint.zero "barf" s `Authorisation d ]
   in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -959,7 +959,7 @@ let auth_dyn () =
   in
   let resources =
     let s, d = res (authorisation_to_t auth) in
-    [ Index.r 0L pname s `Authorisation d ]
+    [ Index.r Uint.zero pname s `Authorisation d ]
   in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "authorisation properly signed"
@@ -971,7 +971,7 @@ let auth_dyn () =
     (Repository.verify_authorisation r auth) ;
   let resources =
     let s, d = res (authorisation_to_t auth) in
-    [ Index.r 0L pname s `Authorisation d ]
+    [ Index.r Uint.zero pname s `Authorisation d ]
   in
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "authorisation properly signed"
@@ -1045,7 +1045,7 @@ let rel () =
   let sidx =
     let resources =
       let s, d = res (releases_to_t rel) in
-      [ Index.r 0L pname s `Releases d ]
+      [ Index.r Uint.zero pname s `Releases d ]
     in
     sign_idx (Index.index ~resources id) priv
   in
@@ -1066,7 +1066,7 @@ let rel_quorum () =
   let jpub, jpriv = gen_pub jid in
   let resources =
     let s, d = res (releases_to_t rel) in
-    [ Index.r 0L pname s `Releases d ]
+    [ Index.r Uint.zero pname s `Releases d ]
   in
   let sidx =
     sign_idx (Index.index ~resources jid) jpriv
@@ -1098,7 +1098,7 @@ let rel_not_authorised () =
   let sidx =
     let resources =
       let s, d = res (releases_to_t rel) in
-      [ Index.r 0L pname s `Releases d ]
+      [ Index.r Uint.zero pname s `Releases d ]
     in
     sign_idx (Index.index ~resources id) priv
   in
@@ -1131,7 +1131,7 @@ let rel_missing_releases () =
   let sidx =
     let resources =
       let s, d = res (releases_to_t rel) in
-      [ Index.r 0L pname s `Releases d ]
+      [ Index.r Uint.zero pname s `Releases d ]
     in
     sign_idx (Index.index ~resources id) priv
   in
@@ -1167,7 +1167,7 @@ let rel_name_mismatch () =
   let sidx =
     let resources =
       let s, d = res (releases_to_t rel) in
-      [ Index.r 0L pname s `Releases d ]
+      [ Index.r Uint.zero pname s `Releases d ]
     in
     sign_idx (Index.index ~resources id) priv
   in
@@ -1188,7 +1188,7 @@ let rel_wrong_name () =
   let sidx =
     let resources =
       let s, d = res (releases_to_t rel) in
-      [ Index.r 0L "foo" s `Releases d ]
+      [ Index.r Uint.zero "foo" s `Releases d ]
     in
     sign_idx (Index.index ~resources id) priv
   in
@@ -1209,7 +1209,7 @@ let rel_wrong_resource () =
   let sidx =
     let resources =
       let s, d = res (releases_to_t rel) in
-      [ Index.r 0L pname s `Authorisation d ]
+      [ Index.r Uint.zero pname s `Authorisation d ]
     in
     sign_idx (Index.index ~resources id) priv
   in
@@ -1269,7 +1269,7 @@ let cs_base () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
   in
   let _pub, priv = gen_pub id in
   let sidx = sign_idx (Index.index ~resources id) priv in
@@ -1302,7 +1302,7 @@ let cs_quorum () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1327,18 +1327,18 @@ let cs_bad () =
   p.write ["packages"; pname; v; "files"; "patch2"] "p2" ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
-    { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
-    { Checksum.filename = "foo" ; bytesize = 3L ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
-    { Checksum.filename = "files/patch1" ; bytesize = 2L ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
-    { Checksum.filename = "files/patch2" ; bytesize = 2L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
+    { Checksum.filename = "bar" ; bytesize = Uint.of_int 3 ; checksum = "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=" } ;
+    { Checksum.filename = "foo" ; bytesize = Uint.of_int 3 ; checksum = "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" } ;
+    { Checksum.filename = "files/patch1" ; bytesize = Uint.of_int 2 ; checksum = "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=" } ;
+    { Checksum.filename = "files/patch2" ; bytesize = Uint.of_int 2 ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" }
   ]
   in
   let css = Checksum.checksums v csums in
   Alcotest.check (result cs ch_err) "checksum computation works"
     (Ok css) (Repository.compute_checksum r "foo.0") ;
   let css' = Checksum.checksums v (List.tl csums) in
-  let css'' = Checksum.checksums v ({ Checksum.filename = "foobar" ; bytesize = 3L ; checksum = "" } :: csums) in
-  let other = { Checksum.filename = "bar" ; bytesize = 3L ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" } in
+  let css'' = Checksum.checksums v ({ Checksum.filename = "foobar" ; bytesize = Uint.of_int 3 ; checksum = "" } :: csums) in
+  let other = { Checksum.filename = "bar" ; bytesize = Uint.of_int 3 ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" } in
   let css''' = Checksum.checksums v (other :: List.tl csums) in
   let id = "id" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
@@ -1350,11 +1350,11 @@ let cs_bad () =
     and s3, d3 = res (checksums_to_t css'')
     and s4, d4 = res (checksums_to_t css''')
     in
-    [ Index.r 0L pname s `Releases d ;
-      Index.r 1L v s1 `Checksums d1 ;
-      Index.r 2L v s2 `Checksums d2 ;
-      Index.r 3L v s3 `Checksums d3 ;
-      Index.r 4L v s4 `Checksums d4 ]
+    [ Index.r Uint.zero pname s `Releases d ;
+      Index.r (Uint.of_int 1) v s1 `Checksums d1 ;
+      Index.r (Uint.of_int 2) v s2 `Checksums d2 ;
+      Index.r (Uint.of_int 3) v s3 `Checksums d3 ;
+      Index.r (Uint.of_int 4) v s4 `Checksums d4 ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1390,7 +1390,7 @@ let cs_bad_name () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L reln s `Releases d ; Index.r 1L v s' `Checksums d' ]
+    [ Index.r Uint.zero reln s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1417,7 +1417,7 @@ let cs_bad_name2 () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1443,7 +1443,7 @@ let cs_wrong_name () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L pname s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) pname s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1469,7 +1469,7 @@ let cs_wrong_resource () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Releases d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Releases d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in

@@ -3,26 +3,26 @@ open Conex_core
 open Conex_utils
 
 module Signature = struct
-  type t = identifier * int64 * string
+  type t = identifier * Uint.t * string
 
   let extend_data data id ts =
-    String.concat " " [ data ; id ; Int64.to_string ts ]
+    String.concat " " [ data ; id ; Uint.to_string ts ]
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_signature ppf (id, ts, s) =
-    Format.fprintf ppf "%a created at %Lu@ sig:@ %s" pp_id id ts s
+    Format.fprintf ppf "%a created at %s@ sig:@ %s" pp_id id (Uint.to_string ts) s
   (*BISECT-IGNORE-END*)
 end
 
 module Publickey = struct
   type t = {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     keyid : identifier ;
     key : pub option ;
   }
 
-  let publickey ?(counter = 0L) ?(version = 0L) keyid key =
+  let publickey ?(counter = Uint.zero) ?(version = Uint.zero) keyid key =
     { counter ; version ; keyid ; key }
 
   (*BISECT-IGNORE-BEGIN*)
@@ -31,33 +31,33 @@ module Publickey = struct
       Format.pp_print_string ppf
         (match k with None -> "none" | Some (`Pub x) -> x)
     in
-    Format.fprintf ppf "keyid: %a@ counter: %Lu@ key: %a@."
+    Format.fprintf ppf "keyid: %a@ counter: %s@ key: %a@."
       pp_id p.keyid
-      p.counter
+      (Uint.to_string p.counter)
       pp_opt_key p.key
   (*BISECT-IGNORE-END*)
 end
 
 module Team = struct
   type t = {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : identifier ;
     members : S.t
   }
 
-  let team ?(counter = 0L) ?(version = 0L) ?(members = S.empty) name =
+  let team ?(counter = Uint.zero) ?(version = Uint.zero) ?(members = S.empty) name =
     { counter ; version ; members ; name }
 
   let add t id =
     if S.mem id t.members then
       t
     else
-      { t with counter = Int64.succ t.counter ; members = S.add id t.members }
+      { t with counter = Uint.succ t.counter ; members = S.add id t.members }
 
   let remove t id =
     if S.mem id t.members then
-      { t with counter = Int64.succ t.counter ; members = S.remove id t.members }
+      { t with counter = Uint.succ t.counter ; members = S.remove id t.members }
     else
       t
 
@@ -65,33 +65,33 @@ module Team = struct
   let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
 
   let pp_team ppf x =
-    Format.fprintf ppf "team name: %a@ counter: %Lu@ members:@ %a@."
-      pp_id x.name x.counter pp_mems x.members
+    Format.fprintf ppf "team name: %a@ counter: %s@ members:@ %a@."
+      pp_id x.name (Uint.to_string x.counter) pp_mems x.members
    (*BISECT-IGNORE-END*)
 end
 
 module Authorisation = struct
   type t = {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : name ;
     authorised : S.t ;
   }
 
   let authorisation
-      ?(counter = 0L) ?(version = 0L) ?(authorised = S.empty) name =
+      ?(counter = Uint.zero) ?(version = Uint.zero) ?(authorised = S.empty) name =
     { counter ; version ; name ; authorised }
 
   let add t id =
     if S.mem id t.authorised then
       t
     else
-      { t with counter = Int64.succ t.counter ;
+      { t with counter = Uint.succ t.counter ;
                authorised = S.add id t.authorised }
 
   let remove t id =
     if S.mem id t.authorised then
-      { t with counter = Int64.succ t.counter ;
+      { t with counter = Uint.succ t.counter ;
                authorised = S.remove id t.authorised }
     else
       t
@@ -100,20 +100,20 @@ module Authorisation = struct
   let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
 
   let pp_authorisation ppf d =
-    Format.fprintf ppf "authorisation name: %a@ counter: %Lu@ authorised:@ %a@."
-      pp_name d.name d.counter pp_authorised d.authorised
+    Format.fprintf ppf "authorisation name: %a@ counter: %s@ authorised:@ %a@."
+      pp_name d.name (Uint.to_string d.counter) pp_authorised d.authorised
   (*BISECT-IGNORE-END*)
 end
 
 module Releases = struct
   type t = {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : name ;
     releases : S.t ;
   }
 
-  let releases ?(counter = 0L) ?(version = 0L) ?(releases = S.empty) name =
+  let releases ?(counter = Uint.zero) ?(version = Uint.zero) ?(releases = S.empty) name =
     let is_release a = match Layout.authorisation_of_item a with
       | Some x -> name_equal name x
       | _ -> false
@@ -125,8 +125,8 @@ module Releases = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_releases ppf r =
-    Format.fprintf ppf "name: %a@ counter %Lu@ releases %a@."
-      pp_name r.name r.counter
+    Format.fprintf ppf "name: %a@ counter %s@ releases %a@."
+      pp_name r.name (Uint.to_string r.counter)
       (pp_list pp_name) (S.elements r.releases)
   (*BISECT-IGNORE-END*)
 end
@@ -134,21 +134,21 @@ end
 module Checksum = struct
   type c = {
     filename : name ;
-    bytesize : int64 ;
+    bytesize : Uint.t ;
     checksum : digest ;
   }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum ppf c =
-    Format.fprintf ppf "%a [%Lu bytes]: %a@ "
-      pp_name c.filename c.bytesize pp_digest c.checksum
+    Format.fprintf ppf "%a [%s bytes]: %a@ "
+      pp_name c.filename (Uint.to_string c.bytesize) pp_digest c.checksum
   (*BISECT-IGNORE-END*)
 
   let checksum_equal a b =
     name_equal a.filename b.filename && a.bytesize = b.bytesize && a.checksum = b.checksum
 
   let checksum filename data =
-    let bytesize = Int64.of_int (String.length data)
+    let bytesize = Uint.of_int (String.length data)
     and checksum = Conex_nocrypto.digest data
     in
     { filename ; bytesize ; checksum }
@@ -166,20 +166,21 @@ module Checksum = struct
   (*BISECT-IGNORE-END*)
 
   type t = {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : name ;
     files : checksum_map ;
   }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksums ppf c =
-    Format.fprintf ppf "checksums for %a (counter %Lu) are:@.%a@."
-      pp_name c.name c.counter
+    Format.fprintf ppf "checksums for %a (counter %s) are:@.%a@."
+      pp_name c.name
+      (Uint.to_string c.counter)
       pp_checksum_map c.files
   (*BISECT-IGNORE-END*)
 
-  let checksums ?(counter = 0L) ?(version = 0L) name files =
+  let checksums ?(counter = Uint.zero) ?(version = Uint.zero) name files =
     let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
     { counter ; version ; name ; files }
 
@@ -209,9 +210,9 @@ end
 
 module Index = struct
   type r = {
-    index : int64 ;
+    index : Uint.t ;
     name : string ;
-    size : int64 ;
+    size : Uint.t ;
     resource : resource ;
     digest : digest ;
   }
@@ -221,35 +222,37 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_resource ppf { index ; name ; size ; resource ; digest } =
-    Format.fprintf ppf "idx: %Ld@ name: %a@ size: %Ld@ resource: %a@ digest: %a@."
-      index pp_name name size pp_resource resource pp_digest digest
+    Format.fprintf ppf "idx: %s@ name: %a@ size: %s@ resource: %a@ digest: %a@."
+      (Uint.to_string index) pp_name name (Uint.to_string size)
+      pp_resource resource
+      pp_digest digest
   (*BISECT-IGNORE-END*)
 
   type t = {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     identifier : identifier ;
     resources : r list ;
     signatures : Signature.t list ;
   }
 
-  let index ?(counter = 0L) ?(version = 0L) ?(resources = []) ?(signatures = []) identifier =
+  let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) identifier =
     { counter ; version ; identifier ; resources ; signatures }
 
   let next_id idx =
-    Int64.succ (List.fold_left max 0L (List.map (fun r -> r.index) idx.resources))
+    Uint.succ (List.fold_left max Uint.zero (List.map (fun r -> r.index) idx.resources))
 
   let add_resource t r =
-    { t with resources = r :: t.resources ; counter = Int64.succ t.counter }
+    { t with resources = r :: t.resources ; counter = Uint.succ t.counter }
 
   let add_resources t rs =
-    { t with resources = rs @ t.resources ; counter = Int64.succ t.counter }
+    { t with resources = rs @ t.resources ; counter = Uint.succ t.counter }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
-    Format.fprintf ppf "identifier: %a@ counter: %Lu@ resources:@ %a@ %a@."
+    Format.fprintf ppf "identifier: %a@ counter: %s@ resources:@ %a@ %a@."
       pp_id i.identifier
-      i.counter
+      (Uint.to_string i.counter)
       (pp_list pp_resource) i.resources
       (pp_list Signature.pp_signature) i.signatures
   (*BISECT-IGNORE-END*)

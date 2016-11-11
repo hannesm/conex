@@ -3,35 +3,35 @@ open Conex_core
 
 module Signature : sig
   (* a signature is a tuple *)
-  type t = identifier * int64 * string
+  type t = identifier * Uint.t * string
 
-  val extend_data : string -> identifier -> int64 -> string
+  val extend_data : string -> identifier -> Uint.t -> string
 
   val pp_signature : Format.formatter -> t -> unit
 end
 
 module Publickey : sig
   type t = private {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     keyid : identifier ;
     key : pub option ;
   }
 
-  val publickey : ?counter:int64 -> ?version:int64 -> identifier -> pub option -> t
+  val publickey : ?counter:Uint.t -> ?version:Uint.t -> identifier -> pub option -> t
 
   val pp_publickey : Format.formatter -> t -> unit
 end
 
 module Team : sig
   type t = private {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : identifier ;
     members : S.t
   }
 
-  val team : ?counter:int64 -> ?version:int64 -> ?members:S.t -> identifier -> t
+  val team : ?counter:Uint.t -> ?version:Uint.t -> ?members:S.t -> identifier -> t
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
@@ -41,13 +41,13 @@ end
 
 module Authorisation : sig
   type t = private {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : name ;
     authorised : S.t ;
   }
 
-  val authorisation : ?counter:int64 -> ?version:int64 -> ?authorised:S.t -> name -> t
+  val authorisation : ?counter:Uint.t -> ?version:Uint.t -> ?authorised:S.t -> name -> t
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
@@ -58,13 +58,13 @@ end
 
 module Releases : sig
   type t = private {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : name ;
     releases : S.t ;
   }
 
-  val releases : ?counter:int64 -> ?version:int64 -> ?releases:S.t -> name -> (t, string) result
+  val releases : ?counter:Uint.t -> ?version:Uint.t -> ?releases:S.t -> name -> (t, string) result
 
   val pp_releases : Format.formatter -> t -> unit
 end
@@ -72,7 +72,7 @@ end
 module Checksum : sig
   type c = {
     filename : name ;
-    bytesize : int64 ;
+    bytesize : Uint.t ;
     checksum : digest ;
   }
 
@@ -83,17 +83,17 @@ module Checksum : sig
   type checksum_map
 
   type t = private {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     name : name ;
     files : checksum_map ;
   }
 
   val pp_checksums : Format.formatter -> t -> unit
 
-  val checksums : ?counter:int64 -> ?version:int64 -> string -> c list -> t
+  val checksums : ?counter:Uint.t -> ?version:Uint.t -> string -> c list -> t
 
-  val set_counter : t -> int64 -> t
+  val set_counter : t -> Uint.t -> t
 
   val compare_checksums : t -> t ->
     (unit,
@@ -107,28 +107,28 @@ end
 
 module Index : sig
   type r = private {
-    index : int64 ;
+    index : Uint.t ;
     name : string ;
-    size : int64 ;
+    size : Uint.t ;
     resource : resource ;
     digest : digest ;
   }
 
-  val r : int64 -> string -> int64 -> resource -> digest -> r
+  val r : Uint.t -> string -> Uint.t -> resource -> digest -> r
 
   val pp_resource : Format.formatter -> r -> unit
 
   type t = private {
-    counter : int64 ;
-    version : int64 ;
+    counter : Uint.t ;
+    version : Uint.t ;
     identifier : identifier ;
     resources : r list ;
     signatures : Signature.t list ;
   }
 
-  val index : ?counter:int64 -> ?version:int64 -> ?resources:(r list) -> ?signatures:(Signature.t list) -> identifier -> t
+  val index : ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(Signature.t list) -> identifier -> t
 
-  val next_id : t -> int64
+  val next_id : t -> Uint.t
 
   val add_resource : t -> r -> t
 

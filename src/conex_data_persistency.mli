@@ -3,7 +3,7 @@ open Conex_resource
 
 type s =
   | String of string
-  | Int of int64
+  | Int of Conex_core.Uint.t
 
 type t =
   | Entry of string * t

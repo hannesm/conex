@@ -1,12 +1,13 @@
 open Conex_result
 open Conex_data_persistency
+open Conex_core
 
 (* XXX: improve the Int64 case! *)
 let rec encode = function
   | Entry (k, v) -> k ^ ":" ^ (encode v)
   | List xs -> "[" ^ (String.concat ",\n"  (List.map encode xs)) ^ "]"
   | Leaf (String s) -> "\"" ^ s ^ "\""
-  | Leaf (Int i) -> Int64.to_string i
+  | Leaf (Int i) -> Uint.to_string i
 
 let rec parse' data =
   let is_entry buf =
@@ -50,7 +51,7 @@ let rec parse' data =
       in
       let stop = go 0 in
       let ss = String.sub buf 0 stop in
-      (Some (Leaf (Int (Int64.of_string ss))),
+      (Some (Leaf (Int (Uint.of_string ss))),
        String.sub buf stop (String.length buf - stop))
   and parse_list buf =
     let rec go str acc =
