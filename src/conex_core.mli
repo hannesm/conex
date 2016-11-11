@@ -32,7 +32,7 @@ val pp_digest : Format.formatter -> digest -> unit
 type resource = [
   | `PublicKey
   | `Team
-  | `Checksum
+  | `Checksums
   | `Releases
   | `Authorisation
 ]

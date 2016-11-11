@@ -204,7 +204,7 @@ let verify_checksum repo a r cs =
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`NotInReleases (cs.Checksum.name, r.Releases.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksum (Data.encode (Conex_data_persistency.checksums_to_t cs)) >>= fun r ->
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Data.encode (Conex_data_persistency.checksums_to_t cs)) >>= fun r ->
   let name = cs.Checksum.name in
   compute_checksum repo name >>= fun css ->
   Checksum.compare_checksums cs css >>= fun () ->

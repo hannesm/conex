@@ -580,7 +580,7 @@ let k_wrong_resource () =
   let pub, priv = gen_pub id in
   let resources =
     let s, d = res (publickey_to_t pub) in
-    [ Index.r 0L id s `Checksum d ]
+    [ Index.r 0L id s `Checksums d ]
   in
   let jidx =
     let idx = Index.index ~resources jid in
@@ -594,7 +594,7 @@ let k_wrong_resource () =
   let r = Repository.add_index r jidx in
   let r = Repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "wrong resource"
-    (Error (`InvalidResource (id, `PublicKey, `Checksum)))
+    (Error (`InvalidResource (id, `PublicKey, `Checksums)))
     (Repository.verify_key r pub)
 
 let k_wrong_name () =
@@ -734,7 +734,7 @@ let team_wrong_resource () =
   let team = Team.team pname in
   let resources =
     let s, d = res (team_to_t team) in
-    [ Index.r 0L pname s `Checksum d ]
+    [ Index.r 0L pname s `Checksums d ]
   in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
@@ -745,7 +745,7 @@ let team_wrong_resource () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong resource"
-    (Error (`InvalidResource (pname, `Team, `Checksum)))
+    (Error (`InvalidResource (pname, `Team, `Checksums)))
     (Repository.verify_team r team)
 
 let team_wrong_name () =
@@ -905,7 +905,7 @@ let a_wrong_resource () =
   let auth = Authorisation.authorisation pname in
   let resources =
     let s, d = res (authorisation_to_t auth) in
-    [ Index.r 0L pname s `Checksum d ]
+    [ Index.r 0L pname s `Checksums d ]
   in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
@@ -916,7 +916,7 @@ let a_wrong_resource () =
   let r = Repository.add_trusted_key r jpub in
   let r = Repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong resource"
-    (Error (`InvalidResource (pname, `Authorisation, `Checksum)))
+    (Error (`InvalidResource (pname, `Authorisation, `Checksums)))
     (Repository.verify_authorisation r auth)
 
 let a_wrong_name () =
@@ -1263,13 +1263,13 @@ let cs_base () =
   let rel = safe_rel ~releases:(S.singleton v) pname in
   let cs = Checksum.checksums v [] in
   Alcotest.check (result r_ok c_err) "checksum not signed"
-    (Error (`NotSigned (v, `Checksum, S.empty)))
+    (Error (`NotSigned (v, `Checksums, S.empty)))
     (Repository.verify_checksum r auth rel cs) ;
   let resources =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksum d' ]
+    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksums d' ]
   in
   let _pub, priv = gen_pub id in
   let sidx = sign_idx (Index.index ~resources id) priv in
@@ -1302,7 +1302,7 @@ let cs_quorum () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksum d' ]
+    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1351,10 +1351,10 @@ let cs_bad () =
     and s4, d4 = res (checksums_to_t css''')
     in
     [ Index.r 0L pname s `Releases d ;
-      Index.r 1L v s1 `Checksum d1 ;
-      Index.r 2L v s2 `Checksum d2 ;
-      Index.r 3L v s3 `Checksum d3 ;
-      Index.r 4L v s4 `Checksum d4 ]
+      Index.r 1L v s1 `Checksums d1 ;
+      Index.r 2L v s2 `Checksums d2 ;
+      Index.r 3L v s3 `Checksums d3 ;
+      Index.r 4L v s4 `Checksums d4 ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1390,7 +1390,7 @@ let cs_bad_name () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L reln s `Releases d ; Index.r 1L v s' `Checksum d' ]
+    [ Index.r 0L reln s `Releases d ; Index.r 1L v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1417,7 +1417,7 @@ let cs_bad_name2 () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksum d' ]
+    [ Index.r 0L pname s `Releases d ; Index.r 1L v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1443,7 +1443,7 @@ let cs_wrong_name () =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
     in
-    [ Index.r 0L pname s `Releases d ; Index.r 1L pname s' `Checksum d' ]
+    [ Index.r 0L pname s `Releases d ; Index.r 1L pname s' `Checksums d' ]
   in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
@@ -1478,7 +1478,7 @@ let cs_wrong_resource () =
   let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = Repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "wrong resource"
-    (Error (`InvalidResource (v, `Checksum, `Releases)))
+    (Error (`InvalidResource (v, `Checksums, `Releases)))
     (Repository.verify_checksum r auth rel cs)
 
 let cs_repo_tests = [

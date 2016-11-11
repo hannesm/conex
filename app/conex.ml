@@ -675,7 +675,7 @@ let sign copts item name =
           Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
-          match add_r (name, `Checksum, Conex_data_persistency.checksums_to_t c) with
+          match add_r (name, `Checksums, Conex_data_persistency.checksums_to_t c) with
           | Ok idx ->
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."

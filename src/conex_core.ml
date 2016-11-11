@@ -67,7 +67,7 @@ let pp_digest ppf x = Format.pp_print_string ppf x
 type resource = [
   | `PublicKey
   | `Team
-  | `Checksum
+  | `Checksums
   | `Releases
   | `Authorisation
 ]
@@ -75,7 +75,7 @@ type resource = [
 let resource_equal a b = match a, b with
   | `PublicKey, `PublicKey
   | `Team, `Team
-  | `Checksum, `Checksum
+  | `Checksums, `Checksums
   | `Releases, `Releases
   | `Authorisation, `Authorisation -> true
   | _ -> false
@@ -83,14 +83,14 @@ let resource_equal a b = match a, b with
 let resource_to_string = function
   | `PublicKey -> "publickey"
   | `Team -> "team"
-  | `Checksum -> "checksum"
+  | `Checksums -> "checksums"
   | `Releases -> "releases"
   | `Authorisation -> "authorisation"
 
 let string_to_resource = function
   | "publickey" -> Some `PublicKey
   | "team" -> Some `Team
-  | "checksum" -> Some `Checksum
+  | "checksums" -> Some `Checksums
   | "releases" -> Some `Releases
   | "authorisation" -> Some `Authorisation
   | _ -> None
