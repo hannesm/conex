@@ -165,7 +165,7 @@ let verify_authorisation repo auth =
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
 
 let ensure_releases repo r =
-  let dirs = Layout.items repo.data r.Releases.name in
+  let dirs = Conex_opam_layout.items repo.data r.Releases.name in
   let dirs = S.of_list dirs in
   let rels = r.Releases.releases in
   if S.equal rels dirs then
@@ -188,12 +188,12 @@ let verify_releases repo a r =
     | `IdNoQuorum (id, _) -> Ok (`Signed id)
 
 let compute_checksum repo name =
-  match repo.data.Provider.file_type (Layout.checksum_dir name) with
+  match repo.data.Provider.file_type (Conex_opam_layout.checksum_dir name) with
   | Error _ -> Error (`FileNotFound name)
   | Ok File -> Error (`NotADirectory name)
   | Ok Directory ->
-    let fs = Layout.checksum_files repo.data name in
-    let d = Layout.checksum_dir name in
+    let fs = Conex_opam_layout.checksum_files repo.data name in
+    let d = Conex_opam_layout.checksum_dir name in
     foldM (fun acc f ->
         match repo.data.Provider.read (d@f) with
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
@@ -225,7 +225,7 @@ let pp_r_err ppf = function
 (*BISECT-IGNORE-END*)
 
 let read_key repo keyid =
-  match repo.data.Provider.read (Layout.key_path keyid) with
+  match repo.data.Provider.read (Conex_opam_layout.key_path keyid) with
   | Error _ -> Error (`NotFound keyid)
   | Ok data ->
     match Data.decode data >>= Conex_data_persistency.t_to_publickey with
@@ -238,10 +238,10 @@ let read_key repo keyid =
 
 let write_key repo key =
   let id = key.Publickey.keyid in
-  repo.data.Provider.write (Layout.key_path id) (Data.encode (Conex_data_persistency.publickey_to_t key))
+  repo.data.Provider.write (Conex_opam_layout.key_path id) (Data.encode (Conex_data_persistency.publickey_to_t key))
 
 let read_team repo name =
-  match repo.data.Provider.read (Layout.key_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.key_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     match Data.decode data >>= Conex_data_persistency.t_to_team with
@@ -254,7 +254,7 @@ let read_team repo name =
 
 let write_team repo t =
   let id = t.Team.name in
-  repo.data.Provider.write (Layout.key_path id) (Data.encode (Conex_data_persistency.team_to_t t))
+  repo.data.Provider.write (Conex_opam_layout.key_path id) (Data.encode (Conex_data_persistency.team_to_t t))
 
 let read_id repo id =
   match read_key repo id with
@@ -264,10 +264,10 @@ let read_id repo id =
     | Ok team -> Ok (`Team team)
     | Error e -> Error e
 
-let all_ids repo = S.of_list (Layout.ids repo.data)
+let all_ids repo = S.of_list (Conex_opam_layout.ids repo.data)
 
 let read_index repo name =
-  match repo.data.Provider.read (Layout.index_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.index_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     match Data.decode data >>= Conex_data_persistency.t_to_index with
@@ -279,11 +279,11 @@ let read_index repo name =
         Error (`NameMismatch (name, i.Index.identifier))
 
 let write_index repo i =
-  let name = Layout.index_path i.Index.identifier in
+  let name = Conex_opam_layout.index_path i.Index.identifier in
   repo.data.Provider.write name (Data.encode (Conex_data_persistency.index_sigs_to_t i))
 
 let read_authorisation repo name =
-  match repo.data.Provider.read (Layout.authorisation_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.authorisation_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     match Data.decode data >>= Conex_data_persistency.t_to_authorisation with
@@ -296,13 +296,13 @@ let read_authorisation repo name =
 
 let write_authorisation repo a =
   repo.data.Provider.write
-    (Layout.authorisation_path a.Authorisation.name)
+    (Conex_opam_layout.authorisation_path a.Authorisation.name)
     (Data.encode (Conex_data_persistency.authorisation_to_t a))
 
-let all_authorisations repo = S.of_list (Layout.authorisations repo.data)
+let all_authorisations repo = S.of_list (Conex_opam_layout.authorisations repo.data)
 
 let read_releases repo name =
-  match repo.data.Provider.read (Layout.releases_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.releases_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     match Data.decode data >>= Conex_data_persistency.t_to_releases with
@@ -314,11 +314,11 @@ let read_releases repo name =
         Error (`NameMismatch (name, r.Releases.name))
 
 let write_releases repo r =
-  let name = Layout.releases_path r.Releases.name in
+  let name = Conex_opam_layout.releases_path r.Releases.name in
   repo.data.Provider.write name (Data.encode (Conex_data_persistency.releases_to_t r))
 
 let read_checksum repo name =
-  match repo.data.Provider.read (Layout.checksum_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.checksum_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
     match Data.decode data >>= Conex_data_persistency.t_to_checksums with
@@ -330,7 +330,7 @@ let read_checksum repo name =
         Error (`NameMismatch (name, csum.Checksum.name))
 
 let write_checksum repo csum =
-  let name = Layout.checksum_path csum.Checksum.name in
+  let name = Conex_opam_layout.checksum_path csum.Checksum.name in
   repo.data.Provider.write name (Data.encode (Conex_data_persistency.checksums_to_t csum))
 
 (* TODO: invalid_args are bad below!!! *)

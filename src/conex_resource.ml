@@ -116,7 +116,7 @@ module Releases = struct
   }
 
   let releases ?(counter = Uint.zero) ?(version = Uint.zero) ?(releases = S.empty) name =
-    let is_release a = match Layout.authorisation_of_item a with
+    let is_release a = match Conex_opam_layout.authorisation_of_item a with
       | Some x -> name_equal name x
       | _ -> false
     in

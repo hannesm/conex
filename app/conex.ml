@@ -182,7 +182,7 @@ let find_checksums copts =
   List.fold_left
     (fun acc (a, r) ->
      let cs =
-       let items = Layout.items (Repository.provider copts.repo) a.Authorisation.name in
+       let items = Conex_opam_layout.items (Repository.provider copts.repo) a.Authorisation.name in
        let all = List.sort String.compare items in
        let all_cs =
          filter_map
@@ -408,7 +408,7 @@ let show_releases copts r =
 
 let show_checksum copts c =
   Checksum.pp_checksums copts.out c ;
-  (match Layout.authorisation_of_item c.Checksum.name with
+  (match Conex_opam_layout.authorisation_of_item c.Checksum.name with
    | Some name ->
      (match Repository.read_authorisation copts.repo name with
       | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Repository.pp_r_err e Color.endc
