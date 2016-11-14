@@ -728,7 +728,7 @@ let help_secs = [
 
 let copts debug dry repo name signed_by owner private_key trust_anchors quorum =
   let repo =
-    let provider = if dry then Provider.fs_ro_provider repo else Provider.fs_provider repo in
+    let provider = if dry then Conex_provider.fs_ro_provider repo else Conex_provider.fs_provider repo in
     Repository.repository ?quorum provider
   in
   { debug ; dry ; repo ; out = Format.std_formatter ; name ; signed_by ; owner ; private_key ; trust_anchors ; verify = false }

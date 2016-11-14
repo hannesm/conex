@@ -22,7 +22,7 @@ let verify_complete_repository directory trust =
     exit (-1)
   end ;
   (* a) load trust anchors and janitors *)
-  let p = Provider.fs_ro_provider directory in
+  let p = Conex_provider.fs_ro_provider directory in
   let r = Repository.repository p in
   let r = load_anchors_janitors r out debug maybe_exit trust in
   (* b) load all other identities [can also be teams!] *)

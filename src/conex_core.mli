@@ -32,6 +32,28 @@ type path = string list
 val path_to_string : path -> string
 val string_to_path : string -> path
 
+module Provider : sig
+  type item = [
+    | `File of string
+    | `Dir of string
+  ]
+
+  type err = [ `NotFound | `UnknownFileType of string ]
+
+  type t = {
+    name : string ;
+    description : string ;
+    file_type : path -> (file_type, err) result ;
+    read : path -> (string, err) result ;
+    write : path -> string -> unit ;
+    read_dir : path -> (item list, err) result ;
+    exists : path -> bool ;
+  }
+
+  val pp_provider : Format.formatter -> t -> unit
+end
+
+
 type pub = [ `Pub of string ]
 type priv = [ `Priv of string ]
 
