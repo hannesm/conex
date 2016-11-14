@@ -3,19 +3,21 @@ open Conex_core
 open Conex_resource
 open Conex_utils
 
+type keystore = Publickey.t M.t
+
 type valid_resources = (name * Uint.t * resource * S.t) M.t
 
 type teams = S.t M.t
 
 type t = {
-  store : Keystore.t ;
+  store : keystore ;
   quorum : int ;
   data : Provider.t ;
   valid : valid_resources ;
   teams : teams ;
 }
 
-let repository ?(store = Keystore.empty) ?(quorum = 3) data =
+let repository ?(store = M.empty) ?(quorum = 3) data =
   { store ; quorum ; data ; valid = M.empty ; teams = M.empty }
 
 let quorum r = r.quorum
@@ -34,7 +36,7 @@ let valid r digest =
 let change_provider t data = { t with data }
 
 let add_trusted_key repo key =
-  let store = Keystore.add repo.store key in
+  let store = M.add key.Publickey.keyid key repo.store in
   { repo with store }
 
 let add_team repo team =
@@ -52,8 +54,8 @@ let verify pub data (id, ts, sigval) =
     | Error `InvalidSig -> Error (`InvalidSignature id)
 
 let verify_ks store data (id, ts, signature) =
-  if Keystore.mem store id then
-    let pub = Keystore.find store id in
+  if M.mem id store then
+    let pub = M.find id store in
     verify pub data (id, ts, signature)
   else
     Error (`InvalidIdentifier id)

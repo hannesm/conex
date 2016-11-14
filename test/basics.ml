@@ -215,52 +215,6 @@ let sign_tests = [
   "bad priv is bad", `Quick, bad_priv ;
 ]
 
-let empty () =
-  let store = Keystore.empty in
-  Alcotest.(check int "Empty keystore is empty" 0 (Keystore.size store))
-
-let single () =
-  let s = Keystore.empty in
-  let k1, _ = gen_pub "a" in
-  let s' = Keystore.add s k1 in
-  Alcotest.(check int "single: inserting doesn't affect original" 0 (Keystore.size s)) ;
-  Alcotest.(check int "Inserting into keystore worked" 1 (Keystore.size s')) ;
-  Alcotest.(check bool "Mem of keystore works" true (Keystore.mem s' "a")) ;
-  Alcotest.(check bool "Mem of non-existing key works" false (Keystore.mem s' "b")) ;
-  let k1' = Keystore.find s' "a" in
-  Alcotest.(check bool "Insert and find works " true (k1 = k1')) ;
-  let s'' = Keystore.remove s' "a" in
-  Alcotest.(check int "single: remove works" 0 (Keystore.size s''))
-
-let multiple () =
-  let s = Keystore.empty in
-  let k1, _ = gen_pub "a"
-  and k2, _ = gen_pub "b"
-  and k3, _ = gen_pub ~priv:(Conex_nocrypto.generate ()) "a"
-  in
-  let s' = Keystore.add s k1 in
-  Alcotest.(check int "multiple: inserting doesn't affect original" 0 (Keystore.size s)) ;
-  Alcotest.(check int "Inserting into keystore worked" 1 (Keystore.size s')) ;
-  let s' = Keystore.add s' k2 in
-  Alcotest.(check int "Multiple insertion worked" 2 (Keystore.size s')) ;
-  let s' = Keystore.add s' k3 in
-  Alcotest.(check int "Overwriting worked" 2 (Keystore.size s')) ;
-  let k3' = Keystore.find s' "a" in
-  Alcotest.(check bool "Overwriting worked (compare)" true (k3 = k3')) ;
-  Alcotest.(check bool "Overwriting worked (compare, false)" false (k1 = k3')) ;
-  let s'' = Keystore.remove s' "a" in
-  Alcotest.(check int "Removing of a key worked" 1 (Keystore.size s'')) ;
-  let s''' = Keystore.remove s' "b" in
-  Alcotest.(check int "Removing of b key worked" 1 (Keystore.size s''')) ;
-  let s'' = Keystore.remove s'' "b" in
-  Alcotest.(check int "Removing of another key worked" 0 (Keystore.size s''))
-
-let ks_tests = [
-  "empty keystore", `Quick, empty ;
-  "single keystore insert and remove", `Quick, single ;
-  "multiple keys", `Quick, multiple ;
-]
-
 let check_ver = Alcotest.check (result Alcotest.string verr)
 
 let idx_sign () =
@@ -337,6 +291,5 @@ let idx_tests = [
 let tests = [
   ("Uint", Ui.tests) ;
   ("Signature", sign_tests) ;
-  ("Keystore", ks_tests) ;
   ("Index", idx_tests)
 ]

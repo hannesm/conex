@@ -2,9 +2,11 @@ open Conex_result
 open Conex_core
 open Conex_resource
 
+type keystore = Publickey.t M.t
+
 type t
 
-val repository : ?store:Keystore.t -> ?quorum:int -> Provider.t -> t
+val repository : ?store:keystore -> ?quorum:int -> Provider.t -> t
 val provider : t -> Provider.t
 val quorum : t -> int
 val teams : t -> S.t M.t

@@ -17,7 +17,6 @@
     (but not older ones)
     --> how would anyone get the newer ones in any case?  needs access to the full diff of the PR in question, apply it, sign the resources
 
-- Int64.t ++ wraparounds, pls solve!
 - PBKDF enc private keys
 - use opam lib (format parser + writer) ; package name validation ; package name + version -> package name
 
