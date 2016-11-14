@@ -5,11 +5,9 @@ module Uint : sig
 
   val zero : t
 
-  val sub : t -> t -> t
-
   val compare : t -> t -> int
 
-  val succ : t -> t
+  val succ : t -> bool * t
 
   val to_string : t -> string
 

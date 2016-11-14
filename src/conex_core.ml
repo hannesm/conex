@@ -6,17 +6,24 @@ module Uint = struct
 
   let zero = 0L
 
-  (* XXX *)
-  let sub a _b = a
+  let max = -1L (* this is 0xFFFFFFFFFFFFFFFF *)
 
-  (* XXX *)
-  let compare _a _b = 1
+  let compare a b =
+    if a = b then
+      0
+    else if (a >= 0L && b >= 0L) || (a < 0L && b < 0L) then
+      Int64.compare a b
+    else if a < 0L then 1 else -1
 
-  let succ = Int64.succ
+  let succ x =
+    if x = max then
+      (true, 0L)
+    else
+      (false, Int64.succ x)
 
-  let to_string s = Printf.sprintf "%Lx" s
+  let to_string s = Printf.sprintf "%LX" s
 
-  let of_string s = Scanf.sscanf s "%Lx" (fun x -> x)
+  let of_string s = Scanf.sscanf s "%LX" (fun x -> x)
 
   let of_float f =
     if f < 0. then

@@ -53,11 +53,13 @@ module Team = struct
     if S.mem id t.members then
       t
     else
-      { t with counter = Uint.succ t.counter ; members = S.add id t.members }
+      let _c, counter = Uint.succ t.counter in
+      { t with counter ; members = S.add id t.members }
 
   let remove t id =
     if S.mem id t.members then
-      { t with counter = Uint.succ t.counter ; members = S.remove id t.members }
+      let _c, counter = Uint.succ t.counter in
+      { t with counter ; members = S.remove id t.members }
     else
       t
 
@@ -86,13 +88,13 @@ module Authorisation = struct
     if S.mem id t.authorised then
       t
     else
-      { t with counter = Uint.succ t.counter ;
-               authorised = S.add id t.authorised }
+      let _c, counter = Uint.succ t.counter in
+      { t with counter ; authorised = S.add id t.authorised }
 
   let remove t id =
     if S.mem id t.authorised then
-      { t with counter = Uint.succ t.counter ;
-               authorised = S.remove id t.authorised }
+      let _c, counter = Uint.succ t.counter in
+      { t with counter ; authorised = S.remove id t.authorised }
     else
       t
 
@@ -240,13 +242,17 @@ module Index = struct
     { counter ; version ; identifier ; resources ; signatures }
 
   let next_id idx =
-    Uint.succ (List.fold_left max Uint.zero (List.map (fun r -> r.index) idx.resources))
+    let max = List.fold_left max Uint.zero (List.map (fun r -> r.index) idx.resources) in
+    let _c, counter = Uint.succ max in
+    counter
 
   let add_resource t r =
-    { t with resources = r :: t.resources ; counter = Uint.succ t.counter }
+    let _c, counter = Uint.succ t.counter in
+    { t with resources = r :: t.resources ; counter }
 
   let add_resources t rs =
-    { t with resources = rs @ t.resources ; counter = Uint.succ t.counter }
+    let _c, counter = Uint.succ t.counter in
+    { t with resources = rs @ t.resources ; counter }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =

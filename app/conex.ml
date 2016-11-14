@@ -512,10 +512,8 @@ let generate copts item name ids =
            | Ok x -> Some x
            | Error _ -> None
        in
-       writeout
-         (Publickey.publickey
-            ~counter:(Uint.succ p.Publickey.counter)
-            name pub_opt)
+       let _c, counter = Uint.succ p.Publickey.counter in
+       writeout (Publickey.publickey ~counter name pub_opt)
      | Error _ ->
        (* XXX need: if name = "" then missing argument! *)
        match Private.read_private_key ~id:name copts.repo with
@@ -531,7 +529,9 @@ let generate copts item name ids =
   | `Team ->
     let counter = match Repository.read_team copts.repo name with
       | Error _ -> None
-      | Ok t' -> Some (Uint.succ t'.Team.counter)
+      | Ok t' ->
+        let _c, counter = Uint.succ t'.Team.counter in
+        Some counter
     in
     let t = Team.team ~members:(S.of_list ids) ?counter name in
     if copts.dry then
@@ -543,7 +543,9 @@ let generate copts item name ids =
   | `Authorisation ->
     let counter = match Repository.read_authorisation copts.repo name with
       | Error _ -> None
-      | Ok a' -> Some (Uint.succ a'.Authorisation.counter)
+      | Ok a' ->
+        let _c, counter = Uint.succ a'.Authorisation.counter in
+        Some counter
     in
     let a = Authorisation.authorisation ~authorised:(S.of_list ids) ?counter name in
     if copts.dry then
@@ -555,7 +557,9 @@ let generate copts item name ids =
   | `Releases ->
     let counter = match Repository.read_releases copts.repo name with
       | Error _ -> None
-      | Ok r' -> Some (Uint.succ r'.Releases.counter)
+      | Ok r' ->
+        let _c, counter = Uint.succ r'.Releases.counter in
+        Some counter
     in
     (match Releases.releases ~releases:(S.of_list ids) ?counter name with
      | Ok r ->
@@ -577,7 +581,9 @@ let generate copts item name ids =
      | Ok cs ->
        let cs = match Repository.read_checksum copts.repo name with
          | Error _ -> cs
-         | Ok o -> Checksum.set_counter cs (Uint.succ o.Checksum.counter)
+         | Ok o ->
+           let _c, counter = Uint.succ o.Checksum.counter in
+           Checksum.set_counter cs counter
        in
        if copts.dry then
          Format.fprintf copts.out "dry run, nothing written.@."
