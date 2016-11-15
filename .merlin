@@ -6,9 +6,9 @@ B _build/src
 B _build/app
 B _build/test
 
-PKG cstruct
-PKG nocrypto
-PKG x509
+PKG cstruct nocrypto x509
+
+PKG opam-file-format
 PKG cmdliner
 PKG alcotest
 

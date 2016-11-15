@@ -1,3 +1,4 @@
+open Conex_core
 
 (*
 Initial repo style with packages/foo.x.y
@@ -7,8 +8,6 @@ Merge: 308c03a 6008baf
 Author: Thomas Gazagnaire <thomas@gazagnaire.org>
 Date:   Fri Aug 24 06:01:39 2012 -0700
 
-
-
 Initial repo style with packages/foo/foo.x.y
 
 commit 0f0e610f6499bdf0151e4170411b4f05e4d076d4
@@ -16,45 +15,83 @@ Author: Louis Gesbert <louis.gesbert@ocamlpro.com>
 Date:   Thu Nov 21 13:30:25 2013 +0100
 
     Reorganise packages into sub-directories
-
-command line:
- git log --no-merges --topo-order --pretty=format:%H c955aa6889514868317c92701a1774492057284d..HEAD
  *)
 
-module SM = Map.Make(String)
-module S = Set.Make(String)
 
-let handle_one base filename github mail maps =
-  Format.fprintf Format.std_formatter "handle_one %s@." filename ;
+let get_authorised data =
+  let open OpamParserTypes in
+  let authorised =
+    List.find
+      (function Variable (_, s, _) when s = "authorised" -> true | _ -> false)
+      data.file_contents
+  in
+  match authorised with
+  | Variable (_, _, List (_, vs)) -> List.map (function String (_, id) -> id | _ -> invalid_arg "unexpected" ) vs
+  | _ -> invalid_arg "unexpected"
+
+let read_auth base pkgname =
+  let path = Conex_opam_layout.authorisation_path pkgname in
+  let file = Filename.concat base (path_to_string path) in
+  if Sys.file_exists file then
+    let data = Persistency.read_file file in
+    let parsed = OpamParser.string data "" in
+    get_authorised parsed
+  else
+    (Printf.printf "couldn't find authorisation for %s\n%!" file ;
+     [])
+
+(*
+several useful maps should be part of the output:
+<github-id> -> mail addresses
+<package> -> [bool * PR * committer]
+ *)
+
+let handle_one base commit pr github mail maps =
+  Format.fprintf Format.std_formatter "handle_one (%s) %s@." pr commit ;
   let content = Persistency.read_file
-      (Filename.concat base (Filename.concat "diffs" (filename ^ ".diff")))
+      (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
   let diffs = Diff.to_diffs content in
   let comps = Patch.diffs_to_components diffs in
-  List.fold_left (fun (invalid, valid) d ->
-      Format.fprintf Format.std_formatter "handling %a@." Patch.pp_component d ;
+  List.fold_left (fun (github_map, package_map) d ->
+      Format.fprintf Format.std_formatter "handling %a" Patch.pp_component d ;
       match d with
       | Patch.Dir (p, _, _)
       | Patch.OldDir (p, _, _) ->
-        let ms =
-          match try Some (Sexplib.Sexp.load_sexp (Filename.concat base (Filename.concat "packages" (Filename.concat p "maintainers.sexp")))) with _ -> None with
-          | Some (Sexplib.Type.List xs) -> List.map Sexplib.Conv.string_of_sexp xs
-          | _ -> []
+        let ms = read_auth base p in
+        let valid = List.mem mail ms in
+        let github_map =
+          let vals =
+            if M.mem github github_map then
+              M.find github github_map
+            else
+              S.empty
+          in
+          M.add github (S.add mail vals) github_map
         in
-        let (map, ret) =
-          if List.mem mail ms then
-            (fst valid, fun v -> invalid, (v, succ (snd valid)))
-          else
-            (fst invalid, fun i -> (i, succ (snd invalid)), valid)
+        let package_map =
+          let vals =
+            if M.mem p package_map then
+              M.find p package_map
+            else
+              M.empty
+          in
+          let entries =
+            if M.mem mail vals then
+              M.find mail vals
+            else
+              []
+          in
+          let maybe =
+            if List.exists (fun (_, pr') ->  pr = pr') entries then
+              entries
+            else
+              (valid, pr) :: entries
+          in
+          M.add p (M.add mail maybe vals) package_map
         in
-        let mymails, mails, pl =
-          if SM.mem github map then
-            SM.find github map
-          else
-            S.empty, S.empty, S.empty
-        in
-        ret (SM.add github (S.add mail mymails, S.union (S.of_list ms) mails, S.add p pl) map)
-      | _ -> Printf.printf "ignoring\n"; (invalid, valid))
+        (github_map, package_map)
+      | _ -> Printf.printf "ignoring\n"; (github_map, package_map))
     maps comps
 
 (* what do I want in the end? *)
@@ -63,44 +100,35 @@ let handle_prs dir =
   let base = Filename.concat dir "prs" in
   let prs = Persistency.collect_dir base in
   let total = List.length prs in
-  let ((invalid, icnt), (valid, vcnt)), _ = List.fold_left
+  let (github_map, package_map), _ = List.fold_left
       (fun (map, i) pr ->
          Printf.printf "%d/%d\n%!" i total ;
          let data = Persistency.read_file (Filename.concat base pr) in
          let eles = Astring.String.cuts ~sep:" " data in
          let cid = List.nth eles 0
-         and gid = List.nth eles 1
-         and mail = List.nth eles 2
+         and pr = List.nth eles 1
+         and gid = List.nth eles 2
+         and mail = String.trim (List.nth eles 3)
          in
-         handle_one dir cid gid mail map, succ i)
-      (((SM.empty, 0), (SM.empty, 0)), 0)
+         handle_one dir cid pr gid mail map, succ i)
+      ((M.empty, M.empty), 0)
       prs
   in
-  let print p_m map =
-    let bindings = SM.bindings map in
-    let sorted = List.sort (fun (_, (_, _, x)) (_, (_, _, y)) -> compare (S.cardinal x) (S.cardinal y)) bindings in
-    List.iter (fun (gid, (mymails, others, pl)) ->
-        Printf.printf "%s (%s%s): %s\n" gid
-          (String.concat ", " (S.elements mymails))
-          (if p_m then " allowed: " ^ String.concat ", " (S.elements others) else "")
-          (String.concat ", " (S.elements pl)))
-      sorted
-  in
-  Printf.printf "\nRESULTS\n%d invalid\n" icnt ;
-  print true invalid ;
-  Printf.printf "\n%d valid\n" vcnt ;
-  print false valid ;
-  print_endline "" ;
   print_endline "github id to mail" ;
-  let users =
-    SM.fold (fun k (m, _, _) acc -> SM.add k m acc)
-  in
-  let u = users invalid SM.empty in
-  let u = users valid u in
-  let bind = SM.bindings u in
-  List.iter
-    (fun (g, m) -> Printf.printf "%s -> %s\n" g (String.concat ", " (S.elements m)))
-    (List.sort (fun (a, _) (b, _) -> String.compare a b) bind)
+  M.iter (fun k v -> Printf.printf "(%s (%s))\n" k (String.concat " " (S.elements v))) github_map ;
+  print_endline "\nchanges" ;
+  M.iter (fun k v ->
+      Printf.printf "package %s\n" k ;
+      let bindings = M.bindings v in
+      (* github id, [valid,pr] *)
+      let good, bad = List.partition (fun (_, xs) -> match xs with | (true, _)::_ -> true | _ -> false) bindings in
+      let goodprs = List.map (fun (id, xs) -> id, List.map snd xs) good in
+      let badprs = List.map (fun (id, xs) -> id, List.map snd xs) bad in
+      let p (id, prs) = Printf.sprintf "%s (%s)" id (String.concat ", " prs) in
+      Printf.printf "GOOD:\n  %s\nBAD\n  %s\n\n"
+        (String.concat "\n  " (List.map p goodprs))
+        (String.concat "\n  " (List.map p badprs)))
+    package_map
 
 let () =
   match Sys.argv with

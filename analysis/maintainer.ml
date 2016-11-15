@@ -73,7 +73,7 @@ let print_ms package ms path =
     Variable (np, "counter", Ident (np, "0")) ;
     Variable (np, "version", Ident (np, "0")) ;
     Variable (np, "name", Ident (np, package)) ;
-    Variable (np, "authorised", List (np, List.map (fun n -> Ident (np, n)) ms))
+    Variable (np, "authorised", List (np, List.map (fun n -> String (np, n)) ms))
   ]
   in
   let data = { file_contents ; file_name = "" } in

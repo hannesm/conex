@@ -11,12 +11,6 @@
    -> put a timestamp on each signature, created-at, and leave it to clients to do something useful with it
    --> done!
 
-- index GC: sets + maps are not ordered :( --> diffs are unreadable (same for checksums)
-  --> but we can "simply" define a lexicographic order for the serialisation (and preserve an id while parsing for index)
-    --> index is really problematic: there may be items multiple times, and the current ones are the ones to keep, but also newer ones...
-    (but not older ones)
-    --> how would anyone get the newer ones in any case?  needs access to the full diff of the PR in question, apply it, sign the resources
-
 - PBKDF enc private keys
 - use opam lib (format parser + writer) ; package name validation ; package name + version -> package name
 
