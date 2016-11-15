@@ -2,6 +2,7 @@
 
 #use "topfind"
 #require "opam-format"
+#require "opam-file-format"
 #require "astring"
 
 module S = Set.Make(String)
@@ -58,6 +59,26 @@ let collect_dir dir =
   closedir dh ;
   res
 
+let write path data =
+  let fd = Unix.openfile path [Unix.O_WRONLY ; Unix.O_CREAT ; Unix.O_TRUNC] 0o644 in
+  ignore(Unix.write fd (Bytes.of_string data) 0 (String.length data)) ;
+  Unix.close fd
+
+let np = ("", 0, 0)
+
+let print_ms package ms path =
+  let open OpamParserTypes in
+  let file_contents = [
+    Variable (np, "counter", Ident (np, "0")) ;
+    Variable (np, "version", Ident (np, "0")) ;
+    Variable (np, "name", Ident (np, package)) ;
+    Variable (np, "authorised", List (np, List.map (fun n -> Ident (np, n)) ms))
+  ]
+  in
+  let data = { file_contents ; file_name = "" } in
+  let norm = OpamPrinter.Normalise.opamfile data in
+  write (Filename.concat path "authorisation") norm
+
 let mainloop repo =
   let base = Filename.concat repo "packages" in
   let packages = collect_dir base in
@@ -68,12 +89,7 @@ let mainloop repo =
         let maintainers = List.fold_left (fun s r -> S.union (maintainers (Filename.concat b r)) s) S.empty releases in
         match S.elements maintainers with
         | [] -> S.add p acc
-        | xs ->
-          let fd = Unix.openfile (Filename.concat b "maintainers.sexp") [Unix.O_WRONLY ; Unix.O_CREAT ; Unix.O_TRUNC] 0o644 in
-          let str = Printf.sprintf "(%s)" (String.concat " " xs) in
-          ignore(Unix.write fd (Bytes.of_string str) 0 (String.length str)) ;
-          Unix.close fd ;
-          acc)
+        | xs -> print_ms p xs b ; acc)
       S.empty
       packages
   in
