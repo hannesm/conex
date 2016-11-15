@@ -15,24 +15,39 @@ module Signature = struct
 end
 
 module Publickey = struct
+  type email = identifier
+
+  type service = [
+    | `Email of email
+    | `GitHub of identifier
+    | `Other of identifier * string
+  ]
+
   type t = {
     counter : Uint.t ;
     version : Uint.t ;
-    keyid : identifier ;
+    name : identifier ;
+    accounts : service list ;
     key : pub option ;
   }
 
-  let publickey ?(counter = Uint.zero) ?(version = Uint.zero) keyid key =
-    { counter ; version ; keyid ; key }
+  let publickey ?(counter = Uint.zero) ?(version = Uint.zero) ?(accounts = []) name key =
+    { counter ; version ; accounts ; name ; key }
 
   (*BISECT-IGNORE-BEGIN*)
+  let pp_service ppf = function
+    | `Email e -> Format.fprintf ppf "email: %s@ " e
+    | `GitHub e -> Format.fprintf ppf "GitHub: %s@ " e
+    | `Other (k, v) -> Format.fprintf ppf "other %s: %s@ " k v
+
   let pp_publickey ppf p =
     let pp_opt_key ppf k =
       Format.pp_print_string ppf
         (match k with None -> "none" | Some (`Pub x) -> x)
     in
-    Format.fprintf ppf "keyid: %a@ counter: %s@ key: %a@."
-      pp_id p.keyid
+    Format.fprintf ppf "name: %a@ accounts: %a@ counter: %s@ key: %a@."
+      pp_id p.name
+      (pp_list pp_service) p.accounts
       (Uint.to_string p.counter)
       pp_opt_key p.key
   (*BISECT-IGNORE-END*)

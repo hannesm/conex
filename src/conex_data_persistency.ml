@@ -63,22 +63,36 @@ let team_to_t d =
          Entry ("members", List (List.map id (S.elements d.Team.members))) ]
 
 
+let t_to_service = function
+  | Entry ("email", Leaf (String e)) -> Ok (`Email e)
+  | Entry ("github", Leaf (String i)) -> Ok (`GitHub i)
+  | Entry ("other", List [ Leaf (String k) ; Leaf (String v) ]) -> Ok (`Other (k, v))
+  | _ -> Error "unknown or malformed service"
+
 let t_to_publickey data =
   ctr_ver data >>= fun (counter, version) ->
-  extract_string data "keyid" >>= fun keyid ->
+  extract_string data "name" >>= fun name ->
   extract_string data "key" >>= fun key ->
+  extract_list data "accounts" >>= fun services ->
+  foldM (fun acc s -> t_to_service s >>= fun s -> Ok (s :: acc)) [] services >>= fun accounts ->
   let key = if key = "NONE" then None else Some (`Pub key) in
-  Ok (Publickey.publickey ~counter ~version keyid key)
+  Ok (Publickey.publickey ~counter ~version ~accounts name key)
+
+let service_to_t = function
+  | `Email e -> Entry ("email", Leaf (String e))
+  | `GitHub i -> Entry ("github", Leaf (String i))
+  | `Other (k, v) -> Entry ("other", List [ Leaf (String k) ; Leaf (String v) ])
 
 let publickey_to_t pubkey =
   let pem = match pubkey.Publickey.key with
     | None -> "NONE"
     | Some (`Pub x) -> x
   in
-  List [ Entry ("counter", Leaf (Int pubkey.Publickey.counter)) ;
-         Entry ("version", Leaf (Int pubkey.Publickey.version)) ;
-         Entry ("keyid"  , Leaf (String pubkey.Publickey.keyid)) ;
-         Entry ("key"    , Leaf (String pem)) ]
+  List [ Entry ("counter" , Leaf (Int pubkey.Publickey.counter)) ;
+         Entry ("version" , Leaf (Int pubkey.Publickey.version)) ;
+         Entry ("name"    , Leaf (String pubkey.Publickey.name)) ;
+         Entry ("accounts", List (List.map service_to_t pubkey.Publickey.accounts)) ;
+         Entry ("key"     , Leaf (String pem)) ]
 
 
 let t_to_releases data =

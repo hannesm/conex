@@ -11,14 +11,23 @@ module Signature : sig
 end
 
 module Publickey : sig
+  type email = identifier
+
+  type service = [
+    | `Email of email
+    | `GitHub of identifier
+    | `Other of identifier * string
+  ]
+
   type t = private {
     counter : Uint.t ;
     version : Uint.t ;
-    keyid : identifier ;
+    name : identifier ;
+    accounts : service list ;
     key : pub option ;
   }
 
-  val publickey : ?counter:Uint.t -> ?version:Uint.t -> identifier -> pub option -> t
+  val publickey : ?counter:Uint.t -> ?version:Uint.t -> ?accounts:(service list) -> identifier -> pub option -> t
 
   val pp_publickey : Format.formatter -> t -> unit
 end

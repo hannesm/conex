@@ -1,6 +1,7 @@
 #!/usr/bin/env ocaml
 
 #use "topfind"
+#require "bigarray"
 #require "opam-format"
 #require "opam-file-format"
 #require "astring"
@@ -98,7 +99,7 @@ let mainloop repo =
   let str = Printf.sprintf "(%s)" (String.concat "\n" empties) in
   ignore(Unix.write fd (Bytes.of_string str) 0 (String.length str)) ;
   Unix.close fd ;
-  Printf.printf "%d packages without maintainer:\n" (S.cardinal empty)
+  Printf.printf "%d packages without maintainer\n" (S.cardinal empty)
 
 let () = match Sys.argv with
   | [| _ ; repo |] -> mainloop repo

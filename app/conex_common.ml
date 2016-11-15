@@ -12,7 +12,7 @@ let load_trust_anchors out maybe_exit dir =
       [] keys
   in
   Format.fprintf out "Loaded %s, found %d trust anchors: %a@."
-    dir (List.length keys) (pp_list pp_id) (List.map (fun k -> k.Publickey.keyid) keys) ;
+    dir (List.length keys) (pp_list pp_id) (List.map (fun k -> k.Publickey.name) keys) ;
   keys
 
 let load_verify_idx out debug maybe_exit r k id =
@@ -57,7 +57,7 @@ let load_anchors_janitors repo out debug maybe_exit dir =
   (* find trust anchors *)
   let anchors = load_trust_anchors out maybe_exit dir in
   let repo = List.fold_left Repository.add_trusted_key repo anchors in
-  let members = S.of_list (List.map (fun k -> k.Publickey.keyid) anchors) in
+  let members = S.of_list (List.map (fun k -> k.Publickey.name) anchors) in
   let repo = Repository.add_team repo (Team.team ~members "janitors") in
   (* we read the indexes and verify those *)
   let repo = S.fold (load_index out debug maybe_exit) members repo in

@@ -83,7 +83,7 @@ let find_keys copts =
       (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
-  | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.keyid o) keys
+  | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.name o) keys
   | None, Some s ->
     let is k = valid copts s (Conex_data_persistency.publickey_to_t k) in
     List.filter is keys
@@ -117,7 +117,7 @@ let find_ids copts =
   match copts.owner, copts.signed_by with
   | Some o, _ ->
     List.filter (function
-        | `Key k -> id_equal k.Publickey.keyid o
+        | `Key k -> id_equal k.Publickey.name o
         | `Team t -> S.mem o t.Team.members)
       ids
   | None, Some s ->
@@ -227,7 +227,7 @@ let list copts kind =
     | `Keys ->
        let keys = find_keys copts in
        Format.fprintf copts.out " (%d)@." (List.length keys) ;
-       out (List.map (fun k -> k.Publickey.keyid) keys)
+       out (List.map (fun k -> k.Publickey.name) keys)
     | `Teams ->
        let teams = find_teams copts in
        Format.fprintf copts.out " (%d)@." (List.length teams) ;
@@ -235,7 +235,7 @@ let list copts kind =
     | `Ids ->
        let ids = find_ids copts in
        Format.fprintf copts.out " (%d)@." (List.length ids) ;
-       out (List.map (function `Key k -> k.Publickey.keyid | `Team t -> t.Team.name) ids)
+       out (List.map (function `Key k -> k.Publickey.name | `Team t -> t.Team.name) ids)
     | `Authorisations ->
        let auths = find_authorisations copts in
        Format.fprintf copts.out " (%d)@." (List.length auths) ;
@@ -291,7 +291,7 @@ let verify copts kind =
        let keys = find_keys copts in
        let verified = List.map (Repository.verify_key repo) keys in
        Format.fprintf copts.out " (%d)@." (List.length verified) ;
-       out (List.map (fun k -> k.Publickey.keyid) keys) verified ;
+       out (List.map (fun k -> k.Publickey.name) keys) verified ;
        repo
     | `Teams ->
        let teams = find_teams copts in
@@ -305,7 +305,7 @@ let verify copts kind =
        let teams = find_teams copts in
        let tverified = List.map (Repository.verify_team repo) teams in
        Format.fprintf copts.out " (%d keys, %d teams)@." (List.length kverified) (List.length tverified) ;
-       out (List.map (fun k -> k.Publickey.keyid) keys) kverified ;
+       out (List.map (fun k -> k.Publickey.name) keys) kverified ;
        out (List.map (fun t -> t.Team.name) teams) tverified ;
        repo
     | `Authorisations ->

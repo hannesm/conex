@@ -36,7 +36,7 @@ let valid r digest =
 let change_provider t data = { t with data }
 
 let add_trusted_key repo key =
-  let store = M.add key.Publickey.keyid key repo.store in
+  let store = M.add key.Publickey.name key repo.store in
   { repo with store }
 
 let add_team repo team =
@@ -138,7 +138,7 @@ let verify_resource repo owners name resource data =
   | true , true , true , true  -> Ok (`Both (id owners, js))
 
 let verify_key repo key =
-  let id = key.Publickey.keyid in
+  let id = key.Publickey.name in
   verify_resource repo (S.singleton id) id `PublicKey (Data.encode (Conex_data_persistency.publickey_to_t key)) >>= function
   | `Both b -> Ok (`Both b)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
@@ -231,13 +231,13 @@ let read_key repo keyid =
     match Data.decode data >>= Conex_data_persistency.t_to_publickey with
     | Error p -> Error (`ParseError (keyid, p))
     | Ok pubkey ->
-      if id_equal pubkey.Publickey.keyid keyid then
+      if id_equal pubkey.Publickey.name keyid then
         Ok pubkey
       else
-        Error (`NameMismatch (keyid, pubkey.Publickey.keyid))
+        Error (`NameMismatch (keyid, pubkey.Publickey.name))
 
 let write_key repo key =
-  let id = key.Publickey.keyid in
+  let id = key.Publickey.name in
   repo.data.Provider.write (Conex_opam_layout.key_path id) (Data.encode (Conex_data_persistency.publickey_to_t key))
 
 let read_team repo name =

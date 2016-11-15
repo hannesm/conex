@@ -42,7 +42,7 @@ let result (type a) (type e) a e =
 
 let pkey_eq a b =
   a.Publickey.counter = b.Publickey.counter &&
-  id_equal a.Publickey.keyid b.Publickey.keyid &&
+  id_equal a.Publickey.name b.Publickey.name &&
   a.Publickey.key = b.Publickey.key
 
 let publickey =
