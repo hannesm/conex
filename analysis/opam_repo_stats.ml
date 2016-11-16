@@ -6,7 +6,10 @@ let ignore_pr = [
   "7159" ; "7212" ; (* - opam builder fixes (gasche) *)
   "20" ; (* descr updates (vbmithr) *)
   "2593" ; (* findlib files (samoht) *)
-  "32"  (* fix compilation with 4.00.0 (tuong) *)
+  "32" ;  (* fix compilation with 4.00.0 (tuong) *)
+  "516" ; (* replace %{make}% with make (avsm) *)
+  "538" ; (* Generating homepage tags from github archive links (AltGr) *)
+  "30" ; (* move .0 to real version (vbmithr) *)
 ]
 
 (*
