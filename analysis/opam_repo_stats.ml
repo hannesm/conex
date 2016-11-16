@@ -1,5 +1,14 @@
 open Conex_core
 
+
+let ignore_pr = [
+  "5190" ; (* added dev-repo to github packages (AltGr) *)
+  "7159" ; "7212" ; (* - opam builder fixes (gasche) *)
+  "20" ; (* descr updates (vbmithr) *)
+  "2593" ; (* findlib files (samoht) *)
+  "32"  (* fix compilation with 4.00.0 (tuong) *)
+]
+
 (*
 Initial repo style with packages/foo.x.y
 
@@ -43,11 +52,14 @@ let read_auth base pkgname =
 (*
 several useful maps should be part of the output:
 <github-id> -> mail addresses
-<package> -> [bool * PR * committer]
+<package> -> {<committer> -> [bool * PR] }
  *)
 
 let handle_one base commit pr github mail maps =
   Format.fprintf Format.std_formatter "handle_one (%s) %s@." pr commit ;
+  if List.mem pr ignore_pr then
+    (Printf.printf "ignored PR" ; maps)
+  else
   let content = Persistency.read_file
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
@@ -58,39 +70,38 @@ let handle_one base commit pr github mail maps =
       match d with
       | Patch.Dir (p, _, _)
       | Patch.OldDir (p, _, _) ->
-        let ms = read_auth base p in
-        let valid = List.mem mail ms in
         let github_map =
-          let vals =
-            if M.mem github github_map then
-              M.find github github_map
-            else
-              S.empty
-          in
+          let vals = if M.mem github github_map then M.find github github_map else S.empty in
           M.add github (S.add mail vals) github_map
         in
-        let package_map =
-          let vals =
-            if M.mem p package_map then
-              M.find p package_map
-            else
-              M.empty
+        if Sys.file_exists (Filename.concat base (Filename.concat "packages" p)) then
+          let ms = read_auth base p in
+          let valid = List.mem mail ms in
+          let package_map =
+            let vals =
+              if M.mem p package_map then
+                M.find p package_map
+              else
+                M.empty
+            in
+            let entries =
+              if M.mem mail vals then
+                M.find mail vals
+              else
+                []
+            in
+            let maybe =
+              if List.exists (fun (_, pr') ->  pr = pr') entries then
+                entries
+              else
+                (valid, pr) :: entries
+            in
+            M.add p (M.add mail maybe vals) package_map
           in
-          let entries =
-            if M.mem mail vals then
-              M.find mail vals
-            else
-              []
-          in
-          let maybe =
-            if List.exists (fun (_, pr') ->  pr = pr') entries then
-              entries
-            else
-              (valid, pr) :: entries
-          in
-          M.add p (M.add mail maybe vals) package_map
-        in
-        (github_map, package_map)
+          (github_map, package_map)
+        else
+          (Printf.printf "ignoring deleted package %s\n" p;
+           (github_map, package_map))
       | _ -> Printf.printf "ignoring\n"; (github_map, package_map))
     maps comps
 
