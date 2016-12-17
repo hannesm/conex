@@ -66,7 +66,7 @@ let handle_one base commit pr github mail maps =
   let content = Persistency.read_file
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
-  let diffs = Diff.to_diffs content in
+  let diffs = Conex_diff.to_diffs content in
   let comps = Patch.diffs_to_components diffs in
   List.fold_left (fun (github_map, package_map) d ->
       Format.fprintf Format.std_formatter "handling %a" Patch.pp_component d ;

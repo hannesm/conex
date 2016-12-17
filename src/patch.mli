@@ -1,21 +1,22 @@
 open Conex_result
 open Conex_core
 open Conex_resource
+open Conex_diff
 
 type component =
-  | Idx of identifier * Diff.diff
-  | Id of identifier * Diff.diff
-  | Authorisation of name * Diff.diff
-  | Dir of name * name * Diff.diff list
-  | OldDir of name * name * Diff.diff list
+  | Idx of identifier * diff
+  | Id of identifier * diff
+  | Authorisation of name * diff
+  | Dir of name * name * diff list
+  | OldDir of name * name * diff list
 
 val pp_component : Format.formatter -> component -> unit
 
-val categorise : Diff.diff -> component option
+val categorise : diff -> component option
 
-val diffs_to_components : Diff.diff list -> component list
+val diffs_to_components : diff list -> component list
 
-val apply : Repository.t -> Diff.diff -> Repository.t
+val apply : Repository.t -> diff -> Repository.t
 
 type err = [ verification_error
            | Repository.base_error

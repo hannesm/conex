@@ -1,18 +1,19 @@
 open Conex_result
 open Conex_core
 open Conex_resource
+open Conex_diff
 
 let apply_diff provider diff =
   let read path =
-    if Diff.file diff = path_to_string path then
+    if file diff = path_to_string path then
       match provider.Provider.read path with
-      | Ok data -> Ok (Diff.apply (Some data) diff)
-      | Error _ -> Ok (Diff.apply None diff)
+      | Ok data -> Ok (apply (Some data) diff)
+      | Error _ -> Ok (apply None diff)
     else
       provider.Provider.read path
   and file_type path =
     let pn = path_to_string path
-    and name = Diff.file diff
+    and name = file diff
     in
     if pn = name then
       Ok File
@@ -21,7 +22,7 @@ let apply_diff provider diff =
     else
       provider.Provider.file_type path
   and read_dir path =
-    let name = List.rev (string_to_path (Diff.file diff))
+    let name = List.rev (string_to_path (file diff))
     and path = List.rev path
     in
     (* XXX: unlikely to be correct... *)
@@ -37,7 +38,7 @@ let apply_diff provider diff =
   and write _ = invalid_arg "cannot write on a diff provider, is read-only!"
   and exists path =
     let pn = path_to_string path
-    and name = Diff.file diff
+    and name = file diff
     in
     if pn = name then
       true
@@ -54,11 +55,11 @@ let apply repo diff =
   Repository.change_provider repo new_provider
 
 type component =
-  | Idx of identifier * Diff.diff
-  | Id of identifier * Diff.diff
-  | Authorisation of name * Diff.diff
-  | Dir of name * name * Diff.diff list
-  | OldDir of name * name * Diff.diff list
+  | Idx of identifier * diff
+  | Id of identifier * diff
+  | Authorisation of name * diff
+  | Dir of name * name * diff list
+  | OldDir of name * name * diff list
 
 let pp_component pp = function
   | Idx (id, _) -> Format.fprintf pp "index of %a@." pp_id id
@@ -68,7 +69,7 @@ let pp_component pp = function
   | OldDir (pn, vn, xs) -> Format.fprintf pp "old directory %a (%a with %d changes)@." pp_name pn pp_name vn (List.length xs)
 
 let categorise diff =
-  let p = string_to_path (Diff.file diff) in
+  let p = string_to_path (file diff) in
   match Conex_opam_layout.(is_index p, is_key p, is_authorisation p, is_item p, is_old_item p, is_compiler p) with
   | Some id, None, None, None, None, None ->
     Printf.printf "found an index in diff %s\n" id;
@@ -258,6 +259,6 @@ let verify_patch repo patch =
     (List.sort compare patch)
 
 let verify_diff repo data =
-  let diffs = Diff.to_diffs data in
+  let diffs = to_diffs data in
   let comp = diffs_to_components diffs in
   verify_patch repo comp
