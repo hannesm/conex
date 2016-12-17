@@ -3,7 +3,7 @@ open Conex_core
 open Conex_utils
 
 let sign_index idx priv =
-  let data = Data.encode (Conex_data_persistency.index_to_t idx)
+  let data = Conex_data.encode (Conex_data_persistency.index_to_t idx)
   and now = Uint.of_float (Unix.time ())
   and id = idx.Conex_resource.Index.identifier
   in

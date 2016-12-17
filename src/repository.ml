@@ -65,7 +65,7 @@ let verify_index repo idx =
   let to_consider, others =
     List.partition (fun (id, _, _) -> id_equal id aid) idx.Index.signatures
   in
-  let verify = verify_ks repo.store (Data.encode (Conex_data_persistency.index_to_t idx)) in
+  let verify = verify_ks repo.store (Conex_data.encode (Conex_data_persistency.index_to_t idx)) in
   let err = match others with
     | [] -> `NoSignature aid
     | (xid, _, _)::_ -> `NotAuthorised (aid, xid)
@@ -139,7 +139,7 @@ let verify_resource repo owners name resource data =
 
 let verify_key repo key =
   let id = key.Publickey.name in
-  verify_resource repo (S.singleton id) id `PublicKey (Data.encode (Conex_data_persistency.publickey_to_t key)) >>= function
+  verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Conex_data_persistency.publickey_to_t key)) >>= function
   | `Both b -> Ok (`Both b)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
   | `Quorum js when key.Publickey.key = None -> Ok (`Quorum js)
@@ -147,7 +147,7 @@ let verify_key repo key =
 
 let verify_team repo team =
   let id = team.Team.name in
-  match verify_resource repo S.empty id `Team (Data.encode (Conex_data_persistency.team_to_t team)) with
+  match verify_resource repo S.empty id `Team (Conex_data.encode (Conex_data_persistency.team_to_t team)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (`Quorum js)
@@ -157,7 +157,7 @@ let verify_team repo team =
 
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
-  match verify_resource repo S.empty name `Authorisation (Data.encode (Conex_data_persistency.authorisation_to_t auth)) with
+  match verify_resource repo S.empty name `Authorisation (Conex_data.encode (Conex_data_persistency.authorisation_to_t auth)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (`Quorum js)
@@ -179,7 +179,7 @@ let ensure_releases repo r =
 let verify_releases repo a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (Data.encode (Conex_data_persistency.releases_to_t r)) >>= fun res ->
+  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (Conex_data.encode (Conex_data_persistency.releases_to_t r)) >>= fun res ->
   match ensure_releases repo r with
   | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
   | Ok () -> match res with
@@ -206,7 +206,7 @@ let verify_checksum repo a r cs =
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`NotInReleases (cs.Checksum.name, r.Releases.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Data.encode (Conex_data_persistency.checksums_to_t cs)) >>= fun r ->
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Conex_data.encode (Conex_data_persistency.checksums_to_t cs)) >>= fun r ->
   let name = cs.Checksum.name in
   compute_checksum repo name >>= fun css ->
   Checksum.compare_checksums cs css >>= fun () ->
@@ -228,7 +228,7 @@ let read_key repo keyid =
   match repo.data.Provider.read (Conex_opam_layout.key_path keyid) with
   | Error _ -> Error (`NotFound keyid)
   | Ok data ->
-    match Data.decode data >>= Conex_data_persistency.t_to_publickey with
+    match Conex_data.decode data >>= Conex_data_persistency.t_to_publickey with
     | Error p -> Error (`ParseError (keyid, p))
     | Ok pubkey ->
       if id_equal pubkey.Publickey.name keyid then
@@ -238,13 +238,13 @@ let read_key repo keyid =
 
 let write_key repo key =
   let id = key.Publickey.name in
-  repo.data.Provider.write (Conex_opam_layout.key_path id) (Data.encode (Conex_data_persistency.publickey_to_t key))
+  repo.data.Provider.write (Conex_opam_layout.key_path id) (Conex_data.encode (Conex_data_persistency.publickey_to_t key))
 
 let read_team repo name =
   match repo.data.Provider.read (Conex_opam_layout.key_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    match Data.decode data >>= Conex_data_persistency.t_to_team with
+    match Conex_data.decode data >>= Conex_data_persistency.t_to_team with
     | Error p -> Error (`ParseError (name, p))
     | Ok team ->
       if id_equal team.Team.name name then
@@ -254,7 +254,7 @@ let read_team repo name =
 
 let write_team repo t =
   let id = t.Team.name in
-  repo.data.Provider.write (Conex_opam_layout.key_path id) (Data.encode (Conex_data_persistency.team_to_t t))
+  repo.data.Provider.write (Conex_opam_layout.key_path id) (Conex_data.encode (Conex_data_persistency.team_to_t t))
 
 let read_id repo id =
   match read_key repo id with
@@ -270,7 +270,7 @@ let read_index repo name =
   match repo.data.Provider.read (Conex_opam_layout.index_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    match Data.decode data >>= Conex_data_persistency.t_to_index with
+    match Conex_data.decode data >>= Conex_data_persistency.t_to_index with
     | Error p -> Error (`ParseError (name, p))
     | Ok i ->
       if id_equal i.Index.identifier name then
@@ -280,13 +280,13 @@ let read_index repo name =
 
 let write_index repo i =
   let name = Conex_opam_layout.index_path i.Index.identifier in
-  repo.data.Provider.write name (Data.encode (Conex_data_persistency.index_sigs_to_t i))
+  repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.index_sigs_to_t i))
 
 let read_authorisation repo name =
   match repo.data.Provider.read (Conex_opam_layout.authorisation_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    match Data.decode data >>= Conex_data_persistency.t_to_authorisation with
+    match Conex_data.decode data >>= Conex_data_persistency.t_to_authorisation with
     | Error p -> Error (`ParseError (name, p))
     | Ok auth ->
       if name_equal auth.Authorisation.name name then
@@ -297,7 +297,7 @@ let read_authorisation repo name =
 let write_authorisation repo a =
   repo.data.Provider.write
     (Conex_opam_layout.authorisation_path a.Authorisation.name)
-    (Data.encode (Conex_data_persistency.authorisation_to_t a))
+    (Conex_data.encode (Conex_data_persistency.authorisation_to_t a))
 
 let all_authorisations repo = S.of_list (Conex_opam_layout.authorisations repo.data)
 
@@ -305,7 +305,7 @@ let read_releases repo name =
   match repo.data.Provider.read (Conex_opam_layout.releases_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    match Data.decode data >>= Conex_data_persistency.t_to_releases with
+    match Conex_data.decode data >>= Conex_data_persistency.t_to_releases with
     | Error p -> Error (`ParseError (name, p))
     | Ok r ->
       if name_equal r.Releases.name name then
@@ -315,13 +315,13 @@ let read_releases repo name =
 
 let write_releases repo r =
   let name = Conex_opam_layout.releases_path r.Releases.name in
-  repo.data.Provider.write name (Data.encode (Conex_data_persistency.releases_to_t r))
+  repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.releases_to_t r))
 
 let read_checksum repo name =
   match repo.data.Provider.read (Conex_opam_layout.checksum_path name) with
   | Error _ -> Error (`NotFound name)
   | Ok data ->
-    match Data.decode data >>= Conex_data_persistency.t_to_checksums with
+    match Conex_data.decode data >>= Conex_data_persistency.t_to_checksums with
     | Error p -> Error (`ParseError (name, p))
     | Ok csum ->
       if name_equal csum.Checksum.name name then
@@ -331,7 +331,7 @@ let read_checksum repo name =
 
 let write_checksum repo csum =
   let name = Conex_opam_layout.checksum_path csum.Checksum.name in
-  repo.data.Provider.write name (Data.encode (Conex_data_persistency.checksums_to_t csum))
+  repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.checksums_to_t csum))
 
 (* TODO: invalid_args are bad below!!! *)
 let add_csums repo id rs =

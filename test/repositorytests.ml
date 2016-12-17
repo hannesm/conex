@@ -279,7 +279,7 @@ let bad_id_r () =
     (Ok key) (Repository.read_key r "foo") ;
   Alcotest.check (result id re) "id foo parses"
     (Ok (`Key key)) (Repository.read_id r "foo") ;
-  p.write ["keys"; "foobar"] (Data.encode (publickey_to_t key)) ;
+  p.write ["keys"; "foobar"] (Conex_data.encode (publickey_to_t key)) ;
   Alcotest.check (result team re) "parse error on team foobar"
     (Error (`ParseError ("foobar", ""))) (Repository.read_team r "foobar") ;
   Alcotest.check (result publickey re) "key foobar namemismatch"
@@ -294,7 +294,7 @@ let bad_id_r () =
     (Ok t) (Repository.read_team r "foo") ;
   Alcotest.check (result id re) "id foo parses"
     (Ok (`Team t)) (Repository.read_id r "foo") ;
-  p.write ["keys"; "foobar"] (Data.encode (team_to_t t)) ;
+  p.write ["keys"; "foobar"] (Conex_data.encode (team_to_t t)) ;
   Alcotest.check (result publickey re) "parse error on key foobar"
     (Error (`ParseError ("foobar", ""))) (Repository.read_key r "foobar") ;
   Alcotest.check (result team re) "name mismatch on team foobar"
@@ -315,7 +315,7 @@ let bad_idx_r () =
   Repository.write_index r idx ;
   Alcotest.check (result ji re) "good index foo"
     (Ok idx) (Repository.read_index r "foo") ;
-  p.write ["index"; "foobar"] (Data.encode (index_sigs_to_t idx)) ;
+  p.write ["index"; "foobar"] (Conex_data.encode (index_sigs_to_t idx)) ;
   Alcotest.check (result ji re) "name mismatch in foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_index r "foobar")
 
@@ -332,7 +332,7 @@ let bad_auth_r () =
   Repository.write_authorisation r a ;
   Alcotest.check (result auth re) "authorisation foo good"
     (Ok a) (Repository.read_authorisation r "foo") ;
-  p.write ["packages"; "foobar"; "authorisation"] (Data.encode (authorisation_to_t a)) ;
+  p.write ["packages"; "foobar"; "authorisation"] (Conex_data.encode (authorisation_to_t a)) ;
   Alcotest.check (result auth re) "name mismatch on authorisation foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_authorisation r "foobar")
 
@@ -349,7 +349,7 @@ let bad_rel_r () =
   Repository.write_releases r rel ;
   Alcotest.check (result releases re) "releases foo good"
     (Ok rel) (Repository.read_releases r "foo") ;
-  p.write ["packages"; "foobar"; "releases"] (Data.encode (releases_to_t rel)) ;
+  p.write ["packages"; "foobar"; "releases"] (Conex_data.encode (releases_to_t rel)) ;
   Alcotest.check (result releases re) "name mismatch on releases foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_releases r "foobar")
 
@@ -366,7 +366,7 @@ let bad_cs_r () =
   Repository.write_checksum r c ;
   Alcotest.check (result cs re) "checksum foo.0 good"
     (Ok c) (Repository.read_checksum r "foo.0") ;
-  p.write ["packages"; "foo"; "foo.1"; "checksum"] (Data.encode (checksums_to_t c)) ;
+  p.write ["packages"; "foo"; "foo.1"; "checksum"] (Conex_data.encode (checksums_to_t c)) ;
   Alcotest.check (result cs re) "name mismatch on checksum foo.1"
     (Error (`NameMismatch ("foo.1", "foo.0"))) (Repository.read_checksum r "foo.1") ;
   p.write ["packages"; "foo"; "foo.2"] "blubb" ;
@@ -435,7 +435,7 @@ let k_err =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let res d =
-  let data = Data.encode d in
+  let data = Conex_data.encode d in
   (Uint.of_int (String.length data), Conex_nocrypto.digest data)
 
 let empty_key () =

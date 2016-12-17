@@ -69,7 +69,7 @@ let load_tas copts =
     { copts with repo ; verify = true }
 
 let valid copts s t =
-  match Repository.valid copts.repo (Conex_nocrypto.digest (Data.encode t)) with
+  match Repository.valid copts.repo (Conex_nocrypto.digest (Conex_data.encode t)) with
   | None -> false
   | Some (_, _, _, sigs) -> S.mem s sigs
 
@@ -607,7 +607,7 @@ let sign copts item name =
     in
     let add_r (name, k, data) =
       let digest, size =
-        let data = Data.encode data in
+        let data = Conex_data.encode data in
         (Conex_nocrypto.digest data, Uint.of_int (String.length data))
       in
       let index = Index.next_id idx in

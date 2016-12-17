@@ -1,4 +1,5 @@
 Conex_core
+Conex_data
 Conex_data_persistency
 Conex_diff
 Conex_nocrypto
@@ -8,5 +9,4 @@ Conex_persistency
 Conex_private
 Conex_provider
 Conex_resource
-Data
 Repository
