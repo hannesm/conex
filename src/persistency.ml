@@ -2,6 +2,8 @@ open Conex_core
 
 let exists = Sys.file_exists
 
+let mkdir ?(mode = 0o755) name = Unix.mkdir name mode
+
 let remove = Sys.remove
 
 let rename = Sys.rename

@@ -3,8 +3,7 @@ open Conex_core
 open Provider
 
 let fs_provider basedir =
-  if not (Persistency.exists basedir) then
-    Unix.mkdir basedir 0o755 ;
+  if not (Persistency.exists basedir) then Persistency.mkdir basedir ;
   let get path = path_to_string (basedir :: path) in
   let ensure_dir path =
     let rec mkdir base = function
@@ -13,10 +12,8 @@ let fs_provider basedir =
       | x::xs ->
          let path = base @ [x] in
          let str = path_to_string path in
-         if not (Persistency.exists str) then
-           Unix.mkdir (path_to_string path) 0o755 ;
-         if not (Sys.is_directory str) then
-           invalid_arg (str ^ " is not a directory") ;
+         if not (Persistency.exists str) then Persistency.mkdir (path_to_string path) ;
+         if not (Sys.is_directory str) then invalid_arg (str ^ " is not a directory") ;
          mkdir path xs
     in
     mkdir [basedir] path

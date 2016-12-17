@@ -55,7 +55,7 @@ let kinds =
     ("repository", `Repository) ]
 
 let find_private_keys copts =
-  let keys = List.sort String.compare (Private.all_private_keys copts.repo) in
+  let keys = List.sort String.compare (Conex_opam_layout.private_keys (Repository.provider copts.repo)) in
   let keys = option keys (fun _ -> []) copts.signed_by in
   option keys (fun s -> List.filter (id_equal s) keys) copts.owner
 

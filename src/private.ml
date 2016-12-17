@@ -11,33 +11,9 @@ let sign_index idx priv =
   Conex_nocrypto.sign priv data >>= fun signature ->
   Ok (Conex_resource.Index.add_sig idx (id, now, signature))
 
-let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
-
-let private_suffix = "private"
-
-let private_filename repo id =
-  String.concat "." (string_to_path (Repository.provider repo).Provider.name @ [id ; private_suffix])
-
-let all_private_keys repo =
-  let is_private s =
-    if String.is_suffix ~suffix:private_suffix s then
-      let p = string_to_path (Repository.provider repo).Provider.name in
-      match List.rev (String.cuts '.' s) with
-      | _::id::path when p = List.rev path -> Some id
-      | _ -> None
-    else
-      None
-  in
-  if Persistency.exists private_dir then
-    List.fold_left
-      (fun acc s -> option acc (fun s -> s :: acc) (is_private s))
-      []
-      (Persistency.collect_dir private_dir)
-  else
-    []
-
 let write_private_key repo id key =
-  let filename = Filename.concat private_dir (private_filename repo id) in
+  let base = (Repository.provider repo).Provider.name in
+  let filename = Conex_opam_layout.private_key_path base id in
   if Persistency.exists filename then
     (let ts =
        let open Unix in
@@ -45,8 +21,8 @@ let write_private_key repo id key =
        Printf.sprintf "%4d%2d%2d%2d%2d%2d" (t.tm_year + 1900) (succ t.tm_mon)
          t.tm_mday t.tm_hour t.tm_min t.tm_sec
      in
-     let backfn = String.concat "." [ id ; ts ; "bak" ] in
-     let backup = Filename.concat private_dir (private_filename repo backfn) in
+     let backfn = String.concat "." [ id ; ts ] in
+     let backup = Conex_opam_layout.private_key_path base backfn in
      let rec inc n =
        let nam = backup ^ "." ^ string_of_int n in
        if Persistency.exists nam then
@@ -61,12 +37,13 @@ let write_private_key repo id key =
          backup
      in
      Persistency.rename filename backup) ;
-  if not (Persistency.exists private_dir) then
-    Unix.mkdir private_dir 0o700 ;
-  if not (Sys.is_directory private_dir) then
-    invalid_arg (private_dir ^ " is not a directory!") ;
-  let data = match key with `Priv k -> k in
-  Persistency.write_file ~mode:0o400 filename data
+  if not (Persistency.exists Conex_opam_layout.private_dir) then
+    Persistency.mkdir ~mode:0o700 Conex_opam_layout.private_dir ;
+  match Persistency.file_type Conex_opam_layout.private_dir with
+  | Some Directory ->
+    let data = match key with `Priv k -> k in
+    Persistency.write_file ~mode:0o400 filename data
+  | _ -> invalid_arg (Conex_opam_layout.private_dir ^ " is not a directory!")
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list ]
 
@@ -79,7 +56,8 @@ let pp_err ppf = function
 
 let read_private_key ?id repo =
   let read id =
-    let fn = Filename.concat private_dir (private_filename repo id) in
+    let base = (Repository.provider repo).Provider.name in
+    let fn = Conex_opam_layout.private_key_path base id in
     if Persistency.exists fn then
       let key = Persistency.read_file fn in
       Ok (id, `Priv key)
@@ -88,7 +66,7 @@ let read_private_key ?id repo =
   in
   match id with
   | Some x -> read x
-  | None -> match all_private_keys repo with
-            | [x] -> read x
-            | [] -> Error `NoPrivateKey
-            | xs -> Error (`MultiplePrivateKeys xs)
+  | None -> match Conex_opam_layout.private_keys (Repository.provider repo) with
+    | [x] -> read x
+    | [] -> Error `NoPrivateKey
+    | xs -> Error (`MultiplePrivateKeys xs)

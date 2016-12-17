@@ -42,10 +42,10 @@ let private_keys p =
 
 let private_key_path path id =
   let filename =
-    let els = path @ [id ; "private"] in
+    let els = string_to_path path @ [id ; "private"] in
     String.concat "." els
   in
-  string_to_path private_dir @ [ filename ]
+  path_to_string (string_to_path private_dir @ [ filename ])
 
 let key_dir = "keys"
 

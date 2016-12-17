@@ -14,7 +14,8 @@ val ids : Provider.t -> identifier list
 val authorisations : Provider.t -> name list
 val items : Provider.t -> name -> name list
 
-val private_key_path : path -> identifier -> path
+val private_dir : string
+val private_key_path : string -> identifier -> string
 val key_path : identifier -> path
 val index_path : identifier -> path
 val authorisation_path : name -> path

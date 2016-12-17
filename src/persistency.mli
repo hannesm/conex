@@ -1,6 +1,7 @@
 open Conex_core
 
 val exists : string -> bool
+val mkdir : ?mode:int -> string -> unit
 val remove : string -> unit
 val rename : string -> string -> unit
 val file_type : string -> file_type option
