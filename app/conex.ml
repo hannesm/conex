@@ -451,10 +451,10 @@ let show copts item value =
       | Error e ->
         Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
-  | `Private -> (match Private.read_private_key ~id:value copts.repo with
+  | `Private -> (match Conex_private.read_private_key ~id:value copts.repo with
       | Ok k -> show_private copts k
       | Error e ->
-        Format.fprintf copts.out "%s%a%s@." Color.red Private.pp_err e Color.endc ;
+        Format.fprintf copts.out "%s%a%s@." Color.red Conex_private.pp_err e Color.endc ;
         `Error (false, "error"))
   | `Authorisation -> (match Repository.read_authorisation copts.repo value with
       | Ok k -> show_authorisation copts k
@@ -491,7 +491,7 @@ let generate copts item name ids =
      if copts.dry then
        Format.fprintf copts.out "dry run, nothing written.@."
      else
-       Private.write_private_key copts.repo name priv ;
+       Conex_private.write_private_key copts.repo name priv ;
      Format.fprintf copts.out "generated new private key for %s@." name ;
      show_private copts (name, priv)
   | `Key ->
@@ -506,7 +506,7 @@ let generate copts item name ids =
     (match Repository.read_key copts.repo name with
      | Ok p ->
        let pub_opt =
-         match Private.read_private_key ~id:name copts.repo with
+         match Conex_private.read_private_key ~id:name copts.repo with
          | Error _ -> None
          | Ok (_, priv) -> match Conex_nocrypto.pub_of_priv priv with
            | Ok x -> Some x
@@ -516,7 +516,7 @@ let generate copts item name ids =
        writeout (Publickey.publickey ~counter name pub_opt)
      | Error _ ->
        (* XXX need: if name = "" then missing argument! *)
-       match Private.read_private_key ~id:name copts.repo with
+       match Conex_private.read_private_key ~id:name copts.repo with
        | Error _ -> Format.fprintf copts.out "%seither need a public or a private key for %s%s@."
                       Color.red name Color.endc ;
          `Error (false, "no private key and public does not exist")
@@ -595,9 +595,9 @@ let generate copts item name ids =
 
 let sign copts item name =
   Nocrypto_entropy_unix.initialize () ;
-  match Private.read_private_key ?id:copts.private_key copts.repo with
+  match Conex_private.read_private_key ?id:copts.private_key copts.repo with
   | Error e ->
-    Format.fprintf copts.out "%s%a%s@." Color.red Private.pp_err e Color.endc ;
+    Format.fprintf copts.out "%s%a%s@." Color.red Conex_private.pp_err e Color.endc ;
     `Error (false, "error")
   | Ok (id, p) ->
     Format.fprintf copts.out "using private key %s@." id ;
@@ -612,7 +612,7 @@ let sign copts item name =
       in
       let index = Index.next_id idx in
       let r = Index.r index name size k digest in
-      Private.sign_index (Index.add_resource idx r) p
+      Conex_private.sign_index (Index.add_resource idx r) p
     in
     match item with
     | `Key -> (match Repository.read_key copts.repo name with
