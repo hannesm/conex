@@ -67,12 +67,12 @@ let handle_one base commit pr github mail maps =
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
   let diffs = Conex_diff.to_diffs content in
-  let comps = Patch.diffs_to_components diffs in
+  let comps = Conex_patch.diffs_to_components diffs in
   List.fold_left (fun (github_map, package_map) d ->
-      Format.fprintf Format.std_formatter "handling %a" Patch.pp_component d ;
+      Format.fprintf Format.std_formatter "handling %a" Conex_patch.pp_component d ;
       match d with
-      | Patch.Dir (p, _, _)
-      | Patch.OldDir (p, _, _) ->
+      | Conex_patch.Dir (p, _, _)
+      | Conex_patch.OldDir (p, _, _) ->
         let github_map =
           let vals = if M.mem github github_map then M.find github github_map else S.empty in
           M.add github (S.add mail vals) github_map
