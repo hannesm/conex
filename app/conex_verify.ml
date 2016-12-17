@@ -13,11 +13,11 @@ let strict = false
 let maybe_exit () = if strict then exit 1
 
 let verify_complete_repository directory trust =
-  if not (Persistency.exists directory) then begin
+  if not (Conex_persistency.exists directory) then begin
     Format.fprintf out "directory %s does not exist@." directory ;
     exit (-1)
   end ;
-  if not (Persistency.exists trust) then begin
+  if not (Conex_persistency.exists trust) then begin
     Format.fprintf out "trust anchor directory %s does not exist@." trust ;
     exit (-1)
   end ;

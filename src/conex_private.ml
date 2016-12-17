@@ -14,7 +14,7 @@ let sign_index idx priv =
 let write_private_key repo id key =
   let base = (Repository.provider repo).Provider.name in
   let filename = Conex_opam_layout.private_key_path base id in
-  if Persistency.exists filename then
+  if Conex_persistency.exists filename then
     (let ts =
        let open Unix in
        let t = gmtime (stat filename).st_mtime in
@@ -25,24 +25,16 @@ let write_private_key repo id key =
      let backup = Conex_opam_layout.private_key_path base backfn in
      let rec inc n =
        let nam = backup ^ "." ^ string_of_int n in
-       if Persistency.exists nam then
-         inc (succ n)
-       else
-         nam
+       if Conex_persistency.exists nam then inc (succ n) else nam
      in
-     let backup =
-       if Persistency.exists backup then
-         inc 0
-       else
-         backup
-     in
-     Persistency.rename filename backup) ;
-  if not (Persistency.exists Conex_opam_layout.private_dir) then
-    Persistency.mkdir ~mode:0o700 Conex_opam_layout.private_dir ;
-  match Persistency.file_type Conex_opam_layout.private_dir with
+     let backup = if Conex_persistency.exists backup then inc 0 else backup in
+     Conex_persistency.rename filename backup) ;
+  if not (Conex_persistency.exists Conex_opam_layout.private_dir) then
+    Conex_persistency.mkdir ~mode:0o700 Conex_opam_layout.private_dir ;
+  match Conex_persistency.file_type Conex_opam_layout.private_dir with
   | Some Directory ->
     let data = match key with `Priv k -> k in
-    Persistency.write_file ~mode:0o400 filename data
+    Conex_persistency.write_file ~mode:0o400 filename data
   | _ -> invalid_arg (Conex_opam_layout.private_dir ^ " is not a directory!")
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list ]
@@ -58,8 +50,8 @@ let read_private_key ?id repo =
   let read id =
     let base = (Repository.provider repo).Provider.name in
     let fn = Conex_opam_layout.private_key_path base id in
-    if Persistency.exists fn then
-      let key = Persistency.read_file fn in
+    if Conex_persistency.exists fn then
+      let key = Conex_persistency.read_file fn in
       Ok (id, `Priv key)
     else
       Error (`NotFound id)

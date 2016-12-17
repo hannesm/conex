@@ -3,10 +3,10 @@ open Conex_core
 open Conex_resource
 
 let load_trust_anchors out maybe_exit dir =
-  let keys = List.map (Filename.concat dir) (Persistency.collect_dir dir) in
+  let keys = List.map (Filename.concat dir) (Conex_persistency.collect_dir dir) in
   let keys =
     List.fold_left (fun acc f ->
-        match Data.decode (Persistency.read_file f) >>= Conex_data_persistency.t_to_publickey with
+        match Data.decode (Conex_persistency.read_file f) >>= Conex_data_persistency.t_to_publickey with
         | Ok key -> key :: acc
         | Error e -> Format.fprintf out "error while constructing key %a: %s@." pp_id f e ; maybe_exit () ; acc)
       [] keys

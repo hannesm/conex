@@ -4,9 +4,9 @@ Conex_diff
 Conex_nocrypto
 Conex_opam_layout
 Conex_patch
+Conex_persistency
 Conex_private
 Conex_provider
 Conex_resource
 Data
-Persistency
 Repository

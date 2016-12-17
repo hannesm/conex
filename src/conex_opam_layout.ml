@@ -38,7 +38,7 @@ let private_keys p =
   List.fold_left
     (fun acc s -> option acc (fun s -> s :: acc) (is_private s))
     []
-    (Persistency.collect_dir private_dir)
+    (Conex_persistency.collect_dir private_dir)
 
 let private_key_path path id =
   let filename =

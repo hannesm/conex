@@ -471,12 +471,12 @@ let show copts item value =
       | Error e ->
         Format.fprintf copts.out "%schecksum %a%s" Color.red Repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
-  | `Diff -> if Persistency.exists value then
-               let data = Persistency.read_file value in
+  | `Diff -> if Conex_persistency.exists value then
+               let data = Conex_persistency.read_file value in
                let provider = Repository.provider copts.repo in
                Format.fprintf copts.out "verifying %s (%a)@.%s@."
                               value Provider.pp_provider provider data ;
-(*               (match Patch.verify_diff copts.repo data with
+(*               (match Conex_patch.verify_diff copts.repo data with
                 | `Ok _ -> Format.fprintf copts.out "Diff %s successfully verified@." value
                  | `Error s -> Format.fprintf copts.out "Failed to verify diff %s: %s@." value s) ; *)
                `Ok ()

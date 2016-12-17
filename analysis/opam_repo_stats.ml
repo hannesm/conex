@@ -45,7 +45,7 @@ let read_auth base pkgname =
   let path = Conex_opam_layout.authorisation_path pkgname in
   let file = Filename.concat base (path_to_string path) in
   if Sys.file_exists file then
-    let data = Persistency.read_file file in
+    let data = Conex_persistency.read_file file in
     let parsed = OpamParser.string data "" in
     get_authorised parsed
   else
@@ -63,7 +63,7 @@ let handle_one base commit pr github mail maps =
   if List.mem pr ignore_pr then
     (Printf.printf "ignored PR" ; maps)
   else
-  let content = Persistency.read_file
+  let content = Conex_persistency.read_file
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
   let diffs = Conex_diff.to_diffs content in
@@ -112,12 +112,12 @@ let handle_one base commit pr github mail maps =
 (* map GitHub ID -> (email, package list) [of invalid pushes] *)
 let handle_prs dir =
   let base = Filename.concat dir "prs" in
-  let prs = Persistency.collect_dir base in
+  let prs = Conex_persistency.collect_dir base in
   let total = List.length prs in
   let (github_map, package_map), _ = List.fold_left
       (fun (map, i) pr ->
          Printf.printf "%d/%d\n%!" i total ;
-         let data = Persistency.read_file (Filename.concat base pr) in
+         let data = Conex_persistency.read_file (Filename.concat base pr) in
          let eles = Astring.String.cuts ~sep:" " data in
          let cid = List.nth eles 0
          and pr = List.nth eles 1
