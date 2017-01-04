@@ -74,8 +74,8 @@ val add_trusted_key : t -> Publickey.t -> t
 
 val add_team : t -> Team.t -> t
 
-val all_ids : t -> S.t
-val all_authorisations : t -> S.t
+val ids : t -> S.t
+val items : t -> S.t
 
 type r_err = [ `NotFound of string | `ParseError of name * string | `NameMismatch of string * string ]
 

@@ -28,7 +28,7 @@ let verify_complete_repository directory trust =
   (* b) load all other identities [can also be teams!] *)
   let r =
     S.fold (load_id out debug maybe_exit)
-      (S.diff (Repository.all_ids r) (Repository.team r "janitors")) r
+      (S.diff (Repository.ids r) (Repository.team r "janitors")) r
   in
   (* c) for each package: read & verify authorisation, releases, checksums *)
   S.iter (fun name ->
@@ -52,7 +52,7 @@ let verify_complete_repository directory trust =
                   | Ok ok -> if debug then Repository.pp_ok out ok)
               rel.Releases.releases ;
             if !good then Format.fprintf out "verified %a@." pp_name name)
-    (Repository.all_authorisations r) ;
+    (Repository.items r) ;
   exit 0
 
 let () =

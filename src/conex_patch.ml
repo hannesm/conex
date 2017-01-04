@@ -159,7 +159,7 @@ let verify repo = function
       | Error _, Ok idx' ->
         guard (idx'.Index.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Repository.all_ids repo) id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.unique_keyid (Repository.ids repo) id) `IllegalId >>= fun () ->
         Repository.verify_index repo idx' >>= fun _ ->
         Ok (Repository.add_index repo' idx')
       | _, Error e -> Error e
@@ -178,7 +178,7 @@ let verify repo = function
       | Error _, Ok (`Key k') ->
         guard (k'.Publickey.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Repository.all_ids repo) id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.unique_keyid (Repository.ids repo) id) `IllegalId >>= fun () ->
         Repository.verify_key repo k' >>= fun _ ->
         Ok (Repository.add_trusted_key repo' k')
       | Ok (`Team t), Ok (`Team t') ->
@@ -188,7 +188,7 @@ let verify repo = function
       | Error _, Ok (`Team t') ->
         guard (t'.Team.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Repository.all_ids repo) id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.unique_keyid (Repository.ids repo) id) `IllegalId >>= fun () ->
         Repository.verify_team repo t' >>= fun _ ->
         Ok (Repository.add_team repo' t')
       | _, Error e -> Error e
@@ -209,7 +209,7 @@ let verify repo = function
       | Error _, Ok a' ->
         guard (a'.Authorisation.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_name name) `IllegalName >>= fun () ->
-        guard (Conex_opam_layout.unique_data (Repository.all_authorisations repo) name) `IllegalName >>= fun () ->
+        guard (Conex_opam_layout.unique_data (Repository.items repo) name) `IllegalName >>= fun () ->
         Repository.verify_authorisation repo a' >>= fun _ ->
         Ok repo'
       | _, Error e -> Error e

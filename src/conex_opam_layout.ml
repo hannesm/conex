@@ -67,7 +67,7 @@ let index_path ji = [ ipath ; ji ]
 let data_dir = "packages"
 let authorisation_filename = "authorisation"
 
-let authorisations p =
+let items p =
   match p.Provider.read_dir [ data_dir ] with
   | Error _ -> []
   | Ok data ->
@@ -84,7 +84,7 @@ let releases_path id = [ data_dir ; id ; releases_filename ]
 
 let checksum_filename = "checksum"
 
-let items p id =
+let subitems p id =
   match p.Provider.read_dir [ data_dir ; id ] with
   | Error _ -> []
   | Ok data ->

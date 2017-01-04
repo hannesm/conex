@@ -80,7 +80,7 @@ let find_keys copts =
           match Repository.read_key copts.repo f with
           | Error e -> if copts.debug then Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
+      (List.sort String.compare (S.elements (Repository.ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.name o) keys
@@ -96,7 +96,7 @@ let find_teams copts =
           match Repository.read_team copts.repo f with
           | Error e -> if copts.debug then Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
+      (List.sort String.compare (S.elements (Repository.ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun t -> S.mem o t.Team.members) teams
@@ -112,7 +112,7 @@ let find_ids copts =
           match Repository.read_id copts.repo f with
           | Error e -> Format.fprintf copts.out "%sid %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.all_ids copts.repo)))
+      (List.sort String.compare (S.elements (Repository.ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ ->
@@ -138,7 +138,7 @@ let find_authorisations copts =
           match Repository.read_authorisation copts.repo f with
           | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.all_authorisations copts.repo)))
+      (List.sort String.compare (S.elements (Repository.items copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun d -> S.mem o d.Authorisation.authorised) auths
@@ -182,7 +182,7 @@ let find_checksums copts =
   List.fold_left
     (fun acc (a, r) ->
      let cs =
-       let items = Conex_opam_layout.items (Repository.provider copts.repo) a.Authorisation.name in
+       let items = Conex_opam_layout.subitems (Repository.provider copts.repo) a.Authorisation.name in
        let all = List.sort String.compare items in
        let all_cs =
          filter_map
@@ -211,7 +211,7 @@ let load_index id r =
   | Ok i -> Repository.add_index r i
 
 let list copts kind =
-  let repo = S.fold load_index (Repository.all_ids copts.repo) copts.repo in
+  let repo = S.fold load_index (Repository.ids copts.repo) copts.repo in
   let copts = { copts with repo } in
   let rec exec kind =
     let out items =
@@ -265,7 +265,7 @@ let verify copts kind =
   let copts = load_tas copts in
   let repo = S.fold
       (Conex_common.load_id copts.out copts.debug (fun () -> ()))
-      (S.diff (Repository.all_ids copts.repo) (Repository.team copts.repo "janitors"))
+      (S.diff (Repository.ids copts.repo) (Repository.team copts.repo "janitors"))
       copts.repo
   in
   let copts = { copts with repo } in
@@ -436,7 +436,7 @@ let show copts item value =
   let copts = load_tas copts in
   let repo = S.fold
       (Conex_common.load_id copts.out copts.debug (fun () -> ()))
-      (S.diff (Repository.all_ids copts.repo) (Repository.team copts.repo "janitors"))
+      (S.diff (Repository.ids copts.repo) (Repository.team copts.repo "janitors"))
       copts.repo
   in
   let copts = { copts with repo } in

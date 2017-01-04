@@ -165,7 +165,7 @@ let verify_authorisation repo auth =
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
 
 let ensure_releases repo r =
-  let dirs = Conex_opam_layout.items repo.data r.Releases.name in
+  let dirs = Conex_opam_layout.subitems repo.data r.Releases.name in
   let dirs = S.of_list dirs in
   let rels = r.Releases.releases in
   if S.equal rels dirs then
@@ -264,7 +264,7 @@ let read_id repo id =
     | Ok team -> Ok (`Team team)
     | Error e -> Error e
 
-let all_ids repo = S.of_list (Conex_opam_layout.ids repo.data)
+let ids repo = S.of_list (Conex_opam_layout.ids repo.data)
 
 let read_index repo name =
   match repo.data.Provider.read (Conex_opam_layout.index_path name) with
@@ -299,7 +299,7 @@ let write_authorisation repo a =
     (Conex_opam_layout.authorisation_path a.Authorisation.name)
     (Conex_data.encode (Conex_data_persistency.authorisation_to_t a))
 
-let all_authorisations repo = S.of_list (Conex_opam_layout.authorisations repo.data)
+let items repo = S.of_list (Conex_opam_layout.items repo.data)
 
 let read_releases repo name =
   match repo.data.Provider.read (Conex_opam_layout.releases_path name) with

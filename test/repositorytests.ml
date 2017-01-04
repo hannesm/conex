@@ -191,8 +191,8 @@ let ch_err =
 let empty_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository p in
-  Alcotest.check sset "empty repo has no keys" S.empty (Repository.all_ids r) ;
-  Alcotest.check sset "empty repo has no authorisations" S.empty (Repository.all_authorisations r) ;
+  Alcotest.check sset "empty repo has no keys" S.empty (Repository.ids r) ;
+  Alcotest.check sset "empty repo has no authorisations" S.empty (Repository.items r) ;
   Alcotest.check (result publickey re) "reading key foo in empty repo fails"
     (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
@@ -211,17 +211,17 @@ let key_r () =
   let r = Repository.repository p in
   let k, _pk = gen_pub "foo" in
   Repository.write_key r k ;
-  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Repository.all_ids r) ;
+  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Repository.ids r) ;
   Repository.write_key r k ;
-  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Repository.all_ids r) ;
+  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Repository.ids r) ;
   let k2, _pk2 = gen_pub "foobar" in
   Repository.write_key r k2 ;
-  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Repository.all_ids r) ;
+  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Repository.ids r) ;
   Alcotest.check (result publickey re) "reading key gives back right key"
     (Ok k) (Repository.read_key r "foo") ;
   let jk, _jpk = gen_pub "janitor" in
   Repository.write_key r jk ;
-  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Repository.all_ids r)
+  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Repository.ids r)
 
 let team_r () =
   let p = Mem.mem_provider () in
