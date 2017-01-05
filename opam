@@ -26,5 +26,7 @@ depends: [
   "x509" {>= "0.4.0"}
   "cmdliner"
   "alcotest" {test}
+  "opam-file-format"
+  "opam-format"
 ]
 available: [ ocaml-version >= "4.01.0" ]
