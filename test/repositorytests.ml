@@ -254,6 +254,143 @@ let checks_r () =
 
 open Conex_data_persistency
 
+let str_err =
+  let module M = struct
+    type t = string
+    let pp ppf x = Format.pp_print_string ppf x
+    let equal _ _ = true
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+
+let basic_persistency () =
+  Alcotest.check (result team str_err) "couldn't parse team"
+    (Error "") (t_to_team M.empty) ;
+  let bad_c = M.add "counter" (String "foo") M.empty in
+  Alcotest.check (result team str_err) "couldn't parse team counter"
+    (Error "") (t_to_team bad_c) ;
+  let bad_n =
+    M.add "name" (Int Uint.zero)
+      (M.add "counter" (Int Uint.zero)
+         (M.add "version" (Int Uint.zero)
+            M.empty))
+  in
+  Alcotest.check (result team str_err) "couldn't parse team name"
+    (Error "") (t_to_team bad_n) ;
+  let bad_m =
+    M.add "members" (String "bl")
+      (M.add "name" (String "foo") bad_n)
+  in
+  Alcotest.check (result team str_err) "couldn't parse team members"
+    (Error "") (t_to_team bad_m) ;
+  let bad_m =
+    M.add "members" (List [ Int Uint.zero ])
+      (M.add "name" (String "foo") bad_n)
+  in
+  Alcotest.check (result team str_err) "couldn't parse team members (not a set)"
+    (Error "") (t_to_team bad_m) ;
+  let good_t =
+    M.add "members" (List [ String "foo" ])
+      (M.add "name" (String "foo") bad_n)
+  in
+  let t = Team.team ~members:(S.singleton "foo") "foo" in
+  Alcotest.check (result team str_err) "could parse team"
+    (Ok t) (t_to_team good_t) ;
+  Alcotest.check (result team str_err) "could unparse/parse team"
+    (Ok t) (t_to_team (team_to_t t)) ;
+  Alcotest.check (result team str_err) "could unparse/parse team"
+    (Ok t) (Conex_data.decode (Conex_data.encode (team_to_t t)) >>= t_to_team) ;
+  let good_pub =
+    M.add "key" (String "NONE")
+      (M.add "name" (String "foo") bad_n)
+  in
+  Alcotest.check (result publickey str_err) "could parse pub"
+    (Ok (Publickey.publickey "foo" None)) (t_to_publickey good_pub) ;
+  let bad_pub =
+    M.add "accounts" (List [ String "bla" ]) good_pub
+  in
+  Alcotest.check (result publickey str_err) "couldn't parse accounts"
+    (Error "") (t_to_publickey bad_pub) ;
+  let good_pub =
+    M.add "accounts" (Map (M.add "email" (String "foobar") M.empty)) good_pub
+  in
+  Alcotest.check (result publickey str_err) "can parse accounts"
+    (Ok (Publickey.publickey ~accounts:[`Email "foobar"] "foo" None))
+    (t_to_publickey good_pub) ;
+  let good_pub =
+    M.add "accounts" (Map (M.add "email" (String "foobar")
+                             (M.add "github" (String "blafasel")
+                                (M.add "foo" (String "bar") M.empty))))
+      good_pub
+  in
+  let pub =
+    Publickey.publickey ~accounts:[`Email "foobar"; `GitHub "blafasel"; `Other ("foo", "bar")] "foo" None
+  in
+  Alcotest.check (result publickey str_err) "can parse accounts"
+    (Ok pub) (t_to_publickey good_pub) ;
+  Alcotest.check (result publickey str_err) "marshal/unmarshal"
+    (Ok pub) (t_to_publickey (publickey_to_t pub)) ;
+  let checksum =
+    M.add "filename" (String "foo")
+      (M.add "byte-size" (Int (Uint.of_int 3))
+         (M.add "sha256" (String "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") M.empty))
+  in
+  let css = M.add "name" (String "foo")
+      (M.add "counter" (Int Uint.zero)
+         (M.add "version" (Int Uint.zero)
+            (M.add "files" (List [Map checksum]) M.empty)))
+  in
+  let csum = Checksum.checksum "foo" "bar" in
+  let csums = Checksum.checksums "foo" [csum] in
+  Alcotest.check (result cs str_err) "can parse checksum"
+    (Ok csums) (t_to_checksums css) ;
+  let s =
+    M.add "keyid" (String "foobar")
+      (M.add "created" (Int Uint.zero)
+         (M.add "sig" (String "barf") M.empty))
+  in
+  let s' = ("foobar", Uint.zero, "barf") in
+  let idx =
+    M.add "name" (String "foo")
+      (M.add "counter" (Int Uint.zero)
+         (M.add "version" (Int Uint.zero) M.empty))
+  in
+  let idxs =
+    M.add "signed" (Map idx)
+      (M.add "signatures" (List [Map s]) M.empty)
+  in
+  let idx' = Index.index ~signatures:[s'] "foo" in
+  Alcotest.check (result ji str_err) "can parse index"
+    (Ok idx') (t_to_index idxs) ;
+  Alcotest.check (result ji str_err) "can unparse/parse index"
+    (Ok idx') (t_to_index (index_sigs_to_t idx')) ;
+  let r =
+    M.add "index" (Int Uint.zero)
+      (M.add "name" (String "foobar")
+         (M.add "size" (Int Uint.zero)
+            (M.add "resource" (String "team")
+               (M.add "digest" (String "42") M.empty))))
+  in
+  let r' = Index.r Uint.zero "foobar" Uint.zero `Team "42" in
+  let idx = M.add "resources" (List [ Map r ]) idx in
+  let idxs =
+    M.add "signed" (Map idx)
+      (M.add "signatures" (List [Map s]) M.empty)
+  in
+  let idx' = Index.index ~signatures:[s'] ~resources:[r'] "foo" in
+  Alcotest.check (result ji str_err) "can parse index"
+    (Ok idx') (t_to_index idxs) ;
+  Alcotest.check (result ji str_err) "can unparse/parse index"
+    (Ok idx') (t_to_index (index_sigs_to_t idx')) ;
+  let bad_r = M.add "resource" (String "teamfoo") r in
+  let idx = M.add "resources" (List [ Map bad_r ]) idx in
+  let idxs =
+    M.add "signed" (Map idx)
+      (M.add "signatures" (List [Map s]) M.empty)
+  in
+  Alcotest.check (result ji str_err) "cannot parse index, bad resource type"
+    (Error "") (t_to_index idxs)
+
 let bad_id_r () =
   let open Provider in
   let p = Mem.mem_provider () in
@@ -309,7 +446,7 @@ let bad_idx_r () =
   Alcotest.check (result ji re) "index foo not found"
     (Error (`NotFound "foo")) (Repository.read_index r "foo") ;
   p.write ["index"; "foo"] "bla" ;
-  Alcotest.check (result ji re) "good index foo"
+  Alcotest.check (result ji re) "bad index foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_index r "foo") ;
   let idx = Index.index "foo" in
   Repository.write_index r idx ;
@@ -378,6 +515,7 @@ let basic_repo_tests = [
   "key repo", `Quick, key_r ;
   "team", `Quick, team_r ;
   "checksum computation is sane", `Quick, checks_r ;
+  "basic data persistency", `Quick, basic_persistency ;
   "bad id in repo", `Quick, bad_id_r ;
   "bad idx in repo", `Quick, bad_idx_r ;
   "bad auth in repo", `Quick, bad_auth_r ;

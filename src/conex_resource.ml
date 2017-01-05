@@ -228,19 +228,19 @@ end
 module Index = struct
   type r = {
     index : Uint.t ;
-    name : string ;
+    rname : string ;
     size : Uint.t ;
     resource : resource ;
     digest : digest ;
   }
 
-  let r index name size resource digest =
-    { index ; name ; size ; resource ; digest }
+  let r index rname size resource digest =
+    { index ; rname ; size ; resource ; digest }
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_resource ppf { index ; name ; size ; resource ; digest } =
+  let pp_resource ppf { index ; rname ; size ; resource ; digest } =
     Format.fprintf ppf "idx: %s@ name: %a@ size: %s@ resource: %a@ digest: %a@."
-      (Uint.to_string index) pp_name name (Uint.to_string size)
+      (Uint.to_string index) pp_name rname (Uint.to_string size)
       pp_resource resource
       pp_digest digest
   (*BISECT-IGNORE-END*)
@@ -248,13 +248,13 @@ module Index = struct
   type t = {
     counter : Uint.t ;
     version : Uint.t ;
-    identifier : identifier ;
+    name : identifier ;
     resources : r list ;
     signatures : Signature.t list ;
   }
 
-  let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) identifier =
-    { counter ; version ; identifier ; resources ; signatures }
+  let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) name =
+    { counter ; version ; name ; resources ; signatures }
 
   let next_id idx =
     let max = List.fold_left max Uint.zero (List.map (fun r -> r.index) idx.resources) in
@@ -271,8 +271,8 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
-    Format.fprintf ppf "identifier: %a@ counter: %s@ resources:@ %a@ %a@."
-      pp_id i.identifier
+    Format.fprintf ppf "name: %a@ counter: %s@ resources:@ %a@ %a@."
+      pp_id i.name
       (Uint.to_string i.counter)
       (pp_list pp_resource) i.resources
       (pp_list Signature.pp_signature) i.signatures

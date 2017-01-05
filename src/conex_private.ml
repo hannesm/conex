@@ -5,7 +5,7 @@ open Conex_utils
 let sign_index idx priv =
   let data = Conex_data.encode (Conex_data_persistency.index_to_t idx)
   and now = Uint.of_float (Unix.time ())
-  and id = idx.Conex_resource.Index.identifier
+  and id = idx.Conex_resource.Index.name
   in
   let data = Conex_resource.Signature.extend_data data id now in
   Conex_nocrypto.sign priv data >>= fun signature ->

@@ -8,7 +8,7 @@ B _build/test
 
 PKG cstruct nocrypto x509
 
-PKG opam-file-format
+PKG opam-file-format opam-format
 PKG cmdliner
 PKG alcotest
 

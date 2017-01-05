@@ -12,7 +12,7 @@ let sset =
 
 let privkey = ref None
 
-let gen_pub ?counter ?priv id =
+let gen_pub ?accounts ?counter ?priv id =
   let priv = match priv, !privkey with
     | Some p, _ -> p
     | None, Some x -> x
@@ -22,7 +22,7 @@ let gen_pub ?counter ?priv id =
       p
   in
   match Conex_nocrypto.pub_of_priv priv with
-  | Ok pub -> (Publickey.publickey ?counter id (Some pub), priv)
+  | Ok pub -> (Publickey.publickey ?accounts ?counter id (Some pub), priv)
   | Error e -> invalid_arg e
 
 let result (type a) (type e) a e =
@@ -110,10 +110,10 @@ let ji =
       let open Index in
       a.counter = b.counter &&
       a.version = b.version &&
-      a.identifier = b.identifier &&
+      a.name = b.name &&
       List.length a.resources = List.length b.resources &&
       List.for_all (fun r -> List.exists (fun r' ->
-          r.name = r'.name && r.size = r'.size && r.digest = r'.digest && r.digest = r'.digest)
+          r.rname = r'.rname && r.size = r'.size && r.digest = r'.digest && r.digest = r'.digest)
           b.resources)
         a.resources
   end in

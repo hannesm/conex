@@ -117,7 +117,7 @@ end
 module Index : sig
   type r = private {
     index : Uint.t ;
-    name : string ;
+    rname : string ;
     size : Uint.t ;
     resource : resource ;
     digest : digest ;
@@ -130,7 +130,7 @@ module Index : sig
   type t = private {
     counter : Uint.t ;
     version : Uint.t ;
-    identifier : identifier ;
+    name : identifier ;
     resources : r list ;
     signatures : Signature.t list ;
   }

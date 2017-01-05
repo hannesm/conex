@@ -2,13 +2,12 @@ open Conex_result
 open Conex_resource
 
 type s =
+  | Map of s Conex_core.M.t
+  | List of s list
   | String of string
   | Int of Conex_core.Uint.t
 
-type t =
-  | Entry of string * t
-  | List of t list
-  | Leaf of s
+type t = s Conex_core.M.t
 
 val t_to_team : t -> (Team.t, string) result
 val team_to_t : Team.t -> t

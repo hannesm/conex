@@ -1,101 +1,75 @@
 open Conex_result
-open Conex_data_persistency
 open Conex_core
 
-(* XXX: improve the Int64 case! *)
-let rec encode = function
-  | Entry (k, v) -> k ^ ":" ^ (encode v)
-  | List xs -> "[" ^ (String.concat ",\n"  (List.map encode xs)) ^ "]"
-  | Leaf (String s) -> "\"" ^ s ^ "\""
-  | Leaf (Int i) -> Uint.to_string i
+let np = ("", 0, 0)
 
-let rec parse' data =
-  let is_entry buf =
-    let ws = try String.index buf ' '
-             with Not_found -> String.length buf
-    and colon = try String.index buf ':'
-                with Not_found -> String.length buf
-    in
-    colon < ws
-  and is_leaf buf =
-    let str = String.get buf 0 = '"'
-    and num =
-      let ws = try String.index buf ' ' with Not_found -> String.length buf
-      and comma = try String.index buf ',' with Not_found -> String.length buf
-      in
-      let bound = min ws comma in
-      try int_of_string (String.sub buf 0 bound) >= 0
-      with _ -> false
-    in
-    str || num
-  and is_list buf = String.get buf 0 = '['
-  and is_nl buf = String.get buf 0 = '\n'
-  in
-  let parse_entry buf =
-    let colon = String.index buf ':' in
-    let colon' = succ colon in
-    match parse' (String.sub buf colon' (String.length buf - colon')) with
-    | Some value, rst -> (Some (Entry (String.sub buf 0 colon, value)), rst)
-    | None, _ -> invalid_arg "couldn't parse rhs of an entry"
-  and parse_leaf buf =
-    if String.get buf 0 = '"' then
-      let stop = String.index_from buf 1 '"' in
-      let stop' = succ stop in
-      (Some (Leaf (String (String.sub buf 1 (pred stop)))),
-       String.sub buf stop' (String.length buf - stop'))
+let rec encode_s = function
+  | Conex_data_persistency.Map s ->
+    if s = M.empty then
+      OpamParserTypes.Ident (np, "emptymap")
     else
-      let rec go idx =
-        match String.get buf idx with
-        | '0' .. '9' -> go (succ idx)
-        | _ -> idx
+      let data = M.fold (fun k v acc ->
+          OpamParserTypes.(List (np, [ String (np, k) ; encode_s v ])) :: acc)
+          s []
       in
-      let stop = go 0 in
-      let ss = String.sub buf 0 stop in
-      (Some (Leaf (Int (Uint.of_string ss))),
-       String.sub buf stop (String.length buf - stop))
-  and parse_list buf =
-    let rec go str acc =
-      if String.get str 0 = ']' then
-        let rest = String.sub str 1 (pred (String.length str)) in
-        (Some (List (List.rev acc)), rest)
-      else
-        match parse' str with
-        | Some d, rst ->
-           if String.get rst 0 = ',' then
-             go (String.sub rst 1 (pred (String.length rst))) (d :: acc)
-           else if String.get rst 0 = ']' then
-             let rest = String.sub rst 1 (pred (String.length rst)) in
-             (Some (List (List.rev (d :: acc))), rest)
-           else
-             invalid_arg "unknown list"
-        | None, _ -> invalid_arg "couldn't parse list entry"
-    in
-    go (String.sub buf 1 (pred (String.length buf))) []
+      OpamParserTypes.List (np, data)
+  | Conex_data_persistency.List l -> OpamParserTypes.List (np, List.map encode_s l)
+  | Conex_data_persistency.String s -> OpamParserTypes.String (np, s)
+  | Conex_data_persistency.Int i -> OpamParserTypes.Ident (np, "UINT" ^ Uint.to_string i)
+
+let encode t =
+  let file_contents =
+    M.fold (fun k v acc ->
+        OpamParserTypes.Variable (np, k, encode_s v) :: acc)
+      t []
   in
-  if data = "" then
-    (None, "")
-  else if is_nl data then
-    parse' (String.sub data 1 (pred (String.length data)))
-  else if is_list data then
-    parse_list data
-  else if is_leaf data then
-    parse_leaf data
-  else if is_entry data then
-    parse_entry data
-  else
-    invalid_arg ("invalid string: " ^ data)
+  let file = { OpamParserTypes.file_contents ; file_name = "" } in
+  OpamPrinter.Normalise.opamfile file
+
+let rec decode_s = function
+  | OpamParserTypes.Ident (_, data) ->
+    let l = String.length data in
+    if l > 4 && String.sub data 0 4 = "UINT" then
+      Ok (Conex_data_persistency.Int (Uint.of_string (String.sub data 4 (l - 4))))
+    else if data = "emptymap" then
+      Ok (Conex_data_persistency.Map M.empty)
+    else
+      Error "unexpected ident"
+  | OpamParserTypes.String (_, s) -> Ok (Conex_data_persistency.String s)
+  | OpamParserTypes.List (_, []) ->
+    Ok (Conex_data_persistency.List [])
+  | OpamParserTypes.List (_, l) ->
+    let is_pair = function
+        OpamParserTypes.List (_, [OpamParserTypes.String _ ; _]) -> true
+      | _ -> false
+    in
+    if List.for_all is_pair l then begin
+      List.fold_left (fun m xs ->
+          m >>= fun m ->
+          match xs with
+            OpamParserTypes.List (_, [ OpamParserTypes.String (_, k) ; v ]) ->
+            (decode_s v >>= fun v -> Ok (M.add k v m))
+          | _ -> Error "can not happen")
+        (Ok M.empty) l >>= fun map ->
+      Ok (Conex_data_persistency.Map map)
+    end else
+      List.fold_left (fun xs s ->
+          xs >>= fun xs ->
+          decode_s s >>= fun x ->
+          Ok (x :: xs))
+          (Ok []) l >>= fun xs ->
+      Ok (Conex_data_persistency.List xs)
+  | _ -> Error "unexpected thing while decoding"
 
 let decode data =
-  let rec go str acc =
-    match parse' str with
-    | None, "" -> List.rev acc
-    | Some x, "" -> List.rev (x :: acc)
-    | None, rst -> go rst acc
-    | Some x, rst -> go rst (x :: acc)
-  in
-  try
-    match go data [] with
-    | [] -> Error "empty"
-    | [x] -> Ok x
-    | xs -> Ok (List xs)
-  with Invalid_argument e -> Error e
+  (try Ok (OpamParser.string data "noname") with
+     Parsing.Parse_error -> Error "parse error") >>= fun file ->
+  let items = file.OpamParserTypes.file_contents in
+  List.fold_left (fun acc v ->
+      acc >>= fun acc ->
+      match v with
+      | OpamParserTypes.Section _ -> Error "unexpected section"
+      | OpamParserTypes.Variable (_, k, v) ->
+        decode_s v >>= fun v ->
+        Ok (M.add k v acc))
+    (Ok M.empty) items

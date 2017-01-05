@@ -61,7 +61,7 @@ let verify_ks store data (id, ts, signature) =
     Error (`InvalidIdentifier id)
 
 let verify_index repo idx =
-  let aid = idx.Index.identifier in
+  let aid = idx.Index.name in
   let to_consider, others =
     List.partition (fun (id, _, _) -> id_equal id aid) idx.Index.signatures
   in
@@ -273,13 +273,13 @@ let read_index repo name =
     match Conex_data.decode data >>= Conex_data_persistency.t_to_index with
     | Error p -> Error (`ParseError (name, p))
     | Ok i ->
-      if id_equal i.Index.identifier name then
+      if id_equal i.Index.name name then
         Ok i
       else
-        Error (`NameMismatch (name, i.Index.identifier))
+        Error (`NameMismatch (name, i.Index.name))
 
 let write_index repo i =
-  let name = Conex_opam_layout.index_path i.Index.identifier in
+  let name = Conex_opam_layout.index_path i.Index.name in
   repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.index_sigs_to_t i))
 
 let read_authorisation repo name =
@@ -340,15 +340,15 @@ let add_csums repo id rs =
     try
       let n, s, r, ids = M.find res.digest t in
       (* TODO: remove asserts here, deal with errors! *)
-      assert (name_equal n res.name) ;
+      assert (name_equal n res.rname) ;
       assert (resource_equal r res.resource) ;
       assert (s = res.size) ;
       M.add res.digest (n, s, r, S.add id ids) t
     with Not_found ->
-      M.add res.digest (res.name, res.size, res.resource, S.singleton id) t
+      M.add res.digest (res.rname, res.size, res.resource, S.singleton id) t
   in
   let valid = List.fold_left add_csum repo.valid rs in
   { repo with valid }
 
 let add_index r idx =
-  add_csums r idx.Index.identifier idx.Index.resources
+  add_csums r idx.Index.name idx.Index.resources
