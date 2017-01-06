@@ -10,6 +10,8 @@ let ignore_pr = [
   "516" ; (* replace %{make}% with make (avsm) *)
   "538" ; (* Generating homepage tags from github archive links (AltGr) *)
   "30" ; (* move .0 to real version (vbmithr) *)
+  (* some are too big and not worth it *)
+  "1307" ; "5140" ; "6112" ; "1240" ; "1"
 ]
 
 (*
