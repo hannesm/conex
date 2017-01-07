@@ -117,7 +117,7 @@ module Authorisation = struct
   let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
 
   let pp_authorisation ppf d =
-    Format.fprintf ppf "authorisation name: %a@ counter: %s@ authorised:@ %a@."
+    Format.fprintf ppf "authorisation name: %a@ counter: %s@ authorised:@ %a"
       pp_name d.name (Uint.to_string d.counter) pp_authorised d.authorised
   (*BISECT-IGNORE-END*)
 end

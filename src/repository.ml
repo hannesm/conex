@@ -30,6 +30,19 @@ let team r id = try M.find id r.teams with Not_found -> S.empty
 
 let janitors r = team r "janitors"
 
+let find_id r email =
+  M.fold (fun k v acc ->
+      let contains =
+        let f = function `Email e when e = email -> true | _ -> false in
+        try Some (List.find f v.Publickey.accounts) with Not_found -> None
+      in
+      match contains, acc with
+      | Some _, None -> Some k
+      | None, None -> None
+      | Some _, Some x -> Printf.printf "same mail used multiple times %s %s" k x ; Some x
+      | None, Some x -> Some x)
+    r.store None
+
 let valid r digest =
   try Some (M.find digest r.valid) with Not_found -> None
 
