@@ -5,16 +5,16 @@ module OpamMaintainer = struct
   let src = Logs.Src.create "opam-maintainer" ~doc:"Opam Maintainer module"
   module Log = (val Logs.src_log src : Logs.LOG)
 
-  let find_m s = match String.cut ~sep:"<" s with
+  let find_m acc s = match String.cut ~sep:"<" s with
     | None -> begin match String.cut ~sep:"@" s with
-        | None -> s
-        | Some (l, r) -> match String.cut ~sep:" " l with
-          | None -> s
-          | Some (_, r') -> r' ^ "@" ^ r
+        | None -> acc
+        | Some (l, post) -> match String.cut ~sep:" " l with
+          | None -> s :: acc
+          | Some (_, pre) -> (pre ^ "@" ^ post) :: acc
       end
     | Some (_, r) -> match String.cut ~sep:">" r with
-      | Some (l, _) -> l
-      | None -> Log.err (fun m -> m "cannot parse maintainer %s" s) ; s
+      | Some (l, _) -> l :: acc
+      | None -> Log.err (fun m -> m "cannot parse maintainer %s" s) ; acc
 
   let replacements = [
     " [at] ", "@" ;
@@ -40,16 +40,19 @@ module OpamMaintainer = struct
   let maintainers provider p r =
     (* contact@ocamlpro.com -- good if tag org:ocamlpro is around (opam lint does this)
        opam-devel@lists.ocaml.org *)
-    if String.is_prefix ~affix:"mirage" p then S.singleton "mirageos-devel@lists.xenproject.org" else
-    if S.mem p mirage_packages then S.singleton "mirageos-devel@lists.xenproject.org" else
-    if String.is_prefix ~affix:"xapi" p then S.singleton "xen-api@lists.xen.org" else
-    if String.is_prefix ~affix:"xen" p then S.singleton "xen-api@lists.xen.org" else
-    if S.mem p xapi_packages then S.singleton "xen-api@lists.xen.org" else
-    if String.is_prefix ~affix:"ocp" p then S.singleton "contact@ocamlpro.com" else
+    if String.is_prefix ~affix:"mirage" p then S.singleton "mirage" else
+    if S.mem p mirage_packages then S.singleton "mirage" else
+    if String.is_prefix ~affix:"xapi" p then S.singleton "xapi-project" else
+    if String.is_prefix ~affix:"xen" p then S.singleton "xapi-project" else
+    if S.mem p xapi_packages then S.singleton "xapi-project" else
+    if String.is_prefix ~affix:"ocp" p then S.singleton "OCamlPro" else
     match provider.Provider.read ["packages" ; p ; r ; "opam" ] with
     | Ok data ->
       let opam = OpamFile.OPAM.read_from_string data in
-      let ms = S.of_list (List.map sanitize_mail (List.map find_m (OpamFile.OPAM.maintainer opam))) in
+      let ms = S.of_list
+          (List.map sanitize_mail
+             (List.fold_left find_m [] (OpamFile.OPAM.maintainer opam)))
+      in
       if S.mem "opam-devel@lists.ocaml.org" ms then
         Log.info (fun m -> m "removing opam-devel@lists.ocaml.org from %s" p) ;
       let ms = S.remove "opam-devel@lists.ocaml.org" ms in
@@ -295,9 +298,12 @@ let infer_maintainers base lvl =
   let mapping = OpamMaintainer.infer repo in
   let authorisations = M.fold (fun k ids acc ->
       let authorised = S.fold (fun s acc ->
-          match Repository.find_id repo s with
-          | None -> acc
-          | Some x -> S.add x acc)
+          if String.is_infix ~affix:"@" s then
+            match Repository.find_id repo s with
+            | None -> acc
+            | Some x -> S.add x acc
+          else
+            S.add s acc)
           ids S.empty
       in
       let authorisation = Authorisation.authorisation ~authorised k in
