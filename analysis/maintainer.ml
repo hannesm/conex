@@ -6,7 +6,12 @@ module OpamMaintainer = struct
   module Log = (val Logs.src_log src : Logs.LOG)
 
   let find_m s = match String.cut ~sep:"<" s with
-    | None -> s
+    | None -> begin match String.cut ~sep:"@" s with
+        | None -> s
+        | Some (l, r) -> match String.cut ~sep:" " l with
+          | None -> s
+          | Some (_, r') -> r' ^ "@" ^ r
+      end
     | Some (_, r) -> match String.cut ~sep:">" r with
       | Some (l, _) -> l
       | None -> Log.err (fun m -> m "cannot parse maintainer %s" s) ; s
@@ -16,7 +21,8 @@ module OpamMaintainer = struct
     "[at]", "@" ;
     " at ", "@" ;
     " (at) ", "@" ;
-    "buenzl i", "buenzli"
+    "buenzl i", "buenzli" ;
+    "Ben Greenman", "types@ccs.neu.edu" ;
   ]
 
   let sanitize_mail str =
@@ -28,9 +34,18 @@ module OpamMaintainer = struct
       (fun s (c, r) -> escape1 c r s)
       str replacements
 
+  let mirage_packages = s_of_list [ "io-page" ; "cstruct" ; "dns" ; "tcpip" ; "vmnet" ; "channel" ; "fat-filesystem" ; "pcap-format" ; "functoria" ; "mbr-format" ; "protocol-9p" ; "qcow-format" ; "vchan" ; "gmp-freestanding" ; "gmp-xen" ; "zarith-xen" ; "zarith-freestanding" ; "conduit" ; "cow"]
+  let xapi_packages = s_of_list [ "vhdlib" ; "vhd-format" ; "nbd" ; "cdrom"]
+
   let maintainers provider p r =
     (* contact@ocamlpro.com -- good if tag org:ocamlpro is around (opam lint does this)
        opam-devel@lists.ocaml.org *)
+    if String.is_prefix ~affix:"mirage" p then S.singleton "mirageos-devel@lists.xenproject.org" else
+    if S.mem p mirage_packages then S.singleton "mirageos-devel@lists.xenproject.org" else
+    if String.is_prefix ~affix:"xapi" p then S.singleton "xen-api@lists.xen.org" else
+    if String.is_prefix ~affix:"xen" p then S.singleton "xen-api@lists.xen.org" else
+    if S.mem p xapi_packages then S.singleton "xen-api@lists.xen.org" else
+    if String.is_prefix ~affix:"ocp" p then S.singleton "contact@ocamlpro.com" else
     match provider.Provider.read ["packages" ; p ; r ; "opam" ] with
     | Ok data ->
       let opam = OpamFile.OPAM.read_from_string data in
@@ -51,23 +66,29 @@ module OpamMaintainer = struct
 
   let infer repo =
     let packages = Repository.items repo in
-    List.fold_left (fun (es, map) p ->
+    List.fold_left (fun map p ->
         let releases = Conex_opam_layout.subitems (Repository.provider repo) p in
+        let releases = List.rev (List.sort OpamVersionCompare.compare releases) in
         let maintainers =
           List.fold_left
-            (fun s r -> S.union (maintainers (Repository.provider repo) p r) s)
+            (fun s r ->
+               if S.is_empty s then
+                 maintainers (Repository.provider repo) p r
+               else
+                 s)
             S.empty releases
         in
-        match S.elements maintainers with
-        | [] ->
-          Log.warn (fun m -> m "empty maintainer for %s" p) ;
-          (S.add p es, map)
-        | xs ->
-          Log.info (fun m -> m "maintainers for %s are %s" p (String.concat ~sep:" " xs)) ;
-          (es, M.add p xs map))
-      (S.empty, M.empty)
+        if S.is_empty maintainers then
+          Log.warn (fun m -> m "empty maintainer for %s" p)
+        else
+          Log.info (fun m -> m "maintainers for %s are %s"
+                       p (String.concat ~sep:" " (S.elements maintainers))) ;
+        M.add p maintainers map)
+      M.empty
       (S.elements packages)
 end
+
+open Conex_resource
 
 module PR = struct
   let src = Logs.Src.create "pr" ~doc:"Pull request module"
@@ -77,11 +98,11 @@ module PR = struct
   let ignore_github = S.of_list [
       "mirage" ; "bactrian" ; "OCamlPro" ; "ocaml" ; "janestreet" ;
       "jane-street" ; "BinaryAnalysisPlatform" ; "ocaml-core-dev" ;
-      "camlunity" ; "backtracking" ; "Beluga-lang" ; "Incubaid" ;
+      "camlunity" ; "Beluga-lang" ; "Incubaid" ;
       "rundat" ; "planar" ; "ahrefs"
     ]
 
-  let ignore_pr = S.of_list [ "3118" ; "6939" ; "3900" ; "8170" ; "1825" ]
+  let ignore_pr = S.of_list [ "3118" ; "6939" ; "3900" ; "8170" ; "1825" ; "651" ; "636" ]
 
   (* somehow the shell scripts put him everywhere *)
   let ignore_mail = S.of_list [ "yallop@gmail.com" ]
@@ -105,7 +126,6 @@ module PR = struct
 
   (* Maps github id -> mail address list *)
   let github_mail _dir commit pr github mail (g_m, m_g) =
-    let github = equalise_ids github in
     if bad_mail mail then
       (Log.debug (fun m -> m "ignoring bad mail %s (%s) in %s (%s)" mail github pr commit) ; (g_m, m_g))
     else if S.mem github ignore_github then
@@ -120,7 +140,7 @@ module PR = struct
       try
         let ids = M.find mail m_g in
         if not (S.mem github ids) then
-          Log.err (fun m -> m "%s (commit %s) mail address %s used for multiple accounts (here %s): %s\n"
+          Log.err (fun m -> m "%s (commit %s) mail address %s used for multiple accounts (here %s): %s"
                       pr commit mail github (String.concat ~sep:" " (S.elements ids))) ;
         ids
       with Not_found ->
@@ -128,6 +148,58 @@ module PR = struct
         S.empty
     in
     (M.add github (S.add mail mails) g_m, M.add mail (S.add github ids) m_g)
+
+  let janitors = s_of_list [
+      "avsm" ; "mirage" ; "samoht" ; "gasche" ;
+      "damiendoligez" ; "AltGr" ; "yallop" ; "dsheets" ;
+
+      "jane-street" ; "ocaml-core-dev" ; "vbmithr" ; "tuong" ; "lefessan" ;
+      "whitequark" ; "fccm" ; "planar" ; "Chris00" ; "chambart" ;
+      "ocaml" ; "OCamlPro" ; "timbertson" ; "Drup" ; "janestreet" ;
+      "camlunity" ; "mmottl" ; "BinaryAnalysisPlatform"]
+
+  let mteams = s_of_list [ "mirage" ; "janestreet" ; "ocsigen" ; "xapi-project" ; "alt-ergo" ]
+
+  let check authorised base commit pr github _mail acc =
+    if S.mem github janitors then (Log.info (fun m -> m "%s %s janitor" pr github) ; acc) else
+    let content = Conex_persistency.read_file
+        (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
+    in
+    let diffs = Conex_diff.to_diffs content in
+    let comps = Conex_patch.diffs_to_components diffs in
+
+    let add_it p map =
+      M.add p (S.add github (try M.find p map with Not_found -> S.empty)) map
+    in
+    List.fold_left (fun (empty, violation, teams) -> function
+        | Conex_patch.Dir (p, _, _)
+        | Conex_patch.OldDir (p, _, _) ->
+          if Conex_persistency.exists
+              (Filename.concat base (String.concat ~sep:"/" (Conex_opam_layout.authorisation_path p)))
+          then
+            let auth = M.find p authorised in
+            let authorised = auth.Authorisation.authorised in
+            if S.mem github authorised then begin
+              Log.debug (fun m -> m "%s %s %s valid access" pr p github) ;
+              (empty, violation, teams)
+            end else if S.cardinal authorised = 1 && S.mem (S.choose authorised) mteams then begin
+              Log.warn (fun m -> m "%s %s %s team owned, add!? (%s)" pr p github (S.choose authorised)) ;
+              (empty, violation, add_it (S.choose authorised) teams)
+            end else if S.is_empty authorised then begin
+              Log.info (fun m -> m "%s %s %s (empty maintainer)" pr p github) ;
+              (add_it p empty, violation, teams)
+            end else begin
+              Log.warn (fun m -> m "%s %s %s not maintainer (%s)" pr p github (String.concat ~sep:" " (S.elements authorised))) ;
+              (empty, add_it p violation, teams)
+            end
+          else begin
+            Log.debug (fun m -> m "%s %s ignoring deleted package" pr p) ;
+            (empty, violation, teams)
+          end
+        | d ->
+          Log.debug (fun m -> m "%s ignoring %a" pr Conex_patch.pp_component d) ;
+          empty, violation, teams)
+      acc comps
 
   let handle_prs dir f acc =
     let base = Filename.concat dir "prs" in
@@ -138,18 +210,21 @@ module PR = struct
          let eles = Astring.String.cuts ~sep:" " data in
          let cid = List.nth eles 0
          and pr = List.nth eles 1
-         and gid = List.nth eles 2
+         and gid = equalise_ids (List.nth eles 2)
          and mail = String.trim (List.nth eles 3)
          in
          f dir cid pr gid mail acc)
       acc prs
 end
 
-open Conex_resource
-
 let pp_map pp t =
   M.iter (fun k v ->
-      Format.fprintf pp "%s -> %s@." k (String.concat ~sep:" " (S.elements v)))
+      let s =
+        if S.is_empty v then "EMPTY "
+        else if S.cardinal v = 1 then "SINGLE "
+        else ""
+      in
+      Format.fprintf pp "%s%s -> %s@." s k (String.concat ~sep:" " (S.elements v)))
     t
 
 let known_ids =
@@ -161,7 +236,7 @@ let known_ids =
     `Key (Publickey.publickey ~accounts:[ `GitHub "agarwal" ; `Email "ashish@solvuu.com" ; `Email "agarwal1975@gmail.com" ] "agarwal" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "lpw25" ; `Email "lpw25@cl.cam.ac.uk" ; `Email "leo@lpw25.net" ] "lpw25" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "314eter" ; `Email "3.14.e.ter@gmail.com" ] "314eter" None) ;
-    `Key (Publickey.publickey ~accounts:[ `GitHub "johnelse" ; `Email "john.else@gmail.com" ; `Email "john.else@eu.citrix.com" ] "johnelse" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "johnelse" ; `Email "john.else@gmail.com" ; `Email "john.else@eu.citrix.com" ; `Email "john.else@citrix.com" ] "johnelse" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "juergenhoetzel" ; `Email "juergen@archlinux.org" ; `Email "juergen@hoetzel.info" ] "juergenhoetzel" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "alainfrisch" ; `Email "alain.frisch@lexifi.com" ; `Email "alain@frisch.fr" ] "alainfrisch" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "johnwhitington" ; `Email "contact@coherentgraphics.co.uk" ; `Email "john@coherentgraphics.co.uk" ] "johnwhitington" None) ;
@@ -169,12 +244,25 @@ let known_ids =
     `Key (Publickey.publickey ~accounts:[ `GitHub "rdicosmo" ; `Email "roberto@dicosmo.org" ; `Email "github@dicosmo.org" ] "rdicosmo" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "mzp" ; `Email "mzpppp@gmail.com" ; `Email "mzp.ppp@gmail.com" ] "mzp" None) ;
     `Key (Publickey.publickey ~accounts:[ `GitHub "andrewray" ; `Email "evilkidder@gmail.com" ; `Email "andy.ray@ujamjar.com" ] "andrewray" None) ;
-    `Team ("opensource@janestreet.com", "janestreet") ;
-    `Team ("xen-api@lists.xen.org", "xapi-project") ;
-    `Team ("contact@ocamlpro.com", "OCamlPro") ;
-    `Team ("dev@ocsigen.org", "ocsigen") ;
-    `Team ("mirageos-devel@lists.openmirage.org", "MirageOS") ;
-    `Team ("mirageos-devel", "MirageOS")
+    `Key (Publickey.publickey ~accounts:[ `GitHub "codinuum" ; `Email "codinuum@users.noreply.github.com" ; `Email "codinuum@me.com" ] "codinuum" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "raphael-proust" ; `Email "raphael.proust@cl.cam.ac.uk" ; `Email "raphlalou@gmail.com" ] "raphael-proust" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "madroach" ; `Email "madroach@gmerlin.de" ; `Email "christopher@gmerlin.de" ] "madroach" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "testcocoon" ; `Email "sebastien.fricker@gmail.com" ; `Email "fricker@froglogic.com" ] "testcocoon" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "protz" ; `Email "protz@microsoft.com" ; `Email "jonathan.protzenko@inria.fr" ; `Email "jonathan.protzenko@gmail.com" ] "protz" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "AngryLawyer" ; `Email "tony@angry-lawyer.com" ; `Email "tony@dabapps.com" ] "AngryLawyer" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "rixed" ; `Email "rixed-opam@happyleptic.org" ; `Email "rixed@happyleptic.org" ] "rixed" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "backtracking" ; `Email "filliatr@lri.fr" ; `Email "Jean-Christophe.Filliatre@lri.fr" ] "backtracking" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "andrenth" ; `Email "andre@digirati.com.br" ; `Email "andrenth@gmail.com" ] "andrenth" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "mathiasbourgoin" ; `Email "mathias.bourgoin@gmail.com" ; `Email "mathias.bourgoin@lip6.fr" ] "mathiasbourgoin" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "pmundkur" ; `Email "prashanth.mundkur@gmail.com" ; `Email "pmundkur.ocaml@gmail.com" ] "pmundkur" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "pmeunier" ; `Email "pe@dhcp-135-214.caltech.edu" ; `Email "pe@patoline.org" ] "pmeunier" None) ;
+    `Key (Publickey.publickey ~accounts:[ `GitHub "eatonphil" ; `Email "philip@Philips-MacBook-Pro.local" ; `Email "me@eatonphil.com" ] "eatonphil" None) ;
+    `Team ([ "opensource@janestreet.com" ], "janestreet") ;
+    `Team ([ "xen-api@lists.xen.org" ], "xapi-project") ;
+    `Team ([ "contact@ocamlpro.com" ], "OCamlPro") ;
+    `Team ([ "dev@ocsigen.org" ], "ocsigen") ;
+    `Team ([ "alt-ergo@ocamlpro.com" ], "alt-ergo") ;
+    `Team ([ "mirageos-devel@lists.openmirage.org" ; "mirageos-devel@lists.xenproject.org" ; "mirageos-devel" ], "mirage")
   ]
 
 let infer_maintainers base lvl =
@@ -193,19 +281,19 @@ let infer_maintainers base lvl =
   in
   let repo = List.fold_left (fun r ->
       function
-      | `Team (mail, id) ->
+      | `Team (mails, id) ->
         let t = Team.team id in
         Repository.write_team r t ;
-        let r = Repository.add_trusted_key r (Publickey.publickey ~accounts:[`GitHub id; `Email mail] id None) in
+        let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
+        let r = Repository.add_trusted_key r (Publickey.publickey ~accounts id None) in
         Repository.add_team r t
       | `Key k -> Repository.write_key repo k ;Repository.add_trusted_key r k)
       repo known_ids
   in
   (* this is a set of package name without maintainer,
      and a map pkgname -> email address (or name) set *)
-  let _empty, mapping = OpamMaintainer.infer repo in
-  let _authorisations = M.fold (fun k v acc ->
-      let ids = s_of_list v in
+  let mapping = OpamMaintainer.infer repo in
+  let authorisations = M.fold (fun k ids acc ->
       let authorised = S.fold (fun s acc ->
           match Repository.find_id repo s with
           | None -> acc
@@ -215,14 +303,20 @@ let infer_maintainers base lvl =
       let authorisation = Authorisation.authorisation ~authorised k in
       Logs.info (fun m -> m "%a" Authorisation.pp_authorisation authorisation) ;
       Repository.write_authorisation repo authorisation ;
-      authorisation :: acc)
-      mapping []
+      M.add k authorisation acc)
+      mapping M.empty
   in
+  (* authorisation contains pkgname -> github id
+     mapping contains pkgname -> mail address
+     if a team is authorised, maybe add committer to team?
+  *)
   (* NOW! we can go through all the diffs of the PRs and look around a bit:
-     - filter out maintainers for commits (seeded by samoht, yallop, altgr, avsm, damiendoligez, dsheets?, camlspotter?, diml?, zoggy?)
+     - filter out maintainers for commits
      - add maintainer mail address to keys/ subdir if sensible *)
-  ()
-
+  Logs.app (fun m -> m "MARK") ;
+  let empty, _violation, team = PR.handle_prs base (PR.check authorisations) (M.empty, M.empty, M.empty) in
+  Logs.app (fun m -> m "potentially\n%a" pp_map empty) ;
+  Logs.app (fun m -> m "teams\n%a" pp_map team)
 
 open Cmdliner
 
