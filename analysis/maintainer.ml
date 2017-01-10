@@ -34,21 +34,45 @@ module OpamMaintainer = struct
       (fun s (c, r) -> escape1 c r s)
       str replacements
 
-  let mirage_packages = s_of_list [ "io-page" ; "cstruct" ; "dns" ; "tcpip" ; "vmnet" ; "channel" ; "fat-filesystem" ; "pcap-format" ; "functoria" ; "mbr-format" ; "protocol-9p" ; "qcow-format" ; "vchan" ; "gmp-freestanding" ; "gmp-xen" ; "zarith-xen" ; "zarith-freestanding" ; "conduit" ; "cow"]
-  let xapi_packages = s_of_list [ "vhdlib" ; "vhd-format" ; "nbd" ; "cdrom"]
-
   let maintainers provider p r =
     (* contact@ocamlpro.com -- good if tag org:ocamlpro is around (opam lint does this)
        opam-devel@lists.ocaml.org *)
-    if String.is_prefix ~affix:"mirage" p then S.singleton "mirage" else
-    if S.mem p mirage_packages then S.singleton "mirage" else
-    if String.is_prefix ~affix:"xapi" p then S.singleton "xapi-project" else
-    if String.is_prefix ~affix:"xen" p then S.singleton "xapi-project" else
-    if S.mem p xapi_packages then S.singleton "xapi-project" else
-    if String.is_prefix ~affix:"ocp" p then S.singleton "OCamlPro" else
-    match provider.Provider.read ["packages" ; p ; r ; "opam" ] with
-    | Ok data ->
-      let opam = OpamFile.OPAM.read_from_string data in
+    let opam, urlfile =
+      let pre = String.concat ~sep:"/" [ provider.Provider.name ; "packages" ; p ; r ] in
+      (OpamFilename.raw (pre ^ "/opam"), OpamFilename.raw (pre ^ "/url"))
+    in
+    let opam = OpamFile.OPAM.read (OpamFile.make opam) in
+    let github_id () =
+      match OpamFile.URL.read_opt (OpamFile.make urlfile) with
+      | None ->
+        (match OpamFile.OPAM.homepage opam with
+         | [] -> None
+         | [x] when String.is_infix ~affix:"github.com/" x ->
+           (match String.cut ~sep:"github.com/" x with
+            | Some (_, rest) -> (match String.cut ~sep:"/" rest with
+                | Some (user, _) -> Some user
+                | None -> None)
+            | None -> None)
+         | _ -> None)
+      | Some url ->
+        let opam = OpamFile.OPAM.with_url url opam in
+        match OpamFile.OPAM.get_url opam with
+        | None -> None
+        | Some url ->
+          let path = url.OpamUrl.path in
+          match String.cuts ~sep:"/" path with
+          | x :: user :: _ when x = "github.com" -> Some user
+          | _ -> None
+    in
+    let filter = function
+      | None -> None
+      | Some x -> if String.is_prefix ~affix:"ocaml" x then None else Some x (* ocaml and ocamllabs have lots of things *)
+    in
+    match filter (github_id ()) with
+    | Some x ->
+      Log.info (fun m -> m "assigning GitHub owner %s to %s" x p) ;
+      S.singleton x
+    | None ->
       let ms = S.of_list
           (List.map sanitize_mail
              (List.fold_left find_m [] (OpamFile.OPAM.maintainer opam)))
@@ -65,7 +89,6 @@ module OpamMaintainer = struct
         end
       else
         ms
-    | Error _ -> Log.err (fun m -> m "couldn't read opam file: %s/%s" p r) ; S.empty
 
   let infer repo =
     let packages = Repository.items repo in
@@ -161,7 +184,7 @@ module PR = struct
       "ocaml" ; "OCamlPro" ; "timbertson" ; "Drup" ; "janestreet" ;
       "camlunity" ; "mmottl" ; "BinaryAnalysisPlatform"]
 
-  let mteams = s_of_list [ "mirage" ; "janestreet" ; "ocsigen" ; "xapi-project" ; "alt-ergo" ]
+  let mteams = s_of_list [ "mirage" ; "janestreet" ; "ocsigen" ; "xapi-project" ; "alt-ergo" ; "savonet" ; "Oinstall" ; "reasonml" ; "besport" ; "inhabitedtype" ; "openvstorage" ; "mirleft" ; "BinaryAnalysisPlatform" ; "ocaml-wsh" ; "the-lambda-church" ; "camlp5" ; "xen-org" ; "Antique-team" ; "coccinelle" ; "hammerlab" ; "coq" ; "docker" ; "LexiFi" ; "cryptosense" ; "facebook" ; "frenetic-lang" ; "Beluga-Lang" ; "FStarLang" ; "CloudFounders" ; "links-lang" ; "ahrefs"]
 
   let check authorised base commit pr github _mail acc =
     if S.mem github janitors then (Log.info (fun m -> m "%s %s janitor" pr github) ; acc) else
