@@ -62,32 +62,32 @@ type component =
   | OldDir of name * name * diff list
 
 let pp_component pp = function
-  | Idx (id, _) -> Format.fprintf pp "index of %a@." pp_id id
-  | Id (id, _) -> Format.fprintf pp "public key or team of %a@." pp_id id
-  | Authorisation (name, _) -> Format.fprintf pp "authorisation of %a@." pp_name name
-  | Dir (pn, vn, xs) -> Format.fprintf pp "directory %a (%a with %d changes)@." pp_name pn pp_name vn (List.length xs)
-  | OldDir (pn, vn, xs) -> Format.fprintf pp "old directory %a (%a with %d changes)@." pp_name pn pp_name vn (List.length xs)
+  | Idx (id, _) -> Format.fprintf pp "index of %a" pp_id id
+  | Id (id, _) -> Format.fprintf pp "public key or team of %a" pp_id id
+  | Authorisation (name, _) -> Format.fprintf pp "authorisation of %a" pp_name name
+  | Dir (pn, vn, xs) -> Format.fprintf pp "directory %a (%a with %d changes)" pp_name pn pp_name vn (List.length xs)
+  | OldDir (pn, vn, xs) -> Format.fprintf pp "old directory %a (%a with %d changes)" pp_name pn pp_name vn (List.length xs)
 
 let categorise diff =
   let p = string_to_path (file diff) in
   match Conex_opam_layout.(is_index p, is_key p, is_authorisation p, is_item p, is_old_item p, is_compiler p) with
   | Some id, None, None, None, None, None ->
-    Printf.printf "found an index in diff %s\n" id;
+    (* Printf.printf "found an index in diff %s\n" id; *)
     Some (Idx (id, diff))
   | None, Some id, None, None, None, None ->
-    Printf.printf "found an id in diff %s\n" id;
+    (* Printf.printf "found an id in diff %s\n" id; *)
     Some (Id (id, diff))
   | None, None, Some id, None, None, None ->
-    Printf.printf "found an authorisation in diff %s\n" id;
+    (* Printf.printf "found an authorisation in diff %s\n" id; *)
     Some (Authorisation (id, diff))
   | None, None, None, Some (d, p), None, None ->
-    Printf.printf "found a dir in diff %s %s\n" d p;
+    (* Printf.printf "found a dir in diff %s %s\n" d p; *)
     Some (Dir (d, p, [ diff ]))
   | None, None, None, None, Some (d, p), None ->
-    Printf.printf "found an olddir in diff %s %s\n" d p;
+    (* Printf.printf "found an olddir in diff %s %s\n" d p; *)
     Some (OldDir (d, p, [ diff ]))
-  | None, None, None, None, None, Some (d, p) ->
-    Printf.printf "found a compiler in diff %s %s\n" d p;
+  | None, None, None, None, None, Some _ ->
+    (* Printf.printf "found a compiler in diff %s %s\n" d p; *)
     None
   | _ ->
     (* XXX: handle error properly! *)
