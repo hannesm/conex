@@ -316,7 +316,15 @@ let infer_maintainers base lvl =
   Logs.app (fun m -> m "MARK") ;
   let empty, _violation, team = PR.handle_prs base (PR.check authorisations) (M.empty, M.empty, M.empty) in
   Logs.app (fun m -> m "potentially\n%a" pp_map empty) ;
-  Logs.app (fun m -> m "teams\n%a" pp_map team)
+  Logs.app (fun m -> m "teams\n%a" pp_map team) ;
+  M.iter (fun t members ->
+      let t = Team.team ~members t in
+      Repository.write_team repo t)
+    team ;
+  M.iter (fun p authorised -> if S.cardinal authorised = 1 then
+             let a = Authorisation.authorisation ~authorised p in
+             Repository.write_authorisation repo a)
+    empty
 
 open Cmdliner
 
