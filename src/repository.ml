@@ -228,18 +228,18 @@ let verify_checksum repo a r cs =
   | `Quorum js -> Ok (`Quorum js)
   | `IdNoQuorum (id, _) -> Ok (`Signed id)
 
-type r_err = [ `NotFound of string | `ParseError of name * string | `NameMismatch of string * string ]
+type r_err = [ `NotFound of string * string | `ParseError of name * string | `NameMismatch of string * string ]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_r_err ppf = function
-  | `NotFound x -> Format.fprintf ppf "%s was not found in repository" x
+  | `NotFound (x, y) -> Format.fprintf ppf "%s %s was not found in repository" x y
   | `ParseError (n, e) -> Format.fprintf ppf "parse error while parsing %a: %s" pp_name n e
   | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
 (*BISECT-IGNORE-END*)
 
 let read_key repo keyid =
   match repo.data.Provider.read (Conex_opam_layout.key_path keyid) with
-  | Error _ -> Error (`NotFound keyid)
+  | Error _ -> Error (`NotFound ("key", keyid))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_publickey with
     | Error p -> Error (`ParseError (keyid, p))
@@ -255,7 +255,7 @@ let write_key repo key =
 
 let read_team repo name =
   match repo.data.Provider.read (Conex_opam_layout.key_path name) with
-  | Error _ -> Error (`NotFound name)
+  | Error _ -> Error (`NotFound ("team", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_team with
     | Error p -> Error (`ParseError (name, p))
@@ -281,7 +281,7 @@ let ids repo = S.of_list (Conex_opam_layout.ids repo.data)
 
 let read_index repo name =
   match repo.data.Provider.read (Conex_opam_layout.index_path name) with
-  | Error _ -> Error (`NotFound name)
+  | Error _ -> Error (`NotFound ("index", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_index with
     | Error p -> Error (`ParseError (name, p))
@@ -297,7 +297,7 @@ let write_index repo i =
 
 let read_authorisation repo name =
   match repo.data.Provider.read (Conex_opam_layout.authorisation_path name) with
-  | Error _ -> Error (`NotFound name)
+  | Error _ -> Error (`NotFound ("authorisation", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_authorisation with
     | Error p -> Error (`ParseError (name, p))
@@ -313,10 +313,11 @@ let write_authorisation repo a =
     (Conex_data.encode (Conex_data_persistency.authorisation_to_t a))
 
 let items repo = S.of_list (Conex_opam_layout.items repo.data)
+let subitems repo name = S.of_list (Conex_opam_layout.subitems repo.data name)
 
 let read_releases repo name =
   match repo.data.Provider.read (Conex_opam_layout.releases_path name) with
-  | Error _ -> Error (`NotFound name)
+  | Error _ -> Error (`NotFound ("releases", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_releases with
     | Error p -> Error (`ParseError (name, p))
@@ -332,7 +333,7 @@ let write_releases repo r =
 
 let read_checksum repo name =
   match repo.data.Provider.read (Conex_opam_layout.checksum_path name) with
-  | Error _ -> Error (`NotFound name)
+  | Error _ -> Error (`NotFound ("checksum", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_checksums with
     | Error p -> Error (`ParseError (name, p))

@@ -169,7 +169,7 @@ let re =
     type t = Repository.r_err
     let pp = Repository.pp_r_err
     let equal a b = match a, b with
-      | `NotFound a, `NotFound a' -> name_equal a a'
+      | `NotFound (a, a'), `NotFound (b, b') -> name_equal a b && name_equal a' b'
       | `NameMismatch (a, b), `NameMismatch (a', b') -> name_equal a a' && name_equal b b'
       | `ParseError (n, _), `ParseError (n', _) -> name_equal n n'
       | _ -> false
@@ -194,15 +194,15 @@ let empty_r () =
   Alcotest.check sset "empty repo has no keys" S.empty (Repository.ids r) ;
   Alcotest.check sset "empty repo has no authorisations" S.empty (Repository.items r) ;
   Alcotest.check (result publickey re) "reading key foo in empty repo fails"
-    (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
+    (Error (`NotFound ("key", "foo"))) (Repository.read_key r "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
-    (Error (`NotFound "foo")) (Repository.read_authorisation r "foo") ;
+    (Error (`NotFound ("authorisation", "foo"))) (Repository.read_authorisation r "foo") ;
   Alcotest.check (result releases re) "reading releases foo in empty repo fails"
-    (Error (`NotFound "foo")) (Repository.read_releases r "foo") ;
+    (Error (`NotFound ("releases", "foo"))) (Repository.read_releases r "foo") ;
   Alcotest.check (result ji re) "reading janitorindex foo in empty repo fails"
-    (Error (`NotFound "foo")) (Repository.read_index r "foo") ;
+    (Error (`NotFound ("index", "foo"))) (Repository.read_index r "foo") ;
   Alcotest.check (result cs re) "reading checksum foo.0 in empty repo fails"
-    (Error (`NotFound "foo.0")) (Repository.read_checksum r "foo.0") ;
+    (Error (`NotFound ("checksum", "foo.0"))) (Repository.read_checksum r "foo.0") ;
   Alcotest.check (result cs ch_err) "computing checksum foo.0 in empty repo fails"
     (Error (`FileNotFound "foo.0")) (Repository.compute_checksum r "foo.0")
 
@@ -396,11 +396,11 @@ let bad_id_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   Alcotest.check (result publickey re) "key foo not found"
-    (Error (`NotFound "foo")) (Repository.read_key r "foo") ;
+    (Error (`NotFound ("key", "foo"))) (Repository.read_key r "foo") ;
   Alcotest.check (result team re) "team foo not found"
-    (Error (`NotFound "foo")) (Repository.read_team r "foo") ;
+    (Error (`NotFound ("team", "foo"))) (Repository.read_team r "foo") ;
   Alcotest.check (result id re) "ID foo not found"
-    (Error (`NotFound "foo")) (Repository.read_id r "foo") ;
+    (Error (`NotFound ("team", "foo"))) (Repository.read_id r "foo") ;
   p.write ["keys"; "foo"] "barf" ;
   Alcotest.check (result publickey re) "parse error on key foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_key r "foo") ;
@@ -444,7 +444,7 @@ let bad_idx_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   Alcotest.check (result ji re) "index foo not found"
-    (Error (`NotFound "foo")) (Repository.read_index r "foo") ;
+    (Error (`NotFound ("index", "foo"))) (Repository.read_index r "foo") ;
   p.write ["index"; "foo"] "bla" ;
   Alcotest.check (result ji re) "bad index foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_index r "foo") ;
@@ -461,7 +461,7 @@ let bad_auth_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   Alcotest.check (result auth re) "authorisation foo not found"
-    (Error (`NotFound "foo")) (Repository.read_authorisation r "foo") ;
+    (Error (`NotFound ("authorisation", "foo"))) (Repository.read_authorisation r "foo") ;
   p.write ["packages"; "foo"; "authorisation"] "foobar" ;
   Alcotest.check (result auth re) "parse error on authorisation foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_authorisation r "foo") ;
@@ -478,7 +478,7 @@ let bad_rel_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   Alcotest.check (result releases re) "releases foo not found"
-    (Error (`NotFound "foo")) (Repository.read_releases r "foo") ;
+    (Error (`NotFound ("releases", "foo"))) (Repository.read_releases r "foo") ;
   p.write ["packages"; "foo"; "releases"] "foobar" ;
   Alcotest.check (result releases re) "parse error on releases foo"
     (Error (`ParseError ("foo", ""))) (Repository.read_releases r "foo") ;
@@ -495,7 +495,7 @@ let bad_cs_r () =
   let p = Mem.mem_provider () in
   let r = Repository.repository ~quorum:1 p in
   Alcotest.check (result cs re) "checksum foo not found"
-    (Error (`NotFound "foo")) (Repository.read_checksum r "foo") ;
+    (Error (`NotFound ("checksum", "foo"))) (Repository.read_checksum r "foo") ;
   p.write ["packages"; "foo"; "foo.0"; "checksum"] "foobar" ;
   Alcotest.check (result cs re) "parse error on checksum foo.0"
     (Error (`ParseError ("foo.0", ""))) (Repository.read_checksum r "foo.0") ;

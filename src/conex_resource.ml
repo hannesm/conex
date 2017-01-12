@@ -10,7 +10,7 @@ module Signature = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_signature ppf (id, ts, s) =
-    Format.fprintf ppf "%a created at %s@ sig:@ %s" pp_id id (Uint.to_string ts) s
+    Format.fprintf ppf "signature %a created at %s@ sig:@ %s" pp_id id (Uint.to_string ts) s
   (*BISECT-IGNORE-END*)
 end
 
@@ -36,16 +36,16 @@ module Publickey = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_service ppf = function
-    | `Email e -> Format.fprintf ppf "email: %s@ " e
-    | `GitHub e -> Format.fprintf ppf "GitHub: %s@ " e
-    | `Other (k, v) -> Format.fprintf ppf "other %s: %s@ " k v
+    | `Email e -> Format.fprintf ppf "email: %s" e
+    | `GitHub e -> Format.fprintf ppf "GitHub: %s" e
+    | `Other (k, v) -> Format.fprintf ppf "other %s: %s" k v
 
   let pp_publickey ppf p =
     let pp_opt_key ppf k =
       Format.pp_print_string ppf
         (match k with None -> "none" | Some (`Pub x) -> x)
     in
-    Format.fprintf ppf "name: %a@ accounts: %a@ counter: %s@ key: %a@."
+    Format.fprintf ppf "publickey name: %a@ accounts: %a@ counter: %s@ key: %a"
       pp_id p.name
       (pp_list pp_service) p.accounts
       (Uint.to_string p.counter)
@@ -82,7 +82,7 @@ module Team = struct
   let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
 
   let pp_team ppf x =
-    Format.fprintf ppf "team name: %a@ counter: %s@ members:@ %a@."
+    Format.fprintf ppf "team name: %a@ counter: %s@ members:@ %a"
       pp_id x.name (Uint.to_string x.counter) pp_mems x.members
    (*BISECT-IGNORE-END*)
 end
@@ -142,7 +142,7 @@ module Releases = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_releases ppf r =
-    Format.fprintf ppf "name: %a@ counter %s@ releases %a@."
+    Format.fprintf ppf "releases name: %a@ counter %s@ releases %a"
       pp_name r.name (Uint.to_string r.counter)
       (pp_list pp_name) (S.elements r.releases)
   (*BISECT-IGNORE-END*)
@@ -157,7 +157,7 @@ module Checksum = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum ppf c =
-    Format.fprintf ppf "%a [%s bytes]: %a@ "
+    Format.fprintf ppf "checksum %a [%s bytes]: %a@ "
       pp_name c.filename (Uint.to_string c.bytesize) pp_digest c.checksum
   (*BISECT-IGNORE-END*)
 
@@ -191,7 +191,7 @@ module Checksum = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksums ppf c =
-    Format.fprintf ppf "checksums for %a (counter %s) are:@.%a@."
+    Format.fprintf ppf "checksums for %a (counter %s) are: %a"
       pp_name c.name
       (Uint.to_string c.counter)
       pp_checksum_map c.files
@@ -239,7 +239,7 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_resource ppf { index ; rname ; size ; resource ; digest } =
-    Format.fprintf ppf "idx: %s@ name: %a@ size: %s@ resource: %a@ digest: %a@."
+    Format.fprintf ppf "resource %s@ name: %a@ size: %s@ resource: %a@ digest: %a"
       (Uint.to_string index) pp_name rname (Uint.to_string size)
       pp_resource resource
       pp_digest digest
@@ -271,7 +271,7 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
-    Format.fprintf ppf "name: %a@ counter: %s@ resources:@ %a@ %a@."
+    Format.fprintf ppf "index name: %a counter: %s resources:@ %a@ signatures: %a"
       pp_id i.name
       (Uint.to_string i.counter)
       (pp_list pp_resource) i.resources

@@ -30,7 +30,7 @@ type err = [ verification_error
            | `NameMismatch of string * string
            | `ParseError of name * string
            | `MissingSignature of identifier
-           | `NotFound of string
+           | `NotFound of string * string
            | `CounterNotIncreased
            | `CounterNotZero
            | `IllegalId

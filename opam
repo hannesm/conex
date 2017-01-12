@@ -28,6 +28,6 @@ depends: [
   "alcotest" {test}
   "opam-file-format"
   "opam-format"
-  "logs" "fmt"
+  "logs" "fmt" "rresult"
 ]
 available: [ ocaml-version >= "4.01.0" ]

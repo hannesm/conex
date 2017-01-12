@@ -19,9 +19,12 @@ fi
 action ()
 {
     case $1 in
-        default) action lib ; action bin ; action analysis ; action test ;;
+        default) action lib ; action bin ;;
         analysis) action lib ; $OCAMLBUILD analysis/opam_repo_stats.native ; $OCAMLBUILD analysis/maintainer.native ;;
-        bin) action lib ; $OCAMLBUILD app/conex.native ; $OCAMLBUILD app/conex_verify.native ;;
+        bin) action lib ;
+             $OCAMLBUILD app/conex.native ;
+             $OCAMLBUILD app/conex_author.native ;
+             $OCAMLBUILD app/conex_verify.native ;;
         lib) $OCAMLBUILD conex.cma conex.cmxa ;;
         test) action lib ; $OCAMLBUILD test/tests.native ; ./tests.native -q ;;
         coverage)
@@ -31,7 +34,7 @@ action ()
             $OCAMLBUILD test/tests.native ;
             ./tests.native ;
             bisect-ppx-report -I _build/ -html coverage/ bisect0001.out ;;
-        clean) $OCAMLBUILD -clean ; rm -rf _tests ; rm -f tests.native ; rm -f conex.native ; rm -rf coverage ; rm -f bisect*out ;;
+        clean) $OCAMLBUILD -clean ; rm -rf _tests ; rm -f tests.native conex.native conex_author.native maintainer.native opam_repo_stats.native ; rm -rf coverage ; rm -f bisect*out ;;
         *) $OCAMLBUILD $* ;;
     esac
 }

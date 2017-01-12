@@ -78,8 +78,9 @@ val add_team : t -> Team.t -> t
 
 val ids : t -> S.t
 val items : t -> S.t
+val subitems : t -> name -> S.t
 
-type r_err = [ `NotFound of string | `ParseError of name * string | `NameMismatch of string * string ]
+type r_err = [ `NotFound of string * string | `ParseError of name * string | `NameMismatch of string * string ]
 
 val pp_r_err : Format.formatter -> r_err -> unit
 
