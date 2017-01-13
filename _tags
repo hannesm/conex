@@ -8,7 +8,7 @@ true : warn(+A-4-33-44-58)
 <app/*.{ml,native}>: package(cmdliner opam-file-format)
 <app/conex.{ml,native}>: package(cstruct nocrypto x509 nocrypto.unix)
 <app/conex_verify.{ml,native}>: package(cstruct nocrypto x509)
-<app/conex_author.{ml,native}>: package(cstruct nocrypto x509 logs fmt.tty logs.fmt logs.cli fmt.cli rresult)
+<app/conex_author.{ml,native}>: package(cstruct nocrypto nocrypto.unix x509 logs fmt.tty logs.fmt logs.cli fmt.cli rresult)
 
 <test/*.{ml,byte,native}>: package(alcotest)
 <test/tests.{ml,native}>: package(cstruct nocrypto x509 nocrypto.unix opam-file-format)
