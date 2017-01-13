@@ -43,10 +43,8 @@ let write_file ?(mode = 0o644) filename data =
 let write_replace ?mode filename data =
   if exists filename then
     let tmp = filename ^ ".tmp" in
-    (if exists tmp then
-       remove tmp) ;
+    if exists tmp then remove tmp ;
     write_file ?mode tmp data ;
-    remove filename ;
     rename tmp filename
   else
     write_file ?mode filename data
