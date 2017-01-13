@@ -26,46 +26,56 @@ let help _ _copts man_format cmds = function
 
 let docs = Conex_opts.s
 
-let show_single r showit item =
-  let warn e =
-    Logs.warn (fun m -> m "%a" Conex_repository.pp_r_err e)
+let w pp a = Logs.warn (fun m -> m "%a" pp a)
+let warn_e pp = R.ignore_error ~use:(w pp)
+
+let find_auth r name =
+  let use e =
+    w Conex_repository.pp_r_err e ;
+    let a = Authorisation.authorisation name in
+    Logs.info (fun m -> m "fresh %a" Authorisation.pp_authorisation a);
+    a
   in
-  R.ignore_error ~use:warn
-    (Conex_repository.read_authorisation r item >>= fun a ->
+  R.ignore_error ~use
+    (Conex_repository.read_authorisation r name >>| fun a ->
      Logs.debug (fun m -> m "%a" Authorisation.pp_authorisation a);
-     if showit a.Authorisation.authorised then begin
-       Logs.info (fun m -> m "%a" Authorisation.pp_authorisation a) ;
-       R.ignore_error
-         ~use:(fun e -> Logs.warn (fun m -> m "%a" Conex_repository.pp_error e))
-         (Conex_repository.verify_authorisation r a >>= fun ok ->
-          Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok) ;
-          Ok ()) ;
+     a)
 
-       let releases =
-         let use e =
-           warn e ;
-           match Releases.releases ~releases:(Conex_repository.subitems r item) item with
-           | Ok r -> r
-           | Error e -> invalid_arg e
-         in
-         R.ignore_error ~use
-           (Conex_repository.read_releases r item >>= fun rel ->
-            Logs.info (fun m -> m "%a" Releases.pp_releases rel) ;
-            R.ignore_error ~use:(fun e -> Logs.warn (fun m -> m "%a" Conex_repository.pp_error e))
-              (Conex_repository.verify_releases r a rel >>| fun ok ->
-               Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
-            Ok rel)
-       in
+let find_rel r name =
+  let use e =
+    w Conex_repository.pp_r_err e ;
+    match Releases.releases ~releases:(Conex_repository.subitems r name) name with
+    | Ok r -> Logs.info (fun m -> m "fresh %a" Releases.pp_releases r) ; r
+    | Error e -> Logs.err (fun m -> m "%s" e) ; exit 1
+  in
+  R.ignore_error ~use
+    (Conex_repository.read_releases r name >>| fun rel ->
+     Logs.debug (fun m -> m "%a" Releases.pp_releases rel) ;
+     rel)
 
-       S.iter (fun release ->
-           R.ignore_error ~use:warn
-             (Conex_repository.read_checksum r release >>| fun cs ->
-              R.ignore_error ~use:(fun e -> Logs.warn (fun m -> m "%a" Conex_repository.pp_error e))
-                (Conex_repository.verify_checksum r a releases cs >>| fun ok ->
-                 Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok))))
-         releases.Releases.releases ;
-       Ok ()
-     end else Ok ())
+let show_release r a rel item =
+  warn_e Conex_repository.pp_r_err
+    (Conex_repository.read_checksum r item >>| fun cs ->
+     Logs.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
+     warn_e Conex_repository.pp_error
+       (Conex_repository.verify_checksum r a rel cs >>| fun ok ->
+        Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
+
+let show_single r showit item =
+  let a = find_auth r item in
+  if showit a.Authorisation.authorised then begin
+    warn_e Conex_repository.pp_error
+      (Conex_repository.verify_authorisation r a >>| fun ok ->
+       Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
+    let releases =
+      let rel = find_rel r item in
+      warn_e Conex_repository.pp_error
+        (Conex_repository.verify_releases r a rel >>| fun ok ->
+         Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
+      rel
+    in
+    S.iter (show_release r a releases) releases.Releases.releases
+  end
 
 let self r o =
   Conex_private.(R.error_to_msg ~pp_error:pp_err
@@ -80,18 +90,21 @@ let info_all r o =
   Conex_repository.(R.error_to_msg ~pp_error:pp_r_err (Conex_repository.read_id r id)) >>= function
   | `Key k ->
     Logs.info (fun m -> m "%a" Publickey.pp_publickey k);
-    let warn e =
-      Logs.warn (fun m -> m "%a" Conex_repository.pp_r_err e)
+    let idx =
+      R.ignore_error
+        ~use:(fun e -> w Conex_repository.pp_r_err e ; Index.index id)
+          (Conex_repository.read_index r id)
     in
-    let idx = Conex_repository.(R.ignore_error ~use:(fun e -> warn e; Index.index id) (read_index r id)) in
     Logs.info (fun m -> m "%a" Index.pp_index idx);
     let me = s_of_list @@ if o.Conex_opts.team then
-        let teams = S.fold (fun id' teams ->
-            R.ignore_error ~use:(fun e -> warn e ; teams)
-              (Conex_repository.read_id r id' >>| function
-                | `Team t when S.mem id t.Team.members ->
-                  Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
-                | `Team _ -> teams
+        let teams =
+          S.fold (fun id' teams ->
+              R.ignore_error
+                ~use:(fun e -> w Conex_repository.pp_r_err e ; teams)
+                (Conex_repository.read_id r id' >>| function
+                  | `Team t when S.mem id t.Team.members ->
+                    Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
+                  | `Team _ -> teams
                 | `Key _ -> teams))
             (Conex_repository.ids r) []
         in
@@ -110,8 +123,22 @@ let info_all r o =
 
 let info_single r _o name =
   Logs.info (fun m -> m "information on package %s" name);
-  show_single r (fun _ -> true) name ;
-  Ok ()
+  match Conex_opam_layout.authorisation_of_item name with
+  | None -> show_single r (fun _ -> true) name ; Ok ()
+  | Some n ->
+    let a = find_auth r n in
+    (* need to load keys ++ teams *)
+    warn_e Conex_repository.pp_error
+      (Conex_repository.verify_authorisation r a >>| fun ok ->
+       Logs.info (fun m -> m "authorisation %s %a" n Conex_repository.pp_ok ok)) ;
+    let rel = find_rel r n in
+    warn_e Conex_repository.pp_error
+      (Conex_repository.verify_releases r a rel >>| fun ok ->
+       Logs.info (fun m -> m "releases %s %a" n Conex_repository.pp_ok ok)) ;
+    if not (S.mem name rel.Releases.releases) then
+      Logs.warn (fun m -> m "package %s not part of releases file" name) ;
+    show_release r a rel name ;
+    Ok ()
 
 let information _ o name =
   let r = o.Conex_opts.repo in
@@ -132,6 +159,8 @@ let initialise r o id email =
       Conex_private.write_private_key r id priv ;
     Logs.info (fun m -> m "wrote private key %s" id) ;
     str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun pub ->
+    (* XXX: need to validate identifier *)
+    (* XXX: need to validate all email addresses *)
     let accounts = `GitHub id :: List.map (fun e -> `Email e) email in
     let pub = Publickey.publickey ~accounts id (Some pub) in
     let r = Conex_repository.add_trusted_key r pub in
@@ -159,6 +188,9 @@ let init _ o email =
     | Ok () -> `Ok ()
     | Error (`Msg m) -> `Error (false, m)
 
+let sign _ _o _package =
+  `Ok ()
+
 open Cmdliner
 
 let setup_log =
@@ -172,6 +204,8 @@ let help_secs = [
  `S "KEYS";
  `P "Public keys contain a unique identifier.  They are distributed with the repository itself.";
  `P "Your private keys are stored PEM-encoded in ~/.conex.  You can select which key to use by passing --id to conex.";
+ `S "PACKAGE";
+ `P "A package is an opam package, and can either be the package name or the package name and version number.";
  `S docs;
  `P "These options are common to all commands.";
  `S "SEE ALSO";
@@ -179,7 +213,7 @@ let help_secs = [
  `S "BUGS"; `P "Check bug reports at https://github.com/hannesm/conex.";]
 
 let package =
-  let doc = "Package name." in
+  let doc = "Package." in
   Arg.(value & pos 0 string "" & info [] ~docv:"PACKAGE" ~doc)
 
 let info_cmd =
@@ -190,6 +224,15 @@ let info_cmd =
   in
   Term.(ret (const information $ setup_log $ Conex_opts.t_t $ package)),
   Term.info "info" ~doc ~man
+
+let sign_cmd =
+  let doc = "sign a package" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Cryptographically signs a given package with your id."]
+  in
+  Term.(ret (const sign $ setup_log $ Conex_opts.t_t $ package)),
+  Term.info "sign" ~doc ~man
 
 let init_cmd =
   let emails =
@@ -224,7 +267,7 @@ let default_cmd =
   Term.(ret (const (fun _ _ -> `Help (`Pager, None)) $ setup_log $ Conex_opts.t_t)),
   Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
 
-let cmds = [info_cmd ; help_cmd ; init_cmd]
+let cmds = [ info_cmd ; help_cmd ; init_cmd ; sign_cmd ]
 
 let () =
   match Term.eval_choice default_cmd cmds
