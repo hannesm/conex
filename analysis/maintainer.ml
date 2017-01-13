@@ -68,15 +68,15 @@ module OpamMaintainer = struct
     | Error _ -> Log.err (fun m -> m "couldn't read opam file: %s/%s" p r) ; S.empty
 
   let infer repo =
-    let packages = Repository.items repo in
+    let packages = Conex_repository.items repo in
     List.fold_left (fun map p ->
-        let releases = Conex_opam_layout.subitems (Repository.provider repo) p in
+        let releases = Conex_opam_layout.subitems (Conex_repository.provider repo) p in
         let releases = List.rev (List.sort OpamVersionCompare.compare releases) in
         let maintainers =
           List.fold_left
             (fun s r ->
                if S.is_empty s then
-                 maintainers (Repository.provider repo) p r
+                 maintainers (Conex_repository.provider repo) p r
                else
                  s)
             S.empty releases
@@ -272,25 +272,25 @@ let infer_maintainers base lvl =
   Logs.set_level lvl ;
   Logs.set_reporter (Logs_fmt.reporter ()) ;
   let provider = Conex_provider.fs_provider base in
-  let repo = Repository.repository provider in
+  let repo = Conex_repository.repository provider in
   let github_mail, _mail_github = PR.handle_prs base PR.github_mail (M.empty, M.empty) in
   Logs.info (fun m -> m "github-email %a" pp_map github_mail) ;
   let repo = M.fold (fun k v repo ->
       let accounts = `GitHub k :: List.map (fun e -> `Email e) (S.elements v) in
       let key = Publickey.publickey ~accounts k None in
-      Repository.write_key repo key ;
-      Repository.add_trusted_key repo key)
+      Conex_repository.write_key repo key ;
+      Conex_repository.add_trusted_key repo key)
       github_mail repo
   in
   let repo = List.fold_left (fun r ->
       function
       | `Team (mails, id) ->
         let t = Team.team id in
-        Repository.write_team r t ;
+        Conex_repository.write_team r t ;
         let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
-        let r = Repository.add_trusted_key r (Publickey.publickey ~accounts id None) in
-        Repository.add_team r t
-      | `Key k -> Repository.write_key repo k ;Repository.add_trusted_key r k)
+        let r = Conex_repository.add_trusted_key r (Publickey.publickey ~accounts id None) in
+        Conex_repository.add_team r t
+      | `Key k -> Conex_repository.write_key repo k ;Conex_repository.add_trusted_key r k)
       repo known_ids
   in
   (* this is a set of package name without maintainer,
@@ -299,7 +299,7 @@ let infer_maintainers base lvl =
   let authorisations = M.fold (fun k ids acc ->
       let authorised = S.fold (fun s acc ->
           if String.is_infix ~affix:"@" s then
-            match Repository.find_id repo s with
+            match Conex_repository.find_id repo s with
             | None -> acc
             | Some x -> S.add x acc
           else
@@ -308,7 +308,7 @@ let infer_maintainers base lvl =
       in
       let authorisation = Authorisation.authorisation ~authorised k in
       Logs.info (fun m -> m "%a" Authorisation.pp_authorisation authorisation) ;
-      Repository.write_authorisation repo authorisation ;
+      Conex_repository.write_authorisation repo authorisation ;
       M.add k authorisation acc)
       mapping M.empty
   in
@@ -325,11 +325,11 @@ let infer_maintainers base lvl =
   Logs.app (fun m -> m "teams\n%a" pp_map team) ;
   M.iter (fun t members ->
       let t = Team.team ~members t in
-      Repository.write_team repo t)
+      Conex_repository.write_team repo t)
     team ;
   M.iter (fun p authorised -> if S.cardinal authorised = 1 then
              let a = Authorisation.authorisation ~authorised p in
-             Repository.write_authorisation repo a)
+             Conex_repository.write_authorisation repo a)
     empty
 
 open Cmdliner

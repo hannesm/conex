@@ -28,41 +28,41 @@ let docs = Conex_opts.s
 
 let show_single r showit item =
   let warn e =
-    Logs.warn (fun m -> m "%a" Repository.pp_r_err e)
+    Logs.warn (fun m -> m "%a" Conex_repository.pp_r_err e)
   in
   R.ignore_error ~use:warn
-    (Repository.read_authorisation r item >>= fun a ->
+    (Conex_repository.read_authorisation r item >>= fun a ->
      Logs.debug (fun m -> m "%a" Authorisation.pp_authorisation a);
      if showit a.Authorisation.authorised then begin
        Logs.info (fun m -> m "%a" Authorisation.pp_authorisation a) ;
        R.ignore_error
-         ~use:(fun e -> Logs.warn (fun m -> m "%a" Repository.pp_error e))
-         (Repository.verify_authorisation r a >>= fun ok ->
-          Logs.info (fun m -> m "%a" Repository.pp_ok ok) ;
+         ~use:(fun e -> Logs.warn (fun m -> m "%a" Conex_repository.pp_error e))
+         (Conex_repository.verify_authorisation r a >>= fun ok ->
+          Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok) ;
           Ok ()) ;
 
        let releases =
          let use e =
            warn e ;
-           match Releases.releases ~releases:(Repository.subitems r item) item with
+           match Releases.releases ~releases:(Conex_repository.subitems r item) item with
            | Ok r -> r
            | Error e -> invalid_arg e
          in
          R.ignore_error ~use
-           (Repository.read_releases r item >>= fun rel ->
+           (Conex_repository.read_releases r item >>= fun rel ->
             Logs.info (fun m -> m "%a" Releases.pp_releases rel) ;
-            R.ignore_error ~use:(fun e -> Logs.warn (fun m -> m "%a" Repository.pp_error e))
-              (Repository.verify_releases r a rel >>| fun ok ->
-               Logs.info (fun m -> m "%a" Repository.pp_ok ok)) ;
+            R.ignore_error ~use:(fun e -> Logs.warn (fun m -> m "%a" Conex_repository.pp_error e))
+              (Conex_repository.verify_releases r a rel >>| fun ok ->
+               Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
             Ok rel)
        in
 
        S.iter (fun release ->
            R.ignore_error ~use:warn
-             (Repository.read_checksum r release >>| fun cs ->
-              R.ignore_error ~use:(fun e -> Logs.warn (fun m -> m "%a" Repository.pp_error e))
-                (Repository.verify_checksum r a releases cs >>| fun ok ->
-                 Logs.info (fun m -> m "%a" Repository.pp_ok ok))))
+             (Conex_repository.read_checksum r release >>| fun cs ->
+              R.ignore_error ~use:(fun e -> Logs.warn (fun m -> m "%a" Conex_repository.pp_error e))
+                (Conex_repository.verify_checksum r a releases cs >>| fun ok ->
+                 Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok))))
          releases.Releases.releases ;
        Ok ()
      end else Ok ())
@@ -77,23 +77,23 @@ let self r o =
 
 let info_all r o =
   self r o >>= fun id ->
-  Repository.(R.error_to_msg ~pp_error:pp_r_err (Repository.read_id r id)) >>= function
+  Conex_repository.(R.error_to_msg ~pp_error:pp_r_err (Conex_repository.read_id r id)) >>= function
   | `Key k ->
     Logs.info (fun m -> m "%a" Publickey.pp_publickey k);
     let warn e =
-      Logs.warn (fun m -> m "%a" Repository.pp_r_err e)
+      Logs.warn (fun m -> m "%a" Conex_repository.pp_r_err e)
     in
-    let idx = Repository.(R.ignore_error ~use:(fun e -> warn e; Index.index id) (read_index r id)) in
+    let idx = Conex_repository.(R.ignore_error ~use:(fun e -> warn e; Index.index id) (read_index r id)) in
     Logs.info (fun m -> m "%a" Index.pp_index idx);
     let me = s_of_list @@ if o.Conex_opts.team then
         let teams = S.fold (fun id' teams ->
             R.ignore_error ~use:(fun e -> warn e ; teams)
-              (Repository.read_id r id' >>| function
+              (Conex_repository.read_id r id' >>| function
                 | `Team t when S.mem id t.Team.members ->
                   Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
                 | `Team _ -> teams
                 | `Key _ -> teams))
-            (Repository.ids r) []
+            (Conex_repository.ids r) []
         in
         id :: List.map (fun t -> t.Team.name) teams
       else
@@ -101,11 +101,11 @@ let info_all r o =
     in
     S.iter
       (show_single r (fun a -> not (S.is_empty (S.inter me a))))
-      (Repository.items r) ;
+      (Conex_repository.items r) ;
     Ok ()
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t);
-    S.iter (show_single r (fun a -> S.mem t.Team.name a)) (Repository.items r) ;
+    S.iter (show_single r (fun a -> S.mem t.Team.name a)) (Conex_repository.items r) ;
     Ok ()
 
 let info_single r _o name =
@@ -115,13 +115,13 @@ let info_single r _o name =
 
 let information _ o name =
   let r = o.Conex_opts.repo in
-  Logs.info (fun m -> m "repository %s" (Repository.provider r).Provider.name) ;
+  Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
   match if name = "" then info_all r o else info_single r o name with
   | Ok () -> `Ok ()
   | Error (`Msg m) -> `Error (false, m)
 
 let initialise r o id email =
-  match Repository.read_id r id with
+  match Conex_repository.read_id r id with
   | Ok (`Team _) ->
     Error (`Msg ("team " ^ id ^ " exists"))
   | Ok (`Key k) when k.Publickey.key <> None ->
@@ -134,17 +134,17 @@ let initialise r o id email =
     str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun pub ->
     let accounts = `GitHub id :: List.map (fun e -> `Email e) email in
     let pub = Publickey.publickey ~accounts id (Some pub) in
-    let r = Repository.add_trusted_key r pub in
+    let r = Conex_repository.add_trusted_key r pub in
     if not o.Conex_opts.dry then
-      Repository.write_key r pub ;
+      Conex_repository.write_key r pub ;
     Logs.info (fun m -> m "wrote public key %a" Publickey.pp_publickey pub) ;
     let idx = Index.index id in
     str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
     if not o.Conex_opts.dry then
-      Repository.write_index r idx ;
+      Conex_repository.write_index r idx ;
     Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
     R.error_to_msg ~pp_error:pp_verification_error
-       (Repository.verify_index r idx >>| fun id ->
+       (Conex_repository.verify_index r idx >>| fun id ->
         Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
     Logs.info (fun m -> m "please now git add keys/%s and index/%s, and claim some packages" id id)
 
@@ -154,7 +154,7 @@ let init _ o email =
   | Some id ->
     Nocrypto_entropy_unix.initialize () ;
     let r = o.Conex_opts.repo in
-    Logs.info (fun m -> m "repository %s" (Repository.provider r).Provider.name) ;
+    Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
     match initialise r o id email with
     | Ok () -> `Ok ()
     | Error (`Msg m) -> `Error (false, m)

@@ -166,8 +166,8 @@ let mem_provider_tests = [
 
 let re =
   let module M = struct
-    type t = Repository.r_err
-    let pp = Repository.pp_r_err
+    type t = Conex_repository.r_err
+    let pp = Conex_repository.pp_r_err
     let equal a b = match a, b with
       | `NotFound (a, a'), `NotFound (b, b') -> name_equal a b && name_equal a' b'
       | `NameMismatch (a, b), `NameMismatch (a', b') -> name_equal a a' && name_equal b b'
@@ -179,7 +179,7 @@ let re =
 let ch_err =
   let module M = struct
     type t = [ `FileNotFound of name | `NotADirectory of name ]
-    let pp = Repository.pp_error
+    let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `FileNotFound a, `FileNotFound a' -> name_equal a a'
       | `NotADirectory a, `NotADirectory a' -> name_equal a a'
@@ -190,52 +190,52 @@ let ch_err =
 (* basic operations work, and we have an in-memory data provider!  let the games begin *)
 let empty_r () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository p in
-  Alcotest.check sset "empty repo has no keys" S.empty (Repository.ids r) ;
-  Alcotest.check sset "empty repo has no authorisations" S.empty (Repository.items r) ;
+  let r = Conex_repository.repository p in
+  Alcotest.check sset "empty repo has no keys" S.empty (Conex_repository.ids r) ;
+  Alcotest.check sset "empty repo has no authorisations" S.empty (Conex_repository.items r) ;
   Alcotest.check (result publickey re) "reading key foo in empty repo fails"
-    (Error (`NotFound ("key", "foo"))) (Repository.read_key r "foo") ;
+    (Error (`NotFound ("key", "foo"))) (Conex_repository.read_key r "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
-    (Error (`NotFound ("authorisation", "foo"))) (Repository.read_authorisation r "foo") ;
+    (Error (`NotFound ("authorisation", "foo"))) (Conex_repository.read_authorisation r "foo") ;
   Alcotest.check (result releases re) "reading releases foo in empty repo fails"
-    (Error (`NotFound ("releases", "foo"))) (Repository.read_releases r "foo") ;
+    (Error (`NotFound ("releases", "foo"))) (Conex_repository.read_releases r "foo") ;
   Alcotest.check (result ji re) "reading janitorindex foo in empty repo fails"
-    (Error (`NotFound ("index", "foo"))) (Repository.read_index r "foo") ;
+    (Error (`NotFound ("index", "foo"))) (Conex_repository.read_index r "foo") ;
   Alcotest.check (result cs re) "reading checksum foo.0 in empty repo fails"
-    (Error (`NotFound ("checksum", "foo.0"))) (Repository.read_checksum r "foo.0") ;
+    (Error (`NotFound ("checksum", "foo.0"))) (Conex_repository.read_checksum r "foo.0") ;
   Alcotest.check (result cs ch_err) "computing checksum foo.0 in empty repo fails"
-    (Error (`FileNotFound "foo.0")) (Repository.compute_checksum r "foo.0")
+    (Error (`FileNotFound "foo.0")) (Conex_repository.compute_checksum r "foo.0")
 
 let key_r () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository p in
+  let r = Conex_repository.repository p in
   let k, _pk = gen_pub "foo" in
-  Repository.write_key r k ;
-  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Repository.ids r) ;
-  Repository.write_key r k ;
-  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Repository.ids r) ;
+  Conex_repository.write_key r k ;
+  Alcotest.check sset "key repo has one key" (S.singleton "foo") (Conex_repository.ids r) ;
+  Conex_repository.write_key r k ;
+  Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Conex_repository.ids r) ;
   let k2, _pk2 = gen_pub "foobar" in
-  Repository.write_key r k2 ;
-  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Repository.ids r) ;
+  Conex_repository.write_key r k2 ;
+  Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Conex_repository.ids r) ;
   Alcotest.check (result publickey re) "reading key gives back right key"
-    (Ok k) (Repository.read_key r "foo") ;
+    (Ok k) (Conex_repository.read_key r "foo") ;
   let jk, _jpk = gen_pub "janitor" in
-  Repository.write_key r jk ;
-  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Repository.ids r)
+  Conex_repository.write_key r jk ;
+  Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Conex_repository.ids r)
 
 let team_r () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:10 p in
-  Alcotest.(check int "quorum is correct" 10 (Repository.quorum r)) ;
-  Alcotest.check sset "team foo is empty" S.empty (Repository.team r "foo") ;
+  let r = Conex_repository.repository ~quorum:10 p in
+  Alcotest.(check int "quorum is correct" 10 (Conex_repository.quorum r)) ;
+  Alcotest.check sset "team foo is empty" S.empty (Conex_repository.team r "foo") ;
   let t = Team.team ~members:(S.singleton "bar") "foo" in
-  let r = Repository.add_team r t in
-  Alcotest.check sset "team foo has one member" (S.singleton "bar") (Repository.team r "foo")
+  let r = Conex_repository.add_team r t in
+  Alcotest.check sset "team foo has one member" (S.singleton "bar") (Conex_repository.team r "foo")
 
 let checks_r () =
   let open Provider in
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   p.write ["packages"; "foo"; "foo.0"; "foo"] "bar" ;
   p.write ["packages"; "foo"; "foo.0"; "bar"] "foo" ;
   p.write ["packages"; "foo"; "foo.0"; "files"; "patch1"] "p1" ;
@@ -250,7 +250,7 @@ let checks_r () =
   in
   let css = Checksum.checksums "foo.0" csums in
   Alcotest.check (result cs ch_err) "checksum computation works"
-    (Ok css) (Repository.compute_checksum r "foo.0")
+    (Ok css) (Conex_repository.compute_checksum r "foo.0")
 
 open Conex_data_persistency
 
@@ -394,121 +394,121 @@ let basic_persistency () =
 let bad_id_r () =
   let open Provider in
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result publickey re) "key foo not found"
-    (Error (`NotFound ("key", "foo"))) (Repository.read_key r "foo") ;
+    (Error (`NotFound ("key", "foo"))) (Conex_repository.read_key r "foo") ;
   Alcotest.check (result team re) "team foo not found"
-    (Error (`NotFound ("team", "foo"))) (Repository.read_team r "foo") ;
+    (Error (`NotFound ("team", "foo"))) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result id re) "ID foo not found"
-    (Error (`NotFound ("team", "foo"))) (Repository.read_id r "foo") ;
+    (Error (`NotFound ("team", "foo"))) (Conex_repository.read_id r "foo") ;
   p.write ["keys"; "foo"] "barf" ;
   Alcotest.check (result publickey re) "parse error on key foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_key r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_key r "foo") ;
   Alcotest.check (result team re) "parse error on team foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_team r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result id re) "parse error on id foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_id r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_id r "foo") ;
   let key = Publickey.publickey "foo" None in
-  Repository.write_key r key ;
+  Conex_repository.write_key r key ;
   Alcotest.check (result team re) "parse error on team foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_team r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result publickey re) "key foo parses"
-    (Ok key) (Repository.read_key r "foo") ;
+    (Ok key) (Conex_repository.read_key r "foo") ;
   Alcotest.check (result id re) "id foo parses"
-    (Ok (`Key key)) (Repository.read_id r "foo") ;
+    (Ok (`Key key)) (Conex_repository.read_id r "foo") ;
   p.write ["keys"; "foobar"] (Conex_data.encode (publickey_to_t key)) ;
   Alcotest.check (result team re) "parse error on team foobar"
-    (Error (`ParseError ("foobar", ""))) (Repository.read_team r "foobar") ;
+    (Error (`ParseError ("foobar", ""))) (Conex_repository.read_team r "foobar") ;
   Alcotest.check (result publickey re) "key foobar namemismatch"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_key r "foobar") ;
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_key r "foobar") ;
   Alcotest.check (result id re) "namemismatch id foobar"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_id r "foobar") ;
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_id r "foobar") ;
   let t = Team.team "foo" in
-  Repository.write_team r t ;
+  Conex_repository.write_team r t ;
   Alcotest.check (result publickey re) "parse error on key foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_key r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_key r "foo") ;
   Alcotest.check (result team re) "team foo parses"
-    (Ok t) (Repository.read_team r "foo") ;
+    (Ok t) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result id re) "id foo parses"
-    (Ok (`Team t)) (Repository.read_id r "foo") ;
+    (Ok (`Team t)) (Conex_repository.read_id r "foo") ;
   p.write ["keys"; "foobar"] (Conex_data.encode (team_to_t t)) ;
   Alcotest.check (result publickey re) "parse error on key foobar"
-    (Error (`ParseError ("foobar", ""))) (Repository.read_key r "foobar") ;
+    (Error (`ParseError ("foobar", ""))) (Conex_repository.read_key r "foobar") ;
   Alcotest.check (result team re) "name mismatch on team foobar"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_team r "foobar") ;
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_team r "foobar") ;
   Alcotest.check (result id re) "name mismatch on id foo"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_id r "foobar")
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_id r "foobar")
 
 let bad_idx_r () =
   let open Provider in
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result ji re) "index foo not found"
-    (Error (`NotFound ("index", "foo"))) (Repository.read_index r "foo") ;
+    (Error (`NotFound ("index", "foo"))) (Conex_repository.read_index r "foo") ;
   p.write ["index"; "foo"] "bla" ;
   Alcotest.check (result ji re) "bad index foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_index r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_index r "foo") ;
   let idx = Index.index "foo" in
-  Repository.write_index r idx ;
+  Conex_repository.write_index r idx ;
   Alcotest.check (result ji re) "good index foo"
-    (Ok idx) (Repository.read_index r "foo") ;
+    (Ok idx) (Conex_repository.read_index r "foo") ;
   p.write ["index"; "foobar"] (Conex_data.encode (index_sigs_to_t idx)) ;
   Alcotest.check (result ji re) "name mismatch in foobar"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_index r "foobar")
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_index r "foobar")
 
 let bad_auth_r () =
   let open Provider in
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result auth re) "authorisation foo not found"
-    (Error (`NotFound ("authorisation", "foo"))) (Repository.read_authorisation r "foo") ;
+    (Error (`NotFound ("authorisation", "foo"))) (Conex_repository.read_authorisation r "foo") ;
   p.write ["packages"; "foo"; "authorisation"] "foobar" ;
   Alcotest.check (result auth re) "parse error on authorisation foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_authorisation r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_authorisation r "foo") ;
   let a = Authorisation.authorisation "foo" in
-  Repository.write_authorisation r a ;
+  Conex_repository.write_authorisation r a ;
   Alcotest.check (result auth re) "authorisation foo good"
-    (Ok a) (Repository.read_authorisation r "foo") ;
+    (Ok a) (Conex_repository.read_authorisation r "foo") ;
   p.write ["packages"; "foobar"; "authorisation"] (Conex_data.encode (authorisation_to_t a)) ;
   Alcotest.check (result auth re) "name mismatch on authorisation foobar"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_authorisation r "foobar")
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_authorisation r "foobar")
 
 let bad_rel_r () =
   let open Provider in
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result releases re) "releases foo not found"
-    (Error (`NotFound ("releases", "foo"))) (Repository.read_releases r "foo") ;
+    (Error (`NotFound ("releases", "foo"))) (Conex_repository.read_releases r "foo") ;
   p.write ["packages"; "foo"; "releases"] "foobar" ;
   Alcotest.check (result releases re) "parse error on releases foo"
-    (Error (`ParseError ("foo", ""))) (Repository.read_releases r "foo") ;
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_releases r "foo") ;
   let rel = match Releases.releases "foo" with Ok r -> r | Error _ -> assert false in
-  Repository.write_releases r rel ;
+  Conex_repository.write_releases r rel ;
   Alcotest.check (result releases re) "releases foo good"
-    (Ok rel) (Repository.read_releases r "foo") ;
+    (Ok rel) (Conex_repository.read_releases r "foo") ;
   p.write ["packages"; "foobar"; "releases"] (Conex_data.encode (releases_to_t rel)) ;
   Alcotest.check (result releases re) "name mismatch on releases foobar"
-    (Error (`NameMismatch ("foobar", "foo"))) (Repository.read_releases r "foobar")
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_releases r "foobar")
 
 let bad_cs_r () =
   let open Provider in
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result cs re) "checksum foo not found"
-    (Error (`NotFound ("checksum", "foo"))) (Repository.read_checksum r "foo") ;
+    (Error (`NotFound ("checksum", "foo"))) (Conex_repository.read_checksum r "foo") ;
   p.write ["packages"; "foo"; "foo.0"; "checksum"] "foobar" ;
   Alcotest.check (result cs re) "parse error on checksum foo.0"
-    (Error (`ParseError ("foo.0", ""))) (Repository.read_checksum r "foo.0") ;
+    (Error (`ParseError ("foo.0", ""))) (Conex_repository.read_checksum r "foo.0") ;
   let c = Checksum.checksums "foo.0" [] in
-  Repository.write_checksum r c ;
+  Conex_repository.write_checksum r c ;
   Alcotest.check (result cs re) "checksum foo.0 good"
-    (Ok c) (Repository.read_checksum r "foo.0") ;
+    (Ok c) (Conex_repository.read_checksum r "foo.0") ;
   p.write ["packages"; "foo"; "foo.1"; "checksum"] (Conex_data.encode (checksums_to_t c)) ;
   Alcotest.check (result cs re) "name mismatch on checksum foo.1"
-    (Error (`NameMismatch ("foo.1", "foo.0"))) (Repository.read_checksum r "foo.1") ;
+    (Error (`NameMismatch ("foo.1", "foo.0"))) (Conex_repository.read_checksum r "foo.1") ;
   p.write ["packages"; "foo"; "foo.2"] "blubb" ;
   Alcotest.check (result cs ch_err) "checksum is a file, should be a directory"
-    (Error (`NotADirectory "foo.2")) (Repository.compute_checksum r "foo.2")
+    (Error (`NotADirectory "foo.2")) (Conex_repository.compute_checksum r "foo.2")
 
 let basic_repo_tests = [
   "empty repo", `Quick, empty_r ;
@@ -526,18 +526,18 @@ let basic_repo_tests = [
 
 let idx_sign () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository p in
+  let r = Conex_repository.repository p in
   let id = "foo" in
   let idx = Index.index id in
   Alcotest.check (result Alcotest.string verr) "index must be signed"
-    (Error (`NoSignature id)) (Repository.verify_index r idx) ;
+    (Error (`NoSignature id)) (Conex_repository.verify_index r idx) ;
   let pub, priv = gen_pub id in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result Alcotest.string verr) "id must be in keystore"
-    (Error (`InvalidIdentifier id)) (Repository.verify_index r signed_idx) ;
-  let r = Repository.add_trusted_key r pub in
+    (Error (`InvalidIdentifier id)) (Conex_repository.verify_index r signed_idx) ;
+  let r = Conex_repository.add_trusted_key r pub in
   Alcotest.check (result Alcotest.string verr) "idx signed properly"
-    (Ok id) (Repository.verify_index r signed_idx) ;
+    (Ok id) (Conex_repository.verify_index r signed_idx) ;
   let oid = "bar" in
   let signed' =
     match signed_idx.Index.signatures with
@@ -545,12 +545,12 @@ let idx_sign () =
     | _ -> assert false
   in
   Alcotest.check (result Alcotest.string verr) "id not authorised"
-    (Error (`NotAuthorised (id, oid))) (Repository.verify_index r signed')
+    (Error (`NotAuthorised (id, oid))) (Conex_repository.verify_index r signed')
 
 let k_ok =
   let module M = struct
     type t = [ `Quorum of S.t | `Both of identifier * S.t ]
-    let pp = Repository.pp_ok
+    let pp = Conex_repository.pp_ok
     let equal a b = match a, b with
       | `Quorum js, `Quorum is -> S.equal js is
       | `Both (a, js), `Both (b, is) -> id_equal a b && S.equal js is
@@ -560,8 +560,8 @@ let k_ok =
 
 let k_err =
   let module M = struct
-    type t = [ Repository.base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]
-    let pp = Repository.pp_error
+    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]
+    let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
@@ -578,7 +578,7 @@ let res d =
 
 let empty_key () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
@@ -590,19 +590,19 @@ let empty_key () =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
-    (Repository.verify_key r pub) ;
-  let r' = Repository.add_index r jidx in
+    (Conex_repository.verify_key r pub) ;
+  let r' = Conex_repository.add_index r jidx in
   Alcotest.check (result k_ok k_err) "empty publickey good"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_key r' pub)
+    (Conex_repository.verify_key r' pub)
 
 let key_good () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
@@ -618,27 +618,27 @@ let key_good () =
     let idx = Index.index ~resources id in
     sign_idx idx priv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
-    (Repository.verify_key r pub) ;
-  let r' = Repository.add_index r jidx in
+    (Conex_repository.verify_key r pub) ;
+  let r' = Conex_repository.add_index r jidx in
   Alcotest.check (result k_ok k_err) "publickey missing self-sig"
     (Error (`MissingSignature id))
-    (Repository.verify_key r' pub) ;
-  let r'' = Repository.add_index r idx in
+    (Conex_repository.verify_key r' pub) ;
+  let r'' = Conex_repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "publickey missing quorum"
     (Error (`InsufficientQuorum (id, S.empty)))
-    (Repository.verify_key r'' pub) ;
-  let r''' = Repository.add_index r' idx in
+    (Conex_repository.verify_key r'' pub) ;
+  let r''' = Conex_repository.add_index r' idx in
   Alcotest.check (result k_ok k_err) "publickey is fine"
     (Ok (`Both (id, S.singleton jid)))
-    (Repository.verify_key r''' pub)
+    (Conex_repository.verify_key r''' pub)
 
 let key_good_quorum () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:3 p in
+  let r = Conex_repository.repository ~quorum:3 p in
   let id = "foo" in
   let pub, priv = gen_pub id in
   let resources =
@@ -648,37 +648,37 @@ let key_good_quorum () =
     let idx = Index.index ~resources id in
     sign_idx idx priv
   in
-  let r = Repository.add_index r idx in
+  let r = Conex_repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 0"
     (Error (`InsufficientQuorum (id, S.empty)))
-    (Repository.verify_key r pub) ;
+    (Conex_repository.verify_key r pub) ;
   let jidx r jid =
     let jpub, jpriv = gen_pub jid in
     let idx = Index.index ~resources jid in
     let idx = sign_idx idx jpriv in
-    let r = Repository.add_trusted_key r jpub in
+    let r = Conex_repository.add_trusted_key r jpub in
     let r =
-      let mems = Repository.team r "janitors" in
-      Repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
+      let mems = Conex_repository.team r "janitors" in
+      Conex_repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
     in
-    Repository.add_index r idx
+    Conex_repository.add_index r idx
   in
   let r = jidx r "jana" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 1"
     (Error (`InsufficientQuorum (id, S.singleton "jana")))
-    (Repository.verify_key r pub) ;
+    (Conex_repository.verify_key r pub) ;
   let r = jidx r "janb" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 2"
     (Error (`InsufficientQuorum (id, S.add "janb" (S.singleton "jana"))))
-    (Repository.verify_key r pub) ;
+    (Conex_repository.verify_key r pub) ;
   let r = jidx r "janc" in
   Alcotest.check (result k_ok k_err) "publickey is fine"
     (Ok (`Both (id, S.add "janc" (S.add "janb" (S.singleton "jana")))))
-    (Repository.verify_key r pub)
+    (Conex_repository.verify_key r pub)
 
 let no_janitor () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
@@ -699,19 +699,19 @@ let no_janitor () =
     let idx = Index.index ~resources id in
     sign_idx idx priv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
-  let r = Repository.add_index r idx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
+  let r = Conex_repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "missing quorum"
     (Error (`InsufficientQuorum (id, S.empty)))
-    (Repository.verify_key r pub) ;
+    (Conex_repository.verify_key r pub) ;
   Alcotest.check (result k_ok k_err) "missing quorum for empty"
     (Error (`NotSigned (id', `PublicKey, S.empty)))
-    (Repository.verify_key r pem)
+    (Conex_repository.verify_key r pem)
 
 let k_wrong_resource () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
@@ -728,16 +728,16 @@ let k_wrong_resource () =
     let idx = Index.index ~resources id in
     sign_idx idx priv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
-  let r = Repository.add_index r idx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
+  let r = Conex_repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "wrong resource"
     (Error (`InvalidResource (id, `PublicKey, `Checksums)))
-    (Repository.verify_key r pub)
+    (Conex_repository.verify_key r pub)
 
 let k_wrong_name () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let jpub, jpriv = gen_pub jid in
   let id = "foo" in
@@ -754,12 +754,12 @@ let k_wrong_name () =
     let idx = Index.index ~resources id in
     sign_idx idx priv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
-  let r = Repository.add_index r idx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
+  let r = Conex_repository.add_index r idx in
   Alcotest.check (result k_ok k_err) "wrong name"
     (Error (`InvalidName (id, jid)))
-    (Repository.verify_key r pub)
+    (Conex_repository.verify_key r pub)
 
 let key_repo_tests = [
   "signed index", `Quick, idx_sign ;
@@ -775,7 +775,7 @@ let key_repo_tests = [
 let a_ok =
   let module M = struct
     type t = [ `Quorum of S.t ]
-    let pp = Repository.pp_ok
+    let pp = Conex_repository.pp_ok
     let equal a b = match a, b with
       | `Quorum js, `Quorum is -> S.equal js is
       | _ -> false
@@ -784,8 +784,8 @@ let a_ok =
 
 let a_err =
   let module M = struct
-    type t = [ Repository.base_error | `InsufficientQuorum of name * S.t ]
-    let pp = Repository.pp_error
+    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * S.t ]
+    let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
@@ -797,12 +797,12 @@ let a_err =
 
 let team () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let team = Team.team pname in
   Alcotest.check (result a_ok a_err) "team missing quorum"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let resources =
     let s, d = res (team_to_t team) in
     [ Index.r Uint.zero pname s `Team d ]
@@ -813,30 +813,30 @@ let team () =
       let i = Index.index ~resources jid in
       sign_idx i jpriv
     in
-    let r = Repository.add_trusted_key r jpub in
+    let r = Conex_repository.add_trusted_key r jpub in
     let r =
-      let mems = Repository.team r "janitors" in
-      Repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
+      let mems = Conex_repository.team r "janitors" in
+      Conex_repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
     in
-    Repository.add_index r idx
+    Conex_repository.add_index r idx
   in
   let r = j_sign r "janitor" in
   Alcotest.check (result a_ok a_err) "team properly signed"
     (Ok (`Quorum (S.singleton "janitor")))
-    (Repository.verify_team r team) ;
-  let r = Repository.repository ~quorum:2 p in
+    (Conex_repository.verify_team r team) ;
+  let r = Conex_repository.repository ~quorum:2 p in
   let r = j_sign r "janitor" in
   Alcotest.check (result a_ok a_err) "team missing quorum of 2"
     (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let r = j_sign r "janitor2" in
   Alcotest.check (result a_ok a_err) "team quorum of 2 good"
     (Ok (`Quorum (S.add "janitor2" (S.singleton "janitor"))))
-    (Repository.verify_team r team)
+    (Conex_repository.verify_team r team)
 
 let team_self_signed () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let id = "foo" in
   let pname = "foop" in
   let team = Team.team pname in
@@ -851,23 +851,23 @@ let team_self_signed () =
     sign_idx (Index.index ~resources id) priv
   in
   let idx = s_idx id priv in
-  let r = Repository.add_index r idx in
+  let r = Conex_repository.add_index r idx in
   Alcotest.check (result a_ok a_err) "team missing quorum"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let jidx = s_idx jid jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r jidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "team ok"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_team r team)
+    (Conex_repository.verify_team r team)
 
 let team_wrong_resource () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let team = Team.team pname in
   let resources =
@@ -880,15 +880,15 @@ let team_wrong_resource () =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong resource"
     (Error (`InvalidResource (pname, `Team, `Checksums)))
-    (Repository.verify_team r team)
+    (Conex_repository.verify_team r team)
 
 let team_wrong_name () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let team = Team.team pname in
   let jid = "aaa" in
@@ -901,28 +901,28 @@ let team_wrong_name () =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong name"
     (Error (`InvalidName (pname, "barf")))
-    (Repository.verify_team r team)
+    (Conex_repository.verify_team r team)
 
 let team_dyn () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let team = Team.team pname in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors")
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors")
   in
   let j_sign resources =
     let idx =
       let i = Index.index ~resources jid in
       sign_idx i jpriv
     in
-    Repository.add_index r idx
+    Conex_repository.add_index r idx
   in
   let resources =
     let s, d = res (team_to_t team) in
@@ -931,11 +931,11 @@ let team_dyn () =
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "team properly signed"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let team = Team.add team "foobar" in
   Alcotest.check (result a_ok a_err) "team not properly signed"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let resources =
     let s, d = res (team_to_t team) in
     [ Index.r Uint.zero pname s `Team d ]
@@ -943,19 +943,19 @@ let team_dyn () =
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "team properly signed"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let team = Team.remove team "foo" in
   Alcotest.check (result a_ok a_err) "team properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let team = Team.add team "foobar" in
   Alcotest.check (result a_ok a_err) "team properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_team r team) ;
+    (Conex_repository.verify_team r team) ;
   let team = Team.remove team "foobar" in
   Alcotest.check (result a_ok a_err) "team not properly signed (rm'ed, counter incr)"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_team r team)
+    (Conex_repository.verify_team r team)
 
 let team_repo_tests = [
   "basic team", `Quick, team ;
@@ -968,12 +968,12 @@ let team_repo_tests = [
 
 let auth () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
   Alcotest.check (result a_ok a_err) "auth missing quorum"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let resources =
     let s, d = res (authorisation_to_t auth) in
     [ Index.r Uint.zero pname s `Authorisation d ]
@@ -984,30 +984,30 @@ let auth () =
       let i = Index.index ~resources jid in
       sign_idx i jpriv
     in
-    let r = Repository.add_trusted_key r jpub in
+    let r = Conex_repository.add_trusted_key r jpub in
     let r =
-      let mems = Repository.team r "janitors" in
-      Repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
+      let mems = Conex_repository.team r "janitors" in
+      Conex_repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
     in
-    Repository.add_index r idx
+    Conex_repository.add_index r idx
   in
   let r = j_sign r "janitor" in
   Alcotest.check (result a_ok a_err) "auth properly signed"
     (Ok (`Quorum (S.singleton "janitor")))
-    (Repository.verify_authorisation r auth) ;
-  let r = Repository.repository ~quorum:2 p in
+    (Conex_repository.verify_authorisation r auth) ;
+  let r = Conex_repository.repository ~quorum:2 p in
   let r = j_sign r "janitor" in
   Alcotest.check (result a_ok a_err) "auth missing quorum of 2"
     (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let r = j_sign r "janitor2" in
   Alcotest.check (result a_ok a_err) "auth quorum of 2 good"
     (Ok (`Quorum (S.add "janitor2" (S.singleton "janitor"))))
-    (Repository.verify_authorisation r auth)
+    (Conex_repository.verify_authorisation r auth)
 
 let auth_self_signed () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let id = "foo" in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
@@ -1022,23 +1022,23 @@ let auth_self_signed () =
     sign_idx (Index.index ~resources id) priv
   in
   let idx = s_idx id priv in
-  let r = Repository.add_index r idx in
+  let r = Conex_repository.add_index r idx in
   Alcotest.check (result a_ok a_err) "auth missing quorum"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let jidx = s_idx jid jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r jidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "auth ok"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_authorisation r auth)
+    (Conex_repository.verify_authorisation r auth)
 
 let a_wrong_resource () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
   let resources =
@@ -1051,15 +1051,15 @@ let a_wrong_resource () =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong resource"
     (Error (`InvalidResource (pname, `Authorisation, `Checksums)))
-    (Repository.verify_authorisation r auth)
+    (Conex_repository.verify_authorisation r auth)
 
 let a_wrong_name () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
   let jid = "aaa" in
@@ -1072,28 +1072,28 @@ let a_wrong_name () =
     let idx = Index.index ~resources jid in
     sign_idx idx jpriv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_index r jidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_index r jidx in
   Alcotest.check (result a_ok a_err) "wrong name"
     (Error (`InvalidName (pname, "barf")))
-    (Repository.verify_authorisation r auth)
+    (Conex_repository.verify_authorisation r auth)
 
 let auth_dyn () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors")
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors")
   in
   let j_sign resources =
     let idx =
       let i = Index.index ~resources jid in
       sign_idx i jpriv
     in
-    Repository.add_index r idx
+    Conex_repository.add_index r idx
   in
   let resources =
     let s, d = res (authorisation_to_t auth) in
@@ -1102,11 +1102,11 @@ let auth_dyn () =
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "authorisation properly signed"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let auth = Authorisation.add auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation not properly signed"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let resources =
     let s, d = res (authorisation_to_t auth) in
     [ Index.r Uint.zero pname s `Authorisation d ]
@@ -1114,19 +1114,19 @@ let auth_dyn () =
   let r = j_sign resources in
   Alcotest.check (result a_ok a_err) "authorisation properly signed"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let auth = Authorisation.remove auth "foo" in
   Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let auth = Authorisation.add auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_authorisation r auth) ;
+    (Conex_repository.verify_authorisation r auth) ;
   let auth = Authorisation.remove auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation not properly signed (rm'ed, counter incr)"
     (Error (`InsufficientQuorum (pname, S.empty)))
-    (Repository.verify_authorisation r auth)
+    (Conex_repository.verify_authorisation r auth)
 
 
 let auth_repo_tests = [
@@ -1140,7 +1140,7 @@ let auth_repo_tests = [
 let r_ok =
   let module M = struct
     type t = [ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ]
-    let pp = Repository.pp_ok
+    let pp = Conex_repository.pp_ok
     let equal a b = match a, b with
       | `Signed a, `Signed b -> id_equal a b
       | `Quorum js, `Quorum is -> S.equal js is
@@ -1151,8 +1151,8 @@ let r_ok =
 
 let r_err =
   let module M = struct
-    type t = [ Repository.base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]
-    let pp = Repository.pp_error
+    type t = [ Conex_repository.base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]
+    let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
@@ -1170,7 +1170,7 @@ let safe_rel ?releases name =
 
 let rel () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1178,7 +1178,7 @@ let rel () =
   let rel = safe_rel pname in
   Alcotest.check (result r_ok r_err) "not signed"
     (Error (`NotSigned (pname, `Releases, S.empty)))
-    (Repository.verify_releases r auth rel) ;
+    (Conex_repository.verify_releases r auth rel) ;
   let _pub, priv = gen_pub id in
   let sidx =
     let resources =
@@ -1187,14 +1187,14 @@ let rel () =
     in
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "properly signed"
     (Ok (`Signed id))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 let rel_quorum () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1209,24 +1209,24 @@ let rel_quorum () =
   let sidx =
     sign_idx (Index.index ~resources jid) jpriv
   in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "properly signed (quorum)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_releases r auth rel) ;
+    (Conex_repository.verify_releases r auth rel) ;
   let _pub, priv = gen_pub id in
   let sidx' =
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx' in
+  let r = Conex_repository.add_index r sidx' in
   Alcotest.check (result r_ok r_err) "properly signed (both)"
     (Ok (`Both (id, S.singleton jid)))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 let rel_not_authorised () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1240,10 +1240,10 @@ let rel_not_authorised () =
     in
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "not authorised"
     (Error (`NotSigned (pname, `Releases, S.empty)))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 let rel_bad_releases () =
   let pname = "foop"
@@ -1258,7 +1258,7 @@ let rel_bad_releases () =
 
 let rel_missing_releases () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1273,29 +1273,29 @@ let rel_missing_releases () =
     in
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "missing on disk"
     (Error (`InvalidReleases (pname, S.empty, S.singleton v)))
-    (Repository.verify_releases r auth rel) ;
+    (Conex_repository.verify_releases r auth rel) ;
   p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok r_err) "all good"
     (Ok (`Signed id))
-    (Repository.verify_releases r auth rel) ;
+    (Conex_repository.verify_releases r auth rel) ;
   let v2 = pname ^ ".1" in
   p.Provider.write ["packages"; pname; v2; "checksum"] "" ;
   Alcotest.check (result r_ok r_err) "missing in releases"
     (Error (`InvalidReleases (pname, S.singleton v2, S.empty)))
-    (Repository.verify_releases r auth rel) ;
+    (Conex_repository.verify_releases r auth rel) ;
   let v3 = pname ^ ".2" in
   p.Provider.write ["packages"; pname; v3; "checksum"] "" ;
   Alcotest.check (result r_ok r_err) "missing in releases"
     (Error (`InvalidReleases (pname, S.add v3 (S.singleton v2), S.empty)))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 
 let rel_name_mismatch () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1309,14 +1309,14 @@ let rel_name_mismatch () =
     in
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "releases and authorisation names do not match"
     (Error (`AuthRelMismatch ("foo", pname)))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 let rel_wrong_name () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1330,14 +1330,14 @@ let rel_wrong_name () =
     in
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "wrong name in releases"
     (Error (`InvalidName (pname, "foo")))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 let rel_wrong_resource () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1351,10 +1351,10 @@ let rel_wrong_resource () =
     in
     sign_idx (Index.index ~resources id) priv
   in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   Alcotest.check (result r_ok r_err) "wrong resource for releases"
     (Error (`InvalidResource (pname, `Releases, `Authorisation)))
-    (Repository.verify_releases r auth rel)
+    (Conex_repository.verify_releases r auth rel)
 
 let rel_repo_tests = [
   "basic release", `Quick, rel ;
@@ -1370,8 +1370,8 @@ let rel_repo_tests = [
 
 let c_err =
   let module M = struct
-    type t = [ Repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t | `FileNotFound of name | `NotADirectory of name | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]
-    let pp = Repository.pp_error
+    type t = [ Conex_repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t | `FileNotFound of name | `NotADirectory of name | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]
+    let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
@@ -1392,7 +1392,7 @@ let c_err =
 
 let cs_base () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1402,7 +1402,7 @@ let cs_base () =
   let cs = Checksum.checksums v [] in
   Alcotest.check (result r_ok c_err) "checksum not signed"
     (Error (`NotSigned (v, `Checksums, S.empty)))
-    (Repository.verify_checksum r auth rel cs) ;
+    (Conex_repository.verify_checksum r auth rel cs) ;
   let resources =
     let s, d = res (releases_to_t rel)
     and s', d' = res (checksums_to_t cs)
@@ -1411,24 +1411,24 @@ let cs_base () =
   in
   let _pub, priv = gen_pub id in
   let sidx = sign_idx (Index.index ~resources id) priv in
-  let r = Repository.add_index r sidx in
+  let r = Conex_repository.add_index r sidx in
   p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok c_err) "good checksum"
     (Ok (`Signed id))
-    (Repository.verify_checksum r auth rel cs) ;
+    (Conex_repository.verify_checksum r auth rel cs) ;
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "good checksum (both)"
     (Ok (`Both (id, S.singleton jid)))
-    (Repository.verify_checksum r auth rel cs)
+    (Conex_repository.verify_checksum r auth rel cs)
 
 let cs_quorum () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1445,17 +1445,17 @@ let cs_quorum () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   p.Provider.write ["packages"; pname; v; "checksum"] "" ;
   Alcotest.check (result r_ok c_err) "good checksum (quorum)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_checksum r auth rel cs)
+    (Conex_repository.verify_checksum r auth rel cs)
 
 let cs_bad () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let open Provider in
   let pname = "foo" in
   let v = pname ^ ".0" in
@@ -1473,7 +1473,7 @@ let cs_bad () =
   in
   let css = Checksum.checksums v csums in
   Alcotest.check (result cs ch_err) "checksum computation works"
-    (Ok css) (Repository.compute_checksum r "foo.0") ;
+    (Ok css) (Conex_repository.compute_checksum r "foo.0") ;
   let css' = Checksum.checksums v (List.tl csums) in
   let css'' = Checksum.checksums v ({ Checksum.filename = "foobar" ; bytesize = Uint.of_int 3 ; checksum = "" } :: csums) in
   let other = { Checksum.filename = "bar" ; bytesize = Uint.of_int 3 ; checksum = "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=" } in
@@ -1497,25 +1497,25 @@ let cs_bad () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "good checksum (quorum)"
     (Ok (`Quorum (S.singleton jid)))
-    (Repository.verify_checksum r auth rel css) ;
+    (Conex_repository.verify_checksum r auth rel css) ;
   Alcotest.check (result r_ok c_err) "bad checksum (missing in cs file)"
     (Error (`ChecksumsDiff (v, [], ["bar"], [])))
-    (Repository.verify_checksum r auth rel css') ;
+    (Conex_repository.verify_checksum r auth rel css') ;
   Alcotest.check (result r_ok c_err) "bad checksum (missing on disk)"
     (Error (`ChecksumsDiff (v, ["foobar"], [], [])))
-    (Repository.verify_checksum r auth rel css'') ;
+    (Conex_repository.verify_checksum r auth rel css'') ;
   Alcotest.check (result r_ok c_err) "bad checksum (differ)"
     (Error (`ChecksumsDiff (v, [], [], [(List.hd csums, other)])))
-    (Repository.verify_checksum r auth rel css''')
+    (Conex_repository.verify_checksum r auth rel css''')
 
 let cs_bad_name () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1533,16 +1533,16 @@ let cs_bad_name () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "bad name (auth != rel)"
     (Error (`AuthRelMismatch (pname, reln)))
-    (Repository.verify_checksum r auth rel cs)
+    (Conex_repository.verify_checksum r auth rel cs)
 
 let cs_bad_name2 () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1560,16 +1560,16 @@ let cs_bad_name2 () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "bad name (not member of releases)"
     (Error (`NotInReleases (v, rel.Releases.releases)))
-    (Repository.verify_checksum r auth rel cs)
+    (Conex_repository.verify_checksum r auth rel cs)
 
 let cs_wrong_name () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1586,16 +1586,16 @@ let cs_wrong_name () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "wrong name"
     (Error (`InvalidName (v, pname)))
-    (Repository.verify_checksum r auth rel cs)
+    (Conex_repository.verify_checksum r auth rel cs)
 
 let cs_wrong_resource () =
   let p = Mem.mem_provider () in
-  let r = Repository.repository ~quorum:1 p in
+  let r = Conex_repository.repository ~quorum:1 p in
   let pname = "foop"
   and id = "id"
   in
@@ -1612,12 +1612,12 @@ let cs_wrong_resource () =
   let jid = "janitor" in
   let jpub, jpriv = gen_pub jid in
   let sjidx = sign_idx (Index.index ~resources jid) jpriv in
-  let r = Repository.add_trusted_key r jpub in
-  let r = Repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  let r = Repository.add_index r sjidx in
+  let r = Conex_repository.add_trusted_key r jpub in
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
+  let r = Conex_repository.add_index r sjidx in
   Alcotest.check (result r_ok c_err) "wrong resource"
     (Error (`InvalidResource (v, `Checksums, `Releases)))
-    (Repository.verify_checksum r auth rel cs)
+    (Conex_repository.verify_checksum r auth rel cs)
 
 let cs_repo_tests = [
   "basic checksum", `Quick, cs_base ;

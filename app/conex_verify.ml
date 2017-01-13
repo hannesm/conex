@@ -23,36 +23,36 @@ let verify_complete_repository directory trust =
   end ;
   (* a) load trust anchors and janitors *)
   let p = Conex_provider.fs_ro_provider directory in
-  let r = Repository.repository p in
+  let r = Conex_repository.repository p in
   let r = load_anchors_janitors r out debug maybe_exit trust in
   (* b) load all other identities [can also be teams!] *)
   let r =
     S.fold (load_id out debug maybe_exit)
-      (S.diff (Repository.ids r) (Repository.team r "janitors")) r
+      (S.diff (Conex_repository.ids r) (Conex_repository.team r "janitors")) r
   in
   (* c) for each package: read & verify authorisation, releases, checksums *)
   S.iter (fun name ->
-      match Repository.read_authorisation r name with
-      | Error e -> Repository.pp_r_err out e ; maybe_exit ()
-      | Ok auth -> match Repository.verify_authorisation r auth with
-        | Error e -> Repository.pp_error out e ; maybe_exit ()
-        | Ok ok -> if debug then Repository.pp_ok out ok ;
-          match Repository.read_releases r name with
-          | Error e -> Repository.pp_r_err out e ; maybe_exit ()
+      match Conex_repository.read_authorisation r name with
+      | Error e -> Conex_repository.pp_r_err out e ; maybe_exit ()
+      | Ok auth -> match Conex_repository.verify_authorisation r auth with
+        | Error e -> Conex_repository.pp_error out e ; maybe_exit ()
+        | Ok ok -> if debug then Conex_repository.pp_ok out ok ;
+          match Conex_repository.read_releases r name with
+          | Error e -> Conex_repository.pp_r_err out e ; maybe_exit ()
           | Ok rel ->
             let good = ref true in
-            (match Repository.verify_releases r auth rel with
-             | Error e -> Repository.pp_error out e ; good := false ; maybe_exit ()
-             | Ok ok -> if debug then Repository.pp_ok out ok) ;
+            (match Conex_repository.verify_releases r auth rel with
+             | Error e -> Conex_repository.pp_error out e ; good := false ; maybe_exit ()
+             | Ok ok -> if debug then Conex_repository.pp_ok out ok) ;
             S.iter (fun rname ->
-                match Repository.read_checksum r rname with
-                | Error e -> Repository.pp_r_err out e ; good := false ; maybe_exit ()
-                | Ok cs -> match Repository.verify_checksum r auth rel cs with
-                  | Error e -> Repository.pp_error out e ; good := false ; maybe_exit ()
-                  | Ok ok -> if debug then Repository.pp_ok out ok)
+                match Conex_repository.read_checksum r rname with
+                | Error e -> Conex_repository.pp_r_err out e ; good := false ; maybe_exit ()
+                | Ok cs -> match Conex_repository.verify_checksum r auth rel cs with
+                  | Error e -> Conex_repository.pp_error out e ; good := false ; maybe_exit ()
+                  | Ok ok -> if debug then Conex_repository.pp_ok out ok)
               rel.Releases.releases ;
             if !good then Format.fprintf out "verified %a@." pp_name name)
-    (Repository.items r) ;
+    (Conex_repository.items r) ;
   exit 0
 
 let () =

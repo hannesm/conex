@@ -12,7 +12,7 @@ let sign_index idx priv =
   Ok (Conex_resource.Index.add_sig idx (id, now, signature))
 
 let write_private_key repo id key =
-  let base = (Repository.provider repo).Provider.name in
+  let base = (Conex_repository.provider repo).Provider.name in
   let filename = Conex_opam_layout.private_key_path base id in
   if Conex_persistency.exists filename then
     (let ts =
@@ -48,7 +48,7 @@ let pp_err ppf = function
 
 let read_private_key ?id repo =
   let read id =
-    let base = (Repository.provider repo).Provider.name in
+    let base = (Conex_repository.provider repo).Provider.name in
     let fn = Conex_opam_layout.private_key_path base id in
     if Conex_persistency.exists fn then
       let key = Conex_persistency.read_file fn in
@@ -58,7 +58,7 @@ let read_private_key ?id repo =
   in
   match id with
   | Some x -> read x
-  | None -> match Conex_opam_layout.private_keys (Repository.provider repo) with
+  | None -> match Conex_opam_layout.private_keys (Conex_repository.provider repo) with
     | [x] -> read x
     | [] -> Error `NoPrivateKey
     | xs -> Error (`MultiplePrivateKeys xs)

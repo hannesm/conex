@@ -16,10 +16,10 @@ val categorise : diff -> component option
 
 val diffs_to_components : diff list -> component list
 
-val apply : Repository.t -> diff -> Repository.t
+val apply : Conex_repository.t -> diff -> Conex_repository.t
 
 type err = [ verification_error
-           | Repository.base_error
+           | Conex_repository.base_error
            | `InsufficientQuorum of name * S.t
            | `InvalidReleases of name * S.t * S.t
            | `AuthRelMismatch of name * name
@@ -38,4 +38,4 @@ type err = [ verification_error
            | `InvalidKeyTeam
            | `MissingAuthorisation of name ]
 
-val verify_diff : Repository.t -> string -> (Repository.t, [> err ]) result
+val verify_diff : Conex_repository.t -> string -> (Conex_repository.t, [> err ]) result

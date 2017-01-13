@@ -29,7 +29,7 @@ end
 type copts = {
   debug : bool ;
   dry : bool ;
-  repo : Repository.t ;
+  repo : Conex_repository.t ;
   out : Format.formatter ;
   name : string option ;
   signed_by : string option ;
@@ -55,7 +55,7 @@ let kinds =
     ("repository", `Repository) ]
 
 let find_private_keys copts =
-  let keys = List.sort String.compare (Conex_opam_layout.private_keys (Repository.provider copts.repo)) in
+  let keys = List.sort String.compare (Conex_opam_layout.private_keys (Conex_repository.provider copts.repo)) in
   let keys = option keys (fun _ -> []) copts.signed_by in
   option keys (fun s -> List.filter (id_equal s) keys) copts.owner
 
@@ -69,7 +69,7 @@ let load_tas copts =
     { copts with repo ; verify = true }
 
 let valid copts s t =
-  match Repository.valid copts.repo (Conex_nocrypto.digest (Conex_data.encode t)) with
+  match Conex_repository.valid copts.repo (Conex_nocrypto.digest (Conex_data.encode t)) with
   | None -> false
   | Some (_, _, _, sigs) -> S.mem s sigs
 
@@ -77,10 +77,10 @@ let find_keys copts =
   let keys =
     filter_map
       ~f:(fun f ->
-          match Repository.read_key copts.repo f with
-          | Error e -> if copts.debug then Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          match Conex_repository.read_key copts.repo f with
+          | Error e -> if copts.debug then Format.fprintf copts.out "%skey %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.ids copts.repo)))
+      (List.sort String.compare (S.elements (Conex_repository.ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun k -> id_equal k.Publickey.name o) keys
@@ -93,10 +93,10 @@ let find_teams copts =
   let teams =
     filter_map
       ~f:(fun f ->
-          match Repository.read_team copts.repo f with
-          | Error e -> if copts.debug then Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          match Conex_repository.read_team copts.repo f with
+          | Error e -> if copts.debug then Format.fprintf copts.out "%steam %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.ids copts.repo)))
+      (List.sort String.compare (S.elements (Conex_repository.ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun t -> S.mem o t.Team.members) teams
@@ -109,10 +109,10 @@ let find_ids copts =
   let ids =
     filter_map
       ~f:(fun f ->
-          match Repository.read_id copts.repo f with
-          | Error e -> Format.fprintf copts.out "%sid %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          match Conex_repository.read_id copts.repo f with
+          | Error e -> Format.fprintf copts.out "%sid %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.ids copts.repo)))
+      (List.sort String.compare (S.elements (Conex_repository.ids copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ ->
@@ -135,10 +135,10 @@ let find_authorisations copts =
   let auths =
     filter_map
       ~f:(fun f ->
-          match Repository.read_authorisation copts.repo f with
-          | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          match Conex_repository.read_authorisation copts.repo f with
+          | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ; None
           | Ok x -> Some x)
-      (List.sort String.compare (S.elements (Repository.items copts.repo)))
+      (List.sort String.compare (S.elements (Conex_repository.items copts.repo)))
   in
   match copts.owner, copts.signed_by with
   | Some o, _ -> List.filter (fun d -> S.mem o d.Authorisation.authorised) auths
@@ -159,8 +159,8 @@ let find_releases copts =
   let releases =
     filter_map
       ~f:(fun a ->
-          match Repository.read_releases copts.repo a.Authorisation.name with
-          | Error e -> Format.fprintf copts.out "%sreleases %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+          match Conex_repository.read_releases copts.repo a.Authorisation.name with
+          | Error e -> Format.fprintf copts.out "%sreleases %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ; None
           | Ok x -> Some (a, x))
       auths
   in
@@ -182,13 +182,13 @@ let find_checksums copts =
   List.fold_left
     (fun acc (a, r) ->
      let cs =
-       let items = Conex_opam_layout.subitems (Repository.provider copts.repo) a.Authorisation.name in
+       let items = Conex_opam_layout.subitems (Conex_repository.provider copts.repo) a.Authorisation.name in
        let all = List.sort String.compare items in
        let all_cs =
          filter_map
            ~f:(fun f ->
-               match Repository.read_checksum copts.repo f with
-               | Error e -> Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ; None
+               match Conex_repository.read_checksum copts.repo f with
+               | Error e -> Format.fprintf copts.out "%schecksum %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ; None
                | Ok x -> Some x)
            all
        in
@@ -206,12 +206,12 @@ let find_checksums copts =
     rel_auths
 
 let load_index id r =
-  match Repository.read_index r id with
+  match Conex_repository.read_index r id with
   | Error _ -> r
-  | Ok i -> Repository.add_index r i
+  | Ok i -> Conex_repository.add_index r i
 
 let list copts kind =
-  let repo = S.fold load_index (Repository.ids copts.repo) copts.repo in
+  let repo = S.fold load_index (Conex_repository.ids copts.repo) copts.repo in
   let copts = { copts with repo } in
   let rec exec kind =
     let out items =
@@ -254,7 +254,7 @@ let list copts kind =
           out (List.map (fun c -> c.Checksum.name) cs))
          d_cs
     | `Repository ->
-       let provider = Repository.provider copts.repo in
+       let provider = Conex_repository.provider copts.repo in
        Format.pp_print_newline copts.out () ;
        Provider.pp_provider copts.out provider ;
        List.iter exec (List.filter (function `Repository -> false | `Ids -> false | _ -> true) (snd (List.split kinds)))
@@ -265,7 +265,7 @@ let verify copts kind =
   let copts = load_tas copts in
   let repo = S.fold
       (Conex_common.load_id copts.out copts.debug (fun () -> ()))
-      (S.diff (Repository.ids copts.repo) (Repository.team copts.repo "janitors"))
+      (S.diff (Conex_repository.ids copts.repo) (Conex_repository.team copts.repo "janitors"))
       copts.repo
   in
   let copts = { copts with repo } in
@@ -275,8 +275,8 @@ let verify copts kind =
         (fun s v ->
            let c = Color.res_c v in
            match v with
-           | Ok ok -> Format.fprintf copts.out "%s%s %a%s@." c s Repository.pp_ok ok Color.endc
-           | Error err -> Format.fprintf copts.out "%s%s %a%s@." c s Repository.pp_error err Color.endc)
+           | Ok ok -> Format.fprintf copts.out "%s%s %a%s@." c s Conex_repository.pp_ok ok Color.endc
+           | Error err -> Format.fprintf copts.out "%s%s %a%s@." c s Conex_repository.pp_error err Color.endc)
         items verified
     in
     let _, kinds_pp = Cmdliner.Arg.enum kinds in
@@ -289,34 +289,34 @@ let verify copts kind =
        repo
     | `Keys ->
        let keys = find_keys copts in
-       let verified = List.map (Repository.verify_key repo) keys in
+       let verified = List.map (Conex_repository.verify_key repo) keys in
        Format.fprintf copts.out " (%d)@." (List.length verified) ;
        out (List.map (fun k -> k.Publickey.name) keys) verified ;
        repo
     | `Teams ->
        let teams = find_teams copts in
-       let verified = List.map (Repository.verify_team repo) teams in
+       let verified = List.map (Conex_repository.verify_team repo) teams in
        Format.fprintf copts.out " (%d)@." (List.length verified) ;
        out (List.map (fun t -> t.Team.name) teams) verified ;
        repo
     | `Ids ->
        let keys = find_keys copts in
-       let kverified = List.map (Repository.verify_key repo) keys in
+       let kverified = List.map (Conex_repository.verify_key repo) keys in
        let teams = find_teams copts in
-       let tverified = List.map (Repository.verify_team repo) teams in
+       let tverified = List.map (Conex_repository.verify_team repo) teams in
        Format.fprintf copts.out " (%d keys, %d teams)@." (List.length kverified) (List.length tverified) ;
        out (List.map (fun k -> k.Publickey.name) keys) kverified ;
        out (List.map (fun t -> t.Team.name) teams) tverified ;
        repo
     | `Authorisations ->
        let auths = find_authorisations copts in
-       let verified = List.map (Repository.verify_authorisation repo) auths in
+       let verified = List.map (Conex_repository.verify_authorisation repo) auths in
        Format.fprintf copts.out " (%d)@." (List.length auths) ;
        out (List.map (fun d -> d.Authorisation.name) auths) verified ;
        repo
     | `Releases ->
        let rels = find_releases copts in
-       let verified = List.map (fun (a, r) -> Repository.verify_releases repo a r) rels in
+       let verified = List.map (fun (a, r) -> Conex_repository.verify_releases repo a r) rels in
        Format.fprintf copts.out " (%d)@." (List.length rels) ;
        out (List.map (fun (_, r) -> r.Releases.name) rels) verified ;
        repo
@@ -325,35 +325,35 @@ let verify copts kind =
        Format.fprintf copts.out " (%d)@." (List.length d_cs) ;
        List.iter
          (fun (a, r, cs) ->
-            let a_verified = Repository.verify_authorisation repo a in
+            let a_verified = Conex_repository.verify_authorisation repo a in
             let c = Color.res_c a_verified in
             (match a_verified with
              | Ok ok ->
                Format.fprintf copts.out "%s%s (%d authorised: %a) (%a)%s@."
                  c a.Authorisation.name (List.length cs)
                  Authorisation.pp_authorised a.Authorisation.authorised
-                 Repository.pp_ok ok Color.endc
+                 Conex_repository.pp_ok ok Color.endc
              | Error err ->
                Format.fprintf copts.out "%s%s (%d authorised: %a) (%a)%s@."
                  c a.Authorisation.name (List.length cs)
                  Authorisation.pp_authorised a.Authorisation.authorised
-                 Repository.pp_error err Color.endc) ;
-            let verified = List.map (Repository.verify_checksum repo a r) cs in
+                 Conex_repository.pp_error err Color.endc) ;
+            let verified = List.map (Conex_repository.verify_checksum repo a r) cs in
             List.iter2
               (fun s v ->
                  let col = Color.res_c v in
                  match v with
                  | Ok ok ->
                    Format.fprintf copts.out "%s%s, %a%s@."
-                     col s.Checksum.name Repository.pp_ok ok Color.endc
+                     col s.Checksum.name Conex_repository.pp_ok ok Color.endc
                  | Error err ->
                    Format.fprintf copts.out "%s%s, %a%s@."
-                     col s.Checksum.name Repository.pp_error err Color.endc)
+                     col s.Checksum.name Conex_repository.pp_error err Color.endc)
               cs verified)
          d_cs ;
        repo
     | `Repository ->
-       let provider = Repository.provider copts.repo in
+       let provider = Conex_repository.provider copts.repo in
        Format.pp_print_newline copts.out () ;
        Provider.pp_provider copts.out provider ;
        List.fold_left exec repo (List.filter (function `Repository -> false | `Ids -> false | _ -> true) (snd (List.split kinds)))
@@ -375,17 +375,17 @@ let items = [
 let verified copts b =
   let c = Color.res_c b in
   match b with
-  | Ok ok -> Format.fprintf copts.out "%s%a%s@." c Repository.pp_ok ok Color.endc
-  | Error err -> Format.fprintf copts.out "%s%a%s@." c Repository.pp_error err Color.endc
+  | Ok ok -> Format.fprintf copts.out "%s%a%s@." c Conex_repository.pp_ok ok Color.endc
+  | Error err -> Format.fprintf copts.out "%s%a%s@." c Conex_repository.pp_error err Color.endc
 
 let show_key copts key =
   Publickey.pp_publickey copts.out key ;
-  verified copts (Repository.verify_key copts.repo key) ;
+  verified copts (Conex_repository.verify_key copts.repo key) ;
   `Ok ()
 
 let show_team copts team =
   Team.pp_team copts.out team ;
-  verified copts (Repository.verify_team copts.repo team) ;
+  verified copts (Conex_repository.verify_team copts.repo team) ;
   `Ok ()
 
 let show_private copts (id, priv) =
@@ -395,31 +395,31 @@ let show_private copts (id, priv) =
 
 let show_authorisation copts a =
   Authorisation.pp_authorisation copts.out a ;
-  verified copts (Repository.verify_authorisation copts.repo a) ;
+  verified copts (Conex_repository.verify_authorisation copts.repo a) ;
   `Ok ()
 
 let show_releases copts r =
   Releases.pp_releases copts.out r ;
-  (match Repository.read_authorisation copts.repo r.Releases.name with
-   | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Repository.pp_r_err e Color.endc
+  (match Conex_repository.read_authorisation copts.repo r.Releases.name with
+   | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Conex_repository.pp_r_err e Color.endc
    | Ok a ->
-     verified copts (Repository.verify_releases copts.repo a r)) ;
+     verified copts (Conex_repository.verify_releases copts.repo a r)) ;
   `Ok ()
 
 let show_checksum copts c =
   Checksum.pp_checksums copts.out c ;
   (match Conex_opam_layout.authorisation_of_item c.Checksum.name with
    | Some name ->
-     (match Repository.read_authorisation copts.repo name with
-      | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Repository.pp_r_err e Color.endc
+     (match Conex_repository.read_authorisation copts.repo name with
+      | Error e -> Format.fprintf copts.out "%sauthorisation %a%s@ " Color.red Conex_repository.pp_r_err e Color.endc
       | Ok a ->
-        match Repository.read_releases copts.repo name with
-        | Error e -> Format.fprintf copts.out "%sreleases %a%s@ " Color.red Repository.pp_r_err e Color.endc
+        match Conex_repository.read_releases copts.repo name with
+        | Error e -> Format.fprintf copts.out "%sreleases %a%s@ " Color.red Conex_repository.pp_r_err e Color.endc
         | Ok r ->
           Format.fprintf copts.out "authorised: %a@ " Authorisation.pp_authorised a.Authorisation.authorised ;
-          verified copts (Repository.verify_checksum copts.repo a r c)) ;
-     (match Repository.compute_checksum copts.repo c.Checksum.name with
-      | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Repository.pp_error e Color.endc
+          verified copts (Conex_repository.verify_checksum copts.repo a r c)) ;
+     (match Conex_repository.compute_checksum copts.repo c.Checksum.name with
+      | Error e -> Format.fprintf copts.out "%schecksum %a%s@ " Color.red Conex_repository.pp_error e Color.endc
       | Ok computed ->
         match Checksum.compare_checksums computed c with
         | Ok () ->
@@ -428,7 +428,7 @@ let show_checksum copts c =
         | Error e ->
           Format.fprintf copts.out "%schecksum %s%s@."
             Color.red "invalid" Color.endc ;
-          Repository.pp_error copts.out e)
+          Conex_repository.pp_error copts.out e)
    | None -> Format.fprintf copts.out "couldn't figure out package name for %s@." c.Checksum.name) ;
   `Ok ()
 
@@ -436,44 +436,44 @@ let show copts item value =
   let copts = load_tas copts in
   let repo = S.fold
       (Conex_common.load_id copts.out copts.debug (fun () -> ()))
-      (S.diff (Repository.ids copts.repo) (Repository.team copts.repo "janitors"))
+      (S.diff (Conex_repository.ids copts.repo) (Conex_repository.team copts.repo "janitors"))
       copts.repo
   in
   let copts = { copts with repo } in
   match item with
-  | `Key -> (match Repository.read_key copts.repo value with
+  | `Key -> (match Conex_repository.read_key copts.repo value with
       | Ok k -> show_key copts k
       | Error e ->
-        Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+        Format.fprintf copts.out "%skey %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
-  | `Team -> (match Repository.read_team copts.repo value with
+  | `Team -> (match Conex_repository.read_team copts.repo value with
       | Ok t -> show_team copts t
       | Error e ->
-        Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+        Format.fprintf copts.out "%steam %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
   | `Private -> (match Conex_private.read_private_key ~id:value copts.repo with
       | Ok k -> show_private copts k
       | Error e ->
         Format.fprintf copts.out "%s%a%s@." Color.red Conex_private.pp_err e Color.endc ;
         `Error (false, "error"))
-  | `Authorisation -> (match Repository.read_authorisation copts.repo value with
+  | `Authorisation -> (match Conex_repository.read_authorisation copts.repo value with
       | Ok k -> show_authorisation copts k
       | Error e ->
-        Format.fprintf copts.out "%sauthorisation %a%s" Color.red Repository.pp_r_err e Color.endc ;
+        Format.fprintf copts.out "%sauthorisation %a%s" Color.red Conex_repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
-  | `Releases -> (match Repository.read_releases copts.repo value with
+  | `Releases -> (match Conex_repository.read_releases copts.repo value with
       | Ok k -> show_releases copts k
       | Error e ->
-        Format.fprintf copts.out "%sreleases %a%s" Color.red Repository.pp_r_err e Color.endc ;
+        Format.fprintf copts.out "%sreleases %a%s" Color.red Conex_repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
-  | `Checksum -> (match Repository.read_checksum copts.repo value with
+  | `Checksum -> (match Conex_repository.read_checksum copts.repo value with
       | Ok k -> show_checksum copts k
       | Error e ->
-        Format.fprintf copts.out "%schecksum %a%s" Color.red Repository.pp_r_err e Color.endc ;
+        Format.fprintf copts.out "%schecksum %a%s" Color.red Conex_repository.pp_r_err e Color.endc ;
         `Error (false, "error"))
   | `Diff -> if Conex_persistency.exists value then
                let data = Conex_persistency.read_file value in
-               let provider = Repository.provider copts.repo in
+               let provider = Conex_repository.provider copts.repo in
                Format.fprintf copts.out "verifying %s (%a)@.%s@."
                               value Provider.pp_provider provider data ;
 (*               (match Conex_patch.verify_diff copts.repo data with
@@ -499,11 +499,11 @@ let generate copts item name ids =
       if copts.dry then
         Format.fprintf copts.out "dry run, nothing written.@."
       else
-        Repository.write_key copts.repo p ;
+        Conex_repository.write_key copts.repo p ;
       Format.fprintf copts.out "generated public key for %s@." name ;
       show_key copts p
     in
-    (match Repository.read_key copts.repo name with
+    (match Conex_repository.read_key copts.repo name with
      | Ok p ->
        let pub_opt =
          match Conex_private.read_private_key ~id:name copts.repo with
@@ -527,7 +527,7 @@ let generate copts item name ids =
            `Error (false, "decoding of private key failed")
          | Ok p -> writeout (Publickey.publickey name (Some p)))
   | `Team ->
-    let counter = match Repository.read_team copts.repo name with
+    let counter = match Conex_repository.read_team copts.repo name with
       | Error _ -> None
       | Ok t' ->
         let _c, counter = Uint.succ t'.Team.counter in
@@ -537,11 +537,11 @@ let generate copts item name ids =
     if copts.dry then
       Format.fprintf copts.out "dry run, nothing written.@."
     else
-      Repository.write_team copts.repo t ;
+      Conex_repository.write_team copts.repo t ;
     Format.fprintf copts.out "updated team %s@." name ;
     show_team copts t
   | `Authorisation ->
-    let counter = match Repository.read_authorisation copts.repo name with
+    let counter = match Conex_repository.read_authorisation copts.repo name with
       | Error _ -> None
       | Ok a' ->
         let _c, counter = Uint.succ a'.Authorisation.counter in
@@ -551,11 +551,11 @@ let generate copts item name ids =
     if copts.dry then
       Format.fprintf copts.out "dry run, nothing written.@."
     else
-      Repository.write_authorisation copts.repo a ;
+      Conex_repository.write_authorisation copts.repo a ;
     Format.fprintf copts.out "updated authorisation %s@." name ;
     show_authorisation copts a
   | `Releases ->
-    let counter = match Repository.read_releases copts.repo name with
+    let counter = match Conex_repository.read_releases copts.repo name with
       | Error _ -> None
       | Ok r' ->
         let _c, counter = Uint.succ r'.Releases.counter in
@@ -566,20 +566,20 @@ let generate copts item name ids =
        if copts.dry then
          Format.fprintf copts.out "dry run, nothing written.@."
        else
-         Repository.write_releases copts.repo r ;
+         Conex_repository.write_releases copts.repo r ;
        Format.fprintf copts.out "updated releases %s@." name ;
        show_releases copts r
      | Error r ->
        Format.fprintf copts.out "%sfailed to create releases: %s%s.@." Color.red r Color.endc ;
        `Error (false, "while creating releases"))
   | `Checksum ->
-    (match Repository.compute_checksum copts.repo name with
+    (match Conex_repository.compute_checksum copts.repo name with
      | Error e ->
        Format.fprintf copts.out "%scomputing checksum %a%s@."
-         Color.red Repository.pp_error e Color.endc ;
+         Color.red Conex_repository.pp_error e Color.endc ;
        `Error (false, "while computing checksum")
      | Ok cs ->
-       let cs = match Repository.read_checksum copts.repo name with
+       let cs = match Conex_repository.read_checksum copts.repo name with
          | Error _ -> cs
          | Ok o ->
            let _c, counter = Uint.succ o.Checksum.counter in
@@ -588,7 +588,7 @@ let generate copts item name ids =
        if copts.dry then
          Format.fprintf copts.out "dry run, nothing written.@."
        else
-         Repository.write_checksum copts.repo cs ;
+         Conex_repository.write_checksum copts.repo cs ;
        Format.fprintf copts.out "updated checksum %s@." name ;
        show_checksum copts cs)
   | _ -> `Error (false, "dunno what to generate")
@@ -601,8 +601,8 @@ let sign copts item name =
     `Error (false, "error")
   | Ok (id, p) ->
     Format.fprintf copts.out "using private key %s@." id ;
-    let idx = match Repository.read_index copts.repo id with
-      | Error e -> Repository.pp_r_err copts.out e ; Index.index id
+    let idx = match Conex_repository.read_index copts.repo id with
+      | Error e -> Conex_repository.pp_r_err copts.out e ; Index.index id
       | Ok idx -> idx
     in
     let add_r (name, k, data) =
@@ -615,9 +615,9 @@ let sign copts item name =
       Conex_private.sign_index (Index.add_resource idx r) p
     in
     match item with
-    | `Key -> (match Repository.read_key copts.repo name with
+    | `Key -> (match Conex_repository.read_key copts.repo name with
         | Error e ->
-          Format.fprintf copts.out "%skey %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          Format.fprintf copts.out "%skey %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok k ->
           match add_r (name, `PublicKey, Conex_data_persistency.publickey_to_t k) with
@@ -625,17 +625,17 @@ let sign copts item name =
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
             else
-              Repository.write_index copts.repo idx ;
+              Conex_repository.write_index copts.repo idx ;
             Format.fprintf copts.out "signed key %s@." name ;
-            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            let copts = { copts with repo = Conex_repository.add_index copts.repo idx } in
             show_key copts k
           | Error e ->
             Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
             `Error (false, "error"))
 
-    | `Team -> (match Repository.read_team copts.repo name with
+    | `Team -> (match Conex_repository.read_team copts.repo name with
         | Error e ->
-          Format.fprintf copts.out "%steam %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          Format.fprintf copts.out "%steam %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok t ->
           match add_r (name, `Team, Conex_data_persistency.team_to_t t) with
@@ -643,17 +643,17 @@ let sign copts item name =
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
             else
-              Repository.write_index copts.repo idx ;
+              Conex_repository.write_index copts.repo idx ;
             Format.fprintf copts.out "signed team %s@." name ;
-            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            let copts = { copts with repo = Conex_repository.add_index copts.repo idx } in
             show_team copts t
           | Error e ->
             Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
             `Error (false, "error"))
 
-    | `Authorisation -> (match Repository.read_authorisation copts.repo name with
+    | `Authorisation -> (match Conex_repository.read_authorisation copts.repo name with
         | Error e ->
-          Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          Format.fprintf copts.out "%sauthorisation %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok a ->
           match add_r (name, `Authorisation, Conex_data_persistency.authorisation_to_t a) with
@@ -661,17 +661,17 @@ let sign copts item name =
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
             else
-              Repository.write_index copts.repo idx ;
+              Conex_repository.write_index copts.repo idx ;
             Format.fprintf copts.out "signed authorisation %s@." name ;
-            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            let copts = { copts with repo = Conex_repository.add_index copts.repo idx } in
             show_authorisation copts a
           | Error e ->
             Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
             `Error (false, "error"))
 
-    | `Releases -> (match Repository.read_releases copts.repo name with
+    | `Releases -> (match Conex_repository.read_releases copts.repo name with
         | Error e ->
-          Format.fprintf copts.out "%sreleases %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          Format.fprintf copts.out "%sreleases %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok r ->
           match add_r (name, `Releases, Conex_data_persistency.releases_to_t r) with
@@ -679,17 +679,17 @@ let sign copts item name =
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
             else
-              Repository.write_index copts.repo idx ;
+              Conex_repository.write_index copts.repo idx ;
             Format.fprintf copts.out "signed releases %s@." name ;
-            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            let copts = { copts with repo = Conex_repository.add_index copts.repo idx } in
             show_releases copts r
           | Error e ->
             Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
             `Error (false, "error"))
 
-    | `Checksum -> (match Repository.read_checksum copts.repo name with
+    | `Checksum -> (match Conex_repository.read_checksum copts.repo name with
         | Error e ->
-          Format.fprintf copts.out "%schecksum %a%s@." Color.red Repository.pp_r_err e Color.endc ;
+          Format.fprintf copts.out "%schecksum %a%s@." Color.red Conex_repository.pp_r_err e Color.endc ;
           `Error (false, "error")
         | Ok c ->
           match add_r (name, `Checksums, Conex_data_persistency.checksums_to_t c) with
@@ -697,9 +697,9 @@ let sign copts item name =
             if copts.dry then
               Format.fprintf copts.out "dry run, nothing written.@."
             else
-              Repository.write_index copts.repo idx ;
+              Conex_repository.write_index copts.repo idx ;
             Format.fprintf copts.out "signed checksum %s@." name ;
-            let copts = { copts with repo = Repository.add_index copts.repo idx } in
+            let copts = { copts with repo = Conex_repository.add_index copts.repo idx } in
             show_checksum copts c
           | Error e ->
             Format.fprintf copts.out "%s%s%s@." Color.red e Color.endc ;
@@ -729,7 +729,7 @@ let help_secs = [
 let copts debug dry repo name signed_by owner private_key trust_anchors quorum =
   let repo =
     let provider = if dry then Conex_provider.fs_ro_provider repo else Conex_provider.fs_provider repo in
-    Repository.repository ?quorum provider
+    Conex_repository.repository ?quorum provider
   in
   { debug ; dry ; repo ; out = Format.std_formatter ; name ; signed_by ; owner ; private_key ; trust_anchors ; verify = false }
 

@@ -50,9 +50,9 @@ let apply_diff provider diff =
   { Provider.name ; description ; file_type ; read ; write ; read_dir ; exists }
 
 let apply repo diff =
-  let provider = Repository.provider repo in
+  let provider = Conex_repository.provider repo in
   let new_provider = apply_diff provider diff in
-  Repository.change_provider repo new_provider
+  Conex_repository.change_provider repo new_provider
 
 type component =
   | Idx of identifier * diff
@@ -120,7 +120,7 @@ let diffs_to_components diffs =
 
 
 type err = [ verification_error
-           | Repository.base_error
+           | Conex_repository.base_error
            | `InsufficientQuorum of name * S.t
            | `InvalidReleases of name * S.t * S.t
            | `AuthRelMismatch of name * name
@@ -149,48 +149,48 @@ let verify repo = function
   | Idx (id, diff) ->
     let repo' = apply repo diff in
     begin match
-        Repository.read_index repo id,
-        Repository.read_index repo' id
+        Conex_repository.read_index repo id,
+        Conex_repository.read_index repo' id
       with
       | Ok idx, Ok idx' ->
         guard (idx.Index.counter < idx'.Index.counter) `CounterNotIncreased >>= fun _ ->
-        Repository.verify_index repo idx' >>= fun _ ->
-        Ok (Repository.add_index repo' idx')
+        Conex_repository.verify_index repo idx' >>= fun _ ->
+        Ok (Conex_repository.add_index repo' idx')
       | Error _, Ok idx' ->
         guard (idx'.Index.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Repository.ids repo) id) `IllegalId >>= fun () ->
-        Repository.verify_index repo idx' >>= fun _ ->
-        Ok (Repository.add_index repo' idx')
+        guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
+        Conex_repository.verify_index repo idx' >>= fun _ ->
+        Ok (Conex_repository.add_index repo' idx')
       | _, Error e -> Error e
     end
 
   | Id (id, diff) ->
     let repo' = apply repo diff in
     begin match
-        Repository.read_id repo id,
-        Repository.read_id repo' id
+        Conex_repository.read_id repo id,
+        Conex_repository.read_id repo' id
       with
       | Ok (`Key k), Ok (`Key k') ->
         guard (k.Publickey.counter < k'.Publickey.counter) `CounterNotIncreased >>= fun () ->
-        Repository.verify_key repo k' >>= fun _ ->
-        Ok (Repository.add_trusted_key repo' k')
+        Conex_repository.verify_key repo k' >>= fun _ ->
+        Ok (Conex_repository.add_trusted_key repo' k')
       | Error _, Ok (`Key k') ->
         guard (k'.Publickey.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Repository.ids repo) id) `IllegalId >>= fun () ->
-        Repository.verify_key repo k' >>= fun _ ->
-        Ok (Repository.add_trusted_key repo' k')
+        guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
+        Conex_repository.verify_key repo k' >>= fun _ ->
+        Ok (Conex_repository.add_trusted_key repo' k')
       | Ok (`Team t), Ok (`Team t') ->
         guard (t.Team.counter < t'.Team.counter) `CounterNotIncreased >>= fun () ->
-        Repository.verify_team repo t' >>= fun _ ->
-        Ok (Repository.add_team repo' t')
+        Conex_repository.verify_team repo t' >>= fun _ ->
+        Ok (Conex_repository.add_team repo' t')
       | Error _, Ok (`Team t') ->
         guard (t'.Team.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Repository.ids repo) id) `IllegalId >>= fun () ->
-        Repository.verify_team repo t' >>= fun _ ->
-        Ok (Repository.add_team repo' t')
+        guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
+        Conex_repository.verify_team repo t' >>= fun _ ->
+        Ok (Conex_repository.add_team repo' t')
       | _, Error e -> Error e
       | _ -> Error `InvalidKeyTeam (* disallow team to key and vice versa *)
     end
@@ -199,18 +199,18 @@ let verify repo = function
   | Authorisation (name, diff) ->
     let repo' = apply repo diff in
     begin match
-        Repository.read_authorisation repo name,
-        Repository.read_authorisation repo' name
+        Conex_repository.read_authorisation repo name,
+        Conex_repository.read_authorisation repo' name
       with
       | Ok a, Ok a' ->
         guard (a.Authorisation.counter < a'.Authorisation.counter) `CounterNotIncreased >>= fun () ->
-        Repository.verify_authorisation repo a' >>= fun _ ->
+        Conex_repository.verify_authorisation repo a' >>= fun _ ->
         Ok repo'
       | Error _, Ok a' ->
         guard (a'.Authorisation.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_name name) `IllegalName >>= fun () ->
-        guard (Conex_opam_layout.unique_data (Repository.items repo) name) `IllegalName >>= fun () ->
-        Repository.verify_authorisation repo a' >>= fun _ ->
+        guard (Conex_opam_layout.unique_data (Conex_repository.items repo) name) `IllegalName >>= fun () ->
+        Conex_repository.verify_authorisation repo a' >>= fun _ ->
         Ok repo'
       | _, Error e -> Error e
     end
@@ -218,32 +218,32 @@ let verify repo = function
   | Dir (p, v, diffs) ->
     let repo' = List.fold_left apply repo diffs in
     let cs_ok a r = match
-        Repository.read_checksum repo v,
-        Repository.read_checksum repo' v
+        Conex_repository.read_checksum repo v,
+        Conex_repository.read_checksum repo' v
       with
       | Ok cs, Ok cs' ->
         guard (cs.Checksum.counter < cs'.Checksum.counter) `CounterNotIncreased >>= fun () ->
-        Repository.verify_checksum repo' a r cs' >>= fun _ ->
+        Conex_repository.verify_checksum repo' a r cs' >>= fun _ ->
         Ok repo'
       | Error _, Ok cs' ->
         guard (cs'.Checksum.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        Repository.verify_checksum repo' a r cs' >>= fun _ ->
+        Conex_repository.verify_checksum repo' a r cs' >>= fun _ ->
         Ok repo'
       | Ok _, Error _ -> Ok repo' (* deletion *)
       | Error _, Error e -> Error e
     in
     begin match
-        Repository.read_authorisation repo p,
-        Repository.read_releases repo p,
-        Repository.read_releases repo' p
+        Conex_repository.read_authorisation repo p,
+        Conex_repository.read_releases repo p,
+        Conex_repository.read_releases repo' p
       with
       | Ok a, Ok r, Ok r' ->
         guard (r.Releases.counter < r'.Releases.counter) `CounterNotIncreased >>= fun () ->
-        Repository.verify_releases repo' a r' >>= fun _ ->
+        Conex_repository.verify_releases repo' a r' >>= fun _ ->
         cs_ok a r'
       | Ok a, Error _, Ok r' ->
         guard (r'.Releases.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        Repository.verify_releases repo' a r' >>= fun _ ->
+        Conex_repository.verify_releases repo' a r' >>= fun _ ->
         cs_ok a r'
       | Error _, _, _ -> Error (`MissingAuthorisation p)
       | Ok _, _, Error e -> Error e

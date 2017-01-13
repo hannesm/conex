@@ -226,14 +226,14 @@ let idx_sign () =
     | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "a")
-    (Repository.verify k
+    (Conex_repository.verify k
        (Conex_data.encode (Conex_data_persistency.index_to_t signed))
        (sid, ts, sigval)) ;
   let r = Index.r (Index.next_id idx) "foo" (Uint.of_int 4) `PublicKey "2342" in
   let idx' = Index.add_resource signed r in
   check_ver "signed modified index does not verify"
     (Error (`InvalidSignature "a"))
-    (Repository.verify k
+    (Conex_repository.verify k
        (Conex_data.encode (Conex_data_persistency.index_to_t idx'))
        (sid, ts, sigval))
 
@@ -249,7 +249,7 @@ let idx_sign_other () =
     | _ -> assert false
   in
   check_ver "signed index verifies" (Ok "b")
-    (Repository.verify k
+    (Conex_repository.verify k
        (Conex_data.encode (Conex_data_persistency.index_to_t signed))
        signature)
 
@@ -265,7 +265,7 @@ let idx_sign_bad () =
   let raw = Conex_data.encode (Conex_data_persistency.index_to_t idx') in
   check_ver "signed index does not verify (wrong id)"
     (Error (`InvalidSignature "b"))
-    (Repository.verify k raw (sid, ts, sigval))
+    (Conex_repository.verify k raw (sid, ts, sigval))
 
 let idx_sign_bad2 () =
   let k, p = gen_pub "a" in
@@ -279,7 +279,7 @@ let idx_sign_bad2 () =
   let raw = Conex_data.encode (Conex_data_persistency.index_to_t idx') in
   check_ver "signed index does not verify (wrong data)"
     (Error (`InvalidSignature "a"))
-    (Repository.verify k raw (sid, ts, sigval))
+    (Conex_repository.verify k raw (sid, ts, sigval))
 
 let idx_tests = [
   "good index", `Quick, idx_sign ;
