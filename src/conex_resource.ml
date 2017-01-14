@@ -251,34 +251,36 @@ module Index = struct
     name : identifier ;
     resources : r list ;
     signatures : Signature.t list ;
+    queued : r list ;
   }
 
-  let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) name =
-    { counter ; version ; name ; resources ; signatures }
+  let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) ?(queued = []) name =
+    { counter ; version ; name ; resources ; signatures ; queued }
 
   let next_id idx =
     let max = List.fold_left max Uint.zero (List.map (fun r -> r.index) idx.resources) in
     let _c, counter = Uint.succ max in
     counter
 
-  let add_resource t r =
-    let _c, counter = Uint.succ t.counter in
-    { t with resources = r :: t.resources ; counter }
-
-  let add_resources t rs =
-    let _c, counter = Uint.succ t.counter in
-    { t with resources = rs @ t.resources ; counter }
+  let add_resource t r = { t with queued = r :: t.queued }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
-    Format.fprintf ppf "index name: %a counter: %s resources:@ %a@ signatures: %a"
+    Format.fprintf ppf "index name: %a counter: %s resources:@ %a@ queued:@ %a@ signatures: %a"
       pp_id i.name
       (Uint.to_string i.counter)
       (pp_list pp_resource) i.resources
+      (pp_list pp_resource) i.queued
       (pp_list Signature.pp_signature) i.signatures
   (*BISECT-IGNORE-END*)
 
-  let add_sig i s = { i with signatures = s :: i.signatures }
+  let prep_sig i =
+    let signatures = []
+    and resources = i.resources @ i.queued
+    and queued = []
+    and counter = snd (Uint.succ i.counter)
+    in
+    { i with signatures ; resources ; queued ; counter }
 
-  let replace_sig i s = { i with signatures = [ s ] }
+  let add_sig i s = { i with signatures = s :: i.signatures }
 end

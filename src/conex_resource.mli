@@ -133,19 +133,18 @@ module Index : sig
     name : identifier ;
     resources : r list ;
     signatures : Signature.t list ;
+    queued : r list ;
   }
 
-  val index : ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(Signature.t list) -> identifier -> t
+  val pp_index : Format.formatter -> t -> unit
+
+  val index : ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(Signature.t list) -> ?queued:(r list) -> identifier -> t
 
   val next_id : t -> Uint.t
 
   val add_resource : t -> r -> t
 
-  val add_resources : t -> r list -> t
-
-  val pp_index : Format.formatter -> t -> unit
+  val prep_sig : t -> t
 
   val add_sig : t -> Signature.t -> t
-
-  val replace_sig : t -> Signature.t -> t
 end

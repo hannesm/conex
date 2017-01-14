@@ -7,11 +7,23 @@ let str_to_msg = function
   | Ok x -> Ok x
   | Error s -> Error (`Msg s)
 
-(*
-sign package X (X.version)
-request authorisation
-renew key
-apply for/revoke team membership
+let msg_to_cmdliner = function
+  | Ok () -> `Ok ()
+  | Error (`Msg m) -> `Error (false, m)
+
+(* WORKFLOW:
+  init -- to get private key, public key entry
+
+  info [[package] <name>]
+
+  staging operations [clear with "reset"]:
+   team <id> create|join|leave (takes additional ids with -m[embers], defaults to self)
+   package <name> claim|unclaim|remove|add[default]
+   rollover (+change metadata)
+
+  sign
+  --> show changes (using git diff!?), prompt (unless -y)
+  --> instruct git add&commit && open PR
 *)
 
 let setup_log style_renderer level =
@@ -143,9 +155,7 @@ let info_single r _o name =
 let information _ o name =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-  match if name = "" then info_all r o else info_single r o name with
-  | Ok () -> `Ok ()
-  | Error (`Msg m) -> `Error (false, m)
+  msg_to_cmdliner (if name = "" then info_all r o else info_single r o name)
 
 let initialise r o id email =
   match Conex_repository.read_id r id with
@@ -173,7 +183,7 @@ let initialise r o id email =
       Conex_repository.write_index r idx ;
     Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
     R.error_to_msg ~pp_error:pp_verification_error
-       (Conex_repository.verify_index r idx >>| fun id ->
+       (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
         Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
     Logs.info (fun m -> m "please now git add keys/%s and index/%s, and claim some packages" id id)
 
@@ -184,12 +194,18 @@ let init _ o email =
     Nocrypto_entropy_unix.initialize () ;
     let r = o.Conex_opts.repo in
     Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-    match initialise r o id email with
-    | Ok () -> `Ok ()
-    | Error (`Msg m) -> `Error (false, m)
+    msg_to_cmdliner (initialise r o id email)
 
-let sign _ _o _package =
-  `Ok ()
+let sign _ o =
+  let r = o.Conex_opts.repo in
+  msg_to_cmdliner
+    (Conex_private.(R.error_to_msg ~pp_error:pp_err
+                      (match o.Conex_opts.id with
+                       | None -> read_private_key r
+                       | Some id -> read_private_key ~id r)) >>| fun (id, _priv) ->
+     Logs.debug (fun m -> m "using private key %s" id))
+(*  Conex_
+    Conex_repository.read_index r id  *)
 
 open Cmdliner
 
@@ -231,7 +247,7 @@ let sign_cmd =
     [`S "DESCRIPTION";
      `P "Cryptographically signs a given package with your id."]
   in
-  Term.(ret (const sign $ setup_log $ Conex_opts.t_t $ package)),
+  Term.(ret (const sign $ setup_log $ Conex_opts.t_t)),
   Term.info "sign" ~doc ~man
 
 let init_cmd =

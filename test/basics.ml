@@ -209,13 +209,49 @@ let bad_priv () =
     (Ok mypub)
     (get_pub mypriv)
 
+let check_ver = Alcotest.check (result Alcotest.string verr)
+
+let verify_fail () =
+  let id = "a" in
+  let k, p = gen_pub id in
+  let idx = Index.index id in
+  let signed = sign_idx idx p in
+  let (sid, ts, sigval) = match signed.Index.signatures with
+    | [x] -> x
+    | _ -> assert false
+  in
+  check_ver "signed index verifies" (Ok id)
+    (Conex_repository.verify k
+       (Conex_data.encode (Conex_data_persistency.index_to_t signed))
+       (sid, ts, sigval)) ;
+  check_ver "bad key does not verify" (Error (`InvalidPublicKey id))
+    (Conex_repository.verify (Publickey.publickey id None)
+       (Conex_data.encode (Conex_data_persistency.index_to_t signed))
+       (sid, ts, sigval)) ;
+  check_ver "bad signature does not verify" (Error (`InvalidSignature (id^id)))
+    (Conex_repository.verify k
+       (Conex_data.encode (Conex_data_persistency.index_to_t signed))
+       (sid^sid, ts, sigval)) ;
+  let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 ())) with
+    | Ok p -> p
+    | Error _ -> Alcotest.fail "couldn't pub_of_priv"
+  in
+  check_ver "too small key" (Error (`InvalidPublicKey id))
+    (Conex_repository.verify (Publickey.publickey id (Some pub))
+       (Conex_data.encode (Conex_data_persistency.index_to_t signed))
+       (sid, ts, sigval)) ;
+  check_ver "invalid b64 sig" (Error (`InvalidBase64Encoding id))
+    (Conex_repository.verify k
+       (Conex_data.encode (Conex_data_persistency.index_to_t signed))
+       (sid, ts, "bad"))
+
+
 let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
   "self-sign is good", `Quick, sign_single ;
   "bad priv is bad", `Quick, bad_priv ;
+  "verify failures", `Quick, verify_fail ;
 ]
-
-let check_ver = Alcotest.check (result Alcotest.string verr)
 
 let idx_sign () =
   let k, p = gen_pub "a" in
@@ -231,7 +267,13 @@ let idx_sign () =
        (sid, ts, sigval)) ;
   let r = Index.r (Index.next_id idx) "foo" (Uint.of_int 4) `PublicKey "2342" in
   let idx' = Index.add_resource signed r in
-  check_ver "signed modified index does not verify"
+  check_ver "signed modified index does verify (no commit)"
+    (Ok "a")
+    (Conex_repository.verify k
+       (Conex_data.encode (Conex_data_persistency.index_to_t idx'))
+       (sid, ts, sigval)) ;
+  let idx' = Index.prep_sig idx' in
+  check_ver "signed modified index does verify (no commit)"
     (Error (`InvalidSignature "a"))
     (Conex_repository.verify k
        (Conex_data.encode (Conex_data_persistency.index_to_t idx'))

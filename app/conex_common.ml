@@ -22,12 +22,14 @@ let load_verify_idx out debug maybe_exit r k id =
     let r' = Conex_repository.add_trusted_key r k in
     match Conex_repository.verify_index r' i with
     | Error e -> if debug then pp_verification_error out e ; maybe_exit () ; r
-    | Ok id ->
-      if debug then Format.fprintf out "loaded index for %a@." pp_id id ;
-      let r' = Conex_repository.add_index r' i in
+    | Ok (r, warns, id) ->
+      if debug then
+        Format.fprintf out "loaded index for %a@.  %s"
+          pp_id id
+          (String.concat "\n  " warns) ;
       match Conex_repository.verify_key r' k with
       | Error e -> if debug then Conex_repository.pp_error out e ; maybe_exit () ; r
-      | Ok ok -> if debug then Conex_repository.pp_ok out ok ; r'
+      | Ok (_, ok) -> if debug then Conex_repository.pp_ok out ok ; r'
 
 let load_key_idx out debug maybe_exit id r =
   match Conex_repository.read_key r id with
@@ -39,7 +41,7 @@ let load_id out debug maybe_exit id r =
   | Error e -> if debug then Conex_repository.pp_r_err out e ; maybe_exit () ; r
   | Ok (`Team t) ->
     begin match Conex_repository.verify_team r t with
-      | Ok _ -> if debug then Format.fprintf out "loaded team %a@." pp_id t.Team.name ; Conex_repository.add_team r t
+      | Ok (r, _) -> if debug then Format.fprintf out "loaded team %a@." pp_id t.Team.name ; r
       | Error e -> if debug then Conex_repository.pp_error out e ; maybe_exit () ; r
     end
   | Ok (`Key k) -> load_verify_idx out debug maybe_exit r k id
@@ -49,9 +51,12 @@ let load_index out debug maybe_exit id r =
   | Error e -> Conex_repository.pp_r_err out e ; maybe_exit () ; r
   | Ok i -> match Conex_repository.verify_index r i with
     | Error e -> pp_verification_error out e ; maybe_exit () ; r
-    | Ok id ->
-      if debug then Format.fprintf out "loaded trust anchor index for %a@." pp_id id ;
-      Conex_repository.add_index r i
+    | Ok (r, warns, id) ->
+      if debug then
+        Format.fprintf out "loaded trust anchor index for %a@.  %s"
+          pp_id id
+          (String.concat "\n  " warns) ;
+      r
 
 let load_anchors_janitors repo out debug maybe_exit dir =
   (* find trust anchors *)

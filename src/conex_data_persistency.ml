@@ -214,7 +214,7 @@ let wire_resource idx =
 
 
 let t_to_index data =
-  keys false ["signatures" ; "signed"] data >>= fun () ->
+  keys false ["signatures" ; "signed" ; "queued"] data >>= fun () ->
   opt_list (search data "signatures") >>= fun sigs ->
   foldM (fun acc v -> signature v >>= fun s -> Ok (s :: acc)) [] sigs >>= fun signatures ->
   opt_err (search data "signed") >>= map >>= fun signed ->
@@ -222,7 +222,9 @@ let t_to_index data =
   ncv signed >>= fun (name, counter, version) ->
   opt_list (search signed "resources") >>= fun rs ->
   foldM (fun acc v -> resource v >>= fun r -> Ok (r :: acc)) [] rs >>= fun resources ->
-  Ok (Index.index ~counter ~version ~resources ~signatures name)
+  opt_list (search data "queued") >>= fun qs ->
+  foldM (fun acc v -> resource v >>= fun r -> Ok (r :: acc)) [] qs >>= fun queued ->
+  Ok (Index.index ~counter ~version ~resources ~queued ~signatures name)
 
 let index_to_t i =
   let resources = List.map (fun r -> Map (wire_resource r)) i.Index.resources in
@@ -230,6 +232,7 @@ let index_to_t i =
     (wire_ncv i.Index.name i.Index.counter i.Index.version)
 
 let index_sigs_to_t i =
-  M.add "signed" (Map (index_to_t i))
-    (M.add "signatures" (List (List.map (fun s -> Map (wire_signature s)) i.Index.signatures))
-       M.empty)
+  M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) i.Index.queued))
+    (M.add "signed" (Map (index_to_t i))
+       (M.add "signatures" (List (List.map (fun s -> Map (wire_signature s)) i.Index.signatures))
+          M.empty))

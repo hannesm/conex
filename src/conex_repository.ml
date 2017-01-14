@@ -24,8 +24,6 @@ let quorum r = r.quorum
 
 let provider r = r.data
 
-let teams r = r.teams
-
 let team r id = try M.find id r.teams with Not_found -> S.empty
 
 let janitors r = team r "janitors"
@@ -45,6 +43,22 @@ let find_id r email =
 
 let valid r digest =
   try Some (M.find digest r.valid) with Not_found -> None
+
+let add_valid_resource repo id res =
+  let open Index in
+  let t = repo.valid in
+  try
+    let n, s, r, ids = M.find res.digest t in
+    if not (name_equal n res.rname) then
+      Error ("name not equal: " ^ n ^ " vs " ^ res.rname)
+    else if not (resource_equal r res.resource) then
+      Error ("resource not equal: " ^ resource_to_string r ^ " vs " ^ resource_to_string res.resource)
+    else if not (s = res.size) then
+      Error ("size not equal: " ^ Uint.to_string s ^ " vs " ^ Uint.to_string res.size)
+    else
+      Ok ({ repo with valid = M.add res.digest (n, s, r, S.add id ids) t })
+  with Not_found ->
+    Ok ({ repo with valid = M.add res.digest (res.rname, res.size, res.resource, S.singleton id) t})
 
 let change_provider t data = { t with data }
 
@@ -84,7 +98,20 @@ let verify_index repo idx =
     | (xid, _, _)::_ -> `NotAuthorised (aid, xid)
   in
   List.fold_left (fun r s -> match r, verify s with Ok x, _ -> Ok x | _, b -> b)
-    (Error err) to_consider
+    (Error err) to_consider >>= fun id ->
+  let r, warn = List.fold_left (fun (repo, warn) res ->
+      match add_valid_resource repo id res with
+      | Ok r -> r, warn
+      | Error msg -> repo, msg :: warn)
+      (repo, [])
+      idx.Index.resources
+  in
+  let warn = warn @ List.map (fun r ->
+      Format.(fprintf str_formatter "ignored queued %a" Index.pp_resource r) ;
+      Format.flush_str_formatter ())
+      idx.Index.queued
+  in
+  Ok (r, warn, id)
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
@@ -153,17 +180,17 @@ let verify_resource repo owners name resource data =
 let verify_key repo key =
   let id = key.Publickey.name in
   verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Conex_data_persistency.publickey_to_t key)) >>= function
-  | `Both b -> Ok (`Both b)
-  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
-  | `Quorum js when key.Publickey.key = None -> Ok (`Quorum js)
+  | `Both b -> Ok (add_trusted_key repo key, `Both b)
+  | `Quorum js when key.Publickey.key = None -> Ok (add_trusted_key repo key, `Quorum js)
   | `Quorum _ -> Error (`MissingSignature id)
+  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
 
 let verify_team repo team =
   let id = team.Team.name in
   match verify_resource repo S.empty id `Team (Conex_data.encode (Conex_data_persistency.team_to_t team)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
   | Error e -> Error e
-  | Ok (`Quorum js) -> Ok (`Quorum js)
+  | Ok (`Quorum js) -> Ok (add_team repo team, `Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
   (* should verify that all members are on disk (and are keys, not teams, and no index files!!!) *)
@@ -346,23 +373,3 @@ let read_checksum repo name =
 let write_checksum repo csum =
   let name = Conex_opam_layout.checksum_path csum.Checksum.name in
   repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.checksums_to_t csum))
-
-(* TODO: invalid_args are bad below!!! *)
-let add_csums repo id rs =
-  let open Index in
-  let add_csum t res =
-    try
-      let n, s, r, ids = M.find res.digest t in
-      (* TODO: remove asserts here, deal with errors! *)
-      assert (name_equal n res.rname) ;
-      assert (resource_equal r res.resource) ;
-      assert (s = res.size) ;
-      M.add res.digest (n, s, r, S.add id ids) t
-    with Not_found ->
-      M.add res.digest (res.rname, res.size, res.resource, S.singleton id) t
-  in
-  let valid = List.fold_left add_csum repo.valid rs in
-  { repo with valid }
-
-let add_index r idx =
-  add_csums r idx.Index.name idx.Index.resources

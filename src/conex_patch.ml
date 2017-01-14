@@ -154,14 +154,17 @@ let verify repo = function
       with
       | Ok idx, Ok idx' ->
         guard (idx.Index.counter < idx'.Index.counter) `CounterNotIncreased >>= fun _ ->
-        Conex_repository.verify_index repo idx' >>= fun _ ->
-        Ok (Conex_repository.add_index repo' idx')
+        Conex_repository.verify_index repo idx' >>= fun (r, _, _) ->
+        Ok r
       | Error _, Ok idx' ->
         guard (idx'.Index.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
         guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
-        Conex_repository.verify_index repo idx' >>= fun _ ->
-        Ok (Conex_repository.add_index repo' idx')
+        Conex_repository.verify_index repo idx' >>= fun (r, _, _) ->
+        Ok r
+          (* XXX: correctness - verify now adds (but to repo, not repo'!),
+             used to be:
+             Ok (Conex_repository.add_index repo' idx') *)
       | _, Error e -> Error e
     end
 

@@ -6,7 +6,6 @@ true : warn(+A-4-33-44-58)
 <src/conex_data.{ml,mli}>: package(opam-file-format)
 
 <app/*.{ml,native}>: package(cmdliner opam-file-format)
-<app/conex.{ml,native}>: package(cstruct nocrypto x509 nocrypto.unix)
 <app/conex_verify.{ml,native}>: package(cstruct nocrypto x509)
 <app/conex_author.{ml,native}>: package(cstruct nocrypto nocrypto.unix x509 logs fmt.tty logs.fmt logs.cli fmt.cli rresult)
 

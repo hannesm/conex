@@ -9,11 +9,10 @@ type t
 val repository : ?store:keystore -> ?quorum:int -> Provider.t -> t
 val provider : t -> Provider.t
 val quorum : t -> int
-val teams : t -> S.t M.t
 
-val team : t -> string -> S.t
+val team : t -> identifier -> S.t
 
-val find_id : t -> string -> string option
+val find_id : t -> Publickey.email -> identifier option
 
 val valid : t -> digest -> (name * Uint.t * resource * S.t) option
 
@@ -21,7 +20,8 @@ val change_provider : t -> Provider.t -> t
 
 val verify : Publickey.t -> string -> Signature.t -> (identifier, [> verification_error]) result
 
-val verify_index : t -> Index.t -> (identifier, [> verification_error ]) result
+val verify_index : t -> Index.t ->
+  (t * string list * identifier, [> verification_error ]) result
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 
@@ -44,11 +44,11 @@ val pp_error : Format.formatter ->
   -> unit
 
 val verify_key : t -> Publickey.t ->
-  ([ `Quorum of S.t | `Both of identifier * S.t ],
+  (t * [ `Quorum of S.t | `Both of identifier * S.t ],
    [> base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
 
 val verify_team : t -> Team.t ->
-  ([ `Quorum of S.t ],
+  (t * [ `Quorum of S.t ],
    [> base_error | `InsufficientQuorum of name * S.t ]) result
 
 val verify_authorisation : t -> Authorisation.t ->
@@ -70,7 +70,7 @@ val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
    | `NotADirectory of name
    | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]) result
 
-val add_index : t -> Index.t -> t
+val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
 
 val add_trusted_key : t -> Publickey.t -> t
 
