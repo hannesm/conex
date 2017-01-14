@@ -272,7 +272,7 @@ let idx_sign () =
     (Conex_repository.verify k
        (Conex_data.encode (Conex_data_persistency.index_to_t idx'))
        (sid, ts, sigval)) ;
-  let idx' = Index.prep_sig idx' in
+  let idx', _ = Index.prep_sig idx' in
   check_ver "signed modified index does verify (no commit)"
     (Error (`InvalidSignature "a"))
     (Conex_repository.verify k

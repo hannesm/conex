@@ -23,6 +23,7 @@ let t_t =
   and repo =
     let doc = "Repository base directory" in
     Arg.(value & opt dir "/tmp/conex" & info [ "r" ; "repository" ] ~docs ~docv:"DIR" ~doc)
+  (* TODO: validate identifier! *)
   and id =
     let doc = "Use specified identity" in
     Arg.(value & opt (some string) None & info ["id"] ~docs ~docv:"IDENTITY" ~doc)

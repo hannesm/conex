@@ -44,7 +44,9 @@ module Team : sig
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
-  val prep : t -> (t, string) result
+  val prep : t -> t * bool
+
+  val equal : t -> t -> bool
 
   val pp_team : Format.formatter -> t -> unit
 end
@@ -61,7 +63,9 @@ module Authorisation : sig
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
-  val prep : t -> (t, string) result
+  val prep : t -> t * bool
+
+  val equal : t -> t -> bool
 
   val pp_authorisation : Format.formatter -> t -> unit
   val pp_authorised : Format.formatter -> S.t -> unit
@@ -76,6 +80,12 @@ module Releases : sig
   }
 
   val releases : ?counter:Uint.t -> ?version:Uint.t -> ?releases:S.t -> name -> (t, string) result
+
+  val add : t -> name -> t
+  val remove : t -> name -> t
+  val prep : t -> t * bool
+
+  val equal : t -> t -> bool
 
   val pp_releases : Format.formatter -> t -> unit
 end
@@ -104,6 +114,8 @@ module Checksum : sig
 
   val checksums : ?counter:Uint.t -> ?version:Uint.t -> string -> c list -> t
 
+  val equal : t -> t -> bool
+
   val set_counter : t -> Uint.t -> t
 
   val compare_checksums : t -> t ->
@@ -114,6 +126,8 @@ module Checksum : sig
 
   val fold : (c -> 'b -> 'b) -> checksum_map -> 'b -> 'b
   val find : checksum_map -> string -> c
+
+  val prep : t -> t * bool
 end
 
 module Index : sig
@@ -146,9 +160,11 @@ module Index : sig
 
   val add_resource : t -> r -> t
 
+  val equal : t -> t -> bool
+
   val reset : t -> t
 
-  val prep_sig : t -> t
+  val prep_sig : t -> t * bool
 
   val add_sig : t -> Signature.t -> t
 end

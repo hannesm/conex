@@ -131,6 +131,7 @@ type resource = [
   | `Checksums
   | `Releases
   | `Authorisation
+  | `Index
 ]
 
 let resource_equal a b = match a, b with
@@ -138,7 +139,8 @@ let resource_equal a b = match a, b with
   | `Team, `Team
   | `Checksums, `Checksums
   | `Releases, `Releases
-  | `Authorisation, `Authorisation -> true
+  | `Authorisation, `Authorisation
+  | `Index, `Index-> true
   | _ -> false
 
 let resource_to_string = function
@@ -147,6 +149,7 @@ let resource_to_string = function
   | `Checksums -> "checksums"
   | `Releases -> "releases"
   | `Authorisation -> "authorisation"
+  | `Index -> "index"
 
 let string_to_resource = function
   | "publickey" -> Some `PublicKey
@@ -154,6 +157,7 @@ let string_to_resource = function
   | "checksums" -> Some `Checksums
   | "releases" -> Some `Releases
   | "authorisation" -> Some `Authorisation
+  | "index" -> Some `Index
   | _ -> None
 
 (*BISECT-IGNORE-BEGIN*)

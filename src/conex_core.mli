@@ -75,6 +75,7 @@ type resource = [
   | `Checksums
   | `Releases
   | `Authorisation
+  | `Index
 ]
 val resource_to_string : resource -> string
 val string_to_resource : string -> resource option

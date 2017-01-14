@@ -64,16 +64,16 @@ module Team = struct
   let team ?(counter = Uint.zero) ?(version = Uint.zero) ?(members = S.empty) name =
     { counter ; version ; members ; name }
 
+  let equal a b =
+    id_equal a.name b.name && S.equal a.members b.members
+
   let add t id = { t with members = S.add id t.members }
 
   let remove t id = { t with members = S.remove id t.members }
 
   let prep t =
     let carry, counter = Uint.succ t.counter in
-    if carry then
-      Error  "counter overflow in team"
-    else
-      Ok ({ t with counter })
+    { t with counter }, carry
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
@@ -96,16 +96,16 @@ module Authorisation = struct
       ?(counter = Uint.zero) ?(version = Uint.zero) ?(authorised = S.empty) name =
     { counter ; version ; name ; authorised }
 
+  let equal a b =
+    name_equal a.name b.name && S.equal a.authorised b.authorised
+
   let add t id = { t with authorised = S.add id t.authorised }
 
   let remove t id = { t with authorised = S.remove id t.authorised }
 
   let prep t =
     let carry, counter = Uint.succ t.counter in
-    if carry then
-      Error "counter overflow in authorisation"
-    else
-      Ok ({ t with counter })
+    { t with counter }, carry
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
@@ -133,6 +133,17 @@ module Releases = struct
       Ok { counter ; version ; name ; releases }
     else
       Error "all releases must have the same package name"
+
+  let equal a b =
+    name_equal a.name b.name && S.equal a.releases b.releases
+
+  let add t i = { t with releases = S.add i t.releases }
+
+  let remove t i = { t with releases = S.remove i t.releases }
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    { t with counter }, carry
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_releases ppf r =
@@ -217,6 +228,16 @@ module Checksum = struct
           b.files []
       in
       Error (`ChecksumsDiff (a.name, missing, toomany, invalid))
+
+  let equal a b =
+    match compare_checksums a b with
+    | Ok () -> true
+    | _ -> false
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    { t with counter }, carry
+
 end
 
 module Index = struct
@@ -230,6 +251,13 @@ module Index = struct
 
   let r index rname size resource digest =
     { index ; rname ; size ; resource ; digest }
+
+  let r_equal a b =
+    Uint.compare a.index b.index = 0 &&
+    a.rname = b.rname &&
+    Uint.compare a.size b.size = 0 &&
+    resource_equal a.resource b.resource &&
+    a.digest = b.digest
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_resource ppf { index ; rname ; size ; resource ; digest } =
@@ -251,8 +279,18 @@ module Index = struct
   let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) ?(queued = []) name =
     { counter ; version ; name ; resources ; signatures ; queued }
 
+  let equal a b =
+    id_equal a.name b.name &&
+    List.length a.resources = List.length b.resources &&
+    List.length a.queued = List.length b.queued &&
+    List.for_all (fun r -> List.exists (r_equal r) a.resources) b.resources &&
+    List.for_all (fun r -> List.exists (r_equal r) a.queued) b.queued
+
   let next_id idx =
-    let max = List.fold_left max Uint.zero (List.map (fun r -> r.index) idx.resources) in
+    let max =
+      let rs = List.map (fun r -> r.index) (idx.resources @ idx.queued) in
+      List.fold_left max Uint.zero rs
+    in
     let _c, counter = Uint.succ max in
     counter
 
@@ -274,9 +312,9 @@ module Index = struct
     let signatures = []
     and resources = i.resources @ i.queued
     and queued = []
-    and counter = snd (Uint.succ i.counter)
+    and carry, counter = Uint.succ i.counter
     in
-    { i with signatures ; resources ; queued ; counter }
+    { i with signatures ; resources ; queued ; counter }, carry
 
   let add_sig i s = { i with signatures = s :: i.signatures }
 end
