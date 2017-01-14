@@ -218,6 +218,20 @@ let sign _ o =
        Conex_repository.write_index r idx ;
      Logs.app (fun m -> m "wrote index %s to disk" id))
 
+let reset _ o =
+  let r = o.Conex_opts.repo in
+  msg_to_cmdliner
+    (self r o >>= fun id ->
+     R.error_to_msg ~pp_error:Conex_repository.pp_r_err
+       (Conex_repository.read_index r id) >>| fun idx ->
+     List.iter (fun r ->
+         Logs.app (fun m -> m "dropping %a" Index.pp_resource r))
+       idx.Index.queued ;
+     let idx = Index.reset idx in
+     if not o.Conex_opts.dry then
+       Conex_repository.write_index r idx ;
+     Logs.app (fun m -> m "wrote index %s to disk" id))
+
 open Cmdliner
 
 let setup_log =
@@ -251,6 +265,15 @@ let status_cmd =
   in
   Term.(ret (const status $ setup_log $ Conex_opts.t_t $ package)),
   Term.info "status" ~doc ~man
+
+let reset_cmd =
+  let doc = "reset staged changes" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Resets queued changes to your index."]
+  in
+  Term.(ret (const reset $ setup_log $ Conex_opts.t_t)),
+  Term.info "reset" ~doc ~man
 
 let sign_cmd =
   let doc = "sign staged changes" in
@@ -294,7 +317,7 @@ let default_cmd =
   Term.(ret (const (fun _ _ -> `Help (`Pager, None)) $ setup_log $ Conex_opts.t_t)),
   Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
 
-let cmds = [ status_cmd ; help_cmd ; init_cmd ; sign_cmd ]
+let cmds = [ status_cmd ; help_cmd ; init_cmd ; sign_cmd ; reset_cmd ]
 
 let () =
   match Term.eval_choice default_cmd cmds

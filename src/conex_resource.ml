@@ -264,6 +264,8 @@ module Index = struct
 
   let add_resource t r = { t with queued = r :: t.queued }
 
+  let reset t = { t with queued = [] }
+
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
     Format.fprintf ppf "index name: %a counter: %s resources:@ %a@ queued:@ %a@ signatures: %a"

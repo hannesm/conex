@@ -144,6 +144,8 @@ module Index : sig
 
   val add_resource : t -> r -> t
 
+  val reset : t -> t
+
   val prep_sig : t -> t
 
   val add_sig : t -> Signature.t -> t
