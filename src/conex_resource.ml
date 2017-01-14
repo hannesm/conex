@@ -9,8 +9,8 @@ module Signature = struct
     String.concat " " [ data ; id ; Uint.to_string ts ]
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_signature ppf (id, ts, s) =
-    Format.fprintf ppf "signature %a created at %s@ sig:@ %s" pp_id id (Uint.to_string ts) s
+  let pp_signature ppf (id, ts, _) =
+    Format.fprintf ppf "signature %a created at 0x%s" pp_id id (Uint.to_string ts)
   (*BISECT-IGNORE-END*)
 end
 
@@ -36,20 +36,20 @@ module Publickey = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_service ppf = function
-    | `Email e -> Format.fprintf ppf "email: %s" e
-    | `GitHub e -> Format.fprintf ppf "GitHub: %s" e
-    | `Other (k, v) -> Format.fprintf ppf "other %s: %s" k v
+    | `Email e -> Format.fprintf ppf "email %s" e
+    | `GitHub e -> Format.fprintf ppf "GitHub %s" e
+    | `Other (k, v) -> Format.fprintf ppf "%s %s" k v
 
   let pp_publickey ppf p =
     let pp_opt_key ppf k =
       Format.pp_print_string ppf
-        (match k with None -> "none" | Some (`Pub x) -> x)
+        (match k with None -> "no key" | Some (`Pub _) -> "")
     in
-    Format.fprintf ppf "publickey name: %a@ accounts: %a@ counter: %s@ key: %a"
-      pp_id p.name
-      (pp_list pp_service) p.accounts
+    Format.fprintf ppf "publickey #%s %a %a@ %a"
       (Uint.to_string p.counter)
+      pp_id p.name
       pp_opt_key p.key
+      (pp_list pp_service) p.accounts
   (*BISECT-IGNORE-END*)
 end
 
@@ -79,8 +79,8 @@ module Team = struct
   let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
 
   let pp_team ppf x =
-    Format.fprintf ppf "team name: %a@ counter: %s@ members:@ %a"
-      pp_id x.name (Uint.to_string x.counter) pp_mems x.members
+    Format.fprintf ppf "team #%s %a@ %a"
+      (Uint.to_string x.counter) pp_id x.name pp_mems x.members
    (*BISECT-IGNORE-END*)
 end
 
@@ -111,8 +111,8 @@ module Authorisation = struct
   let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
 
   let pp_authorisation ppf d =
-    Format.fprintf ppf "authorisation name: %a@ counter: %s@ authorised:@ %a"
-      pp_name d.name (Uint.to_string d.counter) pp_authorised d.authorised
+    Format.fprintf ppf "authorisation #%s %a@ %a"
+      (Uint.to_string d.counter) pp_name d.name pp_authorised d.authorised
   (*BISECT-IGNORE-END*)
 end
 
@@ -147,8 +147,8 @@ module Releases = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_releases ppf r =
-    Format.fprintf ppf "releases name: %a@ counter %s@ releases %a"
-      pp_name r.name (Uint.to_string r.counter)
+    Format.fprintf ppf "releases #%s %a@ %a"
+       (Uint.to_string r.counter) pp_name r.name
       (pp_list pp_name) (S.elements r.releases)
   (*BISECT-IGNORE-END*)
 end
@@ -162,7 +162,7 @@ module Checksum = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum ppf c =
-    Format.fprintf ppf "checksum %a [%s bytes]: %a@ "
+    Format.fprintf ppf "%a (0x%s bytes) %a"
       pp_name c.filename (Uint.to_string c.bytesize) pp_digest c.checksum
   (*BISECT-IGNORE-END*)
 
@@ -196,9 +196,9 @@ module Checksum = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksums ppf c =
-    Format.fprintf ppf "checksums for %a (counter %s) are: %a"
-      pp_name c.name
+    Format.fprintf ppf "checksums #%s %a@ %a"
       (Uint.to_string c.counter)
+      pp_name c.name
       pp_checksum_map c.files
   (*BISECT-IGNORE-END*)
 
@@ -261,9 +261,11 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_resource ppf { index ; rname ; size ; resource ; digest } =
-    Format.fprintf ppf "resource %s@ name: %a@ size: %s@ resource: %a@ digest: %a"
-      (Uint.to_string index) pp_name rname (Uint.to_string size)
+    Format.fprintf ppf "%a #%s %a@ 0x%s bytes@ %a"
       pp_resource resource
+      (Uint.to_string index)
+      pp_name rname
+      (Uint.to_string size)
       pp_digest digest
   (*BISECT-IGNORE-END*)
 
@@ -300,9 +302,9 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
-    Format.fprintf ppf "index name: %a counter: %s resources:@ %a@ queued:@ %a@ signatures: %a"
-      pp_id i.name
+    Format.fprintf ppf "index #%s %a@ resources %a@ queued %a@ signatures %a"
       (Uint.to_string i.counter)
+      pp_id i.name
       (pp_list pp_resource) i.resources
       (pp_list pp_resource) i.queued
       (pp_list Signature.pp_signature) i.signatures

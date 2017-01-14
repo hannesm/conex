@@ -269,7 +269,7 @@ let add_r idx name typ data =
   let size = Uint.of_int (String.length encoded) in
   let digest = Conex_nocrypto.digest encoded in
   let res = Index.r counter name size typ digest in
-  Logs.info (fun m -> m "added resource %a to index" Index.pp_resource res) ;
+  Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
   Index.add_resource idx res
 
 let auth _ o remove members p =
