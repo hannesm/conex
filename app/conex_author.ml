@@ -14,14 +14,16 @@ let msg_to_cmdliner = function
 (* WORKFLOW:
   init -- to get private key, public key entry
 
-  info [[package] <name>]
+  status <package> (staged index, missing entries [for id + teams])
 
   staging operations [clear with "reset"]:
-   team <id> create|join|leave (takes additional ids with -m[embers], defaults to self)
-   package <name> claim|unclaim|remove|add[default]
+   team <id> create|join|leave (takes additional ids with -m[embers], defaults to id)
+   package <name> claim|unclaim [also -m]
+   release <name> remove|add
    rollover (+change metadata)
 
   sign
+  --> show queued pieces
   --> show changes (using git diff!?), prompt (unless -y)
   --> instruct git add&commit && open PR
 *)
@@ -97,7 +99,7 @@ let self r o =
   Logs.debug (fun m -> m "using identifier %s" id);
   id
 
-let info_all r o =
+let status_all r o =
   self r o >>= fun id ->
   Conex_repository.(R.error_to_msg ~pp_error:pp_r_err (Conex_repository.read_id r id)) >>= function
   | `Key k ->
@@ -133,7 +135,7 @@ let info_all r o =
     S.iter (show_single r (fun a -> S.mem t.Team.name a)) (Conex_repository.items r) ;
     Ok ()
 
-let info_single r _o name =
+let status_single r _o name =
   Logs.info (fun m -> m "information on package %s" name);
   match Conex_opam_layout.authorisation_of_item name with
   | None -> show_single r (fun _ -> true) name ; Ok ()
@@ -152,10 +154,10 @@ let info_single r _o name =
     show_release r a rel name ;
     Ok ()
 
-let information _ o name =
+let status _ o name =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-  msg_to_cmdliner (if name = "" then info_all r o else info_single r o name)
+  msg_to_cmdliner (if name = "" then status_all r o else status_single r o name)
 
 let initialise r o id email =
   match Conex_repository.read_id r id with
@@ -185,7 +187,7 @@ let initialise r o id email =
     R.error_to_msg ~pp_error:pp_verification_error
        (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
         Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
-    Logs.info (fun m -> m "please now git add keys/%s and index/%s, and claim some packages" id id)
+    Logs.app (fun m -> m "Created keypair.  Please 'git add keys/%s index/%s', and submit a PR.  Join teams and claim your packages." id id)
 
 let init _ o email =
   match o.Conex_opts.id with
@@ -199,13 +201,22 @@ let init _ o email =
 let sign _ o =
   let r = o.Conex_opts.repo in
   msg_to_cmdliner
-    (Conex_private.(R.error_to_msg ~pp_error:pp_err
-                      (match o.Conex_opts.id with
-                       | None -> read_private_key r
-                       | Some id -> read_private_key ~id r)) >>| fun (id, _priv) ->
-     Logs.debug (fun m -> m "using private key %s" id))
-(*  Conex_
-    Conex_repository.read_index r id  *)
+    (R.error_to_msg ~pp_error:Conex_private.pp_err
+       (match o.Conex_opts.id with
+        | None -> Conex_private.read_private_key r
+        | Some id -> Conex_private.read_private_key ~id r) >>= fun (id, priv) ->
+     Logs.info (fun m -> m "using private key %s" id) ;
+     R.error_to_msg ~pp_error:Conex_repository.pp_r_err
+       (Conex_repository.read_index r id) >>= fun idx ->
+     List.iter (fun r ->
+         Logs.app (fun m -> m "adding %a" Index.pp_resource r))
+       idx.Index.queued ;
+     (* XXX: PROMPT HERE *)
+     str_to_msg (Conex_private.sign_index idx priv) >>| fun idx ->
+     Logs.info (fun m -> m "signed index %a" Index.pp_index idx) ;
+     if not o.Conex_opts.dry then
+       Conex_repository.write_index r idx ;
+     Logs.app (fun m -> m "wrote index %s to disk" id))
 
 open Cmdliner
 
@@ -232,20 +243,20 @@ let package =
   let doc = "Package." in
   Arg.(value & pos 0 string "" & info [] ~docv:"PACKAGE" ~doc)
 
-let info_cmd =
+let status_cmd =
   let doc = "information about yourself" in
   let man =
     [`S "DESCRIPTION";
      `P "Shows information about yourself."]
   in
-  Term.(ret (const information $ setup_log $ Conex_opts.t_t $ package)),
-  Term.info "info" ~doc ~man
+  Term.(ret (const status $ setup_log $ Conex_opts.t_t $ package)),
+  Term.info "status" ~doc ~man
 
 let sign_cmd =
-  let doc = "sign a package" in
+  let doc = "sign staged changes" in
   let man =
     [`S "DESCRIPTION";
-     `P "Cryptographically signs a given package with your id."]
+     `P "Cryptographically signs queued changes to your index."]
   in
   Term.(ret (const sign $ setup_log $ Conex_opts.t_t)),
   Term.info "sign" ~doc ~man
@@ -278,12 +289,12 @@ let help_cmd =
   Term.info "help" ~doc ~man
 
 let default_cmd =
-  let doc = "sign your releases as author" in
+  let doc = "cryptographically sign your released packages" in
   let man = help_secs in
   Term.(ret (const (fun _ _ -> `Help (`Pager, None)) $ setup_log $ Conex_opts.t_t)),
   Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
 
-let cmds = [ info_cmd ; help_cmd ; init_cmd ; sign_cmd ]
+let cmds = [ status_cmd ; help_cmd ; init_cmd ; sign_cmd ]
 
 let () =
   match Term.eval_choice default_cmd cmds
