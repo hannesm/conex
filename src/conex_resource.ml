@@ -99,19 +99,16 @@ module Authorisation = struct
       ?(counter = Uint.zero) ?(version = Uint.zero) ?(authorised = S.empty) name =
     { counter ; version ; name ; authorised }
 
-  let add t id =
-    if S.mem id t.authorised then
-      t
-    else
-      let _c, counter = Uint.succ t.counter in
-      { t with counter ; authorised = S.add id t.authorised }
+  let add t id = { t with authorised = S.add id t.authorised }
 
-  let remove t id =
-    if S.mem id t.authorised then
-      let _c, counter = Uint.succ t.counter in
-      { t with counter ; authorised = S.remove id t.authorised }
+  let remove t id = { t with authorised = S.remove id t.authorised }
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    if carry then
+      Error "couner overflow in authorisation"
     else
-      t
+      Ok ({ t with counter })
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))

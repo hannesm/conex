@@ -60,6 +60,7 @@ module Authorisation : sig
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
+  val prep : t -> (t, string) result
 
   val pp_authorisation : Format.formatter -> t -> unit
   val pp_authorised : Format.formatter -> S.t -> unit

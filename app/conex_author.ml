@@ -17,9 +17,9 @@ let msg_to_cmdliner = function
   status <package> (staged index, missing entries [for id + teams])
 
   staging operations [clear with "reset"]:
-   team <id> create|join|leave (takes additional ids with -m[embers], defaults to id)
-   package <name> claim|unclaim [also -m]
-   release <name> remove|add
+   team <id> [--remove] [-m (defaults to self)]
+   package <name> [--remove] [-m (defaults to self)]
+   release <name> [--remove]
    rollover (+change metadata)
 
   sign
@@ -38,7 +38,7 @@ let help _ _copts man_format cmds = function
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
 
-let docs = Conex_opts.s
+let docs = Conex_opts.docs
 
 let w pp a = Logs.warn (fun m -> m "%a" pp a)
 let warn_e pp = R.ignore_error ~use:(w pp)
@@ -92,14 +92,14 @@ let show_single r showit item =
   end
 
 let self r o =
-  Conex_private.(R.error_to_msg ~pp_error:pp_err
-                   (match o.Conex_opts.id with
-                    | None -> read_private_key r >>| fst
-                    | Some id -> Ok id)) >>| fun id ->
+  R.error_to_msg ~pp_error:Conex_private.pp_err
+    (match o.Conex_opts.id with
+     | None -> Conex_private.read_private_key r >>| fst
+     | Some id -> Ok id) >>| fun id ->
   Logs.debug (fun m -> m "using identifier %s" id);
   id
 
-let status_all r o =
+let status_all r o no_team =
   self r o >>= fun id ->
   Conex_repository.(R.error_to_msg ~pp_error:pp_r_err (Conex_repository.read_id r id)) >>= function
   | `Key k ->
@@ -110,21 +110,23 @@ let status_all r o =
           (Conex_repository.read_index r id)
     in
     Logs.info (fun m -> m "%a" Index.pp_index idx);
-    let me = s_of_list @@ if o.Conex_opts.team then
-        let teams =
-          S.fold (fun id' teams ->
-              R.ignore_error
-                ~use:(fun e -> w Conex_repository.pp_r_err e ; teams)
-                (Conex_repository.read_id r id' >>| function
-                  | `Team t when S.mem id t.Team.members ->
-                    Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
-                  | `Team _ -> teams
-                | `Key _ -> teams))
-            (Conex_repository.ids r) []
-        in
-        id :: List.map (fun t -> t.Team.name) teams
-      else
-        [id]
+    (* ADD queued to valid_resources! MARK key trusted! *)
+    let me = s_of_list
+        (if no_team then
+           [id]
+         else
+           let teams =
+             S.fold (fun id' teams ->
+                 R.ignore_error
+                   ~use:(fun e -> w Conex_repository.pp_r_err e ; teams)
+                   (Conex_repository.read_id r id' >>| function
+                     | `Team t when S.mem id t.Team.members ->
+                       Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
+                     | `Team _ -> teams
+                     | `Key _ -> teams))
+               (Conex_repository.ids r) []
+           in
+           id :: List.map (fun t -> t.Team.name) teams)
     in
     S.iter
       (show_single r (fun a -> not (S.is_empty (S.inter me a))))
@@ -154,10 +156,10 @@ let status_single r _o name =
     show_release r a rel name ;
     Ok ()
 
-let status _ o name =
+let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-  msg_to_cmdliner (if name = "" then status_all r o else status_single r o name)
+  msg_to_cmdliner (if name = "" then status_all r o no_rec else status_single r o name)
 
 let initialise r o id email =
   match Conex_repository.read_id r id with
@@ -232,6 +234,34 @@ let reset _ o =
        Conex_repository.write_index r idx ;
      Logs.app (fun m -> m "wrote index %s to disk" id))
 
+let add_r idx name typ data =
+  let counter = Index.next_id idx in
+  let encoded = Conex_data.encode data in
+  let size = Uint.of_int (String.length encoded) in
+  let digest = Conex_nocrypto.digest encoded in
+  Index.r counter name size typ digest
+
+let auth _ o remove members p =
+  let r = o.Conex_opts.repo in
+  msg_to_cmdliner
+    (self r o >>= fun id ->
+     let auth = find_auth r p in
+     let members = match members with [] -> [id] | xs -> xs in
+     let f = if remove then Authorisation.remove else Authorisation.add in
+     let auth = List.fold_left f auth members in
+     str_to_msg (Authorisation.prep auth) >>= fun auth ->
+     if not o.Conex_opts.dry then
+       Conex_repository.write_authorisation r auth ;
+     Logs.info (fun m -> m "wrote %a" Authorisation.pp_authorisation auth) ;
+     R.error_to_msg ~pp_error:Conex_repository.pp_r_err
+       (Conex_repository.read_index r id) >>| fun idx ->
+     let res = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
+     let idx = Index.add_resource idx res in
+     if not o.Conex_opts.dry then
+       Conex_repository.write_index r idx ;
+     Logs.info (fun m -> m "added resource %a to index %s" Index.pp_resource res id) ;
+     Logs.app (fun m -> m "modified authorisation and added resource to your index."))
+
 open Cmdliner
 
 let setup_log =
@@ -258,13 +288,26 @@ let package =
   Arg.(value & pos 0 string "" & info [] ~docv:"PACKAGE" ~doc)
 
 let status_cmd =
+  let noteam =
+    let doc = "Do not transitively use teams" in
+    Arg.(value & flag & info ["noteam"] ~docs ~doc)
+  in
   let doc = "information about yourself" in
   let man =
     [`S "DESCRIPTION";
      `P "Shows information about yourself."]
   in
-  Term.(ret (const status $ setup_log $ Conex_opts.t_t $ package)),
+  Term.(ret (const status $ setup_log $ Conex_opts.t_t $ package $ noteam)),
   Term.info "status" ~doc ~man
+
+let package_cmd =
+  let doc = "modify authorisation of a package" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Modifies authorisaton of a package (awaiting janitor approval)."]
+  in
+  Term.(ret (const auth $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ package)),
+  Term.info "package" ~doc ~man
 
 let reset_cmd =
   let doc = "reset staged changes" in
@@ -317,7 +360,7 @@ let default_cmd =
   Term.(ret (const (fun _ _ -> `Help (`Pager, None)) $ setup_log $ Conex_opts.t_t)),
   Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
 
-let cmds = [ status_cmd ; help_cmd ; init_cmd ; sign_cmd ; reset_cmd ]
+let cmds = [ status_cmd ; help_cmd ; init_cmd ; sign_cmd ; reset_cmd ; package_cmd ]
 
 let () =
   match Term.eval_choice default_cmd cmds
