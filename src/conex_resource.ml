@@ -64,19 +64,16 @@ module Team = struct
   let team ?(counter = Uint.zero) ?(version = Uint.zero) ?(members = S.empty) name =
     { counter ; version ; members ; name }
 
-  let add t id =
-    if S.mem id t.members then
-      t
-    else
-      let _c, counter = Uint.succ t.counter in
-      { t with counter ; members = S.add id t.members }
+  let add t id = { t with members = S.add id t.members }
 
-  let remove t id =
-    if S.mem id t.members then
-      let _c, counter = Uint.succ t.counter in
-      { t with counter ; members = S.remove id t.members }
+  let remove t id = { t with members = S.remove id t.members }
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    if carry then
+      Error  "counter overflow in team"
     else
-      t
+      Ok ({ t with counter })
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
@@ -106,7 +103,7 @@ module Authorisation = struct
   let prep t =
     let carry, counter = Uint.succ t.counter in
     if carry then
-      Error "couner overflow in authorisation"
+      Error "counter overflow in authorisation"
     else
       Ok ({ t with counter })
 

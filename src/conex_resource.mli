@@ -44,6 +44,7 @@ module Team : sig
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
+  val prep : t -> (t, string) result
 
   val pp_team : Format.formatter -> t -> unit
 end

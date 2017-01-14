@@ -262,6 +262,34 @@ let auth _ o remove members p =
      Logs.info (fun m -> m "added resource %a to index %s" Index.pp_resource res id) ;
      Logs.app (fun m -> m "modified authorisation and added resource to your index."))
 
+let team _ o remove members tid =
+  let r = o.Conex_opts.repo in
+  msg_to_cmdliner
+    (self r o >>= fun id ->
+     let use e =
+       w Conex_repository.pp_r_err e ;
+       let team = Team.team tid in
+       Logs.info (fun m -> m "fresh %a" Team.pp_team team) ;
+       team
+     in
+     let team = R.ignore_error ~use (Conex_repository.read_team r tid) in
+     Logs.debug (fun m -> m "%a" Team.pp_team team) ;
+     let members = match members with [] -> [id] | xs -> xs in
+     let f = if remove then Team.remove else Team.add in
+     let team = List.fold_left f team members in
+     str_to_msg (Team.prep team) >>= fun team ->
+     if not o.Conex_opts.dry then
+       Conex_repository.write_team r team ;
+     Logs.info (fun m -> m "wrote %a" Team.pp_team team) ;
+     R.error_to_msg ~pp_error:Conex_repository.pp_r_err
+       (Conex_repository.read_index r id) >>| fun idx ->
+     let res = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
+     let idx = Index.add_resource idx res in
+     if not o.Conex_opts.dry then
+       Conex_repository.write_index r idx ;
+     Logs.info (fun m -> m "added resource %a to index %s" Index.pp_resource res id) ;
+     Logs.app (fun m -> m "modified team and added resource to your index."))
+
 open Cmdliner
 
 let setup_log =
@@ -284,8 +312,12 @@ let help_secs = [
  `S "BUGS"; `P "Check bug reports at https://github.com/hannesm/conex.";]
 
 let package =
-  let doc = "Package." in
+  let doc = "Package" in
   Arg.(value & pos 0 string "" & info [] ~docv:"PACKAGE" ~doc)
+
+let team_a =
+  let doc = "Team" in
+  Arg.(value & pos 0 string "" & info [] ~docv:"TEAM" ~doc)
 
 let status_cmd =
   let noteam =
@@ -304,10 +336,19 @@ let package_cmd =
   let doc = "modify authorisation of a package" in
   let man =
     [`S "DESCRIPTION";
-     `P "Modifies authorisaton of a package (awaiting janitor approval)."]
+     `P "Modifies authorisaton of a package."]
   in
   Term.(ret (const auth $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ package)),
   Term.info "package" ~doc ~man
+
+let team_cmd =
+  let doc = "modify members of a team" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Modifies members of a team."]
+  in
+  Term.(ret (const team $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ team_a)),
+  Term.info "team" ~doc ~man
 
 let reset_cmd =
   let doc = "reset staged changes" in
@@ -360,7 +401,9 @@ let default_cmd =
   Term.(ret (const (fun _ _ -> `Help (`Pager, None)) $ setup_log $ Conex_opts.t_t)),
   Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
 
-let cmds = [ status_cmd ; help_cmd ; init_cmd ; sign_cmd ; reset_cmd ; package_cmd ]
+let cmds = [ help_cmd ; status_cmd ;
+             init_cmd ; sign_cmd ; reset_cmd ;
+             package_cmd ; team_cmd ]
 
 let () =
   match Term.eval_choice default_cmd cmds
