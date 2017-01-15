@@ -147,7 +147,8 @@ let show_release r a rel item =
         Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
 
 let rec load_id id r =
-  if Conex_repository.find_key r id = None && Conex_repository.find_team r id = None then
+  if Conex_repository.find_key r id = None &&
+     Conex_repository.find_team r id = None then
     R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r, None)
       (Conex_repository.read_id r id >>| function
         | `Key k ->
@@ -191,12 +192,12 @@ let auth_rel r a =
   warn_e Conex_repository.pp_error
     (Conex_repository.verify_releases r a rel >>| fun ok ->
      Logs.info (fun m -> m "releases %s %a" id Conex_repository.pp_ok ok)) ;
-  rel
+  rel, r
 
 let show_package showit item r =
   let a = find_auth r item in
   if showit a.Authorisation.authorised then begin
-    let releases = auth_rel r a in
+    let releases, r = auth_rel r a in
     let rs_file = releases.Releases.releases in
     let rs_disk = Conex_repository.subitems r item in
     if not (S.equal rs_file rs_disk) then
@@ -267,7 +268,7 @@ let status_single r o name =
   | None -> let _ = show_package (fun _ -> true) name r in ()
   | Some n ->
     let a = find_auth r n in
-    let rel = auth_rel r a in
+    let rel, r = auth_rel r a in
     if not (S.mem name rel.Releases.releases) then
       Logs.warn (fun m -> m "package %s not part of releases file" name) ;
     show_release r a rel name
