@@ -146,20 +146,22 @@ let rec load_id id r =
 
 let load_ids r ids = S.fold (fun id r -> fst (load_id id r)) ids r
 
+let auth_rel r a =
+  let id = a.Authorisation.name in
+  let r = load_ids r a.Authorisation.authorised in
+  warn_e Conex_repository.pp_error
+    (Conex_repository.verify_authorisation r a >>| fun ok ->
+     Logs.info (fun m -> m "authorisation %s %a" id Conex_repository.pp_ok ok)) ;
+  let rel = find_rel r id in
+  warn_e Conex_repository.pp_error
+    (Conex_repository.verify_releases r a rel >>| fun ok ->
+     Logs.info (fun m -> m "releases %s %a" id Conex_repository.pp_ok ok)) ;
+  rel
+
 let show_single showit item r =
   let a = find_auth r item in
   if showit a.Authorisation.authorised then begin
-    let r = load_ids r a.Authorisation.authorised in
-    warn_e Conex_repository.pp_error
-      (Conex_repository.verify_authorisation r a >>| fun ok ->
-       Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
-    let releases =
-      let rel = find_rel r item in
-      warn_e Conex_repository.pp_error
-        (Conex_repository.verify_releases r a rel >>| fun ok ->
-         Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
-      rel
-    in
+    let releases = auth_rel r a in
     S.iter (show_release r a releases) releases.Releases.releases ;
     r
   end else
@@ -223,14 +225,7 @@ let status_single r _o name =
   | None -> let _ = show_single (fun _ -> true) name r in ()
   | Some n ->
     let a = find_auth r n in
-    let r = load_ids r a.Authorisation.authorised in
-    warn_e Conex_repository.pp_error
-      (Conex_repository.verify_authorisation r a >>| fun ok ->
-       Logs.info (fun m -> m "authorisation %s %a" n Conex_repository.pp_ok ok)) ;
-    let rel = find_rel r n in
-    warn_e Conex_repository.pp_error
-      (Conex_repository.verify_releases r a rel >>| fun ok ->
-       Logs.info (fun m -> m "releases %s %a" n Conex_repository.pp_ok ok)) ;
+    let rel = auth_rel r a in
     if not (S.mem name rel.Releases.releases) then
       Logs.warn (fun m -> m "package %s not part of releases file" name) ;
     show_release r a rel name
