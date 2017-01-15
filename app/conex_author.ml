@@ -20,12 +20,47 @@ let msg_to_cmdliner = function
    team <id> [--remove] [-m (defaults to self)]
    package <name> [--remove] [-m (defaults to self)]
    release <name> [--remove]
-   rollover (+change metadata)
+   rollover (+change metadata) -- TODO
 
   sign
   --> show queued pieces
   --> show changes (using git diff!?), prompt (unless -y)
   --> instruct git add&commit && open PR
+
+  TODO: reevaluate/rethink when to load ids/items, and when to verify them
+   (no need to verify fresh things)
+   - what to trust (throw away unsigned index&key combinations?):
+user
+ conex_author.native: [WARNING] index XXX was not found in repository
+ conex_author.native: [INFO] fresh index #0 XXX resources empty queued empty signatures empty
+ conex_author.native: [WARNING] no signature found on index XXX
+ conex_author.native: [WARNING] missing signature on XXX, a publickey, quorum not reached (valid empty)
+
+package
+ conex_author.native: [WARNING] quorum for YYY not reached (valid: empty)
+ conex_author.native: [WARNING] releases YYY was not found in repository
+ conex_author.native: [INFO] fresh releases #0 YYY empty
+ conex_author.native: [WARNING] missing signature on YYY, a releases, quorum not reached (valid empty)
+ conex_author.native: [WARNING] releases file claims empty, directories on disk [YYY.0.1.0; YYY.0.1.1; YYY.0.1.2; YYY.0.1.3]
+ conex_author.native: [WARNING] checksum YYY.0.1.0 was not found in repository
+ conex_author.native: [WARNING] checksum YYY.0.1.1 was not found in repository
+ conex_author.native: [WARNING] checksum YYY.0.1.2 was not found in repository
+ conex_author.native: [WARNING] checksum YYY.0.1.3 was not found in repository
+
+team
+ conex_author.native: [INFO] member of team #0 TTT [AAA; BBB; CCC; XXX]
+ conex_author.native: [WARNING] index AAA was not found in repository
+ conex_author.native: [INFO] fresh index #0 AAA resources empty queued empty signatures empty
+ conex_author.native: [WARNING] no signature found on index AAA
+ conex_author.native: [WARNING] missing signature on aaa, a publickey, quorum not reached (valid empty)
+ ... for each team member (if the team is authorised somewhere)
+
+   - atm load_id: read_id, add to trusted (r'), read idx, verify idx (on failure return r'), verify_key (on failure r' + idx)
+                     if team, add_team, load members, verify team, on error return repo with added team
+    --> if key did not verify, retract index?  if index did not verify, retract key?
+
+   - where to get the quorum from?
+   - verify after creation + adding to your idx? (release does not even verify authorisation&releases&checksum&idx; team does not verify team&idx; auth does not verify auth&idx)
 *)
 
 let setup_log style_renderer level =
@@ -181,24 +216,25 @@ let self r o =
   Logs.debug (fun m -> m "using identifier %s" id);
   id
 
+let load_self_queued r id =
+  let r, idx = load_id id r in
+  match idx with
+  | None -> r
+  | Some idx ->
+    List.fold_left (fun r res ->
+        R.ignore_error
+          ~use:(fun e -> Logs.warn (fun m -> m "failed to add queued %a %s" Index.pp_resource res e) ; r)
+          (Conex_repository.add_valid_resource r id res >>| fun r ->
+           Logs.info (fun m -> m "added own queued %a" Index.pp_resource res);
+           r))
+      r idx.Index.queued
+
 let status_all r o no_team =
   self r o >>= fun id ->
   R.error_to_msg ~pp_error:Conex_repository.pp_r_err
     (Conex_repository.read_id r id) >>| function
   | `Key _ ->
-    let r, idx = load_id id r in
-    let r =
-      match idx with
-      | None -> r
-      | Some idx ->
-        List.fold_left (fun r res ->
-            R.ignore_error
-              ~use:(fun e -> Logs.warn (fun m -> m "failed to add queued %a %s" Index.pp_resource res e) ; r)
-              (Conex_repository.add_valid_resource r id res >>| fun r ->
-               Logs.info (fun m -> m "added own queued %a" Index.pp_resource res);
-               r))
-          r idx.Index.queued
-    in
+    let r = load_self_queued r id in
     let me =
       s_of_list
         (if no_team then [id]
@@ -223,8 +259,10 @@ let status_all r o no_team =
       (show_package (fun a -> S.mem t.Team.name a))
       (Conex_repository.items r) r
 
-let status_single r _o name =
+let status_single r o name =
   Logs.info (fun m -> m "information on package %s" name);
+  self r o >>| fun id ->
+  let r = load_self_queued r id in
   match Conex_opam_layout.authorisation_of_item name with
   | None -> let _ = show_package (fun _ -> true) name r in ()
   | Some n ->
@@ -242,7 +280,7 @@ let status _ o name no_rec =
      if name = "" then
        status_all r o no_rec >>| fun _r -> ()
      else
-       Ok (status_single r o name))
+       status_single r o name)
 
 let initialise r id email =
   (match Conex_repository.read_id r id with
