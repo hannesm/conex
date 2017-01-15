@@ -1,10 +1,10 @@
 open Conex_core
 
-val unique_keyid : S.t -> identifier -> bool
+val unique_id : S.t -> identifier -> bool
 val unique_data : S.t -> name -> bool
 
 (* if we make the constructor private, no need for this anymore *)
-val valid_keyid : identifier -> bool
+val valid_id : identifier -> bool
 val valid_name : identifier -> bool
 
 val authorisation_of_item : name -> name option

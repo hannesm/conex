@@ -9,10 +9,10 @@ let lowercase_equal names name =
          (fun n -> compare (String.to_lower n) name = 0)
          names)
 
-let unique_keyid = lowercase_equal
+let unique_id = lowercase_equal
 and unique_data = lowercase_equal
 
-let valid_keyid id = String.is_ascii id
+let valid_id id = String.is_ascii id
 
 let valid_name package =
   let p = function '-' | '_' -> true | _ -> false in

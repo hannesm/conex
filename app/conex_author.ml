@@ -394,13 +394,9 @@ let help_secs = [
  `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command.";
  `S "BUGS"; `P "Check bug reports at https://github.com/hannesm/conex.";]
 
-let package =
-  let doc = "Package" in
-  Arg.(value & pos 0 string "" & info [] ~docv:"PACKAGE" ~doc)
-
 let team_a =
   let doc = "Team" in
-  Arg.(value & pos 0 string "" & info [] ~docv:"TEAM" ~doc)
+  Arg.(value & pos 0 Conex_opts.id_c "" & info [] ~docv:"TEAM" ~doc)
 
 let status_cmd =
   let noteam =
@@ -412,7 +408,7 @@ let status_cmd =
     [`S "DESCRIPTION";
      `P "Shows information about yourself."]
   in
-  Term.(ret (const status $ setup_log $ Conex_opts.t_t $ package $ noteam)),
+  Term.(ret (const status $ setup_log $ Conex_opts.t_t $ Conex_opts.package $ noteam)),
   Term.info "status" ~doc ~man
 
 let package_cmd =
@@ -421,7 +417,7 @@ let package_cmd =
     [`S "DESCRIPTION";
      `P "Modifies authorisaton of a package."]
   in
-  Term.(ret (const auth $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ package)),
+  Term.(ret (const auth $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ Conex_opts.package)),
   Term.info "package" ~doc ~man
 
 let release_cmd =
@@ -430,7 +426,7 @@ let release_cmd =
     [`S "DESCRIPTION";
      `P "Modifies releases of a package."]
   in
-  Term.(ret (const release $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ package)),
+  Term.(ret (const release $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.package)),
   Term.info "release" ~doc ~man
 
 let team_cmd =

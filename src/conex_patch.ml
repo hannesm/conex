@@ -158,8 +158,8 @@ let verify repo = function
         Ok r
       | Error _, Ok idx' ->
         guard (idx'.Index.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
         Conex_repository.verify_index repo idx' >>= fun (r, _, _) ->
         Ok r
           (* XXX: correctness - verify now adds (but to repo, not repo'!),
@@ -180,8 +180,8 @@ let verify repo = function
         Ok (Conex_repository.add_trusted_key repo' k')
       | Error _, Ok (`Key k') ->
         guard (k'.Publickey.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
         Conex_repository.verify_key repo k' >>= fun _ ->
         Ok (Conex_repository.add_trusted_key repo' k')
       | Ok (`Team t), Ok (`Team t') ->
@@ -190,8 +190,8 @@ let verify repo = function
         Ok (Conex_repository.add_team repo' t')
       | Error _, Ok (`Team t') ->
         guard (t'.Team.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        guard (Conex_opam_layout.valid_keyid id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_keyid (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
+        guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
         Conex_repository.verify_team repo t' >>= fun _ ->
         Ok (Conex_repository.add_team repo' t')
       | _, Error e -> Error e
