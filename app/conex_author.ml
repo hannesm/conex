@@ -35,6 +35,7 @@ let msg_to_cmdliner = function
   - the local repo is a good one! (id is the one where we also trust queued)
   - the local janitors team is trusted (no external TA)
   - only status does some verification, other commands ignore validity (but may warn)
+   -- release actually checks whether id is authorised
 
   STATUS
   - loads id (key, add key, idx, verify idx -> add resources, verify key) + queued
@@ -78,36 +79,36 @@ let find_auth r name =
     w Conex_repository.pp_r_err e ;
     let a = Authorisation.authorisation name in
     Logs.info (fun m -> m "fresh %a" Authorisation.pp_authorisation a);
-    a
+    (a, true)
   in
   R.ignore_error ~use
     (Conex_repository.read_authorisation r name >>| fun a ->
      Logs.debug (fun m -> m "read %a" Authorisation.pp_authorisation a);
-     a)
+     (a, false))
 
 let find_rel r name =
   let use e =
     w Conex_repository.pp_r_err e ;
     match Releases.releases name with
-    | Ok r -> Logs.info (fun m -> m "fresh %a" Releases.pp_releases r) ; r
-    | Error e -> Logs.err (fun m -> m "%s" e) ; exit 1
+    | Ok r -> Logs.info (fun m -> m "fresh %a" Releases.pp_releases r) ; (r, true)
+    | Error e -> invalid_arg e
   in
   R.ignore_error ~use
     (Conex_repository.read_releases r name >>| fun rel ->
      Logs.debug (fun m -> m "read %a" Releases.pp_releases rel) ;
-     rel)
+     (rel, false))
 
 let find_idx r name =
   let use e =
     w Conex_repository.pp_r_err e ;
     let idx = Index.index name in
     Logs.info (fun m -> m "fresh %a" Index.pp_index idx) ;
-    idx
+    (idx, true)
   in
   R.ignore_error ~use
     (Conex_repository.read_index r name >>| fun idx ->
      Logs.debug (fun m -> m "read %a" Index.pp_index idx) ;
-     idx)
+     (idx, false))
 
 let find_cs r name =
   let use e =
@@ -137,19 +138,22 @@ let rec load_id id r =
         | `Key k ->
           Logs.debug (fun m -> m "read %a" Publickey.pp_publickey k);
           let r' = Conex_repository.add_trusted_key r k in
-          let idx = find_idx r id in
-          let r =
-            R.ignore_error
-              ~use:(fun e -> w pp_verification_error e ; r')
-              (Conex_repository.verify_index r' idx >>| fun (r, warn, id) ->
-               Logs.info (fun m -> m "verified index and added resources %s" id) ;
-               List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
-               r)
-          in
-          R.ignore_error ~use:(fun e -> w Conex_repository.pp_error e ; r, Some idx)
-            (Conex_repository.verify_key r k >>| fun (r, ok) ->
-             Logs.info (fun m -> m "verified key %s %a" id Conex_repository.pp_ok ok) ;
-             (r, Some idx))
+          let idx, fresh = find_idx r id in
+          if not fresh then
+            let r =
+              R.ignore_error
+                ~use:(fun e -> w pp_verification_error e ; r')
+                (Conex_repository.verify_index r' idx >>| fun (r, warn, id) ->
+                 Logs.info (fun m -> m "verified index and added resources %s" id) ;
+                 List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
+                 r)
+            in
+            R.ignore_error ~use:(fun e -> w Conex_repository.pp_error e ; r, Some idx)
+              (Conex_repository.verify_key r k >>| fun (r, ok) ->
+               Logs.info (fun m -> m "verified key %s %a" id Conex_repository.pp_ok ok) ;
+               (r, Some idx))
+          else
+            (r', Some idx)
         | `Team t ->
           Logs.debug (fun m -> m "read %a" Team.pp_team t);
           let r = Conex_repository.add_team r t in
@@ -164,30 +168,31 @@ let rec load_id id r =
 
 let load_ids r ids = S.fold (fun id r -> fst (load_id id r)) ids r
 
-let auth_rel r a =
-  let id = a.Authorisation.name in
-  let r = load_ids r a.Authorisation.authorised in
-  warn_e Conex_repository.pp_error
-    (Conex_repository.verify_authorisation r a >>| fun ok ->
-     Logs.info (fun m -> m "authorisation %s %a" id Conex_repository.pp_ok ok)) ;
-  let rel = find_rel r id in
-  warn_e Conex_repository.pp_error
-    (Conex_repository.verify_releases r a rel >>| fun ok ->
-     Logs.info (fun m -> m "releases %s %a" id Conex_repository.pp_ok ok)) ;
-  rel, r
-
 let show_package showit item r =
-  let a = find_auth r item in
+  let pn, pv = match Conex_opam_layout.authorisation_of_item item with
+    | None -> item, `All
+    | Some pn -> pn, `Single item
+  in
+  let a, fresh = find_auth r pn in
   if showit a.Authorisation.authorised then begin
-    let releases, r = auth_rel r a in
-    let rs_file = releases.Releases.releases in
-    let rs_disk = Conex_repository.subitems r item in
-    if not (S.equal rs_file rs_disk) then
-      Logs.warn (fun m -> m "releases file claims %a,@ directories on disk %a"
-                    (pp_list pp_id) (S.elements rs_file)
-                    (pp_list pp_id) (S.elements rs_disk)) ;
-    S.iter (show_release r a releases) (S.union rs_file rs_disk) ;
-    r
+    let r = load_ids r a.Authorisation.authorised in
+    if not fresh then
+      warn_e Conex_repository.pp_error
+        (Conex_repository.verify_authorisation r a >>| fun ok ->
+         Logs.info (fun m -> m "authorisation %s %a" pn Conex_repository.pp_ok ok)) ;
+    let rel, fresh = find_rel r pn in
+    if not fresh then
+      warn_e Conex_repository.pp_error
+        (Conex_repository.verify_releases r a rel >>| fun ok ->
+         Logs.info (fun m -> m "releases %s %a" pn Conex_repository.pp_ok ok)) ;
+    match pv with
+    | `All ->
+      S.iter (show_release r a rel) rel.Releases.releases ; r
+    | `Single version ->
+      if not (S.mem item rel.Releases.releases) then
+        Logs.warn (fun m -> m "package %s not part of releases file" item) ;
+      show_release r a rel version ;
+      r
   end else
     r
 
@@ -235,21 +240,15 @@ let status_all r id no_team =
       (show_package (fun a -> not (S.is_empty (S.inter me a))))
       (Conex_repository.items r) r
   | `Team t ->
-    Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t);
+    Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
     S.fold
       (show_package (fun a -> S.mem t.Team.name a))
       (Conex_repository.items r) r
 
 let status_single r name =
-  Logs.info (fun m -> m "information on package %s" name);
-  match Conex_opam_layout.authorisation_of_item name with
-  | None -> let _ = show_package (fun _ -> true) name r in ()
-  | Some n ->
-    let a = find_auth r n in
-    let rel, r = auth_rel r a in
-    if not (S.mem name rel.Releases.releases) then
-      Logs.warn (fun m -> m "package %s not part of releases file" name) ;
-    show_release r a rel name
+  Logs.info (fun m -> m "information on package %s" name) ;
+  let _r = show_package (fun _ -> true) name r in
+  ()
 
 let status _ o name no_rec =
   let r = o.Conex_opts.repo in
@@ -295,7 +294,7 @@ let initialise r id email =
     let r = Conex_repository.add_trusted_key r pub in
     Conex_repository.write_key r pub ;
     Logs.info (fun m -> m "wrote public key %a" Publickey.pp_publickey pub) ;
-    let idx = find_idx r id in
+    let idx, _ = find_idx r id in
     let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t pub) in
     str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
     Conex_repository.write_index r idx ;
@@ -320,7 +319,7 @@ let sign _ o =
     (R.error_to_msg ~pp_error:Conex_private.pp_err
        (Conex_private.read_private_key ?id:o.Conex_opts.id r) >>= fun (id, priv) ->
      Logs.info (fun m -> m "using private key %s" id) ;
-     let idx = find_idx r id in
+     let idx, _ = find_idx r id in
      match idx.Index.queued with
      | [] -> Logs.app (fun m -> m "nothing changed") ; Ok ()
      | els ->
@@ -337,7 +336,7 @@ let reset _ o =
   let r = o.Conex_opts.repo in
   msg_to_cmdliner
     (self r o >>| fun id ->
-     let idx = find_idx r id in
+     let idx, _ = find_idx r id in
      List.iter
        (fun r -> Logs.app (fun m -> m "dropping %a" Index.pp_resource r))
        idx.Index.queued ;
@@ -349,7 +348,7 @@ let auth _ o remove members p =
   let r = o.Conex_opts.repo in
   msg_to_cmdliner
     (self r o >>| fun id ->
-     let auth = find_auth r p in
+     let auth, _ = find_auth r p in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
      let auth' = List.fold_left f auth members in
@@ -359,7 +358,7 @@ let auth _ o remove members p =
          Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
        Conex_repository.write_authorisation r auth ;
        Logs.info (fun m -> m "wrote %a" Authorisation.pp_authorisation auth) ;
-       let idx = find_idx r id in
+       let idx, _ = find_idx r id in
        let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "modified authorisation and added resource to your index.")
@@ -374,11 +373,11 @@ let release _ o remove p =
        | None -> p, `All
        | Some n -> n, `Single p
      in
-     let auth = find_auth r pn in
+     let auth, _ = find_auth r pn in
      let r = load_ids r auth.Authorisation.authorised in
      if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
-     let rel = find_rel r pn in
+     let rel, _ = find_rel r pn in
      let f m t = if remove then Releases.remove t m else Releases.add t m in
      let releases =
        match pv with
@@ -386,7 +385,7 @@ let release _ o remove p =
        | `Single p -> S.singleton p
      in
      let rel' = S.fold f releases rel in
-     let idx = find_idx r id in
+     let idx, _ = find_idx r id in
      let idx' =
        if not (Releases.equal rel rel') then
          let rel, overflow = Releases.prep rel' in
@@ -439,7 +438,7 @@ let team _ o remove members tid =
          Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
        Conex_repository.write_team r team ;
        Logs.info (fun m -> m "wrote %a" Team.pp_team team) ;
-       let idx = find_idx r id in
+       let idx, _ = find_idx r id in
        let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "modified team and added resource to your index.")
