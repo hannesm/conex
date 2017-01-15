@@ -120,9 +120,9 @@ let verify_index repo idx =
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
-  | `Signed id -> Format.fprintf ppf "id %s" id
-  | `Both (id, js) -> Format.fprintf ppf "id %s and quorum %s" id (String.concat ", " (S.elements js))
-  | `Quorum js -> Format.fprintf ppf "quorum %s" (String.concat ", " (S.elements js))
+  | `Signed id -> Format.fprintf ppf "ok by id %s" id
+  | `Both (id, js) -> Format.fprintf ppf "ok by id %s and quorum %s" id (String.concat ", " (S.elements js))
+  | `Quorum js -> Format.fprintf ppf "ok by quorum %s" (String.concat ", " (S.elements js))
 (*BISECT-IGNORE-END*)
 
 type base_error = [
@@ -136,12 +136,12 @@ let pp_cs ppf (a, b) =
   Format.fprintf ppf "have %a want %a@ " Checksum.pp_checksum a Checksum.pp_checksum b
 
 let pp_error ppf = function
-  | `InvalidName (w, h) -> Format.fprintf ppf "invalid name, looking for %a but got %a" pp_name w pp_name h
-  | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource %a, looking for %a but got %a" pp_name n pp_resource w pp_resource h
-  | `NotSigned (n, r, js) -> Format.fprintf ppf "missing signature on %a, a %a, quorum not reached@ (valid %a)" pp_name n pp_resource r (pp_list pp_id) (S.elements js)
-  | `InsufficientQuorum (name, goods) -> Format.fprintf ppf "quorum for %a not reached (valid: %a)" pp_name name (pp_list pp_id) (S.elements goods)
-  | `MissingSignature id -> Format.fprintf ppf "missing self-signature on public key %a" pp_id id
-  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "the package name in the authorisation %a does not match the one in releases %a" pp_name a pp_name r
+  | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
+  | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_resource w pp_resource h
+  | `NotSigned (n, r, _) -> Format.fprintf ppf "unsigned %a %a" pp_resource r pp_name n
+  | `InsufficientQuorum (name, r, goods) -> Format.fprintf ppf "unsigned %a %a (quorum not reached: %a)" pp_resource r pp_name name (pp_list pp_id) (S.elements goods)
+  | `MissingSignature id -> Format.fprintf ppf "publickey %a: missing self-signature" pp_id id
+  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "package name in authorisation of %a is different from releases %a" pp_name a pp_name r
   | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
   | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
   | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
@@ -189,12 +189,12 @@ let verify_key repo key =
   | `Both b -> Ok (add_trusted_key repo key, `Both b)
   | `Quorum js when key.Publickey.key = None -> Ok (add_trusted_key repo key, `Quorum js)
   | `Quorum _ -> Error (`MissingSignature id)
-  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, js))
+  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `PublicKey, js))
 
 let verify_team repo team =
   let id = team.Team.name in
   match verify_resource repo S.empty id `Team (Conex_data.encode (Conex_data_persistency.team_to_t team)) with
-  | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
+  | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (add_team repo team, `Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
@@ -204,7 +204,7 @@ let verify_team repo team =
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
   match verify_resource repo S.empty name `Authorisation (Conex_data.encode (Conex_data_persistency.authorisation_to_t auth)) with
-  | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, js))
+  | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (`Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)

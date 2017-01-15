@@ -20,7 +20,7 @@ val apply : Conex_repository.t -> diff -> Conex_repository.t
 
 type err = [ verification_error
            | Conex_repository.base_error
-           | `InsufficientQuorum of name * S.t
+           | `InsufficientQuorum of name * resource * S.t
            | `InvalidReleases of name * S.t * S.t
            | `AuthRelMismatch of name * name
            | `NotInReleases of name * S.t

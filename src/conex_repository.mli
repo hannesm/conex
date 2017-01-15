@@ -37,7 +37,7 @@ type base_error = [
 
 val pp_error : Format.formatter ->
   [< base_error
-  | `InsufficientQuorum of name * S.t
+  | `InsufficientQuorum of name * resource * S.t
   | `MissingSignature of identifier
   | `AuthRelMismatch of name * name
   | `InvalidReleases of name * S.t * S.t
@@ -49,15 +49,15 @@ val pp_error : Format.formatter ->
 
 val verify_key : t -> Publickey.t ->
   (t * [ `Quorum of S.t | `Both of identifier * S.t ],
-   [> base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]) result
+   [> base_error | `InsufficientQuorum of name * resource * S.t | `MissingSignature of identifier ]) result
 
 val verify_team : t -> Team.t ->
   (t * [ `Quorum of S.t ],
-   [> base_error | `InsufficientQuorum of name * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * resource * S.t ]) result
 
 val verify_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
-   [> base_error | `InsufficientQuorum of name * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * resource * S.t ]) result
 
 val verify_releases : t -> Authorisation.t -> Releases.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],

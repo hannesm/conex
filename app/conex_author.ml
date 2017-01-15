@@ -27,40 +27,23 @@ let msg_to_cmdliner = function
   --> show changes (using git diff!?), prompt (unless -y)
   --> instruct git add&commit && open PR
 
-  TODO: reevaluate/rethink when to load ids/items, and when to verify them
-   (no need to verify fresh things)
-   - what to trust (throw away unsigned index&key combinations?):
-user
- conex_author.native: [WARNING] index XXX was not found in repository
- conex_author.native: [INFO] fresh index #0 XXX resources empty queued empty signatures empty
- conex_author.native: [WARNING] no signature found on index XXX
- conex_author.native: [WARNING] missing signature on XXX, a publickey, quorum not reached (valid empty)
-
-package
- conex_author.native: [WARNING] quorum for YYY not reached (valid: empty)
- conex_author.native: [WARNING] releases YYY was not found in repository
- conex_author.native: [INFO] fresh releases #0 YYY empty
- conex_author.native: [WARNING] missing signature on YYY, a releases, quorum not reached (valid empty)
- conex_author.native: [WARNING] releases file claims empty, directories on disk [YYY.0.1.0; YYY.0.1.1; YYY.0.1.2; YYY.0.1.3]
- conex_author.native: [WARNING] checksum YYY.0.1.0 was not found in repository
- conex_author.native: [WARNING] checksum YYY.0.1.1 was not found in repository
- conex_author.native: [WARNING] checksum YYY.0.1.2 was not found in repository
- conex_author.native: [WARNING] checksum YYY.0.1.3 was not found in repository
-
-team
- conex_author.native: [INFO] member of team #0 TTT [AAA; BBB; CCC; XXX]
- conex_author.native: [WARNING] index AAA was not found in repository
- conex_author.native: [INFO] fresh index #0 AAA resources empty queued empty signatures empty
- conex_author.native: [WARNING] no signature found on index AAA
- conex_author.native: [WARNING] missing signature on aaa, a publickey, quorum not reached (valid empty)
- ... for each team member (if the team is authorised somewhere)
-
-   - atm load_id: read_id, add to trusted (r'), read idx, verify idx (on failure return r'), verify_key (on failure r' + idx)
-                     if team, add_team, load members, verify team, on error return repo with added team
-    --> if key did not verify, retract index?  if index did not verify, retract key?
-
+  TODO:
+   - command listing all violations (which some might record into their index)
    - where to get the quorum from?
-   - verify after creation + adding to your idx? (release does not even verify authorisation&releases&checksum&idx; team does not verify team&idx; auth does not verify auth&idx)
+
+  ASSUMPTIONS
+  - the local repo is a good one! (id is the one where we also trust queued)
+  - the local janitors team is trusted (no external TA)
+  - only status does some verification, other commands ignore validity (but may warn)
+
+  STATUS
+  - loads id (key, add key, idx, verify idx -> add resources, verify key) + queued
+  - loads janitors (same as above)
+  - iterates over packages (either authorised (+team/--noteam) for, or given on command line)
+  -- read auth, load authorised ids (as above), verify auth
+  -- read releases, verify releases
+  -- read checksums, verify checksum (includes computing it)
+
 *)
 
 let setup_log style_renderer level =
@@ -154,13 +137,12 @@ let rec load_id id r =
         | `Key k ->
           Logs.debug (fun m -> m "read %a" Publickey.pp_publickey k);
           let r' = Conex_repository.add_trusted_key r k in
-          Logs.debug (fun m -> m "added as trusted key!") ;
           let idx = find_idx r id in
           let r =
             R.ignore_error
               ~use:(fun e -> w pp_verification_error e ; r')
               (Conex_repository.verify_index r' idx >>| fun (r, warn, id) ->
-               Logs.info (fun m -> m "verified index %s" id) ;
+               Logs.info (fun m -> m "verified index and added resources %s" id) ;
                List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
                r)
           in
@@ -230,12 +212,10 @@ let load_self_queued r id =
            r))
       r idx.Index.queued
 
-let status_all r o no_team =
-  self r o >>= fun id ->
+let status_all r id no_team =
   R.error_to_msg ~pp_error:Conex_repository.pp_r_err
     (Conex_repository.read_id r id) >>| function
   | `Key _ ->
-    let r = load_self_queued r id in
     let me =
       s_of_list
         (if no_team then [id]
@@ -260,10 +240,8 @@ let status_all r o no_team =
       (show_package (fun a -> S.mem t.Team.name a))
       (Conex_repository.items r) r
 
-let status_single r o name =
+let status_single r name =
   Logs.info (fun m -> m "information on package %s" name);
-  self r o >>| fun id ->
-  let r = load_self_queued r id in
   match Conex_opam_layout.authorisation_of_item name with
   | None -> let _ = show_package (fun _ -> true) name r in ()
   | Some n ->
@@ -277,11 +255,22 @@ let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
   msg_to_cmdliner
-    (let r, _ = load_id "janitors" r in
+    (self r o >>= fun id ->
+     let r = load_self_queued r id in
+     let r, _ = load_id "janitors" r in
      if name = "" then
-       status_all r o no_rec >>| fun _r -> ()
+       status_all r id no_rec >>| fun _r -> ()
      else
-       status_single r o name)
+       Ok (status_single r name))
+
+let add_r idx name typ data =
+  let counter = Index.next_id idx in
+  let encoded = Conex_data.encode data in
+  let size = Uint.of_int (String.length encoded) in
+  let digest = Conex_nocrypto.digest encoded in
+  let res = Index.r counter name size typ digest in
+  Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
+  Index.add_resource idx res
 
 let initialise r id email =
   (match Conex_repository.read_id r id with
@@ -307,6 +296,7 @@ let initialise r id email =
     Conex_repository.write_key r pub ;
     Logs.info (fun m -> m "wrote public key %a" Publickey.pp_publickey pub) ;
     let idx = find_idx r id in
+    let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t pub) in
     str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
     Conex_repository.write_index r idx ;
     Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
@@ -348,21 +338,12 @@ let reset _ o =
   msg_to_cmdliner
     (self r o >>| fun id ->
      let idx = find_idx r id in
-     List.iter (fun r ->
-         Logs.app (fun m -> m "dropping %a" Index.pp_resource r))
+     List.iter
+       (fun r -> Logs.app (fun m -> m "dropping %a" Index.pp_resource r))
        idx.Index.queued ;
      let idx = Index.reset idx in
      Conex_repository.write_index r idx ;
      Logs.app (fun m -> m "wrote index %s to disk" id))
-
-let add_r idx name typ data =
-  let counter = Index.next_id idx in
-  let encoded = Conex_data.encode data in
-  let size = Uint.of_int (String.length encoded) in
-  let digest = Conex_nocrypto.digest encoded in
-  let res = Index.r counter name size typ digest in
-  Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
-  Index.add_resource idx res
 
 let auth _ o remove members p =
   let r = o.Conex_opts.repo in

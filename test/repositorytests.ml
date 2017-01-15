@@ -650,13 +650,13 @@ let k_ok =
 
 let k_err =
   let module M = struct
-    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * S.t | `MissingSignature of identifier ]
+    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * resource * S.t | `MissingSignature of identifier ]
     let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
-      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
+      | `InsufficientQuorum (id, r, q), `InsufficientQuorum (id', r', q') -> id_equal id id' && S.equal q q' && resource_equal r r'
       | `MissingSignature id, `MissingSignature id' -> id_equal id id'
       | _ -> false
   end in
@@ -712,7 +712,7 @@ let key_good () =
     (Conex_repository.verify_key r' pub) ;
   let r'' = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "publickey missing quorum"
-    (Error (`InsufficientQuorum (id, S.empty)))
+    (Error (`InsufficientQuorum (id, `PublicKey, S.empty)))
     (Conex_repository.verify_key r'' pub) ;
   let r''' = add_rs r' id resources in
   Alcotest.check (result k_ok k_err) "publickey is fine"
@@ -730,7 +730,7 @@ let key_good_quorum () =
   in
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 0"
-    (Error (`InsufficientQuorum (id, S.empty)))
+    (Error (`InsufficientQuorum (id, `PublicKey, S.empty)))
     (Conex_repository.verify_key r pub) ;
   let jidx r jid =
     let jpub, _ = gen_pub jid in
@@ -743,11 +743,11 @@ let key_good_quorum () =
   in
   let r = jidx r "jana" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 1"
-    (Error (`InsufficientQuorum (id, S.singleton "jana")))
+    (Error (`InsufficientQuorum (id, `PublicKey, S.singleton "jana")))
     (Conex_repository.verify_key r pub) ;
   let r = jidx r "janb" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 2"
-    (Error (`InsufficientQuorum (id, S.add "janb" (S.singleton "jana"))))
+    (Error (`InsufficientQuorum (id, `PublicKey, S.add "janb" (S.singleton "jana"))))
     (Conex_repository.verify_key r pub) ;
   let r = jidx r "janc" in
   Alcotest.check (result k_ok k_err) "publickey is fine"
@@ -773,7 +773,7 @@ let no_janitor () =
   let r = add_rs r jid resources in
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "missing quorum"
-    (Error (`InsufficientQuorum (id, S.empty)))
+    (Error (`InsufficientQuorum (id, `PublicKey, S.empty)))
     (Conex_repository.verify_key r pub) ;
   Alcotest.check (result k_ok k_err) "missing quorum for empty"
     (Error (`NotSigned (id', `PublicKey, S.empty)))
@@ -840,11 +840,11 @@ let t_ok =
 
 let a_err =
   let module M = struct
-    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * S.t ]
+    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * resource * S.t ]
     let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
-      | `InsufficientQuorum (id, q), `InsufficientQuorum (id', q') -> id_equal id id' && S.equal q q'
+      | `InsufficientQuorum (id, r, q), `InsufficientQuorum (id', r', q') -> id_equal id id' && S.equal q q' && resource_equal r r'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
       | _ -> false
@@ -857,7 +857,7 @@ let team () =
   let pname = "foop" in
   let team = Team.team pname in
   Alcotest.check (result t_ok a_err) "team missing quorum"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Team, S.empty)))
     (Conex_repository.verify_team r team) ;
   let resources =
     let s, d = res (team_to_t team) in
@@ -879,7 +879,7 @@ let team () =
   let r = Conex_repository.repository ~quorum:2 p in
   let r = j_sign r "janitor" in
   Alcotest.check (result t_ok a_err) "team missing quorum of 2"
-    (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
+    (Error (`InsufficientQuorum (pname, `Team, S.singleton "janitor")))
     (Conex_repository.verify_team r team) ;
   let r = j_sign r "janitor2" in
   Alcotest.check (result t_ok a_err) "team quorum of 2 good"
@@ -901,7 +901,7 @@ let team_self_signed () =
   in
   let r = add_rs r id resources in
   Alcotest.check (result t_ok a_err) "team missing quorum"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Team, S.empty)))
     (Conex_repository.verify_team r team) ;
   let jid = "janitor" in
   let jpub, _jpriv = gen_pub jid in
@@ -966,7 +966,7 @@ let team_dyn () =
     (Conex_repository.verify_team r' team) ;
   let team = Team.add team "foobar" in
   Alcotest.check (result t_ok a_err) "team not properly signed"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Team, S.empty)))
     (Conex_repository.verify_team r' team) ;
   let resources =
     let s, d = res (team_to_t team) in
@@ -986,7 +986,7 @@ let team_dyn () =
     (Conex_repository.verify_team r' team) ;
   let team = Team.remove team "foobar" in
   Alcotest.check (result t_ok a_err) "team not properly signed (rm'ed, counter incr)"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Team, S.empty)))
     (Conex_repository.verify_team r' team)
 
 let team_repo_tests = [
@@ -1014,7 +1014,7 @@ let auth () =
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
   Alcotest.check (result a_ok a_err) "auth missing quorum"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Authorisation, S.empty)))
     (Conex_repository.verify_authorisation r auth) ;
   let resources =
     let s, d = res (authorisation_to_t auth) in
@@ -1036,7 +1036,7 @@ let auth () =
   let r = Conex_repository.repository ~quorum:2 p in
   let r = j_sign r "janitor" in
   Alcotest.check (result a_ok a_err) "auth missing quorum of 2"
-    (Error (`InsufficientQuorum (pname, S.singleton "janitor")))
+    (Error (`InsufficientQuorum (pname, `Authorisation, S.singleton "janitor")))
     (Conex_repository.verify_authorisation r auth) ;
   let r = j_sign r "janitor2" in
   Alcotest.check (result a_ok a_err) "auth quorum of 2 good"
@@ -1058,7 +1058,7 @@ let auth_self_signed () =
   in
   let r = add_rs r id resources in
   Alcotest.check (result a_ok a_err) "auth missing quorum"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Authorisation, S.empty)))
     (Conex_repository.verify_authorisation r auth) ;
   let jid = "janitor" in
   let jpub, _jpriv = gen_pub jid in
@@ -1123,7 +1123,7 @@ let auth_dyn () =
     (Conex_repository.verify_authorisation r' auth) ;
   let auth = Authorisation.add auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation not properly signed"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Authorisation, S.empty)))
     (Conex_repository.verify_authorisation r' auth) ;
   let resources =
     let s, d = res (authorisation_to_t auth) in
@@ -1143,7 +1143,7 @@ let auth_dyn () =
     (Conex_repository.verify_authorisation r' auth) ;
   let auth = Authorisation.remove auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation not properly signed (rm'ed, counter incr)"
-    (Error (`InsufficientQuorum (pname, S.empty)))
+    (Error (`InsufficientQuorum (pname, `Authorisation, S.empty)))
     (Conex_repository.verify_authorisation r' auth)
 
 

@@ -179,12 +179,12 @@ type verification_error = [
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_verification_error ppf = function
-  | `InvalidBase64Encoding id -> Format.fprintf ppf "%a signature is not in valid base64 encoding" pp_id id
-  | `InvalidSignature id -> Format.fprintf ppf "%a signature is not valid data" pp_id id
-  | `InvalidPublicKey id -> Format.fprintf ppf "keystore contained no valid public key for %s" id
-  | `InvalidIdentifier id -> Format.fprintf ppf "identifier %s was not found in keystore" id
-  | `NotAuthorised (auth, sign) -> Format.fprintf ppf "only %a is authorised to sign this index, but it is signed by %a" pp_id auth pp_id sign
-  | `NoSignature s -> Format.fprintf ppf "no signature found on index %a" pp_id s
+  | `InvalidBase64Encoding id -> Format.fprintf ppf "signature %a: no valid base64 encoding" pp_id id
+  | `InvalidSignature id -> Format.fprintf ppf "signature %a invalid" pp_id id
+  | `InvalidPublicKey id -> Format.fprintf ppf "id %s: no valid public key" id
+  | `InvalidIdentifier id -> Format.fprintf ppf "id %s was not found in keystore" id
+  | `NotAuthorised (auth, sign) -> Format.fprintf ppf "index: %a is authorised, but it is signed by %a" pp_id auth pp_id sign
+  | `NoSignature s -> Format.fprintf ppf "index %a: no signature found" pp_id s
 (*BISECT-IGNORE-END*)
 
 type base_v_err = [ `InvalidBase64 | `InvalidPubKey | `InvalidSig ]
