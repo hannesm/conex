@@ -158,11 +158,17 @@ let auth_rel r a =
      Logs.info (fun m -> m "releases %s %a" id Conex_repository.pp_ok ok)) ;
   rel
 
-let show_single showit item r =
+let show_package showit item r =
   let a = find_auth r item in
   if showit a.Authorisation.authorised then begin
     let releases = auth_rel r a in
-    S.iter (show_release r a releases) releases.Releases.releases ;
+    let rs_file = releases.Releases.releases in
+    let rs_disk = Conex_repository.subitems r item in
+    if not (S.equal rs_file rs_disk) then
+      Logs.warn (fun m -> m "releases file claims %a,@ directories on disk %a"
+                    (pp_list pp_id) (S.elements rs_file)
+                    (pp_list pp_id) (S.elements rs_disk)) ;
+    S.iter (show_release r a releases) (S.union rs_file rs_disk) ;
     r
   end else
     r
@@ -193,36 +199,34 @@ let status_all r o no_team =
                r))
           r idx.Index.queued
     in
-    let me = s_of_list
-        (if no_team then
-           [id]
+    let me =
+      s_of_list
+        (if no_team then [id]
          else
            let teams =
              S.fold (fun id' teams ->
                  R.ignore_error
                    ~use:(fun e -> w Conex_repository.pp_r_err e ; teams)
                    (Conex_repository.read_id r id' >>| function
-                     | `Team t when S.mem id t.Team.members ->
-                       Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
-                     | `Team _ -> teams
-                     | `Key _ -> teams))
+                     | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
+                     | `Team _ | `Key _ -> teams))
                (Conex_repository.ids r) []
            in
            id :: List.map (fun t -> t.Team.name) teams)
     in
     S.fold
-      (show_single (fun a -> not (S.is_empty (S.inter me a))))
+      (show_package (fun a -> not (S.is_empty (S.inter me a))))
       (Conex_repository.items r) r
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t);
     S.fold
-      (show_single (fun a -> S.mem t.Team.name a))
+      (show_package (fun a -> S.mem t.Team.name a))
       (Conex_repository.items r) r
 
 let status_single r _o name =
   Logs.info (fun m -> m "information on package %s" name);
   match Conex_opam_layout.authorisation_of_item name with
-  | None -> let _ = show_single (fun _ -> true) name r in ()
+  | None -> let _ = show_package (fun _ -> true) name r in ()
   | Some n ->
     let a = find_auth r n in
     let rel = auth_rel r a in
