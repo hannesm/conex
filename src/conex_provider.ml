@@ -54,7 +54,7 @@ let fs_provider basedir =
 
 let fs_ro_provider basedir =
   let fs = fs_provider basedir
-  and write _ = invalid_arg "read only file system provider"
+  and write _ _ = ()
   and description = "Read only file system provider"
   in
   { fs with description ; write }

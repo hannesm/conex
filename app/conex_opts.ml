@@ -1,5 +1,4 @@
 type t = {
-  dry : bool ;
   repo : Conex_repository.t ;
   id : string option ;
   trust_anchors : string list ;
@@ -14,7 +13,7 @@ let t dry repo id trust_anchors quorum =
     let provider = if dry then Conex_provider.fs_ro_provider repo else Conex_provider.fs_provider repo in
     Conex_repository.repository ?quorum provider
   in
-  { dry ; repo ; id ; trust_anchors }
+  { repo ; id ; trust_anchors }
 
 let id_c =
   let parse s =
