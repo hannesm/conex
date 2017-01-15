@@ -34,7 +34,7 @@ let setup_log style_renderer level =
   Logs.set_reporter (Logs_fmt.reporter ())
 
 let help _ _copts man_format cmds = function
-  | None -> `Help (`Pager, None) (* help about the program. *)
+  | None -> `Help (`Pager, None)
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
 
@@ -111,9 +111,43 @@ let show_release r a rel item =
        (Conex_repository.verify_checksum r a rel cs >>| fun ok ->
         Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
 
-let show_single r showit item =
+let rec load_id id r =
+  if Conex_repository.find_key r id = None && Conex_repository.find_team r id = None then
+    R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r)
+      (Conex_repository.read_id r id >>| function
+        | `Key k ->
+          Logs.debug (fun m -> m "read %a" Publickey.pp_publickey k);
+          let r' = Conex_repository.add_trusted_key r k in
+          Logs.debug (fun m -> m "added as trusted key!") ;
+          let idx = find_idx r id in
+          let r =
+            R.ignore_error
+              ~use:(fun e -> w pp_verification_error e ; r')
+              (Conex_repository.verify_index r' idx >>| fun (r, warn, id) ->
+               Logs.info (fun m -> m "verified index %s" id) ;
+               List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
+               r)
+          in
+          R.ignore_error ~use:(fun e -> w Conex_repository.pp_error e ; r)
+            (Conex_repository.verify_key r k >>| fun (r, ok) ->
+             Logs.info (fun m -> m "verified key %s %a" id Conex_repository.pp_ok ok) ;
+             r)
+        | `Team t ->
+          Logs.debug (fun m -> m "read %a" Team.pp_team t);
+          let r = Conex_repository.add_team r t in
+          let r = S.fold load_id t.Team.members r in
+          R.ignore_error
+            ~use:(fun e -> w Conex_repository.pp_error e ; r)
+            (Conex_repository.verify_team r t >>| fun (r, ok) ->
+             Logs.info (fun m -> m "verified team %s %a" id Conex_repository.pp_ok ok) ;
+             r))
+  else
+    (Logs.debug (fun m -> m "%s already present in repository" id) ; r)
+
+let show_single showit item r =
   let a = find_auth r item in
   if showit a.Authorisation.authorised then begin
+    let r = S.fold load_id a.Authorisation.authorised r in
     warn_e Conex_repository.pp_error
       (Conex_repository.verify_authorisation r a >>| fun ok ->
        Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
@@ -124,8 +158,10 @@ let show_single r showit item =
          Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)) ;
       rel
     in
-    S.iter (show_release r a releases) releases.Releases.releases
-  end
+    S.iter (show_release r a releases) releases.Releases.releases ;
+    r
+  end else
+    r
 
 let self r o =
   R.error_to_msg ~pp_error:Conex_private.pp_err
@@ -139,11 +175,17 @@ let status_all r o no_team =
   self r o >>= fun id ->
   R.error_to_msg ~pp_error:Conex_repository.pp_r_err
     (Conex_repository.read_id r id) >>| function
-  | `Key k ->
-    Logs.info (fun m -> m "%a" Publickey.pp_publickey k);
+  | `Key _ ->
+    let r = load_id id r in
     let idx = find_idx r id in
-    Logs.info (fun m -> m "%a" Index.pp_index idx);
-    (* ADD queued to valid_resources! MARK key trusted! *)
+    let r = List.fold_left (fun r res ->
+        R.ignore_error
+          ~use:(fun e -> Logs.warn (fun m -> m "failed to add queued %a %s" Index.pp_resource res e) ; r)
+          (Conex_repository.add_valid_resource r id res >>| fun r ->
+           Logs.info (fun m -> m "added own queued %a" Index.pp_resource res);
+           r))
+        r idx.Index.queued
+    in
     let me = s_of_list
         (if no_team then
            [id]
@@ -161,21 +203,22 @@ let status_all r o no_team =
            in
            id :: List.map (fun t -> t.Team.name) teams)
     in
-    S.iter
-      (show_single r (fun a -> not (S.is_empty (S.inter me a))))
-      (Conex_repository.items r)
+    S.fold
+      (show_single (fun a -> not (S.is_empty (S.inter me a))))
+      (Conex_repository.items r) r
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t);
-    S.iter (show_single r (fun a -> S.mem t.Team.name a))
-      (Conex_repository.items r)
+    S.fold
+      (show_single (fun a -> S.mem t.Team.name a))
+      (Conex_repository.items r) r
 
 let status_single r _o name =
   Logs.info (fun m -> m "information on package %s" name);
   match Conex_opam_layout.authorisation_of_item name with
-  | None -> show_single r (fun _ -> true) name
+  | None -> let _ = show_single (fun _ -> true) name r in ()
   | Some n ->
     let a = find_auth r n in
-    (* need to load keys ++ teams *)
+    let r = S.fold load_id a.Authorisation.authorised r in
     warn_e Conex_repository.pp_error
       (Conex_repository.verify_authorisation r a >>| fun ok ->
        Logs.info (fun m -> m "authorisation %s %a" n Conex_repository.pp_ok ok)) ;
@@ -191,8 +234,9 @@ let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
   msg_to_cmdliner
-    (if name = "" then
-       status_all r o no_rec
+    (let r = load_id "janitors" r in
+     if name = "" then
+       status_all r o no_rec >>| fun _r -> ()
      else
        Ok (status_single r o name))
 
@@ -307,8 +351,8 @@ let release _ o remove p =
        | Some n -> n, `Single p
      in
      let auth = find_auth r pn in
-     (* XXX this check is wrong, we need a is_authorised function taking teams into account *)
-     if not (S.mem id auth.Authorisation.authorised) then
+     let r = S.fold load_id auth.Authorisation.authorised r in
+     if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
      let rel = find_rel r pn in
      let f m t = if remove then Releases.remove t m else Releases.add t m in

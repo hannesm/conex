@@ -227,10 +227,11 @@ let team_r () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:10 p in
   Alcotest.(check int "quorum is correct" 10 (Conex_repository.quorum r)) ;
-  Alcotest.check sset "team foo is empty" S.empty (Conex_repository.team r "foo") ;
+  Alcotest.(check (option sset) "team foo is empty" None (Conex_repository.find_team r "foo")) ;
   let t = Team.team ~members:(S.singleton "bar") "foo" in
   let r = Conex_repository.add_team r t in
-  Alcotest.check sset "team foo has one member" (S.singleton "bar") (Conex_repository.team r "foo")
+  Alcotest.(check (option sset) "team foo has one member"
+              (Some (S.singleton "bar")) (Conex_repository.find_team r "foo"))
 
 let checks_r () =
   let open Provider in
@@ -735,7 +736,7 @@ let key_good_quorum () =
     let jpub, _ = gen_pub jid in
     let r = Conex_repository.add_trusted_key r jpub in
     let r =
-      let mems = Conex_repository.team r "janitors" in
+      let mems = match Conex_repository.find_team r "janitors" with None -> S.empty | Some s -> s in
       Conex_repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
     in
     add_rs r jid resources
@@ -866,7 +867,7 @@ let team () =
     let jpub, _jpriv = gen_pub jid in
     let r = Conex_repository.add_trusted_key r jpub in
     let r =
-      let mems = Conex_repository.team r "janitors" in
+      let mems = match Conex_repository.find_team r "janitors" with None -> S.empty | Some s -> s in
       Conex_repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
     in
     add_rs r jid resources
@@ -1023,7 +1024,7 @@ let auth () =
     let jpub, _jpriv = gen_pub jid in
     let r = Conex_repository.add_trusted_key r jpub in
     let r =
-      let mems = Conex_repository.team r "janitors" in
+      let mems = match Conex_repository.find_team r "janitors" with None -> S.empty | Some s -> s in
       Conex_repository.add_team r (Team.team ~members:(S.add jid mems) "janitors")
     in
     add_rs r jid resources

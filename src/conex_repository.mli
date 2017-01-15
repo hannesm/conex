@@ -10,9 +10,13 @@ val repository : ?store:keystore -> ?quorum:int -> Provider.t -> t
 val provider : t -> Provider.t
 val quorum : t -> int
 
-val team : t -> identifier -> S.t
+val find_team : t -> identifier -> S.t option
 
 val find_id : t -> Publickey.email -> identifier option
+
+val find_key : t -> identifier -> Publickey.t option
+
+val authorised : t -> Authorisation.t -> identifier -> bool
 
 val valid : t -> digest -> (name * Uint.t * resource * S.t) option
 

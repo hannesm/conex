@@ -28,7 +28,8 @@ let verify_complete_repository directory trust =
   (* b) load all other identities [can also be teams!] *)
   let r =
     S.fold (load_id out debug maybe_exit)
-      (S.diff (Conex_repository.ids r) (Conex_repository.team r "janitors")) r
+      (S.diff (Conex_repository.ids r)
+         (match Conex_repository.find_team r "janitors" with None -> S.empty | Some s -> s)) r
   in
   (* c) for each package: read & verify authorisation, releases, checksums *)
   S.iter (fun name ->

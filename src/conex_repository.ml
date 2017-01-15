@@ -24,9 +24,7 @@ let quorum r = r.quorum
 
 let provider r = r.data
 
-let team r id = try M.find id r.teams with Not_found -> S.empty
-
-let janitors r = team r "janitors"
+let find_team r id = try Some (M.find id r.teams) with Not_found -> None
 
 let find_id r email =
   M.fold (fun k v acc ->
@@ -41,8 +39,15 @@ let find_id r email =
       | None, Some x -> Some x)
     r.store None
 
+let find_key t id = try Some (M.find id t.store) with Not_found -> None
+
 let valid r digest =
   try Some (M.find digest r.valid) with Not_found -> None
+
+let authorised r a id =
+  let set = a.Authorisation.authorised in
+  let is_member tid = S.mem id (match find_team r tid with None -> S.empty | Some s -> s) in
+  S.mem id set || (S.exists is_member set)
 
 let add_valid_resource repo id res =
   let open Index in
@@ -161,7 +166,8 @@ let verify_resource repo owners name resource data =
     else
       (name, Uint.of_int (String.length data), resource, S.empty)
   in
-  let js = S.filter (fun j -> S.mem j (janitors repo)) ids in
+  let janitors = match find_team repo "janitors" with None -> S.empty | Some s -> s in
+  let js = S.filter (fun j -> S.mem j janitors) ids in
   let owners = expand_owner repo owners in
   let id a = S.choose (S.filter (fun a -> S.mem a ids) a) in
   match
