@@ -123,12 +123,20 @@ let find_cs r name =
      cs)
 
 let show_release r a rel item =
-  warn_e Conex_repository.pp_r_err
-    (Conex_repository.read_checksum r item >>| fun cs ->
-     Logs.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
-     warn_e Conex_repository.pp_error
-       (Conex_repository.verify_checksum r a rel cs >>| fun ok ->
-        Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
+  let prov = Conex_repository.provider r
+  and dir = Conex_opam_layout.checksum_dir item
+  in
+  match prov.Provider.file_type dir with
+  | Error `NotFound -> Logs.warn (fun m -> m "directory %s not found in repository" (path_to_string dir))
+  | Error (`UnknownFileType s) -> Logs.warn (fun m -> m "unknown filetype of %s: %s" item s)
+  | Ok File -> Logs.warn (fun m -> m "expected directory %s, but found a file" item)
+  | Ok Directory ->
+    warn_e Conex_repository.pp_r_err
+      (Conex_repository.read_checksum r item >>| fun cs ->
+       Logs.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
+       warn_e Conex_repository.pp_error
+         (Conex_repository.verify_checksum r a rel cs >>| fun ok ->
+          Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
 
 let rec load_id id r =
   if Conex_repository.find_key r id = None &&
@@ -169,9 +177,9 @@ let rec load_id id r =
 let load_ids r ids = S.fold (fun id r -> fst (load_id id r)) ids r
 
 let show_package id showit item r =
-  let pn, pv = match Conex_opam_layout.authorisation_of_item item with
-    | None -> item, `All
-    | Some pn -> pn, `Single item
+  let pn, set = match Conex_opam_layout.authorisation_of_item item with
+    | None -> item, (fun r -> r.Releases.releases)
+    | Some pn -> pn, (fun _ -> S.singleton item)
   in
   let a, fresh = find_auth r pn in
   if showit a.Authorisation.authorised then begin
@@ -187,14 +195,8 @@ let show_package id showit item r =
       warn_e Conex_repository.pp_error
         (Conex_repository.verify_releases r a rel >>| fun ok ->
          Logs.info (fun m -> m "releases %s %a" pn Conex_repository.pp_ok ok)) ;
-    match pv with
-    | `All ->
-      S.iter (show_release r a rel) rel.Releases.releases ; r
-    | `Single version ->
-      if not (S.mem item rel.Releases.releases) then
-        Logs.warn (fun m -> m "package %s not part of releases file" item) ;
-      show_release r a rel version ;
-      r
+    S.iter (show_release r a rel) (set rel) ;
+    r
   end else
     r
 
@@ -371,9 +373,9 @@ let release _ o remove p =
   let r = o.Conex_opts.repo in
   msg_to_cmdliner
     (self r o >>= fun id ->
-     let pn, pv = match Conex_opam_layout.authorisation_of_item p with
-       | None -> p, `All
-       | Some n -> n, `Single p
+     let pn, releases = match Conex_opam_layout.authorisation_of_item p with
+       | None -> p, Conex_repository.subitems r p
+       | Some n -> n, S.singleton p
      in
      let auth, _ = find_auth r pn in
      let r = load_ids r auth.Authorisation.authorised in
@@ -381,11 +383,6 @@ let release _ o remove p =
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
      let rel, _ = find_rel r pn in
      let f m t = if remove then Releases.remove t m else Releases.add t m in
-     let releases =
-       match pv with
-       | `All -> Conex_repository.subitems r pn
-       | `Single p -> S.singleton p
-     in
      let rel' = S.fold f releases rel in
      let idx, _ = find_idx r id in
      let idx' =

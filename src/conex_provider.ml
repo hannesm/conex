@@ -21,10 +21,14 @@ let fs_provider basedir =
     mkdir [basedir] path
   in
   let file_type path =
-    Conex_utils.option
-      (Error `NotFound)
-      (fun x -> Ok x)
-      (Conex_persistency.file_type (get path))
+    let p = get path in
+    if Conex_persistency.exists p then
+      Conex_utils.option
+        (Error `NotFound)
+        (fun x -> Ok x)
+        (Conex_persistency.file_type p)
+    else
+      Error `NotFound
   and read path =
     let fn = get path in
     if Conex_persistency.exists fn then
