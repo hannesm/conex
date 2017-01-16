@@ -141,6 +141,8 @@ module Index : sig
 
   val r : Uint.t -> string -> Uint.t -> resource -> digest -> r
 
+  val r_equal : r -> r -> bool
+
   val pp_resource : Format.formatter -> r -> unit
 
   type t = private {

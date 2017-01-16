@@ -71,8 +71,15 @@ let add_trusted_key repo key =
   let store = M.add key.Publickey.name key repo.store in
   { repo with store }
 
+let remove_key repo id =
+  let store = M.remove id repo.store in
+  { repo with store }
+
 let add_team repo team =
   { repo with teams = M.add team.Team.name team.Team.members repo.teams }
+
+let remove_team repo id =
+  { repo with teams = M.remove id repo.teams }
 
 let verify pub data (id, ts, sigval) =
   let data = Signature.extend_data data id ts in

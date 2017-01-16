@@ -33,13 +33,13 @@ let msg_to_cmdliner = function
 
   ASSUMPTIONS
   - the local repo is a good one! (id is the one where we also trust queued)
-  - the local janitors team is trusted (no external TA)
+  - local janitors team is good (no external TA)
   - only status does some verification, other commands ignore validity (but may warn)
    -- release actually checks whether id is authorised
 
   STATUS
-  - loads id (key, add key, idx, verify idx -> add resources, verify key) + queued
-  - loads janitors (same as above)
+  - loads janitors (load key, add key, verify index, verify key (warns only, is trusted)
+  - load id (key, add key, idx, verify idx -> add resources, verify key) + queued
   - iterates over packages (either authorised (+team/--noteam) for, or given on command line)
   -- read auth, load authorised ids (as above), verify auth
   -- read releases, verify releases
@@ -209,7 +209,9 @@ let self r o =
   id
 
 let load_self_queued r id =
+  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton id) "janitors") in
   let r, idx = load_id id r in
+  let r = Conex_repository.remove_team r "janitors" in
   match idx with
   | None -> r
   | Some idx ->
@@ -258,9 +260,9 @@ let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
   msg_to_cmdliner
-    (let r, _ = load_id "janitors" r in
-     self r o >>= fun id ->
+    (self r o >>= fun id ->
      let r = load_self_queued r id in
+     let r, _ = load_id "janitors" r in
      if name = "" then
        status_all r id no_rec >>| fun _r -> ()
      else
@@ -274,6 +276,13 @@ let add_r idx name typ data =
   let res = Index.r counter name size typ digest in
   Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
   Index.add_resource idx res
+
+let r_in_idx idx name typ data =
+  let encoded = Conex_data.encode data in
+  let size = Uint.of_int (String.length encoded) in
+  let digest = Conex_nocrypto.digest encoded in
+  let res = Index.r Uint.zero name size typ digest in
+  List.exists (Index.r_equal res) (idx.Index.resources @ idx.Index.queued)
 
 let initialise r id email =
   (match Conex_repository.read_id r id with
@@ -357,16 +366,20 @@ let auth _ o remove members p =
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
      let auth' = List.fold_left f auth members in
+     let idx, _ = find_idx r id in
      if not (Authorisation.equal auth auth') then
        let auth, overflow = Authorisation.prep auth' in
        if overflow then
          Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
        Conex_repository.write_authorisation r auth ;
        Logs.info (fun m -> m "wrote %a" Authorisation.pp_authorisation auth) ;
-       let idx, _ = find_idx r id in
        let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "modified authorisation and added resource to your index.")
+     else if not (r_in_idx idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth)) then
+       let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
+       Conex_repository.write_index r idx ;
+       Logs.app (fun m -> m "added resource to your index.")
      else
        Logs.app (fun m -> m "nothing changed."))
 
@@ -393,8 +406,9 @@ let release _ o remove p =
            Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
          Conex_repository.write_releases r rel ;
          Logs.info (fun m -> m "wrote %a" Releases.pp_releases rel) ;
-         let idx = add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel) in
-         idx
+         add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
+       else if not (r_in_idx idx pn `Releases (Conex_data_persistency.releases_to_t rel')) then
+         add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
        else
          idx
      in
@@ -410,6 +424,8 @@ let release _ o remove p =
          Conex_repository.write_checksum r cs' ;
          Logs.info (fun m -> m "wrote %a" Checksum.pp_checksums cs') ;
          add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs')
+       else if not (r_in_idx idx name `Checksums (Conex_data_persistency.checksums_to_t cs)) then
+         add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs)
        else
          idx
      in
@@ -432,16 +448,20 @@ let team _ o remove members tid =
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Team.remove else Team.add in
      let team' = List.fold_left f team members in
+     let idx, _ = find_idx r id in
      if not (Team.equal team team') then
        let team, overflow = Team.prep team' in
        if overflow then
          Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
        Conex_repository.write_team r team ;
        Logs.info (fun m -> m "wrote %a" Team.pp_team team) ;
-       let idx, _ = find_idx r id in
        let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "modified team and added resource to your index.")
+     else if not (r_in_idx idx tid `Team (Conex_data_persistency.team_to_t team)) then
+       let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
+       Conex_repository.write_index r idx ;
+       Logs.app (fun m -> m "added resource to your index.")
      else
        Logs.app (fun m -> m "nothing changed."))
 

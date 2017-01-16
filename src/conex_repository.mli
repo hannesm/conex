@@ -77,8 +77,10 @@ val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
 val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
 
 val add_trusted_key : t -> Publickey.t -> t
+val remove_key : t -> identifier -> t
 
 val add_team : t -> Team.t -> t
+val remove_team : t -> identifier -> t
 
 val ids : t -> S.t
 val items : t -> S.t

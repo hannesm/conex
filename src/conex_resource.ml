@@ -253,8 +253,7 @@ module Index = struct
     { index ; rname ; size ; resource ; digest }
 
   let r_equal a b =
-    Uint.compare a.index b.index = 0 &&
-    a.rname = b.rname &&
+    name_equal a.rname b.rname &&
     Uint.compare a.size b.size = 0 &&
     resource_equal a.resource b.resource &&
     a.digest = b.digest
