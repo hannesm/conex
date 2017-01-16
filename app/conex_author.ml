@@ -258,9 +258,9 @@ let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
   msg_to_cmdliner
-    (self r o >>= fun id ->
+    (let r, _ = load_id "janitors" r in
+     self r o >>= fun id ->
      let r = load_self_queued r id in
-     let r, _ = load_id "janitors" r in
      if name = "" then
        status_all r id no_rec >>| fun _r -> ()
      else
@@ -331,6 +331,7 @@ let sign _ o =
            Logs.app (fun m -> m "adding %a" Index.pp_resource r))
          els ;
        (* XXX: PROMPT HERE *)
+       Nocrypto_entropy_unix.initialize () ;
        str_to_msg (Conex_private.sign_index idx priv) >>| fun idx ->
        Logs.info (fun m -> m "signed index %a" Index.pp_index idx) ;
        Conex_repository.write_index r idx ;
