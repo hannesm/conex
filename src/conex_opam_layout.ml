@@ -45,7 +45,7 @@ let private_key_path path id =
     let els = string_to_path path @ [id ; "private"] in
     String.concat "." els
   in
-  path_to_string (string_to_path private_dir @ [ filename ])
+  "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
 let key_dir = "keys"
 
