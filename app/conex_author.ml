@@ -168,7 +168,7 @@ let rec load_id id r =
 
 let load_ids r ids = S.fold (fun id r -> fst (load_id id r)) ids r
 
-let show_package showit item r =
+let show_package id showit item r =
   let pn, pv = match Conex_opam_layout.authorisation_of_item item with
     | None -> item, `All
     | Some pn -> pn, `Single item
@@ -176,6 +176,8 @@ let show_package showit item r =
   let a, fresh = find_auth r pn in
   if showit a.Authorisation.authorised then begin
     let r = load_ids r a.Authorisation.authorised in
+    if not (fresh || Conex_repository.authorised r a id) then
+      Logs.warn (fun m -> m "%s is not authorised for package %s" id pn) ;
     if not fresh then
       warn_e Conex_repository.pp_error
         (Conex_repository.verify_authorisation r a >>| fun ok ->
@@ -237,17 +239,17 @@ let status_all r id no_team =
            id :: List.map (fun t -> t.Team.name) teams)
     in
     S.fold
-      (show_package (fun a -> not (S.is_empty (S.inter me a))))
+      (show_package id (fun a -> not (S.is_empty (S.inter me a))))
       (Conex_repository.items r) r
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
     S.fold
-      (show_package (fun a -> S.mem t.Team.name a))
+      (show_package id (fun a -> S.mem t.Team.name a))
       (Conex_repository.items r) r
 
-let status_single r name =
+let status_single r id name =
   Logs.info (fun m -> m "information on package %s" name) ;
-  let _r = show_package (fun _ -> true) name r in
+  let _r = show_package id (fun _ -> true) name r in
   ()
 
 let status _ o name no_rec =
@@ -260,7 +262,7 @@ let status _ o name no_rec =
      if name = "" then
        status_all r id no_rec >>| fun _r -> ()
      else
-       Ok (status_single r name))
+       Ok (status_single r id name))
 
 let add_r idx name typ data =
   let counter = Index.next_id idx in
