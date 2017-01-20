@@ -39,7 +39,7 @@ let msg_to_cmdliner = function
 
   STATUS
   - loads janitors (load key, add key, verify index, verify key (warns only, is trusted)
-  - load id (key, add key, idx, verify idx -> add resources, verify key) + queued
+  - load id (key, idx, verify idx -> add resources, verify key) + queued
   - iterates over packages (either authorised (+team/--noteam) for, or given on command line)
   -- read auth, load authorised ids (as above), verify auth
   -- read releases, verify releases
@@ -139,29 +139,27 @@ let show_release r a rel item =
           Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
 
 let rec load_id id r =
-  if Conex_repository.find_key r id = None &&
-     Conex_repository.find_team r id = None then
+  if not (Conex_repository.id_loaded r id) then
     R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r, None)
       (Conex_repository.read_id r id >>| function
         | `Key k ->
           Logs.debug (fun m -> m "read %a" Publickey.pp_publickey k);
-          let r' = Conex_repository.add_trusted_key r k in
           let idx, fresh = find_idx r id in
           if not fresh then
             let r =
               R.ignore_error
-                ~use:(fun e -> w pp_verification_error e ; r')
-                (Conex_repository.verify_index r' idx >>| fun (r, warn, id) ->
+                ~use:(fun e -> w pp_verification_error e ; r)
+                (Conex_repository.verify_index r idx k >>| fun (r, warn, id) ->
                  Logs.info (fun m -> m "verified index and added resources %s" id) ;
                  List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
                  r)
             in
             R.ignore_error ~use:(fun e -> w Conex_repository.pp_error e ; r, Some idx)
-              (Conex_repository.verify_key r k >>| fun (r, ok) ->
+              (Conex_repository.verify_key r k >>| fun ok ->
                Logs.info (fun m -> m "verified key %s %a" id Conex_repository.pp_ok ok) ;
                (r, Some idx))
           else
-            (r', Some idx)
+            (r, Some idx)
         | `Team t ->
           Logs.debug (fun m -> m "read %a" Team.pp_team t);
           let r = Conex_repository.add_team r t in
@@ -209,9 +207,7 @@ let self r o =
   id
 
 let load_self_queued r id =
-  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton id) "janitors") in
   let r, idx = load_id id r in
-  let r = Conex_repository.remove_team r "janitors" in
   match idx with
   | None -> r
   | Some idx ->
@@ -304,7 +300,6 @@ let initialise r id email =
     let pub =
       Publickey.publickey ~counter ~accounts id (Some public)
     in
-    let r = Conex_repository.add_trusted_key r pub in
     Conex_repository.write_key r pub ;
     Logs.info (fun m -> m "wrote public key %a" Publickey.pp_publickey pub) ;
     let idx, _ = find_idx r id in
@@ -313,7 +308,7 @@ let initialise r id email =
     Conex_repository.write_index r idx ;
     Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
     R.error_to_msg ~pp_error:pp_verification_error
-       (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
+       (Conex_repository.verify_index r idx pub >>| fun (_, _, id) ->
         Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
     Logs.app (fun m -> m "Created keypair.  Please 'git add keys/%s index/%s', and submit a PR.  Join teams and claim your packages." id id)
 

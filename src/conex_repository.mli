@@ -2,19 +2,15 @@ open Conex_result
 open Conex_core
 open Conex_resource
 
-type keystore = Publickey.t M.t
-
 type t
 
-val repository : ?store:keystore -> ?quorum:int -> Provider.t -> t
+val repository : ?quorum:int -> Provider.t -> t
 val provider : t -> Provider.t
 val quorum : t -> int
 
 val find_team : t -> identifier -> S.t option
 
-val find_id : t -> Publickey.email -> identifier option
-
-val find_key : t -> identifier -> Publickey.t option
+val id_loaded : t -> identifier -> bool
 
 val authorised : t -> Authorisation.t -> identifier -> bool
 
@@ -24,7 +20,7 @@ val change_provider : t -> Provider.t -> t
 
 val verify : Publickey.t -> string -> Signature.t -> (identifier, [> verification_error]) result
 
-val verify_index : t -> Index.t ->
+val verify_index : t -> Index.t -> Publickey.t ->
   (t * string list * identifier, [> verification_error ]) result
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
@@ -48,7 +44,7 @@ val pp_error : Format.formatter ->
   -> unit
 
 val verify_key : t -> Publickey.t ->
-  (t * [ `Quorum of S.t | `Both of identifier * S.t ],
+  ([ `Quorum of S.t | `Both of identifier * S.t ],
    [> base_error | `InsufficientQuorum of name * resource * S.t | `MissingSignature of identifier ]) result
 
 val verify_team : t -> Team.t ->
@@ -74,13 +70,11 @@ val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
    | `NotADirectory of name
    | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]) result
 
+(* Unsafe operation, think before usage! *)
 val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
 
-val add_trusted_key : t -> Publickey.t -> t
-val remove_key : t -> identifier -> t
-
+(* Unsafe operation, think before usage! *)
 val add_team : t -> Team.t -> t
-val remove_team : t -> identifier -> t
 
 val ids : t -> S.t
 val items : t -> S.t

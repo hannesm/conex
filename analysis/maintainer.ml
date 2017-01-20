@@ -275,23 +275,40 @@ let infer_maintainers base lvl =
   let repo = Conex_repository.repository provider in
   let github_mail, _mail_github = PR.handle_prs base PR.github_mail (M.empty, M.empty) in
   Logs.info (fun m -> m "github-email %a" pp_map github_mail) ;
-  let repo = M.fold (fun k v repo ->
+  let keys = M.fold (fun k v acc ->
       let accounts = `GitHub k :: List.map (fun e -> `Email e) (S.elements v) in
       let key = Publickey.publickey ~accounts k None in
       Conex_repository.write_key repo key ;
-      Conex_repository.add_trusted_key repo key)
-      github_mail repo
+      key :: acc)
+      github_mail []
   in
-  let repo = List.fold_left (fun r ->
+  let repo, more_keys = List.fold_left (fun (repo, acc) ->
       function
       | `Team (mails, id) ->
         let t = Team.team id in
-        Conex_repository.write_team r t ;
-        let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
-        let r = Conex_repository.add_trusted_key r (Publickey.publickey ~accounts id None) in
-        Conex_repository.add_team r t
-      | `Key k -> Conex_repository.write_key repo k ;Conex_repository.add_trusted_key r k)
-      repo known_ids
+        Conex_repository.write_team repo t ;
+        let key =
+          let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
+          Publickey.publickey ~accounts id None
+        in
+        (Conex_repository.add_team repo t, key :: acc)
+      | `Key k ->
+        Conex_repository.write_key repo k ;
+        (repo, k :: acc))
+      (repo, []) known_ids
+  in
+
+  let find_by_mail email =
+    List.fold_left (fun r k ->
+        match r with
+        | None ->
+          let contains =
+            let f = function `Email e when e = email -> true | _ -> false in
+            List.exists f k.Publickey.accounts
+          in
+          if contains then Some k.Publickey.name else None
+        | Some x -> Some x)
+      None (keys @ more_keys)
   in
   (* this is a set of package name without maintainer,
      and a map pkgname -> email address (or name) set *)
@@ -299,7 +316,7 @@ let infer_maintainers base lvl =
   let authorisations = M.fold (fun k ids acc ->
       let authorised = S.fold (fun s acc ->
           if String.is_infix ~affix:"@" s then
-            match Conex_repository.find_id repo s with
+            match find_by_mail s with
             | None -> acc
             | Some x -> S.add x acc
           else

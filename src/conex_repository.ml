@@ -3,22 +3,20 @@ open Conex_core
 open Conex_resource
 open Conex_utils
 
-type keystore = Publickey.t M.t
-
 type valid_resources = (name * Uint.t * resource * S.t) M.t
 
 type teams = S.t M.t
 
 type t = {
-  store : keystore ;
   quorum : int ;
   data : Provider.t ;
   valid : valid_resources ;
   teams : teams ;
+  ids : S.t ;
 }
 
-let repository ?(store = M.empty) ?(quorum = 3) data =
-  { store ; quorum ; data ; valid = M.empty ; teams = M.empty }
+let repository ?(quorum = 3) data =
+  { quorum ; data ; valid = M.empty ; teams = M.empty ; ids = S.empty }
 
 let quorum r = r.quorum
 
@@ -26,20 +24,9 @@ let provider r = r.data
 
 let find_team r id = try Some (M.find id r.teams) with Not_found -> None
 
-let find_id r email =
-  M.fold (fun k v acc ->
-      let contains =
-        let f = function `Email e when e = email -> true | _ -> false in
-        try Some (List.find f v.Publickey.accounts) with Not_found -> None
-      in
-      match contains, acc with
-      | Some _, None -> Some k
-      | None, None -> None
-      | Some _, Some x -> Printf.printf "same mail used multiple times %s %s" k x ; Some x
-      | None, Some x -> Some x)
-    r.store None
+let id_loaded t id = S.mem id t.ids
 
-let find_key t id = try Some (M.find id t.store) with Not_found -> None
+let add_id t id = { t with ids = S.add id t.ids }
 
 let valid r digest =
   try Some (M.find digest r.valid) with Not_found -> None
@@ -67,19 +54,11 @@ let add_valid_resource repo id res =
 
 let change_provider t data = { t with data }
 
-let add_trusted_key repo key =
-  let store = M.add key.Publickey.name key repo.store in
-  { repo with store }
-
-let remove_key repo id =
-  let store = M.remove id repo.store in
-  { repo with store }
-
 let add_team repo team =
-  { repo with teams = M.add team.Team.name team.Team.members repo.teams }
-
-let remove_team repo id =
-  { repo with teams = M.remove id repo.teams }
+  { repo with
+    teams = M.add team.Team.name team.Team.members repo.teams ;
+    ids = S.add team.Team.name repo.ids
+  }
 
 let verify pub data (id, ts, sigval) =
   let data = Signature.extend_data data id ts in
@@ -92,19 +71,12 @@ let verify pub data (id, ts, sigval) =
     | Error `InvalidPubKey -> Error (`InvalidPublicKey id)
     | Error `InvalidSig -> Error (`InvalidSignature id)
 
-let verify_ks store data (id, ts, signature) =
-  if M.mem id store then
-    let pub = M.find id store in
-    verify pub data (id, ts, signature)
-  else
-    Error (`InvalidIdentifier id)
-
-let verify_index repo idx =
+let verify_index repo idx pub =
   let aid = idx.Index.name in
   let to_consider, others =
     List.partition (fun (id, _, _) -> id_equal id aid) idx.Index.signatures
   in
-  let verify = verify_ks repo.store (Conex_data.encode (Conex_data_persistency.index_to_t idx)) in
+  let verify = verify pub (Conex_data.encode (Conex_data_persistency.index_to_t idx)) in
   let err = match others with
     | [] -> `NoSignature aid
     | (xid, _, _)::_ -> `NotAuthorised (aid, xid)
@@ -123,6 +95,7 @@ let verify_index repo idx =
       Format.flush_str_formatter ())
       idx.Index.queued
   in
+  let r = add_id r aid in
   Ok (r, warn, id)
 
 (*BISECT-IGNORE-BEGIN*)
@@ -193,8 +166,8 @@ let verify_resource repo owners name resource data =
 let verify_key repo key =
   let id = key.Publickey.name in
   verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Conex_data_persistency.publickey_to_t key)) >>= function
-  | `Both b -> Ok (add_trusted_key repo key, `Both b)
-  | `Quorum js when key.Publickey.key = None -> Ok (add_trusted_key repo key, `Quorum js)
+  | `Both b -> Ok (`Both b)
+  | `Quorum js when key.Publickey.key = None -> Ok (`Quorum js)
   | `Quorum _ -> Error (`MissingSignature id)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `PublicKey, js))
 

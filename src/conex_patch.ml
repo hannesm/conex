@@ -144,6 +144,14 @@ type err = [ verification_error
 (*  what needs to be verified?
   - new key: idx exists?
   - deletion of key: idx gone?
+
+
+ on key rollover (again):
+   - read key, verify (should be good)
+   - verify index
+
+  --> incoming diff has both parts, but index needs to be loaded first in any case
+   (what happens with new index with sig from new key? -- need to apply key first, but that's not verified then  :/)
 *)
 let verify repo = function
   | Idx (id, diff) ->
@@ -154,14 +162,14 @@ let verify repo = function
       with
       | Ok idx, Ok idx' ->
         guard (idx.Index.counter < idx'.Index.counter) `CounterNotIncreased >>= fun _ ->
-        Conex_repository.verify_index repo idx' >>= fun (r, _, _) ->
-        Ok r
+        (*        Conex_repository.verify_index repo idx' >>= fun (r, _, _) -> *)
+        Ok repo
       | Error _, Ok idx' ->
         guard (idx'.Index.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
         guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
-        Conex_repository.verify_index repo idx' >>= fun (r, _, _) ->
-        Ok r
+        (*        Conex_repository.verify_index repo idx' >>= fun (r, _, _) -> *)
+        Ok repo
           (* XXX: correctness - verify now adds (but to repo, not repo'!),
              used to be:
              Ok (Conex_repository.add_index repo' idx') *)
@@ -177,13 +185,13 @@ let verify repo = function
       | Ok (`Key k), Ok (`Key k') ->
         guard (k.Publickey.counter < k'.Publickey.counter) `CounterNotIncreased >>= fun () ->
         Conex_repository.verify_key repo k' >>= fun _ ->
-        Ok (Conex_repository.add_trusted_key repo' k')
+        Ok repo'
       | Error _, Ok (`Key k') ->
         guard (k'.Publickey.counter = Uint.zero) `CounterNotZero >>= fun () ->
         guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
         guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
         Conex_repository.verify_key repo k' >>= fun _ ->
-        Ok (Conex_repository.add_trusted_key repo' k')
+        Ok repo'
       | Ok (`Team t), Ok (`Team t') ->
         guard (t.Team.counter < t'.Team.counter) `CounterNotIncreased >>= fun () ->
         Conex_repository.verify_team repo t' >>= fun _ ->

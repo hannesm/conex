@@ -157,8 +157,7 @@ let sign_single () =
     (Conex_nocrypto.verify pub raw ("abcd" ^ sv)) ;
   Alcotest.check (result Alcotest.unit base_v_err)
     "signature is bad (postfix)"
-    (* should be invalid_b64 once nocrypto >0.5.3 is released *)
-    (Error `InvalidSig)
+    (Error `InvalidBase64)
     (Conex_nocrypto.verify pub raw (sv ^ "abcd")) ;
   Alcotest.check (result Alcotest.unit base_v_err)
     "signature is bad (raw)"
