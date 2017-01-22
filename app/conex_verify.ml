@@ -33,69 +33,60 @@ true
 
  *)
 
-open Conex_common
+let out a b = Format.fprintf Format.std_formatter (a ^^ "\n") b
 
-let out = Format.std_formatter
+let load_id id repo =
+  if Conex_repository.id_loaded repo id then
+    repo
+  else
+    match Conex_repository.read_id repo id with
+    | Error e -> out "%a" Conex_repository.pp_r_err e ; repo
+    | Ok (`Id idx) -> begin match Conex_repository.verify_index repo idx with
+        | Ok (repo, _, _) -> repo
+        | Error e -> out "%a" pp_verification_error e ; repo
+      end
+    | Ok (`Team t) -> match Conex_repository.verify_team repo t with
+      | Ok (repo, _) -> repo
+      | Error e -> out "%a" Conex_repository.pp_error e ; repo
 
-let debug = false
+let checksum repo auth rel release =
+  match Conex_repository.read_checksum repo release with
+  | Error e -> out "%a" Conex_repository.pp_r_err e
+  | Ok cs -> match Conex_repository.verify_checksum repo auth rel cs with
+    | Error e -> out "%a" Conex_repository.pp_error e
+    | Ok _ -> ()
 
-let strict = false
+let package name repo =
+  match Conex_repository.read_authorisation repo name with
+  | Error e -> out "while loading %a" Conex_repository.pp_r_err e ; repo
+  | Ok a -> match Conex_repository.verify_authorisation repo a with
+    | Error e -> out "%a" Conex_repository.pp_error e ; repo
+    | Ok (`Quorum _) ->
+      (* load + verify authorised ids *)
+      let repo = S.fold load_id a.Authorisation.authorised repo in
+      (* load + verify releases ++ checksums *)
+      match Conex_repository.read_releases repo name with
+      | Error e -> out "%a" Conex_repository.pp_r_err e ; repo
+      | Ok r -> match Conex_repository.verify_releases repo a r with
+        | Error e -> out "%a" Conex_repository.pp_error e ; repo
+        | Ok _ -> S.iter (checksum repo a r) r.Releases.releases ; repo
 
-let maybe_exit () = if strict then exit 1
-
-(*
-let verify_complete_repository directory trust =
-  (* a) load trust anchors and janitors *)
-  let p = Conex_provider.fs_ro_provider directory in
-  let r = Conex_repository.repository p in
-  let r = load_anchors_janitors r out debug maybe_exit trust in
-  (* b) load all other identities [can also be teams!] *)
-  let r =
-    S.fold (load_id out debug maybe_exit)
-      (S.diff (Conex_repository.ids r)
-         (match Conex_repository.find_team r "janitors" with None -> S.empty | Some s -> s)) r
-  in
-  (* c) for each package: read & verify authorisation, releases, checksums *)
-  S.iter (fun name ->
-      match Conex_repository.read_authorisation r name with
-      | Error e -> Conex_repository.pp_r_err out e ; maybe_exit ()
-      | Ok auth -> match Conex_repository.verify_authorisation r auth with
-        | Error e -> Conex_repository.pp_error out e ; maybe_exit ()
-        | Ok ok -> if debug then Conex_repository.pp_ok out ok ;
-          match Conex_repository.read_releases r name with
-          | Error e -> Conex_repository.pp_r_err out e ; maybe_exit ()
-          | Ok rel ->
-            let good = ref true in
-            (match Conex_repository.verify_releases r auth rel with
-             | Error e -> Conex_repository.pp_error out e ; good := false ; maybe_exit ()
-             | Ok ok -> if debug then Conex_repository.pp_ok out ok) ;
-            S.iter (fun rname ->
-                match Conex_repository.read_checksum r rname with
-                | Error e -> Conex_repository.pp_r_err out e ; good := false ; maybe_exit ()
-                | Ok cs -> match Conex_repository.verify_checksum r auth rel cs with
-                  | Error e -> Conex_repository.pp_error out e ; good := false ; maybe_exit ()
-                  | Ok ok -> if debug then Conex_repository.pp_ok out ok)
-              rel.Releases.releases ;
-            if !good then Format.fprintf out "verified %a@." pp_name name)
-    (Conex_repository.items r) ;
-  exit 0
-*)
 let verify_patch _repo _patch _verbose _strict =
   Ok ()
 
-let verify_full repo _anchors _verbose _strict =
-  match Conex_repository.read_team repo "janitors" with
-  | _ ->
-    (*    load_anchors repo (fun m -> S.mem m anchors) verbose strict *)
-    (* read pubkeys *)
-    (* filter with anchors *)
-    (* add_trusted_key *)
-    (* load idx + verify + verify key *)
-    (* verify team *)
-    (* load rest of janitors + idx + verify *)
-
-    
-  Ok ()
+let verify_full repo anchors _verbose _strict =
+  let valid (id, digest) =
+    if S.mem digest anchors then
+      (Printf.printf "accepting ta %s\n%!" id ; true)
+    else
+      (Printf.printf "rejecting ta %s\n%!" id ; false)
+  in
+  match Conex_repository.load_janitors ~valid repo with
+  | Ok repo ->
+    (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
+    let _ = S.fold package (Conex_repository.items repo) repo in
+    Ok ()
+  | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function
   | Ok () -> `Ok ()
