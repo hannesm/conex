@@ -193,8 +193,7 @@ let empty_r () =
   let r = Conex_repository.repository p in
   Alcotest.check sset "empty repo has no keys" S.empty (Conex_repository.ids r) ;
   Alcotest.check sset "empty repo has no authorisations" S.empty (Conex_repository.items r) ;
-  Alcotest.check (result publickey re) "reading key foo in empty repo fails"
-    (Error (`NotFound ("key", "foo"))) (Conex_repository.read_key r "foo") ;
+  Alcotest.check sset "empty repo has no subitems" S.empty (Conex_repository.subitems r "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
     (Error (`NotFound ("authorisation", "foo"))) (Conex_repository.read_authorisation r "foo") ;
   Alcotest.check (result releases re) "reading releases foo in empty repo fails"
@@ -209,19 +208,18 @@ let empty_r () =
 let key_r () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository p in
-  let k, _pk = gen_pub "foo" in
-  Conex_repository.write_key r k ;
+  let k = Index.index "foo" in
+  Conex_repository.write_index r k ;
   Alcotest.check sset "key repo has one key" (S.singleton "foo") (Conex_repository.ids r) ;
-  Conex_repository.write_key r k ;
+  Conex_repository.write_index r k ;
   Alcotest.check sset "key repo+ has one key" (S.singleton "foo") (Conex_repository.ids r) ;
-  let k2, _pk2 = gen_pub "foobar" in
-  Conex_repository.write_key r k2 ;
+  let k2 = Index.index "foobar" in
+  Conex_repository.write_index r k2 ;
   Alcotest.check sset "key repo has two keys" (S.add "foobar" (S.singleton "foo")) (Conex_repository.ids r) ;
-  Alcotest.check (result publickey re) "reading key gives back right key"
-    (Ok k) (Conex_repository.read_key r "foo") ;
-  let jk, _jpk = gen_pub "janitor" in
-  Conex_repository.write_key r jk ;
+  let jk = Index.index "janitor" in
+  Conex_repository.write_index r jk ;
   Alcotest.check sset "key repo has three keys" (S.add "janitor" (S.add "foobar" (S.singleton "foo"))) (Conex_repository.ids r)
+
 
 let team_r () =
   let p = Mem.mem_provider () in
@@ -301,36 +299,6 @@ let basic_persistency () =
     (Ok t) (t_to_team (team_to_t t)) ;
   Alcotest.check (result team str_err) "could unparse/parse team"
     (Ok t) (Conex_data.decode (Conex_data.encode (team_to_t t)) >>= t_to_team) ;
-  let good_pub =
-    M.add "key" (String "NONE")
-      (M.add "name" (String "foo") bad_n)
-  in
-  Alcotest.check (result publickey str_err) "could parse pub"
-    (Ok (Publickey.publickey "foo" None)) (t_to_publickey good_pub) ;
-  let bad_pub =
-    M.add "accounts" (List [ String "bla" ]) good_pub
-  in
-  Alcotest.check (result publickey str_err) "couldn't parse accounts"
-    (Error "") (t_to_publickey bad_pub) ;
-  let good_pub =
-    M.add "accounts" (Map (M.add "email" (String "foobar") M.empty)) good_pub
-  in
-  Alcotest.check (result publickey str_err) "can parse accounts"
-    (Ok (Publickey.publickey ~accounts:[`Email "foobar"] "foo" None))
-    (t_to_publickey good_pub) ;
-  let good_pub =
-    M.add "accounts" (Map (M.add "email" (String "foobar")
-                             (M.add "github" (String "blafasel")
-                                (M.add "foo" (String "bar") M.empty))))
-      good_pub
-  in
-  let pub =
-    Publickey.publickey ~accounts:[`Email "foobar"; `GitHub "blafasel"; `Other ("foo", "bar")] "foo" None
-  in
-  Alcotest.check (result publickey str_err) "can parse accounts"
-    (Ok pub) (t_to_publickey good_pub) ;
-  Alcotest.check (result publickey str_err) "marshal/unmarshal"
-    (Ok pub) (t_to_publickey (publickey_to_t pub)) ;
   let checksum =
     M.add "filename" (String "foo")
       (M.add "byte-size" (Int (Uint.of_int 3))
@@ -345,12 +313,8 @@ let basic_persistency () =
   let csums = Checksum.checksums "foo" [csum] in
   Alcotest.check (result cs str_err) "can parse checksum"
     (Ok csums) (t_to_checksums css) ;
-  let s =
-    M.add "keyid" (String "foobar")
-      (M.add "created" (Int Uint.zero)
-         (M.add "sig" (String "barf") M.empty))
-  in
-  let s' = ("foobar", Uint.zero, "barf") in
+  let s = List [ Int Uint.zero ; String "barf" ] in
+  let s' = (Uint.zero, "barf") in
   let idx =
     M.add "name" (String "foo")
       (M.add "counter" (Int Uint.zero)
@@ -358,7 +322,7 @@ let basic_persistency () =
   in
   let empty_idx =
     M.add "queued" (List [])
-      (M.add "signatures" (List [Map s]) M.empty)
+      (M.add "signatures" (List [s]) M.empty)
   in
   let idxs =
     M.add "signed" (Map idx) empty_idx
@@ -397,45 +361,45 @@ let bad_id_r () =
   let open Provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
-  Alcotest.check (result publickey re) "key foo not found"
-    (Error (`NotFound ("key", "foo"))) (Conex_repository.read_key r "foo") ;
+  Alcotest.check (result ji re) "index foo not found"
+    (Error (`NotFound ("index", "foo"))) (Conex_repository.read_index r "foo") ;
   Alcotest.check (result team re) "team foo not found"
     (Error (`NotFound ("team", "foo"))) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result id re) "ID foo not found"
-    (Error (`NotFound ("team", "foo"))) (Conex_repository.read_id r "foo") ;
-  p.write ["keys"; "foo"] "barf" ;
-  Alcotest.check (result publickey re) "parse error on key foo"
-    (Error (`ParseError ("foo", ""))) (Conex_repository.read_key r "foo") ;
+    (Error (`NotFound ("index", "foo"))) (Conex_repository.read_id r "foo") ;
+  p.write ["id"; "foo"] "barf" ;
+  Alcotest.check (result ji re) "parse error on index foo"
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_index r "foo") ;
   Alcotest.check (result team re) "parse error on team foo"
     (Error (`ParseError ("foo", ""))) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result id re) "parse error on id foo"
     (Error (`ParseError ("foo", ""))) (Conex_repository.read_id r "foo") ;
-  let key = Publickey.publickey "foo" None in
-  Conex_repository.write_key r key ;
+  let idx = Index.index "foo" in
+  Conex_repository.write_index r idx ;
   Alcotest.check (result team re) "parse error on team foo"
     (Error (`ParseError ("foo", ""))) (Conex_repository.read_team r "foo") ;
-  Alcotest.check (result publickey re) "key foo parses"
-    (Ok key) (Conex_repository.read_key r "foo") ;
+  Alcotest.check (result ji re) "index foo parses"
+    (Ok idx) (Conex_repository.read_index r "foo") ;
   Alcotest.check (result id re) "id foo parses"
-    (Ok (`Key key)) (Conex_repository.read_id r "foo") ;
-  p.write ["keys"; "foobar"] (Conex_data.encode (publickey_to_t key)) ;
+    (Ok (`Id idx)) (Conex_repository.read_id r "foo") ;
+  p.write ["id"; "foobar"] (Conex_data.encode (index_sigs_to_t idx)) ;
   Alcotest.check (result team re) "parse error on team foobar"
     (Error (`ParseError ("foobar", ""))) (Conex_repository.read_team r "foobar") ;
-  Alcotest.check (result publickey re) "key foobar namemismatch"
-    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_key r "foobar") ;
+  Alcotest.check (result ji re) "id foobar namemismatch"
+    (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_index r "foobar") ;
   Alcotest.check (result id re) "namemismatch id foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_id r "foobar") ;
   let t = Team.team "foo" in
   Conex_repository.write_team r t ;
-  Alcotest.check (result publickey re) "parse error on key foo"
-    (Error (`ParseError ("foo", ""))) (Conex_repository.read_key r "foo") ;
+  Alcotest.check (result ji re) "parse error on index foo"
+    (Error (`ParseError ("foo", ""))) (Conex_repository.read_index r "foo") ;
   Alcotest.check (result team re) "team foo parses"
     (Ok t) (Conex_repository.read_team r "foo") ;
   Alcotest.check (result id re) "id foo parses"
     (Ok (`Team t)) (Conex_repository.read_id r "foo") ;
-  p.write ["keys"; "foobar"] (Conex_data.encode (team_to_t t)) ;
-  Alcotest.check (result publickey re) "parse error on key foobar"
-    (Error (`ParseError ("foobar", ""))) (Conex_repository.read_key r "foobar") ;
+  p.write ["id"; "foobar"] (Conex_data.encode (team_to_t t)) ;
+  Alcotest.check (result ji re) "parse error on index foobar"
+    (Error (`ParseError ("foobar", ""))) (Conex_repository.read_index r "foobar") ;
   Alcotest.check (result team re) "name mismatch on team foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_team r "foobar") ;
   Alcotest.check (result id re) "name mismatch on id foo"
@@ -447,14 +411,14 @@ let bad_idx_r () =
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result ji re) "index foo not found"
     (Error (`NotFound ("index", "foo"))) (Conex_repository.read_index r "foo") ;
-  p.write ["index"; "foo"] "bla" ;
+  p.write ["id"; "foo"] "bla" ;
   Alcotest.check (result ji re) "bad index foo"
     (Error (`ParseError ("foo", ""))) (Conex_repository.read_index r "foo") ;
   let idx = Index.index "foo" in
   Conex_repository.write_index r idx ;
   Alcotest.check (result ji re) "good index foo"
     (Ok idx) (Conex_repository.read_index r "foo") ;
-  p.write ["index"; "foobar"] (Conex_data.encode (index_sigs_to_t idx)) ;
+  p.write ["id"; "foobar"] (Conex_data.encode (index_sigs_to_t idx)) ;
   Alcotest.check (result ji re) "name mismatch in foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_index r "foobar")
 
@@ -539,23 +503,22 @@ let res d =
 
 let idx_sign () =
   let p = Mem.mem_provider () in
-  let r = Conex_repository.repository p in
+  let r = Conex_repository.repository ~quorum:0 p in
   let id = "foo" in
-  let idx = Index.index id in
-  let pub, priv = gen_pub id in
-  Alcotest.check (result r_ok verr) "index must be signed"
-    (Error (`NoSignature id)) (Conex_repository.verify_index r idx pub) ;
+  let pub, priv = gen_pub () in
+  let idx = Index.index ~keys:[pub] id in
+  Alcotest.check (result r_ok verr) "empty index signed properly (no resources, quorum 0)"
+    (Ok (r, [], id)) (Conex_repository.verify_index r idx) ;
+  let pubenc = Conex_data.encode (Conex_data_persistency.publickey_to_t id pub) in
+  let idx = Index.(add_resource idx (r (next_id idx) id (Uint.of_int (String.length pubenc)) `PublicKey (Conex_nocrypto.digest pubenc))) in
   let signed_idx = sign_idx idx priv in
-  Alcotest.check (result r_ok verr) "idx signed properly"
-    (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx pub) ;
-  let oid = "bar" in
-  let signed' =
-    match signed_idx.Index.signatures with
-    | [(_, s, ts)] -> Index.add_sig idx (oid, s, ts)
-    | _ -> Alcotest.fail "signed index must have a single signature"
-  in
-  Alcotest.check (result r_ok verr) "id not authorised"
-    (Error (`NotAuthorised (id, oid))) (Conex_repository.verify_index r signed' pub)
+  Alcotest.check (result r_ok verr) "signed_idx signed properly (1 resource, quorum 0)"
+    (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx) ;
+  Alcotest.check (result r_ok verr) "idx signed properly (0 resources, 1 queued, quorum 0)"
+    (Ok (r, [], id)) (Conex_repository.verify_index r idx) ;
+  let idx, _ = Index.prep_sig idx in
+  Alcotest.check (result r_ok verr) "idx not signed properly (1 resource, quorum 0)"
+    (Error `NoSignature) (Conex_repository.verify_index r idx)
 
 let r_fake =
   let module M = struct
@@ -567,77 +530,66 @@ let r_fake =
 
 let idx_sign_verify () =
   let p = Mem.mem_provider () in
-  let r = Conex_repository.repository p in
+  let r = Conex_repository.repository ~quorum:0 p in
   let id = "foo" in
-  let pub, priv = gen_pub id in
-  let s, d = res (publickey_to_t pub) in
+  let pub, priv = gen_pub () in
+  let idx = Index.index ~keys:[pub] id in
+  let s, d = res (publickey_to_t id pub) in
   let resources = [ Index.r Uint.zero id s `PublicKey d ] in
-  let idx = Index.index id in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_ok verr) "idx signed properly"
-    (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx pub) ;
+    (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx) ;
   let signatures = signed_idx.Index.signatures in
-  let idx' = Index.index ~resources ~signatures id in
+  let idx' = Index.index ~keys:[pub] ~resources ~signatures id in
   Alcotest.check (result r_ok verr) "idx' not properly signed"
-    (Error (`InvalidSignature id)) (Conex_repository.verify_index r idx' pub) ;
-  let idx'' = Index.index ~queued:resources ~signatures ~counter:Uint.(of_int 1) id in
+    (Error `NoSignature) (Conex_repository.verify_index r idx') ;
+  let idx'' = Index.index ~keys:[pub] ~queued:resources ~signatures ~counter:Uint.(of_int 1) id in
   Alcotest.check (result r_ok verr) "idx'' properly signed (queue)"
-    (Ok (r, [""], id)) (Conex_repository.verify_index r idx'' pub) ;
+    (Ok (r, [], id)) (Conex_repository.verify_index r idx'') ;
   let signed_idx' = sign_idx idx' priv in
-  Alcotest.check (result r_ok verr) "idx' signed properly"
-    (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx' pub) ;
-  match Conex_repository.verify_index r signed_idx' pub with
-  | Error _ -> Alcotest.fail "verification failed"
-  | Ok (r, _, _) ->
-    match Conex_repository.valid r d with
-    | Some (name, size, resource, set) ->
-      Alcotest.(check string "name is correct" id name) ;
-      Alcotest.(check string "size is correct"
-                  (Uint.to_string s) (Uint.to_string size)) ;
-      if resource <> `PublicKey then
-        Alcotest.fail "resource incorrect" ;
-      Alcotest.(check (list string) "set is correct" [id] (S.elements set)) ;
-      Alcotest.check (result r_fake str_err) "add errors on wrong name"
-        (Error "") (Conex_repository.add_valid_resource r id
-                      (Index.r Uint.zero "barf" s `PublicKey d)) ;
-      Alcotest.check (result r_fake str_err) "add errors on wrong resource"
-        (Error "") (Conex_repository.add_valid_resource r id
-                      (Index.r Uint.zero id s `Team d)) ;
-      Alcotest.check (result r_fake str_err) "add errors on wrong size"
-        (Error "") (Conex_repository.add_valid_resource r id
-                      (Index.r Uint.zero id (Uint.of_int 23) `PublicKey d))
-    | None -> Alcotest.fail "repository doesn't contain resource"
+  Alcotest.check (result r_ok verr) "signed_idx' signed properly"
+    (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx') ;
+  match Conex_repository.add_valid_resource r id (List.hd resources) with
+  | Ok r ->
+    Alcotest.check (result r_fake str_err) "add errors on wrong name"
+      (Error "") (Conex_repository.add_valid_resource r id
+                    (Index.r Uint.zero "barf" s `PublicKey d)) ;
+    Alcotest.check (result r_fake str_err) "add errors on wrong resource"
+      (Error "") (Conex_repository.add_valid_resource r id
+                    (Index.r Uint.zero id s `Team d)) ;
+    Alcotest.check (result r_fake str_err) "add errors on wrong size"
+      (Error "") (Conex_repository.add_valid_resource r id
+                    (Index.r Uint.zero id (Uint.of_int 23) `PublicKey d))
+  | Error e -> Alcotest.fail e
 
 let idx_s_v_dupl () =
   let p = Mem.mem_provider () in
-  let r = Conex_repository.repository p in
+  let r = Conex_repository.repository ~quorum:0 p in
   let id = "foo" in
-  let pub, priv = gen_pub id in
-  let s, d = res (publickey_to_t pub) in
+  let pub, priv = gen_pub () in
+  let s, d = res (publickey_to_t id pub) in
   let resources = [
     Index.r Uint.zero id s `PublicKey d ;
-    Index.r Uint.zero id s `Team d
+    Index.r (Uint.of_int 1) id s `Team d ;
   ] in
-  let idx = Index.index ~resources id in
+  let idx = Index.index ~keys:[pub] ~resources id in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_ok verr) "idx signed properly, but one resource ignored"
-    (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx pub) ;
+    (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx) ;
   let signatures =
-    (id, Uint.zero, "foobar") ::
+    (Uint.zero, "foobar") ::
     signed_idx.Index.signatures @
-    [ (id, Uint.zero, "foobar") ]
+    [ (Uint.zero, "foobar") ]
   in
-  let signed_idx = Index.index ~counter:(Uint.of_int 1) ~resources ~signatures id in
+  let signed_idx = Index.index ~keys:[pub] ~counter:(Uint.of_int 1) ~resources ~signatures id in
   Alcotest.check (result r_ok verr) "idx signed properly (second sig), but one resource ignored"
-    (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx pub)
-
+    (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx)
 
 let k_ok =
   let module M = struct
-    type t = [ `Quorum of S.t | `Both of identifier * S.t ]
+    type t = [ `Both of identifier * S.t ]
     let pp = Conex_repository.pp_ok
     let equal a b = match a, b with
-      | `Quorum js, `Quorum is -> S.equal js is
       | `Both (a, js), `Both (b, is) -> id_equal a b && S.equal js is
       | _ -> false
   end in
@@ -664,65 +616,46 @@ let add_rs repo id rs =
       | Error e -> Alcotest.fail e)
     repo rs
 
-let empty_key () =
-  let p = Mem.mem_provider () in
-  let r = Conex_repository.repository ~quorum:1 p in
-  let jid = "aaa" in
-  let id = "foo" in
-  let pub = Publickey.publickey id None in
-  let resources =
-    let s, d = res (publickey_to_t pub) in
-    [ Index.r Uint.zero id s `PublicKey d ]
-  in
-  let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
-  Alcotest.check (result k_ok k_err) "not signed"
-    (Error (`NotSigned (id, `PublicKey, S.empty)))
-    (Conex_repository.verify_key r pub) ;
-  let r' = add_rs r jid resources in
-  Alcotest.check (result k_ok k_err) "empty publickey good"
-    (Ok (`Quorum (S.singleton jid)))
-    (Conex_repository.verify_key r' pub)
-
 let key_good () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let id = "foo" in
-  let pub, _ = gen_pub id in
+  let pub, _ = gen_pub () in
   let resources =
-    let s, d = res (publickey_to_t pub) in
+    let s, d = res (publickey_to_t id pub) in
     [ Index.r Uint.zero id s `PublicKey d ]
   in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   Alcotest.check (result k_ok k_err) "not signed"
     (Error (`NotSigned (id, `PublicKey, S.empty)))
-    (Conex_repository.verify_key r pub) ;
+    (Conex_repository.verify_key r id pub) ;
   let r' = add_rs r jid resources in
   Alcotest.check (result k_ok k_err) "publickey missing self-sig"
     (Error (`MissingSignature id))
-    (Conex_repository.verify_key r' pub) ;
+    (Conex_repository.verify_key r' id pub) ;
   let r'' = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "publickey missing quorum"
     (Error (`InsufficientQuorum (id, `PublicKey, S.empty)))
-    (Conex_repository.verify_key r'' pub) ;
+    (Conex_repository.verify_key r'' id pub) ;
   let r''' = add_rs r' id resources in
   Alcotest.check (result k_ok k_err) "publickey is fine"
     (Ok (`Both (id, S.singleton jid)))
-    (Conex_repository.verify_key r''' pub)
+    (Conex_repository.verify_key r''' id pub)
 
 let key_good_quorum () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:3 p in
   let id = "foo" in
-  let pub, _priv = gen_pub id in
+  let pub, _priv = gen_pub () in
   let resources =
-    let s, d = res (publickey_to_t pub) in
+    let s, d = res (publickey_to_t id pub) in
     [ Index.r Uint.zero id s `PublicKey d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 0"
     (Error (`InsufficientQuorum (id, `PublicKey, S.empty)))
-    (Conex_repository.verify_key r pub) ;
+    (Conex_repository.verify_key r id pub) ;
   let jidx r jid =
     let r =
       let mems = match Conex_repository.find_team r "janitors" with None -> S.empty | Some s -> s in
@@ -733,27 +666,26 @@ let key_good_quorum () =
   let r = jidx r "jana" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 1"
     (Error (`InsufficientQuorum (id, `PublicKey, S.singleton "jana")))
-    (Conex_repository.verify_key r pub) ;
+    (Conex_repository.verify_key r id pub) ;
   let r = jidx r "janb" in
   Alcotest.check (result k_ok k_err) "publickey missing quorum 2"
     (Error (`InsufficientQuorum (id, `PublicKey, S.add "janb" (S.singleton "jana"))))
-    (Conex_repository.verify_key r pub) ;
+    (Conex_repository.verify_key r id pub) ;
   let r = jidx r "janc" in
   Alcotest.check (result k_ok k_err) "publickey is fine"
     (Ok (`Both (id, S.add "janc" (S.add "janb" (S.singleton "jana")))))
-    (Conex_repository.verify_key r pub)
+    (Conex_repository.verify_key r id pub)
 
 let no_janitor () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let id = "foo" in
-  let pub, _priv = gen_pub id in
+  let pub, _priv = gen_pub () in
   let id' = "bar" in
-  let pem = Publickey.publickey id' None in
   let resources =
-    let s, d = res (publickey_to_t pub)
-    and s', d' = res (publickey_to_t pem)
+    let s, d = res (publickey_to_t id pub)
+    and s', d' = res (publickey_to_t id' pub)
     in
     [ Index.r Uint.zero id s `PublicKey d ; Index.r (Uint.of_int 1) id' s' `PublicKey d' ]
   in
@@ -761,48 +693,47 @@ let no_janitor () =
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "missing quorum"
     (Error (`InsufficientQuorum (id, `PublicKey, S.empty)))
-    (Conex_repository.verify_key r pub) ;
+    (Conex_repository.verify_key r id pub) ;
   Alcotest.check (result k_ok k_err) "missing quorum for empty"
     (Error (`NotSigned (id', `PublicKey, S.empty)))
-    (Conex_repository.verify_key r pem)
+    (Conex_repository.verify_key r id' pub)
 
 let k_wrong_resource () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let id = "foo" in
-  let pub, _priv = gen_pub id in
+  let pub, _priv = gen_pub () in
   let resources =
-    let s, d = res (publickey_to_t pub) in
+    let s, d = res (publickey_to_t id pub) in
     [ Index.r Uint.zero id s `Checksums d ]
   in
   let r = add_rs r jid resources in
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "wrong resource"
     (Error (`InvalidResource (id, `PublicKey, `Checksums)))
-    (Conex_repository.verify_key r pub)
+    (Conex_repository.verify_key r id pub)
 
 let k_wrong_name () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   let jid = "aaa" in
   let id = "foo" in
-  let pub, _priv = gen_pub id in
+  let pub, _priv = gen_pub () in
   let resources =
-    let s, d = res (publickey_to_t pub) in
+    let s, d = res (publickey_to_t id pub) in
     [ Index.r Uint.zero jid s `PublicKey d ]
   in
   let r = add_rs r jid resources in
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "wrong name"
     (Error (`InvalidName (id, jid)))
-    (Conex_repository.verify_key r pub)
+    (Conex_repository.verify_key r id pub)
 
 let key_repo_tests = [
   "signed index", `Quick, idx_sign ;
   "signed and verified index", `Quick, idx_sign_verify ;
   "verify succeeds, but ignores resource", `Quick, idx_s_v_dupl ;
-  "empty key", `Quick, empty_key ;
   "key good", `Quick, key_good ;
   "key good with quorum = 3", `Quick, key_good_quorum ;
   "no janitor", `Quick, no_janitor ;
@@ -873,10 +804,10 @@ let team_self_signed () =
   let id = "foo" in
   let pname = "foop" in
   let team = Team.team pname in
-  let pub, _priv = gen_pub id in
+  let pub, _priv = gen_pub () in
   let resources =
     let s, d = res (team_to_t team)
-    and s', d' = res (publickey_to_t pub)
+    and s', d' = res (publickey_to_t id pub)
     in
     [ Index.r Uint.zero pname s `Team d ; Index.r (Uint.of_int 1) id s' `PublicKey d' ]
   in
@@ -1020,10 +951,10 @@ let auth_self_signed () =
   let id = "foo" in
   let pname = "foop" in
   let auth = Authorisation.authorisation pname in
-  let pub, _priv = gen_pub id in
+  let pub, _priv = gen_pub () in
   let resources =
     let s, d = res (authorisation_to_t auth)
-    and s', d' = res (publickey_to_t pub)
+    and s', d' = res (publickey_to_t id pub)
     in
     [ Index.r Uint.zero pname s `Authorisation d ; Index.r (Uint.of_int 1) id s' `PublicKey d' ]
   in

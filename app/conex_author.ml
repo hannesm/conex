@@ -38,8 +38,8 @@ let msg_to_cmdliner = function
    -- release actually checks whether id is authorised
 
   STATUS
-  - loads janitors (load key, add key, verify index, verify key (warns only, is trusted)
-  - load id (key, idx, verify idx -> add resources, verify key) + queued
+  - load janitor team
+  - load+verify own id (add resources + queued)
   - iterates over packages (either authorised (+team/--noteam) for, or given on command line)
   -- read auth, load authorised ids (as above), verify auth
   -- read releases, verify releases
@@ -133,46 +133,36 @@ let show_release r a rel item =
   | Ok Directory ->
     warn_e Conex_repository.pp_r_err
       (Conex_repository.read_checksum r item >>| fun cs ->
-       Logs.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
+       Logs.debug (fun m -> m "read %a" Checksum.pp_checksums cs) ;
        warn_e Conex_repository.pp_error
          (Conex_repository.verify_checksum r a rel cs >>| fun ok ->
-          Logs.info (fun m -> m "%a" Conex_repository.pp_ok ok)))
+          Logs.info (fun m -> m "verified %a" Conex_repository.pp_ok ok)))
 
 let rec load_id id r =
   if not (Conex_repository.id_loaded r id) then
-    R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r, None)
-      (Conex_repository.read_id r id >>| function
-        | `Key k ->
-          Logs.debug (fun m -> m "read %a" Publickey.pp_publickey k);
-          let idx, fresh = find_idx r id in
-          if not fresh then
-            let r =
-              R.ignore_error
-                ~use:(fun e -> w pp_verification_error e ; r)
-                (Conex_repository.verify_index r idx k >>| fun (r, warn, id) ->
-                 Logs.info (fun m -> m "verified index and added resources %s" id) ;
-                 List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
-                 r)
-            in
-            R.ignore_error ~use:(fun e -> w Conex_repository.pp_error e ; r, Some idx)
-              (Conex_repository.verify_key r k >>| fun ok ->
-               Logs.info (fun m -> m "verified key %s %a" id Conex_repository.pp_ok ok) ;
-               (r, Some idx))
-          else
-            (r, Some idx)
+    R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r)
+      (let r = Conex_repository.add_id r id in
+       Conex_repository.read_id r id >>| function
+        | `Id idx ->
+          Logs.debug (fun m -> m "read %a" Index.pp_index idx);
+          R.ignore_error
+            ~use:(fun e -> w pp_verification_error e ; r)
+            (Conex_repository.verify_index r idx >>| fun (r, warn, id) ->
+             Logs.info (fun m -> m "verified index and added resources %s" id) ;
+             List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
+             r)
         | `Team t ->
           Logs.debug (fun m -> m "read %a" Team.pp_team t);
-          let r = Conex_repository.add_team r t in
-          let r = S.fold (fun id r -> fst (load_id id r)) t.Team.members r in
+          let r = S.fold load_id t.Team.members r in
           R.ignore_error
-            ~use:(fun e -> w Conex_repository.pp_error e ; r, None)
+            ~use:(fun e -> w Conex_repository.pp_error e ; r)
             (Conex_repository.verify_team r t >>| fun (r, ok) ->
              Logs.info (fun m -> m "verified team %s %a" id Conex_repository.pp_ok ok) ;
-             r, None))
+             r))
   else
-    (Logs.debug (fun m -> m "%s already present in repository" id) ; r, None)
+    (Logs.debug (fun m -> m "%s already present in repository" id) ; r)
 
-let load_ids r ids = S.fold (fun id r -> fst (load_id id r)) ids r
+let load_ids r ids = S.fold load_id ids r
 
 let show_package id showit item r =
   let pn, set = match Conex_opam_layout.authorisation_of_item item with
@@ -207,22 +197,36 @@ let self r o =
   id
 
 let load_self_queued r id =
-  let r, idx = load_id id r in
-  match idx with
-  | None -> r
-  | Some idx ->
-    List.fold_left (fun r res ->
-        R.ignore_error
-          ~use:(fun e -> Logs.warn (fun m -> m "failed to add queued %a %s" Index.pp_resource res e) ; r)
-          (Conex_repository.add_valid_resource r id res >>| fun r ->
-           Logs.info (fun m -> m "added own queued %a" Index.pp_resource res);
-           r))
-      r idx.Index.queued
+  R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r)
+    (Conex_repository.read_id r id >>| function
+      | `Id idx -> (* verify (ignoring error), add queued *)
+        let use e =
+          w pp_verification_error e ;
+          List.fold_left (fun repo r ->
+              match Conex_repository.add_valid_resource repo id r with
+              | Ok repo -> Logs.debug (fun m -> m "%s (self) added resource %a" id Index.pp_resource r) ; repo
+              | Error e -> Logs.warn (fun m -> m "error %s while adding own resource %a" e Index.pp_resource r) ; repo)
+            r idx.Index.resources
+        in
+        let repo = R.ignore_error ~use
+            (Conex_repository.verify_index r idx >>| fun (r, w, _id) ->
+             List.iter (fun w -> Logs.warn (fun m -> m "while loading own index %s" w)) w ;
+             r)
+        in
+        List.fold_left (fun r res ->
+            R.ignore_error
+              ~use:(fun e -> Logs.warn (fun m -> m "failed to add queued %a %s" Index.pp_resource res e) ; r)
+              (Conex_repository.add_valid_resource r id res >>| fun r ->
+               Logs.info (fun m -> m "added own queued %a" Index.pp_resource res);
+               r))
+            repo idx.Index.queued
+      | `Team t -> (* load team members!? *)
+        load_ids r t.Team.members)
 
 let status_all r id no_team =
   R.error_to_msg ~pp_error:Conex_repository.pp_r_err
     (Conex_repository.read_id r id) >>| function
-  | `Key _ ->
+  | `Id _ ->
     let me =
       s_of_list
         (if no_team then [id]
@@ -233,7 +237,7 @@ let status_all r id no_team =
                    ~use:(fun e -> w Conex_repository.pp_r_err e ; teams)
                    (Conex_repository.read_id r id' >>| function
                      | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
-                     | `Team _ | `Key _ -> teams))
+                     | `Team _ | `Id _ -> teams))
                (Conex_repository.ids r) []
            in
            id :: List.map (fun t -> t.Team.name) teams)
@@ -256,9 +260,13 @@ let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
   msg_to_cmdliner
-    (self r o >>= fun id ->
+    (let r =
+       R.ignore_error
+         ~use:(fun _ -> Logs.warn (fun m -> m "error while loading janitors") ; r)
+         (Conex_repository.load_janitors r)
+     in
+     self r o >>= fun id ->
      let r = load_self_queued r id in
-     let r, _ = load_id "janitors" r in
      if name = "" then
        status_all r id no_rec >>| fun _r -> ()
      else
@@ -284,33 +292,36 @@ let initialise r id email =
   (match Conex_repository.read_id r id with
    | Ok (`Team _) ->
      Error (`Msg ("team " ^ id ^ " exists"))
-   | Ok (`Key k) when k.Publickey.key <> None ->
+   | Ok (`Id idx) when List.length idx.Index.keys > 0 ->
      Error (`Msg ("key " ^ id ^ " exists and includes a public key"))
-   | Ok (`Key k) -> Ok k
-   | Error _ -> Ok (Publickey.publickey id None)) >>= fun pub ->
-    let priv = Conex_nocrypto.generate () in
-    Conex_private.write_private_key r id priv ;
-    Logs.info (fun m -> m "wrote private key %s" id) ;
-    str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
-    let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ pub.Publickey.accounts
-    and carry, counter = Uint.succ pub.Publickey.counter
+   | Ok (`Id k) -> Ok k
+   | Error _ -> Ok (Index.index id)) >>= fun idx ->
+  let priv =
+    let use _ =
+      let p = Conex_nocrypto.generate () in
+      Conex_private.write_private_key r id p ;
+      Logs.info (fun m -> m "generated and wrote private key %s" id) ;
+      p
     in
-    if carry then
-      Logs.warn (fun m -> m "counter overflow in publickey %s, needs approval" id) ;
-    let pub =
-      Publickey.publickey ~counter ~accounts id (Some public)
-    in
-    Conex_repository.write_key r pub ;
-    Logs.info (fun m -> m "wrote public key %a" Publickey.pp_publickey pub) ;
-    let idx, _ = find_idx r id in
-    let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t pub) in
-    str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
-    Conex_repository.write_index r idx ;
-    Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
-    R.error_to_msg ~pp_error:pp_verification_error
-       (Conex_repository.verify_index r idx pub >>| fun (_, _, id) ->
-        Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
-    Logs.app (fun m -> m "Created keypair.  Please 'git add keys/%s index/%s', and submit a PR.  Join teams and claim your packages." id id)
+    R.ignore_error ~use (Conex_private.read_private_key ~id r >>| fun (_, priv) -> priv)
+  in
+  str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
+  let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Index.accounts
+  and counter = idx.Index.counter
+  and keys = public :: idx.Index.keys
+  and signatures = idx.Index.signatures
+  and queued = idx.Index.queued
+  and resources = idx.Index.resources
+  in
+  let idx = Index.index ~accounts ~keys ~counter ~resources ~signatures ~queued id in
+  let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t id public) in
+  str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
+  Conex_repository.write_index r idx ;
+  Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
+  R.error_to_msg ~pp_error:pp_verification_error
+    (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
+     Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
+  Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id)
 
 let init _ o email =
   match o.Conex_opts.id with

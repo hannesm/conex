@@ -28,13 +28,17 @@ let id_loaded t id = S.mem id t.ids
 
 let add_id t id = { t with ids = S.add id t.ids }
 
-let valid r digest =
-  try Some (M.find digest r.valid) with Not_found -> None
+let expand_owner r os =
+  S.fold
+    (fun id s -> match find_team r id with
+       | None -> S.add id s
+       | Some mems -> S.union s mems)
+    os
+    S.empty
 
 let authorised r a id =
-  let set = a.Authorisation.authorised in
-  let is_member tid = S.mem id (match find_team r tid with None -> S.empty | Some s -> s) in
-  S.mem id set || (S.exists is_member set)
+  let owners = expand_owner r a.Authorisation.authorised in
+  S.mem id owners
 
 let add_valid_resource repo id res =
   let open Index in
@@ -60,43 +64,10 @@ let add_team repo team =
     ids = S.add team.Team.name repo.ids
   }
 
-let verify pub data (id, ts, sigval) =
-  let data = Signature.extend_data data id ts in
-  match pub.Publickey.key with
-  | None -> Error (`InvalidPublicKey id)
-  | Some key ->
-    match Conex_nocrypto.verify key data sigval with
-    | Ok () -> Ok id
-    | Error `InvalidBase64 -> Error (`InvalidBase64Encoding id)
-    | Error `InvalidPubKey -> Error (`InvalidPublicKey id)
-    | Error `InvalidSig -> Error (`InvalidSignature id)
+let verify key data (ts, sigval) =
+  let data = Signature.extend_data data ts in
+  Conex_nocrypto.verify key data sigval
 
-let verify_index repo idx pub =
-  let aid = idx.Index.name in
-  let to_consider, others =
-    List.partition (fun (id, _, _) -> id_equal id aid) idx.Index.signatures
-  in
-  let verify = verify pub (Conex_data.encode (Conex_data_persistency.index_to_t idx)) in
-  let err = match others with
-    | [] -> `NoSignature aid
-    | (xid, _, _)::_ -> `NotAuthorised (aid, xid)
-  in
-  List.fold_left (fun r s -> match r, verify s with Ok x, _ -> Ok x | _, b -> b)
-    (Error err) to_consider >>= fun id ->
-  let r, warn = List.fold_left (fun (repo, warn) res ->
-      match add_valid_resource repo id res with
-      | Ok r -> r, warn
-      | Error msg -> repo, msg :: warn)
-      (repo, [])
-      idx.Index.resources
-  in
-  let warn = warn @ List.map (fun r ->
-      Format.(fprintf str_formatter "ignored queued %a" Index.pp_resource r) ;
-      Format.flush_str_formatter ())
-      idx.Index.queued
-  in
-  let r = add_id r aid in
-  Ok (r, warn, id)
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
@@ -113,7 +84,7 @@ type base_error = [
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_cs ppf (a, b) =
-  Format.fprintf ppf "have %a want %a@ " Checksum.pp_checksum a Checksum.pp_checksum b
+  Format.fprintf ppf "have %a want %a" Checksum.pp_checksum a Checksum.pp_checksum b
 
 let pp_error ppf = function
   | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
@@ -131,13 +102,6 @@ let pp_error ppf = function
   | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
 (*BISECT-IGNORE-END*)
 
-let expand_owner r os =
-  S.fold
-    (fun id s ->
-       if M.mem id r.teams then S.union s (M.find id r.teams) else S.add id s)
-    os
-    S.empty
-
 let verify_resource repo owners name resource data =
   let csum = Conex_nocrypto.digest data in
   let n, _s, r, ids =
@@ -147,29 +111,94 @@ let verify_resource repo owners name resource data =
       (name, Uint.of_int (String.length data), resource, S.empty)
   in
   let janitors = match find_team repo "janitors" with None -> S.empty | Some s -> s in
-  let js = S.filter (fun j -> S.mem j janitors) ids in
+  let js = S.inter janitors ids in
   let owners = expand_owner repo owners in
-  let id a = S.choose (S.filter (fun a -> S.mem a ids) a) in
+  let signed_owners = S.inter ids owners in
   match
     name_equal n name,
     resource_equal r resource,
-    S.exists (fun a -> S.mem a ids) owners,
+    S.cardinal signed_owners > 0,
     S.cardinal js >= repo.quorum
   with
   | false, _    , _    , _     -> Error (`InvalidName (name, n))
   | true , false, _    , _     -> Error (`InvalidResource (name, resource, r))
   | true , true , false, false -> Error (`NotSigned (n, r, js))
   | true , true , false, true  -> Ok (`Quorum js)
-  | true , true , true , false -> Ok (`IdNoQuorum (id owners, js))
-  | true , true , true , true  -> Ok (`Both (id owners, js))
+  | true , true , true , false -> Ok (`IdNoQuorum (S.choose signed_owners, js))
+  | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
 
-let verify_key repo key =
-  let id = key.Publickey.name in
-  verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Conex_data_persistency.publickey_to_t key)) >>= function
+let verify_key repo id key =
+  verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Conex_data_persistency.publickey_to_t id key)) >>= function
   | `Both b -> Ok (`Both b)
-  | `Quorum js when key.Publickey.key = None -> Ok (`Quorum js)
   | `Quorum _ -> Error (`MissingSignature id)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `PublicKey, js))
+
+let verify_signatures idx =
+  let tbv = Conex_data.encode (Conex_data_persistency.index_to_t idx) in
+  List.fold_left (fun (good, warn) k ->
+      match List.fold_left (fun r s ->
+          match r, verify k tbv s with
+          | Ok (), _ -> Ok ()
+          | _, b -> b)
+          (Error `NoSignature)
+          idx.Index.signatures
+      with
+      | Ok () -> (k :: good, warn)
+      | Error e -> (good, e :: warn))
+    ([], []) idx.Index.keys
+
+let contains idx name typ data =
+  let encoded = Conex_data.encode data in
+  let digest = Conex_nocrypto.digest encoded in
+  let r = Index.r Uint.zero name (Uint.of_int (String.length encoded)) typ digest in
+  List.exists (Index.r_equal r) idx.Index.resources
+
+let verify_index repo idx =
+  (* this is a multi step process:
+     - use all keys of the idx, filter:
+     - those with a valid signature for the idx
+     - those with a valid resource entry
+     - those that can be verified (quorum)
+
+     --> or else maybe the (empty!) idx can be verified by janitors
+ *)
+  let id = idx.Index.name in
+  let signed_keys, _s_warn = verify_signatures idx in
+  let valid_keys, _r_warn = List.partition
+      (fun key -> contains idx id `PublicKey (Conex_data_persistency.publickey_to_t id key))
+      signed_keys
+  in
+  Printf.printf "%s: %d signed keys, %d valid keys, %d resources (%d queued)\n%!"
+    id (List.length signed_keys) (List.length valid_keys)
+    (List.length idx.Index.resources) (List.length idx.Index.queued) ;
+  match valid_keys, idx.Index.resources with
+  | [], [] ->
+    begin match verify_resource repo S.empty id `Index (Conex_data.encode (Conex_data_persistency.index_sigs_to_t idx)) with
+      | Ok _ -> Ok (add_id repo id, [], id)
+      | Error _ -> Error `NoSignature
+    end
+  | [], _ -> Error `NoSignature
+  | _, _ ->
+    let quorum, _q_warn =
+      List.fold_left (fun (good, warn) pub ->
+          match verify_key repo id pub with
+          | Error (`MissingSignature _) (* we checked above that the publickey is in the resources list! *)
+          | Ok (`Both _) -> pub :: good, warn
+          | _ -> good, pub :: warn)
+        ([], []) valid_keys
+    in
+    match quorum with
+    | [] -> Error `NoSignature
+    | _ ->
+      let r, warn = List.fold_left (fun (repo, warn) res ->
+          match add_valid_resource repo id res with
+          | Ok r -> r, warn
+          | Error msg -> repo, msg :: warn)
+          (repo, [])
+          idx.Index.resources
+      in
+      let r = add_id r id in
+      Ok (r, warn, id)
 
 let verify_team repo team =
   let id = team.Team.name in
@@ -179,7 +208,7 @@ let verify_team repo team =
   | Ok (`Quorum js) -> Ok (add_team repo team, `Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-  (* should verify that all members are on disk (and are keys, not teams, and no index files!!!) *)
+  (* should verify that all members are on disk (and are index, not teams!!!) *)
 
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
@@ -189,6 +218,7 @@ let verify_authorisation repo auth =
   | Ok (`Quorum js) -> Ok (`Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
+  (* should verify that all ids exist? *)
 
 let ensure_releases repo r =
   let dirs = Conex_opam_layout.subitems repo.data r.Releases.name in
@@ -250,24 +280,8 @@ let pp_r_err ppf = function
   | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
 (*BISECT-IGNORE-END*)
 
-let read_key repo keyid =
-  match repo.data.Provider.read (Conex_opam_layout.key_path keyid) with
-  | Error _ -> Error (`NotFound ("key", keyid))
-  | Ok data ->
-    match Conex_data.decode data >>= Conex_data_persistency.t_to_publickey with
-    | Error p -> Error (`ParseError (keyid, p))
-    | Ok pubkey ->
-      if id_equal pubkey.Publickey.name keyid then
-        Ok pubkey
-      else
-        Error (`NameMismatch (keyid, pubkey.Publickey.name))
-
-let write_key repo key =
-  let id = key.Publickey.name in
-  repo.data.Provider.write (Conex_opam_layout.key_path id) (Conex_data.encode (Conex_data_persistency.publickey_to_t key))
-
 let read_team repo name =
-  match repo.data.Provider.read (Conex_opam_layout.key_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.id_path name) with
   | Error _ -> Error (`NotFound ("team", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_team with
@@ -280,20 +294,10 @@ let read_team repo name =
 
 let write_team repo t =
   let id = t.Team.name in
-  repo.data.Provider.write (Conex_opam_layout.key_path id) (Conex_data.encode (Conex_data_persistency.team_to_t t))
-
-let read_id repo id =
-  match read_key repo id with
-  | Ok key -> Ok (`Key key)
-  | Error (`NameMismatch (a, b)) -> Error (`NameMismatch (a, b))
-  | Error _ -> match read_team repo id with
-    | Ok team -> Ok (`Team team)
-    | Error e -> Error e
-
-let ids repo = S.of_list (Conex_opam_layout.ids repo.data)
+  repo.data.Provider.write (Conex_opam_layout.id_path id) (Conex_data.encode (Conex_data_persistency.team_to_t t))
 
 let read_index repo name =
-  match repo.data.Provider.read (Conex_opam_layout.index_path name) with
+  match repo.data.Provider.read (Conex_opam_layout.id_path name) with
   | Error _ -> Error (`NotFound ("index", name))
   | Ok data ->
     match Conex_data.decode data >>= Conex_data_persistency.t_to_index with
@@ -305,8 +309,18 @@ let read_index repo name =
         Error (`NameMismatch (name, i.Index.name))
 
 let write_index repo i =
-  let name = Conex_opam_layout.index_path i.Index.name in
+  let name = Conex_opam_layout.id_path i.Index.name in
   repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.index_sigs_to_t i))
+
+let read_id repo id =
+  match read_team repo id with
+  | Ok team -> Ok (`Team team)
+  | Error (`NameMismatch (a, b)) -> Error (`NameMismatch (a, b))
+  | Error _ -> match read_index repo id with
+    | Ok idx -> Ok (`Id idx)
+    | Error e -> Error e
+
+let ids repo = S.of_list (Conex_opam_layout.ids repo.data)
 
 let read_authorisation repo name =
   match repo.data.Provider.read (Conex_opam_layout.authorisation_path name) with
@@ -359,3 +373,78 @@ let read_checksum repo name =
 let write_checksum repo csum =
   let name = Conex_opam_layout.checksum_path csum.Checksum.name in
   repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.checksums_to_t csum))
+
+let add_index repo idx =
+  List.fold_left (fun repo r ->
+      match add_valid_resource repo idx.Index.name r with
+      | Error _ -> repo
+      | Ok repo -> repo)
+    (add_id repo idx.Index.name)
+    idx.Index.resources
+
+let load_janitors ?(valid = fun _ -> true) repo =
+  read_team repo "janitors" >>= fun team ->
+  foldM (fun acc id -> read_index repo id >>= fun idx -> Ok (idx :: acc)) [] (S.elements team.Team.members) >>= fun idxs ->
+  (* for each, validate public key(s): signs the index, resource is contained *)
+  let valid_idxs =
+    List.fold_left (fun acc idx ->
+        let id = idx.Index.name in
+        let good, _warn = verify_signatures idx in
+        let f k = contains idx id `PublicKey (Conex_data_persistency.publickey_to_t id k) in
+        match List.filter f good with
+        | [] -> acc
+        | xs -> (xs, idx) :: acc)
+      [] idxs
+  in
+  (* filter by fingerprint, create a repository *)
+  let approved, notyet =
+    List.fold_left (fun (good, bad) (keys, idx) ->
+        let id = idx.Index.name in
+        let approved = List.filter (fun k -> valid (id, (Conex_nocrypto.id k))) keys in
+        if List.length approved > 0 then
+          ((approved, idx) :: good, bad)
+        else
+          (good, (keys, idx) :: bad))
+      ([], []) valid_idxs
+  in
+  let jrepo = List.fold_left (fun repo (_, idx) -> add_index repo idx) repo approved in
+
+  (* repo is full with all good indexes! *)
+  (* verify all the keys! *)
+  let good_idxs, others =
+    List.fold_left (fun (good, bad) (keys, idx) ->
+        match
+          List.fold_left (fun r k ->
+              match r, verify_key jrepo idx.Index.name k with
+              | Ok x, _ -> Ok x
+              | _, x -> x)
+            (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
+            keys
+        with
+        | Ok _ -> idx :: good, bad
+        | Error _ -> good, (keys, idx) :: bad)
+      ([], []) approved
+  in
+  (* verify the team janitor *)
+  let good_j_repo = List.fold_left add_index repo good_idxs in
+  verify_team good_j_repo team >>= fun (repo, _ok) ->
+  (* team is good, there may be more janitors: esp notyet and others *)
+  (* load in a similar style:
+      - add all the idxs
+      - verify at least one key of each idx
+      - insert all verified idx *)
+  let jrepo' = List.fold_left (fun repo (_, idx) -> add_index repo idx) repo (notyet@others) in
+  let good_idx = List.fold_left (fun acc (keys, idx) ->
+      match
+        List.fold_left (fun r k ->
+            match r, verify_key jrepo' idx.Index.name k with
+            | Ok x, _ -> Ok x
+            | _, x -> x)
+          (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
+          keys
+      with
+      | Ok _ -> idx :: acc
+      | Error _ -> acc)
+      [] (notyet@others)
+  in
+  Ok (List.fold_left add_index repo good_idx)

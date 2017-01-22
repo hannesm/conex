@@ -14,14 +14,11 @@ val id_loaded : t -> identifier -> bool
 
 val authorised : t -> Authorisation.t -> identifier -> bool
 
-val valid : t -> digest -> (name * Uint.t * resource * S.t) option
-
 val change_provider : t -> Provider.t -> t
 
-val verify : Publickey.t -> string -> Signature.t -> (identifier, [> verification_error]) result
+val verify : pub -> string -> Signature.t -> (unit, [> verification_error]) result
 
-val verify_index : t -> Index.t -> Publickey.t ->
-  (t * string list * identifier, [> verification_error ]) result
+val verify_index : t -> Index.t -> (t * string list * identifier, [> verification_error ]) result
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 
@@ -43,9 +40,9 @@ val pp_error : Format.formatter ->
   | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]
   -> unit
 
-val verify_key : t -> Publickey.t ->
-  ([ `Quorum of S.t | `Both of identifier * S.t ],
-   [> base_error | `InsufficientQuorum of name * resource * S.t | `MissingSignature of identifier ]) result
+val verify_key : t -> identifier -> pub ->
+ ([ `Both of identifier * S.t ],
+  [> base_error | `InsufficientQuorum of name * resource * S.t | `MissingSignature of identifier ]) result
 
 val verify_team : t -> Team.t ->
   (t * [ `Quorum of S.t ],
@@ -75,6 +72,7 @@ val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
 
 (* Unsafe operation, think before usage! *)
 val add_team : t -> Team.t -> t
+val add_id : t -> identifier -> t
 
 val ids : t -> S.t
 val items : t -> S.t
@@ -85,11 +83,8 @@ type r_err = [ `NotFound of string * string | `ParseError of name * string | `Na
 val pp_r_err : Format.formatter -> r_err -> unit
 
 val read_id : t -> identifier ->
-  ([ `Key of Publickey.t | `Team of Team.t ],
+  ([ `Id of Index.t | `Team of Team.t ],
    [> r_err ]) result
-
-val read_key : t -> identifier -> (Publickey.t, [> r_err ]) result
-val write_key : t -> Publickey.t -> unit
 
 val read_team : t -> identifier -> (Team.t, [> r_err ]) result
 val write_team : t -> Team.t -> unit
@@ -105,3 +100,6 @@ val write_releases : t -> Releases.t -> unit
 
 val read_checksum : t -> name -> (Checksum.t, [> r_err ]) result
 val write_checksum : t -> Checksum.t -> unit
+
+val load_janitors : ?valid:(identifier * string -> bool) -> t ->
+  (t, [> base_error | r_err | `InsufficientQuorum of name * resource * S.t ]) result

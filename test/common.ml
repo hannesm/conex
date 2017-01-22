@@ -12,17 +12,16 @@ let sset =
 
 let privkey = ref None
 
-let gen_pub ?accounts ?counter ?priv id =
-  let priv = match priv, !privkey with
-    | Some p, _ -> p
-    | None, Some x -> x
-    | None, None ->
+let gen_pub () =
+  let priv = match !privkey with
+    | Some p -> p
+    | None ->
       let p = Conex_nocrypto.generate () in
       privkey := Some p ;
       p
   in
   match Conex_nocrypto.pub_of_priv priv with
-  | Ok pub -> (Publickey.publickey ?accounts ?counter id (Some pub), priv)
+  | Ok pub -> (pub, priv)
   | Error e -> invalid_arg e
 
 let result (type a) (type e) a e =
@@ -40,19 +39,6 @@ let result (type a) (type e) a e =
   end in
   (module M: Alcotest.TESTABLE with type t = M.t)
 
-let pkey_eq a b =
-  a.Publickey.counter = b.Publickey.counter &&
-  id_equal a.Publickey.name b.Publickey.name &&
-  a.Publickey.key = b.Publickey.key
-
-let publickey =
-  let module M = struct
-    type t = Publickey.t
-    let pp = Publickey.pp_publickey
-    let equal = pkey_eq
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
 let team_eq a b =
   let open Team in
   id_equal a.name b.name && a.counter = b.counter && S.equal a.members b.members
@@ -65,13 +51,24 @@ let team =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
+let idx_eq a b =
+  Index.equal a b && a.Index.counter = b.Index.counter && a.Index.version = b.Index.version
+
+let ji =
+  let module M = struct
+    type t = Index.t
+    let pp = Index.pp_index
+    let equal = idx_eq
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
 let id =
   let module M = struct
-    type t = [ `Key of Publickey.t | `Team of Team.t ]
-    let pp ppf = function `Team t -> Team.pp_team ppf t | `Key k -> Publickey.pp_publickey ppf k
+    type t = [ `Id of Index.t | `Team of Team.t ]
+    let pp ppf = function `Team t -> Team.pp_team ppf t | `Id idx -> Index.pp_index ppf idx
     let equal a b = match a, b with
       | `Team t, `Team t' -> team_eq t t'
-      | `Key k, `Key k' -> pkey_eq k k'
+      | `Id k, `Id k' -> idx_eq k k'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -102,23 +99,6 @@ let releases =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let ji =
-  let module M = struct
-    type t = Index.t
-    let pp = Index.pp_index
-    let equal a b =
-      let open Index in
-      a.counter = b.counter &&
-      a.version = b.version &&
-      a.name = b.name &&
-      List.length a.resources = List.length b.resources &&
-      List.for_all (fun r -> List.exists (fun r' ->
-          r.rname = r'.rname && r.size = r'.size && r.digest = r'.digest && r.digest = r'.digest)
-          b.resources)
-        a.resources
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
 let cs =
   let module M = struct
     type t = Checksum.t
@@ -132,12 +112,10 @@ let verr =
     type t = verification_error
     let pp = pp_verification_error
     let equal a b = match a, b with
-      | `InvalidBase64Encoding id, `InvalidBase64Encoding id' -> id_equal id id'
-      | `InvalidSignature id, `InvalidSignature id' -> id_equal id id'
-      | `InvalidPublicKey id, `InvalidPublicKey id' -> id_equal id id'
-      | `InvalidIdentifier id, `InvalidIdentifier id' -> id_equal id id'
-      | `NotAuthorised (a, s), `NotAuthorised (a', s') -> id_equal a a' && id_equal s s'
-      | `NoSignature id, `NoSignature id' -> id_equal id id'
+      | `InvalidBase64Encoding, `InvalidBase64Encoding
+      | `InvalidSignature, `InvalidSignature
+      | `InvalidPublicKey, `InvalidPublicKey
+      | `NoSignature, `NoSignature -> true
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)

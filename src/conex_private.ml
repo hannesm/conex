@@ -6,11 +6,10 @@ let sign_index idx priv =
   let idx, _overflow = Conex_resource.Index.prep_sig idx in
   let data = Conex_data.encode (Conex_data_persistency.index_to_t idx)
   and now = Uint.of_float (Unix.time ())
-  and id = idx.Conex_resource.Index.name
   in
-  let data = Conex_resource.Signature.extend_data data id now in
+  let data = Conex_resource.Signature.extend_data data now in
   Conex_nocrypto.sign priv data >>= fun signature ->
-  Ok (Conex_resource.Index.add_sig idx (id, now, signature))
+  Ok (Conex_resource.Index.add_sig idx (now, signature))
 
 let write_private_key repo id key =
   let base = (Conex_repository.provider repo).Provider.name in
@@ -34,7 +33,7 @@ let write_private_key repo id key =
     Conex_persistency.mkdir ~mode:0o700 Conex_opam_layout.private_dir ;
   match Conex_persistency.file_type Conex_opam_layout.private_dir with
   | Some Directory ->
-    let data = match key with `Priv k -> k in
+    let data = match key with `RSA_priv k -> k in
     Conex_persistency.write_file ~mode:0o400 filename data
   | _ -> invalid_arg (Conex_opam_layout.private_dir ^ " is not a directory!")
 
@@ -53,7 +52,7 @@ let read_private_key ?id repo =
     let fn = Conex_opam_layout.private_key_path base id in
     if Conex_persistency.exists fn then
       let key = Conex_persistency.read_file fn in
-      Ok (id, `Priv key)
+      Ok (id, `RSA_priv key)
     else
       Error (`NotFound id)
   in

@@ -1,8 +1,9 @@
 open Conex_result
 open Conex_core
 
-val verify : pub -> string -> string -> (unit, base_v_err) result
+val verify : pub -> string -> string -> (unit, [> verification_error ]) result
 
+val id : pub -> string
 
 val pub_of_priv : priv -> (pub, string) result
 

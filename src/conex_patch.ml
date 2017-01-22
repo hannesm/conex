@@ -56,37 +56,32 @@ let apply repo diff =
 
 type component =
   | Idx of identifier * diff
-  | Id of identifier * diff
   | Authorisation of name * diff
   | Dir of name * name * diff list
   | OldDir of name * name * diff list
 
 let pp_component pp = function
-  | Idx (id, _) -> Format.fprintf pp "index of %a" pp_id id
-  | Id (id, _) -> Format.fprintf pp "public key or team of %a" pp_id id
+  | Idx (id, _) -> Format.fprintf pp "id of %a" pp_id id
   | Authorisation (name, _) -> Format.fprintf pp "authorisation of %a" pp_name name
   | Dir (pn, vn, xs) -> Format.fprintf pp "directory %a (%a with %d changes)" pp_name pn pp_name vn (List.length xs)
   | OldDir (pn, vn, xs) -> Format.fprintf pp "old directory %a (%a with %d changes)" pp_name pn pp_name vn (List.length xs)
 
 let categorise diff =
   let p = string_to_path (file diff) in
-  match Conex_opam_layout.(is_index p, is_key p, is_authorisation p, is_item p, is_old_item p, is_compiler p) with
-  | Some id, None, None, None, None, None ->
+  match Conex_opam_layout.(is_index p, is_authorisation p, is_item p, is_old_item p, is_compiler p) with
+  | Some id, None, None, None, None ->
     (* Printf.printf "found an index in diff %s\n" id; *)
     Some (Idx (id, diff))
-  | None, Some id, None, None, None, None ->
-    (* Printf.printf "found an id in diff %s\n" id; *)
-    Some (Id (id, diff))
-  | None, None, Some id, None, None, None ->
+  | None, Some id, None, None, None ->
     (* Printf.printf "found an authorisation in diff %s\n" id; *)
     Some (Authorisation (id, diff))
-  | None, None, None, Some (d, p), None, None ->
+  | None, None, Some (d, p), None, None ->
     (* Printf.printf "found a dir in diff %s %s\n" d p; *)
     Some (Dir (d, p, [ diff ]))
-  | None, None, None, None, Some (d, p), None ->
+  | None, None, None, Some (d, p), None ->
     (* Printf.printf "found an olddir in diff %s %s\n" d p; *)
     Some (OldDir (d, p, [ diff ]))
-  | None, None, None, None, None, Some _ ->
+  | None, None, None, None, Some _ ->
     (* Printf.printf "found a compiler in diff %s %s\n" d p; *)
     None
   | _ ->
@@ -175,37 +170,6 @@ let verify repo = function
              Ok (Conex_repository.add_index repo' idx') *)
       | _, Error e -> Error e
     end
-
-  | Id (id, diff) ->
-    let repo' = apply repo diff in
-    begin match
-        Conex_repository.read_id repo id,
-        Conex_repository.read_id repo' id
-      with
-      | Ok (`Key k), Ok (`Key k') ->
-        guard (k.Publickey.counter < k'.Publickey.counter) `CounterNotIncreased >>= fun () ->
-        Conex_repository.verify_key repo k' >>= fun _ ->
-        Ok repo'
-      | Error _, Ok (`Key k') ->
-        guard (k'.Publickey.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
-        Conex_repository.verify_key repo k' >>= fun _ ->
-        Ok repo'
-      | Ok (`Team t), Ok (`Team t') ->
-        guard (t.Team.counter < t'.Team.counter) `CounterNotIncreased >>= fun () ->
-        Conex_repository.verify_team repo t' >>= fun _ ->
-        Ok (Conex_repository.add_team repo' t')
-      | Error _, Ok (`Team t') ->
-        guard (t'.Team.counter = Uint.zero) `CounterNotZero >>= fun () ->
-        guard (Conex_opam_layout.valid_id id) `IllegalId >>= fun () ->
-        guard (Conex_opam_layout.unique_id (Conex_repository.ids repo) id) `IllegalId >>= fun () ->
-        Conex_repository.verify_team repo t' >>= fun _ ->
-        Ok (Conex_repository.add_team repo' t')
-      | _, Error e -> Error e
-      | _ -> Error `InvalidKeyTeam (* disallow team to key and vice versa *)
-    end
-
 
   | Authorisation (name, diff) ->
     let repo' = apply repo diff in

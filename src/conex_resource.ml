@@ -3,53 +3,14 @@ open Conex_core
 open Conex_utils
 
 module Signature = struct
-  type t = identifier * Uint.t * string
+  type t = Uint.t * string
 
-  let extend_data data id ts =
-    String.concat " " [ data ; id ; Uint.to_string ts ]
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_signature ppf (id, ts, _) =
-    Format.fprintf ppf "signature %a created at 0x%s" pp_id id (Uint.to_string ts)
-  (*BISECT-IGNORE-END*)
-end
-
-module Publickey = struct
-  type email = identifier
-
-  type service = [
-    | `Email of email
-    | `GitHub of identifier
-    | `Other of identifier * string
-  ]
-
-  type t = {
-    counter : Uint.t ;
-    version : Uint.t ;
-    name : identifier ;
-    accounts : service list ;
-    key : pub option ;
-  }
-
-  let publickey ?(counter = Uint.zero) ?(version = Uint.zero) ?(accounts = []) name key =
-    { counter ; version ; accounts ; name ; key }
+  let extend_data data ts =
+    String.concat " " [ data ; Uint.to_string ts ]
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_service ppf = function
-    | `Email e -> Format.fprintf ppf "email %s" e
-    | `GitHub e -> Format.fprintf ppf "GitHub %s" e
-    | `Other (k, v) -> Format.fprintf ppf "%s %s" k v
-
-  let pp_publickey ppf p =
-    let pp_opt_key ppf k =
-      Format.pp_print_string ppf
-        (match k with None -> "no key" | Some (`Pub _) -> "")
-    in
-    Format.fprintf ppf "publickey #%s %a %a@ %a"
-      (Uint.to_string p.counter)
-      pp_id p.name
-      pp_opt_key p.key
-      (pp_list pp_service) p.accounts
+  let pp_signature ppf (ts, _) =
+    Format.fprintf ppf "signature created at 0x%s" (Uint.to_string ts)
   (*BISECT-IGNORE-END*)
 end
 
@@ -241,6 +202,7 @@ module Checksum = struct
 end
 
 module Index = struct
+
   type r = {
     index : Uint.t ;
     rname : string ;
@@ -268,7 +230,31 @@ module Index = struct
       pp_digest digest
   (*BISECT-IGNORE-END*)
 
+  type email = identifier
+
+  type service = [
+    | `Email of email
+    | `GitHub of identifier
+    | `Other of identifier * string
+  ]
+
+  let service_equal a b = match a, b with
+    | `Email a, `Email b -> id_equal a b
+    | `GitHub a, `GitHub b -> id_equal a b
+    | `Other (a, b), `Other (c, d) -> id_equal a c && String.compare b d = 0
+    | _ -> false
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_service ppf = function
+    | `Email e -> Format.fprintf ppf "email %s" e
+    | `GitHub e -> Format.fprintf ppf "GitHub %s" e
+    | `Other (k, v) -> Format.fprintf ppf "%s %s" k v
+  (*BISECT-IGNORE-END*)
+
+
   type t = {
+    accounts : service list ;
+    keys : pub list ;
     counter : Uint.t ;
     version : Uint.t ;
     name : identifier ;
@@ -277,13 +263,17 @@ module Index = struct
     queued : r list ;
   }
 
-  let index ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) ?(queued = []) name =
-    { counter ; version ; name ; resources ; signatures ; queued }
+  let index ?(accounts = []) ?(keys = []) ?(counter = Uint.zero) ?(version = Uint.zero) ?(resources = []) ?(signatures = []) ?(queued = []) name =
+    { accounts ; keys ; counter ; version ; name ; resources ; signatures ; queued }
 
   let equal a b =
     id_equal a.name b.name &&
+    List.length a.accounts = List.length b.accounts &&
+    List.length a.keys = List.length b.keys &&
     List.length a.resources = List.length b.resources &&
     List.length a.queued = List.length b.queued &&
+    List.for_all (fun r -> List.exists (service_equal r) a.accounts) b.accounts &&
+    List.for_all (fun r -> List.exists (pub_equal r) a.keys) b.keys &&
     List.for_all (fun r -> List.exists (r_equal r) a.resources) b.resources &&
     List.for_all (fun r -> List.exists (r_equal r) a.queued) b.queued
 
@@ -301,9 +291,11 @@ module Index = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_index ppf i =
-    Format.fprintf ppf "index #%s %a@ resources %a@ queued %a@ signatures %a"
+    Format.fprintf ppf "index #%s %a@ accounts %a@ keys %a@ resources %a@ queued %a@ signatures %a"
       (Uint.to_string i.counter)
       pp_id i.name
+      (pp_list pp_service) i.accounts
+      (pp_list pp_pub) i.keys
       (pp_list pp_resource) i.resources
       (pp_list pp_resource) i.queued
       (pp_list Signature.pp_signature) i.signatures

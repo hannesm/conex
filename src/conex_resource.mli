@@ -3,33 +3,11 @@ open Conex_core
 
 module Signature : sig
   (* a signature is a tuple *)
-  type t = identifier * Uint.t * string
+  type t = Uint.t * string
 
-  val extend_data : string -> identifier -> Uint.t -> string
+  val extend_data : string -> Uint.t -> string
 
   val pp_signature : Format.formatter -> t -> unit
-end
-
-module Publickey : sig
-  type email = identifier
-
-  type service = [
-    | `Email of email
-    | `GitHub of identifier
-    | `Other of identifier * string
-  ]
-
-  type t = private {
-    counter : Uint.t ;
-    version : Uint.t ;
-    name : identifier ;
-    accounts : service list ;
-    key : pub option ;
-  }
-
-  val publickey : ?counter:Uint.t -> ?version:Uint.t -> ?accounts:(service list) -> identifier -> pub option -> t
-
-  val pp_publickey : Format.formatter -> t -> unit
 end
 
 module Team : sig
@@ -145,7 +123,17 @@ module Index : sig
 
   val pp_resource : Format.formatter -> r -> unit
 
+  type email = identifier
+
+  type service = [
+    | `Email of email
+    | `GitHub of identifier
+    | `Other of identifier * string
+  ]
+
   type t = private {
+    accounts : service list ;
+    keys : pub list ;
     counter : Uint.t ;
     version : Uint.t ;
     name : identifier ;
@@ -156,7 +144,7 @@ module Index : sig
 
   val pp_index : Format.formatter -> t -> unit
 
-  val index : ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(Signature.t list) -> ?queued:(r list) -> identifier -> t
+  val index : ?accounts:(service list) -> ?keys:(pub list) -> ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(Signature.t list) -> ?queued:(r list) -> identifier -> t
 
   val next_id : t -> Uint.t
 

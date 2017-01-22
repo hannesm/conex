@@ -12,9 +12,6 @@ type t = s Conex_core.M.t
 val t_to_team : t -> (Team.t, string) result
 val team_to_t : Team.t -> t
 
-val t_to_publickey : t -> (Publickey.t, string) result
-val publickey_to_t : Publickey.t -> t
-
 val t_to_releases : t -> (Releases.t, string) result
 val releases_to_t : Releases.t -> t
 
@@ -27,3 +24,4 @@ val checksums_to_t : Checksum.t -> t
 val t_to_index : t -> (Index.t, string) result
 val index_to_t : Index.t -> t
 val index_sigs_to_t : Index.t -> t
+val publickey_to_t : Conex_core.identifier -> Conex_core.pub -> t

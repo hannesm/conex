@@ -99,9 +99,13 @@ module Provider = struct
   (*BISECT-IGNORE-END*)
 end
 
-type pub = [ `Pub of string ]
-type priv = [ `Priv of string ]
+type pub = [ `RSA_pub of string ]
+type priv = [ `RSA_priv of string ]
 
+let pub_equal (`RSA_pub a) (`RSA_pub b) = String.compare a b = 0
+(*BISECT-IGNORE-BEGIN*)
+let pp_pub ppf (`RSA_pub x) = Format.pp_print_int ppf (String.length x)
+(*BISECT-IGNORE-END*)
 
 type name = string
 
@@ -169,25 +173,19 @@ let pp_resource ppf k = Format.pp_print_string ppf (resource_to_string k)
 
 
 type verification_error = [
-  | `InvalidBase64Encoding of identifier
-  | `InvalidSignature of identifier
-  | `InvalidPublicKey of identifier
-  | `InvalidIdentifier of identifier
-  | `NotAuthorised of identifier * identifier
-  | `NoSignature of identifier
+  | `InvalidBase64Encoding
+  | `InvalidSignature
+  | `InvalidPublicKey
+  | `NoSignature
 ]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_verification_error ppf = function
-  | `InvalidBase64Encoding id -> Format.fprintf ppf "signature %a: no valid base64 encoding" pp_id id
-  | `InvalidSignature id -> Format.fprintf ppf "signature %a invalid" pp_id id
-  | `InvalidPublicKey id -> Format.fprintf ppf "id %s: no valid public key" id
-  | `InvalidIdentifier id -> Format.fprintf ppf "id %s was not found in keystore" id
-  | `NotAuthorised (auth, sign) -> Format.fprintf ppf "index: %a is authorised, but it is signed by %a" pp_id auth pp_id sign
-  | `NoSignature s -> Format.fprintf ppf "index %a: no signature found" pp_id s
+  | `InvalidBase64Encoding -> Format.fprintf ppf "signature: no valid base64 encoding"
+  | `InvalidSignature -> Format.fprintf ppf "signature: invalid"
+  | `InvalidPublicKey -> Format.fprintf ppf "invalid public key"
+  | `NoSignature -> Format.fprintf ppf "no signature found"
 (*BISECT-IGNORE-END*)
-
-type base_v_err = [ `InvalidBase64 | `InvalidPubKey | `InvalidSig ]
 
 let (>>=) a f =
   match a with

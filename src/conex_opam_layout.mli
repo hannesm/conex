@@ -16,8 +16,7 @@ val subitems : Provider.t -> name -> name list
 
 val private_dir : string
 val private_key_path : string -> identifier -> string
-val key_path : identifier -> path
-val index_path : identifier -> path
+val id_path : identifier -> path
 val authorisation_path : name -> path
 val releases_path : name -> path
 val checksum_path : name -> path
@@ -26,7 +25,6 @@ val checksum_dir : name -> path
 val checksum_files : Provider.t -> string -> path list
 
 val is_index : path -> identifier option
-val is_key : path -> identifier option
 val is_authorisation : path -> name option
 val is_item : path -> (name * name) option
 val is_old_item : path -> (name * name) option

@@ -54,8 +54,10 @@ module Provider : sig
 end
 
 
-type pub = [ `Pub of string ]
-type priv = [ `Priv of string ]
+type pub = [ `RSA_pub of string ]
+type priv = [ `RSA_priv of string ]
+val pub_equal : pub -> pub -> bool
+val pp_pub : Format.formatter -> pub -> unit
 
 type name = string
 val pp_name : Format.formatter -> name -> unit
@@ -83,17 +85,13 @@ val pp_resource : Format.formatter -> resource -> unit
 val resource_equal : resource -> resource -> bool
 
 type verification_error = [
-  | `InvalidBase64Encoding of identifier
-  | `InvalidSignature of identifier
-  | `InvalidPublicKey of identifier
-  | `InvalidIdentifier of identifier
-  | `NotAuthorised of identifier * identifier
-  | `NoSignature of identifier
+  | `InvalidBase64Encoding
+  | `InvalidSignature
+  | `InvalidPublicKey
+  | `NoSignature
 ]
 
 val pp_verification_error : Format.formatter -> verification_error -> unit
-
-type base_v_err = [ `InvalidBase64 | `InvalidPubKey | `InvalidSig ]
 
 val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
 val guard : bool -> 'a -> (unit, 'a) result

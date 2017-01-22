@@ -88,41 +88,6 @@ let team_to_t d =
   M.add "members" (wire_string_set d.Team.members)
     (wire_ncv d.Team.name d.Team.counter d.Team.version)
 
-let accounts map =
-  M.fold (fun k v acc ->
-      acc >>= fun xs ->
-      string v >>= fun s ->
-      let data =
-        match k with
-        | "email" -> `Email s
-        | "github" -> `GitHub s
-        | x -> `Other (x, s)
-      in
-      Ok (data :: xs))
-    map (Ok [])
-
-let t_to_publickey data =
-  keys true ["key"; "accounts"] data >>= fun () ->
-  ncv data >>= fun (name, counter, version) ->
-  opt_err (search data "key") >>= string >>= fun key ->
-  opt_map (search data "accounts") >>= accounts >>= fun accounts ->
-  let key = if key = "NONE" then None else Some (`Pub key) in
-  Ok (Publickey.publickey ~counter ~version ~accounts name key)
-
-let wire_account m = function
-  | `Email e -> M.add "email" (String e) m
-  | `GitHub g -> M.add "github" (String g) m
-  | `Other (k, v) -> M.add k (String v) m
-
-let publickey_to_t pubkey =
-  let pem = match pubkey.Publickey.key with
-    | None -> "NONE"
-    | Some (`Pub x) -> x
-  in
-  M.add "key" (String pem)
-    (M.add "accounts" (Map (List.fold_left wire_account M.empty pubkey.Publickey.accounts))
-       (wire_ncv pubkey.Publickey.name pubkey.Publickey.counter pubkey.Publickey.version))
-
 
 let t_to_releases data =
   keys true ["releases"] data >>= fun () ->
@@ -177,19 +142,11 @@ let checksums_to_t cs =
 
 
 let signature data =
-  map data >>= fun map ->
-  keys false ["keyid" ; "created" ; "sig" ] map >>= fun () ->
-  opt_err (search map "keyid") >>= string >>= fun keyid ->
-  opt_err (search map "created") >>= int >>= fun created ->
-  opt_err (search map "sig") >>= string >>= fun sigval ->
-  Ok (keyid, created, sigval)
+  list data >>= function
+    | [ Int created ;  String d ] -> Ok (created, d)
+    | _ -> Error "couldn't parse signature"
 
-let wire_signature (id, ts, s) =
-  M.add "keyid" (String id)
-    (M.add "created" (Int ts)
-       (M.add "sig" (String s)
-          M.empty))
-
+let wire_signature (ts, s) = [ Int ts ; String s ]
 
 let resource data =
   map data >>= fun map ->
@@ -212,9 +169,35 @@ let wire_resource idx =
              (M.add "digest" (String idx.Index.digest)
                 M.empty))))
 
+let accounts map =
+  M.fold (fun k v acc ->
+      acc >>= fun xs ->
+      string v >>= fun s ->
+      let data =
+        match k with
+        | "email" -> `Email s
+        | "github" -> `GitHub s
+        | x -> `Other (x, s)
+      in
+      Ok (data :: xs))
+    map (Ok [])
+
+let wire_account m = function
+  | `Email e -> M.add "email" (String e) m
+  | `GitHub g -> M.add "github" (String g) m
+  | `Other (k, v) -> M.add k (String v) m
+
+let key data =
+  list data >>= function
+  | [ Int typ ; String data ] ->
+    if Uint.compare Uint.zero typ = 0 then
+      Ok (`RSA_pub data)
+    else
+      Error "unknown key type"
+  | _ -> Error "unknown key"
 
 let t_to_index data =
-  keys false ["signatures" ; "signed" ; "queued"] data >>= fun () ->
+  keys false ["signatures" ; "signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
   opt_list (search data "signatures") >>= fun sigs ->
   foldM (fun acc v -> signature v >>= fun s -> Ok (s :: acc)) [] sigs >>= fun signatures ->
   opt_err (search data "signed") >>= map >>= fun signed ->
@@ -224,15 +207,34 @@ let t_to_index data =
   foldM (fun acc v -> resource v >>= fun r -> Ok (r :: acc)) [] rs >>= fun resources ->
   opt_list (search data "queued") >>= fun qs ->
   foldM (fun acc v -> resource v >>= fun r -> Ok (r :: acc)) [] qs >>= fun queued ->
-  Ok (Index.index ~counter ~version ~resources ~queued ~signatures name)
+  opt_list (search data "keys") >>= fun keys ->
+  foldM (fun acc k -> key k >>= fun r -> Ok (r :: acc)) [] keys >>= fun keys ->
+  opt_map (search data "accounts") >>= accounts >>= fun accounts ->
+  Ok (Index.index ~keys ~accounts ~counter ~version ~resources ~queued ~signatures name)
 
 let index_to_t i =
   let resources = List.map (fun r -> Map (wire_resource r)) i.Index.resources in
   M.add "resources" (List resources)
     (wire_ncv i.Index.name i.Index.counter i.Index.version)
 
+let publickey_to_t id k =
+  let typ, data =
+    match k with
+    | `RSA_pub k -> (Uint.zero, k)
+  in
+  M.add "type" (Int typ)
+    (M.add "key" (String data)
+       (M.add "name" (String id) M.empty))
+
+let wire_key k =
+  match k with
+  | `RSA_pub k -> List [ Int Uint.zero ; String k ]
+
 let index_sigs_to_t i =
-  M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) i.Index.queued))
-    (M.add "signed" (Map (index_to_t i))
-       (M.add "signatures" (List (List.map (fun s -> Map (wire_signature s)) i.Index.signatures))
-          M.empty))
+  M.add "keys" (List (List.map wire_key i.Index.keys))
+    (M.add "accounts" (Map (List.fold_left wire_account M.empty i.Index.accounts))
+       (M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) i.Index.queued))
+          (M.add "signed" (Map (index_to_t i))
+             (M.add "signatures" (List (List.map (fun s -> List (wire_signature s)) i.Index.signatures))
+                M.empty))))
+

@@ -47,10 +47,10 @@ let private_key_path path id =
   in
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
-let key_dir = "keys"
+let id_dir = "id"
 
 let ids p =
-  match p.Provider.read_dir [ key_dir ] with
+  match p.Provider.read_dir [ id_dir ] with
   | Error _ -> []
   | Ok data ->
     let f = function
@@ -59,10 +59,7 @@ let ids p =
     in
     filter_map ~f data
 
-let key_path id = [ key_dir ; id ]
-
-let ipath = "index"
-let index_path ji = [ ipath ; ji ]
+let id_path ji = [ id_dir ; ji ]
 
 let data_dir = "packages"
 let authorisation_filename = "authorisation"
@@ -129,11 +126,7 @@ let checksum_files p da =
       data
 
 let is_index = function
-  | idx ::id :: [] when idx = ipath -> Some id
-  | _ -> None
-
-let is_key = function
-  | kd :: id :: [] when kd = key_dir -> Some id
+  | idx ::id :: [] when idx = id_dir -> Some id
   | _ -> None
 
 let is_authorisation = function

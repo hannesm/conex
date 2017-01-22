@@ -5,7 +5,6 @@ open Conex_diff
 
 type component =
   | Idx of identifier * diff
-  | Id of identifier * diff
   | Authorisation of name * diff
   | Dir of name * name * diff list
   | OldDir of name * name * diff list
