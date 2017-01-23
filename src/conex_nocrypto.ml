@@ -48,7 +48,7 @@ let encode_priv = function
      let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
      Cstruct.to_string pem
 
-let generate ?(bits = 2048) () =
+let generate ?(bits = 4096) () =
   `RSA_priv (encode_priv (RSA_priv (Nocrypto.Rsa.generate bits)))
 
 let pub_of_priv = function
