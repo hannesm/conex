@@ -130,7 +130,12 @@ let is_index = function
   | _ -> None
 
 let is_authorisation = function
-  | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename->
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename ->
+    Some id
+  | _ -> None
+
+let is_releases = function
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = releases_filename ->
     Some id
   | _ -> None
 

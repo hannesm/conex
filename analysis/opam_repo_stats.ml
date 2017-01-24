@@ -69,46 +69,32 @@ let handle_one base commit pr github mail maps =
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
   let diffs = Conex_diff.to_diffs content in
-  let comps = Conex_patch.diffs_to_components diffs in
-  List.fold_left (fun (github_map, package_map) d ->
-      Format.fprintf Format.std_formatter "handling %a" Conex_patch.pp_component d ;
-      match d with
-      | Conex_patch.Dir (p, _, _)
-      | Conex_patch.OldDir (p, _, _) ->
-        let github_map =
-          let vals = if M.mem github github_map then M.find github github_map else S.empty in
-          M.add github (S.add mail vals) github_map
-        in
-        if Sys.file_exists (Filename.concat base (Filename.concat "packages" p)) then
-          let ms = read_auth base p in
-          let valid = List.mem mail ms in
-          let package_map =
-            let vals =
-              if M.mem p package_map then
-                M.find p package_map
-              else
-                M.empty
-            in
-            let entries =
-              if M.mem mail vals then
-                M.find mail vals
-              else
-                []
-            in
-            let maybe =
-              if List.exists (fun (_, pr') ->  pr = pr') entries then
-                entries
-              else
-                (valid, pr) :: entries
-            in
-            M.add p (M.add mail maybe vals) package_map
+  let _ids, _auths, _rels, packages = Conex_patch.diffs_to_components diffs in
+  M.fold (fun pn _pvs (github_map, package_map) ->
+      Format.fprintf Format.std_formatter "handling %s\n" pn ;
+      let github_map =
+        let vals = if M.mem github github_map then M.find github github_map else S.empty in
+        M.add github (S.add mail vals) github_map
+      in
+      if Sys.file_exists (Filename.concat base (Filename.concat "packages" pn)) then
+        let ms = read_auth base pn in
+        let valid = List.mem mail ms in
+        let package_map =
+          let vals = try M.find pn package_map with Not_found -> M.empty in
+          let entries = try M.find mail vals with Not_found -> [] in
+          let maybe =
+            if List.exists (fun (_, pr') -> pr = pr') entries then
+              entries
+            else
+              (valid, pr) :: entries
           in
-          (github_map, package_map)
-        else
-          (Printf.printf "ignoring deleted package %s\n" p;
-           (github_map, package_map))
-      | _ -> Printf.printf "ignoring\n"; (github_map, package_map))
-    maps comps
+          M.add pn (M.add mail maybe vals) package_map
+        in
+        (github_map, package_map)
+      else
+        (Printf.printf "ignoring deleted package %s\n" pn ;
+         (github_map, package_map)))
+    packages maps
 
 (* what do I want in the end? *)
 (* map GitHub ID -> (email, package list) [of invalid pushes] *)

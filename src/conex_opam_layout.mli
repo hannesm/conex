@@ -26,6 +26,7 @@ val checksum_files : Provider.t -> string -> path list
 
 val is_index : path -> identifier option
 val is_authorisation : path -> name option
+val is_releases : path -> name option
 val is_item : path -> (name * name) option
 val is_old_item : path -> (name * name) option
 val is_compiler : path -> (name * name) option

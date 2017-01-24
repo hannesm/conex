@@ -54,64 +54,42 @@ let apply repo diff =
   let new_provider = apply_diff provider diff in
   Conex_repository.change_provider repo new_provider
 
-type component =
-  | Idx of identifier * diff
-  | Authorisation of name * diff
-  | Dir of name * name * diff list
-  | OldDir of name * name * diff list
-
-let pp_component pp = function
-  | Idx (id, _) -> Format.fprintf pp "id of %a" pp_id id
-  | Authorisation (name, _) -> Format.fprintf pp "authorisation of %a" pp_name name
-  | Dir (pn, vn, xs) -> Format.fprintf pp "directory %a (%a with %d changes)" pp_name pn pp_name vn (List.length xs)
-  | OldDir (pn, vn, xs) -> Format.fprintf pp "old directory %a (%a with %d changes)" pp_name pn pp_name vn (List.length xs)
-
 let categorise diff =
   let p = string_to_path (file diff) in
-  match Conex_opam_layout.(is_index p, is_authorisation p, is_item p, is_old_item p, is_compiler p) with
-  | Some id, None, None, None, None ->
+  match Conex_opam_layout.(is_index p, is_authorisation p, is_releases p, is_item p, is_old_item p, is_compiler p) with
+  | Some id, None, None, None, None, None ->
     (* Printf.printf "found an index in diff %s\n" id; *)
-    Some (Idx (id, diff))
-  | None, Some id, None, None, None ->
+    `Id id
+  | None, Some id, None, None, None, None ->
     (* Printf.printf "found an authorisation in diff %s\n" id; *)
-    Some (Authorisation (id, diff))
-  | None, None, Some (d, p), None, None ->
+    `Authorisation id
+  | None, None, Some id, None, None, None ->
+    `Releases id
+  | None, None, None, Some (d, p), None, None ->
     (* Printf.printf "found a dir in diff %s %s\n" d p; *)
-    Some (Dir (d, p, [ diff ]))
-  | None, None, None, Some (d, p), None ->
+    `Package (d, p)
+  | None, None, None, None, Some (d, p), None ->
     (* Printf.printf "found an olddir in diff %s %s\n" d p; *)
-    Some (OldDir (d, p, [ diff ]))
-  | None, None, None, None, Some _ ->
+    `Package (d, p)
+  | None, None, None, None, None, Some id ->
     (* Printf.printf "found a compiler in diff %s %s\n" d p; *)
-    None
+    `Compiler id
   | _ ->
     (* XXX: handle error properly! *)
     Printf.printf "couldn't categorise %s\n" (path_to_string p) ;
-    None
+    `Unknown
 
 let diffs_to_components diffs =
-  let pdir p v = function
-    | Dir (p', v', _) when p = p' && v = v' -> true
-    | _ -> false
-  and polddir p v = function
-    | OldDir (p', v', _) when p = p' && v = v' -> true
-    | _ -> false
-  in
-  List.fold_left (fun acc diff ->
+  List.fold_left (fun (ids, auths, rels, pkgs) diff ->
       match categorise diff with
-      | Some (Dir (p, v, d)) ->
-        (match List.partition (pdir p v) acc with
-         | [Dir (_, _, ds)], others -> Dir (p, v, d @ ds) :: others
-         | [], others -> Dir (p, v, d) :: others
-         | _, _ -> invalid_arg "unexpected thing here")
-      | Some (OldDir (p, v, d)) ->
-        (match List.partition (polddir p v) acc with
-         | [OldDir (_, _, ds)], others -> OldDir (p, v, d @ ds) :: others
-         | [], others -> OldDir (p, v, d) :: others
-         | _, _ -> invalid_arg "unexpected thing here")
-      | Some x -> x :: acc
-      | None -> acc)
-    [] diffs
+      | `Id id -> S.add id ids, auths, rels, pkgs
+      | `Authorisation id -> ids, S.add id auths, rels, pkgs
+      | `Releases id -> ids, auths, S.add id rels, pkgs
+      | `Package (name, version) ->
+        let s = try M.find name pkgs with Not_found -> S.empty in
+        ids, auths, rels, M.add name (S.add version s) pkgs
+      | _ -> ids, auths, rels, pkgs)
+    (S.empty, S.empty, S.empty, M.empty) diffs
 
 
 type err = [ verification_error
@@ -137,18 +115,36 @@ type err = [ verification_error
 
 (* verification goes repo -> update -> (repo, err) result *)
 (*  what needs to be verified?
-  - new key: idx exists?
-  - deletion of key: idx gone?
+
+we have an old repository (repo) and a diff file (patch) as input
+
+take and split patch into categories:
+ - ids
+ - authorisation?!
+ - releases!?
+ - package
+
+and process them in order:
+- load janitors from repo
+--> use this to load + verify janitors team ++ load+verify members
+- process modified authors (unless already present)!?
+--> check for everything removed (from resources -- but we can't atm) that it's still properly signed
+
+- process each package in diff fully (if releases or authorisation changes, full pkg)
 
 
- on key rollover (again):
-   - read key, verify (should be good)
-   - verify index
+is there any need from not applying the id changes in one go?
 
-  --> incoming diff has both parts, but index needs to be loaded first in any case
-   (what happens with new index with sig from new key? -- need to apply key first, but that's not verified then  :/)
+actually, the whole diff... the parsing of diff file is only done to reduce the set of verifications which need to be done
+
+    on key rollover (again):
+    - read key, verify (should be good)
+    - verify index
+
+    --> incoming diff has both parts, but index needs to be loaded first in any case
+    (what happens with new index with sig from new key? -- need to apply key first, but that's not verified then  :/)
 *)
-let verify repo = function
+(*let verify repo = function
   | Idx (id, diff) ->
     let repo' = apply repo diff in
     begin match
@@ -225,15 +221,13 @@ let verify repo = function
     end
 
   | OldDir _ -> Ok repo
-
-let verify_patch repo patch =
-  List.fold_left
-    (fun res p -> match res with Ok r -> verify r p | Error e -> Error e)
-    (Ok repo)
-    (* TODO: compare (first key + index (in which sequence?), then authorisations, then dirs) *)
-    (List.sort compare patch)
+    *)
+let verify_patch repo _newrepo (_ids, _auths, _rels, _pkgs) =
+  Ok repo
+(*  quo vadis? *)
 
 let verify_diff repo data =
   let diffs = to_diffs data in
   let comp = diffs_to_components diffs in
-  verify_patch repo comp
+  let repo' = List.fold_left apply repo diffs in
+  verify_patch repo repo' comp

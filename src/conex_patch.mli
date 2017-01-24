@@ -3,17 +3,9 @@ open Conex_core
 open Conex_resource
 open Conex_diff
 
-type component =
-  | Idx of identifier * diff
-  | Authorisation of name * diff
-  | Dir of name * name * diff list
-  | OldDir of name * name * diff list
+val categorise : diff -> [ `Id of identifier | `Authorisation of identifier | `Releases of name | `Package of name * name | `Compiler of name * name | `Unknown ]
 
-val pp_component : Format.formatter -> component -> unit
-
-val categorise : diff -> component option
-
-val diffs_to_components : diff list -> component list
+val diffs_to_components : diff list -> (S.t * S.t * S.t * S.t M.t)
 
 val apply : Conex_repository.t -> diff -> Conex_repository.t
 

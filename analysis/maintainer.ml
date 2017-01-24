@@ -169,40 +169,35 @@ module PR = struct
         (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
     in
     let diffs = Conex_diff.to_diffs content in
-    let comps = Conex_patch.diffs_to_components diffs in
+    let _ids, _auths, _rels, packages = Conex_patch.diffs_to_components diffs in
 
     let add_it p map =
       M.add p (S.add github (try M.find p map with Not_found -> S.empty)) map
     in
-    List.fold_left (fun (empty, violation, teams) -> function
-        | Conex_patch.Dir (p, _, _)
-        | Conex_patch.OldDir (p, _, _) ->
-          if Conex_persistency.exists
-              (Filename.concat base (String.concat ~sep:"/" (Conex_opam_layout.authorisation_path p)))
-          then
-            let auth = M.find p authorised in
-            let authorised = auth.Authorisation.authorised in
-            if S.mem github authorised then begin
-              Log.debug (fun m -> m "%s %s %s valid access" pr p github) ;
-              (empty, violation, teams)
-            end else if S.cardinal authorised = 1 && S.mem (S.choose authorised) mteams then begin
-              Log.warn (fun m -> m "%s %s %s team owned, add!? (%s)" pr p github (S.choose authorised)) ;
-              (empty, violation, add_it (S.choose authorised) teams)
-            end else if S.is_empty authorised then begin
-              Log.info (fun m -> m "%s %s %s (empty maintainer)" pr p github) ;
-              (add_it p empty, violation, teams)
-            end else begin
-              Log.warn (fun m -> m "%s %s %s not maintainer (%s)" pr p github (String.concat ~sep:" " (S.elements authorised))) ;
-              (empty, add_it p violation, teams)
-            end
-          else begin
-            Log.debug (fun m -> m "%s %s ignoring deleted package" pr p) ;
+    M.fold (fun pn _pvs (empty, violation, teams) ->
+        if Conex_persistency.exists
+            (Filename.concat base (String.concat ~sep:"/" (Conex_opam_layout.authorisation_path pn)))
+        then
+          let auth = M.find pn authorised in
+          let authorised = auth.Authorisation.authorised in
+          if S.mem github authorised then begin
+            Log.debug (fun m -> m "%s %s %s valid access" pr pn github) ;
             (empty, violation, teams)
+          end else if S.cardinal authorised = 1 && S.mem (S.choose authorised) mteams then begin
+            Log.warn (fun m -> m "%s %s %s team owned, add!? (%s)" pr pn github (S.choose authorised)) ;
+            (empty, violation, add_it (S.choose authorised) teams)
+          end else if S.is_empty authorised then begin
+              Log.info (fun m -> m "%s %s %s (empty maintainer)" pr pn github) ;
+              (add_it pn empty, violation, teams)
+          end else begin
+            Log.warn (fun m -> m "%s %s %s not maintainer (%s)" pr pn github (String.concat ~sep:" " (S.elements authorised))) ;
+            (empty, add_it pn violation, teams)
           end
-        | d ->
-          Log.debug (fun m -> m "%s ignoring %a" pr Conex_patch.pp_component d) ;
-          empty, violation, teams)
-      acc comps
+        else begin
+          Log.debug (fun m -> m "%s %s ignoring deleted package" pr pn) ;
+          (empty, violation, teams)
+        end)
+      packages acc
 
   let handle_prs dir f acc =
     let base = Filename.concat dir "prs" in
