@@ -3,8 +3,6 @@ open Conex_core
 open Conex_resource
 open Conex_diff
 
-val categorise : diff -> [ `Id of identifier | `Authorisation of identifier | `Releases of name | `Package of name * name | `Compiler of name * name | `Unknown ]
-
 val diffs_to_components : diff list -> (S.t * S.t * S.t * S.t M.t)
 
 val apply : Conex_repository.t -> diff -> Conex_repository.t

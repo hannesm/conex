@@ -54,34 +54,9 @@ let apply repo diff =
   let new_provider = apply_diff provider diff in
   Conex_repository.change_provider repo new_provider
 
-let categorise diff =
-  let p = string_to_path (file diff) in
-  match Conex_opam_layout.(is_index p, is_authorisation p, is_releases p, is_item p, is_old_item p, is_compiler p) with
-  | Some id, None, None, None, None, None ->
-    (* Printf.printf "found an index in diff %s\n" id; *)
-    `Id id
-  | None, Some id, None, None, None, None ->
-    (* Printf.printf "found an authorisation in diff %s\n" id; *)
-    `Authorisation id
-  | None, None, Some id, None, None, None ->
-    `Releases id
-  | None, None, None, Some (d, p), None, None ->
-    (* Printf.printf "found a dir in diff %s %s\n" d p; *)
-    `Package (d, p)
-  | None, None, None, None, Some (d, p), None ->
-    (* Printf.printf "found an olddir in diff %s %s\n" d p; *)
-    `Package (d, p)
-  | None, None, None, None, None, Some id ->
-    (* Printf.printf "found a compiler in diff %s %s\n" d p; *)
-    `Compiler id
-  | _ ->
-    (* XXX: handle error properly! *)
-    Printf.printf "couldn't categorise %s\n" (path_to_string p) ;
-    `Unknown
-
 let diffs_to_components diffs =
   List.fold_left (fun (ids, auths, rels, pkgs) diff ->
-      match categorise diff with
+      match Conex_opam_layout.categorise (string_to_path (file diff)) with
       | `Id id -> S.add id ids, auths, rels, pkgs
       | `Authorisation id -> ids, S.add id auths, rels, pkgs
       | `Releases id -> ids, auths, S.add id rels, pkgs

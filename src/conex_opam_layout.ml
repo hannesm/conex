@@ -125,34 +125,18 @@ let checksum_files p da =
       []
       data
 
-let is_index = function
-  | idx ::id :: [] when idx = id_dir -> Some id
-  | _ -> None
-
-let is_authorisation = function
-  | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename ->
-    Some id
-  | _ -> None
-
-let is_releases = function
-  | dd :: id :: dfn :: [] when dd = data_dir && dfn = releases_filename ->
-    Some id
-  | _ -> None
-
-let is_item = function
-  | dd :: id :: id2 :: _ when dd = data_dir ->
-    (match authorisation_of_item id2 with
-     | Some x when String.compare_insensitive x id -> Some (id, id2)
-     | _ -> None)
-  | _ -> None
-
-let is_old_item = function
-  | dd :: id :: _ when dd = data_dir ->
-    (match authorisation_of_item id with
-     | Some x -> Some (x, id)
-     | _ -> None)
-  | _ -> None
-
-let is_compiler = function
-  | cc :: v :: vm :: _ when cc = "compilers" -> Some (v, vm)
-  | _ -> None
+let categorise = function
+  | idx ::id :: [] when idx = id_dir -> `Id id
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename -> `Authorisation id
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = releases_filename -> `Releases id
+  | dd :: id :: dfn :: _ when dd = data_dir ->
+    (* current: packages/foo/foo.0.0.1 *)
+    (match authorisation_of_item dfn with
+     | Some x when String.compare_insensitive x id -> `Package (id, dfn)
+     | _ ->
+       (* earlier: packages/foo.0.0.1 *)
+       match authorisation_of_item id with
+       | Some x -> `Package (x, id)
+       | _ -> `Unknown)
+  | cc :: v :: vm :: _ when cc = "compilers" -> `Compiler (v, vm)
+  | _ -> `Unknown
