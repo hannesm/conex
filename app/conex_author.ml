@@ -50,7 +50,12 @@ let msg_to_cmdliner = function
 let setup_log style_renderer level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
   Logs.set_level level;
-  Logs.set_reporter (Logs_fmt.reporter ())
+  let reporter = Logs_fmt.reporter ~dst:Format.std_formatter () in
+  Logs.set_reporter reporter ;
+  match level with
+  | Some Logs.Info -> Conex_api.Log.set_level `Info
+  | Some Logs.Debug -> Conex_api.Log.set_level `Debug
+  | _ -> Conex_api.Log.set_level `Warn
 
 let help _ _copts man_format cmds = function
   | None -> `Help (`Pager, None)
@@ -123,7 +128,7 @@ let find_cs r name =
      cs)
 
 let load_ids r ids =
-  foldM (Conex_api.load_id ~out:Format.std_formatter ~debug:Format.std_formatter) r (S.elements ids)
+  foldM Conex_api.load_id r (S.elements ids)
 
 let self r o =
   R.error_to_msg ~pp_error:Conex_private.pp_err
@@ -137,7 +142,7 @@ let load_self_queued r id =
   let idx = R.ignore_error ~use:(fun _ -> Index.index id)
       (Conex_repository.read_index r id)
   in
-  match Conex_api.load_id ~debug:Format.std_formatter r id with
+  match Conex_api.load_id r id with
   | Ok r -> r
   | Error e ->
     Logs.warn (fun m -> m "error while loading id %s" e) ;
@@ -167,12 +172,12 @@ let status_all r id no_team =
            id :: List.map (fun t -> t.Team.name) teams)
     in
     let authorised auth = not (S.is_empty (S.inter me auth)) in
-    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised ~debug:Format.std_formatter r id)
+    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised r id)
                   r (S.elements (Conex_repository.items r)))
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
     let authorised auth = S.mem t.Team.name auth in
-    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised ~debug:Format.std_formatter r id)
+    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised r id)
                   r (S.elements (Conex_repository.items r)))
 
 let status_single r _id name =
@@ -181,7 +186,7 @@ let status_single r _id name =
     | None -> name, (fun _ -> true)
     | Some pn -> pn, (fun nam -> name_equal nam name)
   in
-  let _ = Conex_api.verify_item ~release ~debug:Format.std_formatter r pn in
+  let _ = Conex_api.verify_item ~release r pn in
   ()
 
 let status _ o name no_rec =
@@ -191,7 +196,7 @@ let status _ o name no_rec =
   and out msg = Logs.warn (fun m -> m "%s" msg)
     in *)
   msg_to_cmdliner
-    (str_to_msg (Conex_api.load_janitors ~debug:Format.std_formatter r) >>= fun r ->
+    (str_to_msg (Conex_api.load_janitors r) >>= fun r ->
      self r o >>= fun id ->
      let r = load_self_queued r id in
      if name = "" then

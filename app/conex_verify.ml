@@ -33,11 +33,11 @@ true
 
  *)
 
-let verify_patch repo patch _verbose _strict =
+let verify_patch repo patch =
   let data = Conex_persistency.read_file patch in
-  Conex_api.verify_diff ~debug:Format.std_formatter repo data
+  Conex_api.verify_diff repo data
 
-let verify_full repo anchors _verbose _strict =
+let verify_full repo anchors =
   let valid id digest =
     if S.mem digest anchors then
       (Printf.printf "accepting ta %s\n%!" id ; true)
@@ -49,7 +49,7 @@ let verify_full repo anchors _verbose _strict =
     (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
     S.fold (fun item repo ->
         repo >>= fun repo ->
-        match Conex_api.verify_item ~debug:Format.std_formatter repo item with
+        match Conex_api.verify_item repo item with
         | Ok r -> Ok r
         | Error e -> Error e)
       (Conex_repository.items repo) (Ok repo)
@@ -59,21 +59,31 @@ let err_to_cmdliner = function
   | Ok () -> `Ok ()
   | Error m -> `Error (false, m)
 
-let verify_it repo quorum anchors incremental dir patch verbose strict =
+
+let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_color =
+  let level = match verbose, quiet with
+    | true, false -> `Debug
+    | false, true -> `Warn
+    | _ -> `Info
+  in
+  Conex_api.Log.set_level level ;
+  Conex_api.Log.set_styled (not no_color) ;
   let r p =
     let p = Conex_provider.fs_ro_provider p in
-    Conex_repository.repository ?quorum p
+    Conex_repository.repository ~strict ?quorum p
   in
   err_to_cmdliner
     ((match incremental, patch, dir with
         | true, Some p, None ->
-          verify_patch (r repo) p verbose strict
+          verify_patch (r repo) p
         | false, None, Some d ->
           let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
-          verify_full (r d) ta verbose strict
+          verify_full (r d) ta
         | _ ->
           Error "invalid combination of incremental, patch and dir") >>= fun _ ->
      Ok ())
+
+
 
 open Cmdliner
 
@@ -101,6 +111,10 @@ let patch =
     let doc = "To be verified patch file" in
     Arg.(value & opt (some file) None & info [ "patch" ] ~doc)
 
+let quiet =
+    let doc = "Be quiet" in
+    Arg.(value & flag & info [ "quiet" ] ~doc)
+
 let verbose =
     let doc = "Increase verbosity" in
     Arg.(value & flag & info [ "verbose" ] ~doc)
@@ -108,6 +122,10 @@ let verbose =
 let strict =
     let doc = "Strict verification" in
     Arg.(value & flag & info [ "strict" ] ~doc)
+
+let no_color =
+    let doc = "No colored output" in
+    Arg.(value & flag & info [ "no-color" ] ~doc)
 
 let cmd =
   let doc = "Verify a signed repository" in
@@ -117,7 +135,7 @@ let cmd =
     `P "Both an incremental mode (receiving a repository and a patch file, and a full mode are available."
   ]
   in
-  Term.(ret (const verify_it $ repo $ quorum $ anchors $ incremental $ dir $ patch $ verbose $ strict)),
+  Term.(ret (const verify_it $ repo $ quorum $ anchors $ incremental $ dir $ patch $ verbose $ quiet $ strict $ no_color)),
   Term.info "conex_verify" ~version:"0.42.0" ~doc ~man
 
 let () = match Term.eval cmd with `Ok () -> exit 0 | _ -> exit 1

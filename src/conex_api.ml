@@ -3,48 +3,86 @@ open Conex_core
 open Conex_resource
 open Conex_repository
 
-let dbg = function
-  | None -> (fun _ -> ())
-  | Some x -> (fun d -> Format.pp_print_string x d ; Format.pp_print_newline x ())
+module Log = struct
+  type ('a, 'b) msgf = (?header:string -> ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
+  type 'a log = ('a, unit) msgf -> unit
 
-let warn = function
-  | None -> (fun m -> Format.(pp_print_string std_formatter m) ; Format.(pp_print_newline std_formatter ()))
-  | Some x -> (fun m -> Format.pp_print_string x m ; Format.pp_print_newline x ())
+  type level = [ `Debug | `Info | `Warn ]
+  let curr_level = ref `Info
+  let set_level lvl = curr_level := lvl
+  let level_to_string = function
+    | `Debug -> "DEBUG"
+    | `Info -> "INFO"
+    | `Warn -> "WARN"
+
+  let curr_styled = ref true
+  let set_styled b = curr_styled := b
+  let style level txt =
+    if !curr_styled then
+      let rst = "\027[m" in
+      match level with
+      | `Debug -> "\027[32m" ^ txt ^ rst
+      | `Info -> "\027[34m" ^ txt ^ rst
+      | `Warn -> "\027[31m" ^ txt ^ rst
+    else
+      txt
+
+  let report level k msgf =
+    let k _ = k () in
+    msgf @@ fun ?header fmt ->
+    let hdr = match header with None -> "" | Some s -> s ^ " " in
+    Format.kfprintf k Format.std_formatter ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
+
+  let kunit _ = ()
+  let kmsg : type a b. (unit -> b) -> level -> (a, b) msgf -> b =
+    fun k level msgf ->
+      let doit =
+        match level, !curr_level with
+        | `Info, `Debug | `Info, `Info -> true
+        | `Warn, _ -> true
+        | `Debug, `Debug -> true
+        | _ -> false
+      in
+      if doit then report level k msgf else k ()
+
+  let debug msgf = kmsg kunit `Debug msgf
+  let info msgf = kmsg kunit `Info msgf
+  let warn msgf = kmsg kunit `Warn msgf
+end
+
 
 let str pp e =
   Format.(fprintf str_formatter "%a" pp e) ;
   Format.flush_str_formatter ()
 
-let maybe repo warn msg ok =
-  if strict repo then Error msg else (warn msg ; Ok ok)
-
-let load_id_aux dbg warn repo id =
+let load_id_aux repo id =
   match read_id repo id with
-  | Error e -> maybe repo warn (str pp_r_err e) (`Nothing, repo)
+  | Error e ->
+    if strict repo then Error (str pp_r_err e) else
+      (Log.warn (fun m -> m "%a" pp_r_err e) ; Ok (`Nothing, repo))
   | Ok (`Id idx) ->
-    (dbg (str Index.pp_index idx) ;
+    (Log.debug (fun m -> m "%a" Index.pp_index idx) ;
      match verify_index repo idx with
-     | Error e -> maybe repo warn (str pp_verification_error e) (`Nothing, repo)
-     | Ok (repo, msgs, _) -> List.iter warn msgs ; Ok (`Id idx, repo))
+     | Error e -> if strict repo then Error (str pp_verification_error e) else
+         (Log.warn (fun m -> m "%a" pp_verification_error e) ; Ok (`Nothing, repo))
+     | Ok (repo, msgs, _) -> List.iter (fun msg -> Log.warn (fun m -> m "%s" msg)) msgs ; Ok (`Id idx, repo))
   | Ok (`Team t) ->
-    (dbg (str Team.pp_team t) ;
+    (Log.debug (fun m -> m "%a" Team.pp_team t) ;
      match verify_team repo t with
-     | Error e -> maybe repo warn (str pp_error e) (`Nothing, repo)
-     | Ok (r, ok) -> dbg (str pp_ok ok) ; Ok (`Team t, r))
+     | Error e -> if strict repo then Error (str pp_error e) else
+         (Log.warn (fun m -> m "%a" pp_error e) ; Ok (`Nothing, repo))
+     | Ok (r, ok) -> Log.debug (fun m -> m "%a" pp_ok ok) ; Ok (`Team t, r))
 
-let load_id ?debug ?out repo id =
+let load_id repo id =
   if id_loaded repo id then
     Ok repo
   else
     let repo = add_id repo id in
-    let dbg = dbg debug
-    and warn = warn out
-    in
-    load_id_aux dbg warn repo id >>= function
+    load_id_aux repo id >>= function
     | `Id _, repo ->  Ok repo
     | `Team t, repo ->
       let load_id repo id =
-        load_id_aux dbg warn repo id >>= function
+        load_id_aux repo id >>= function
         | `Nothing, repo -> Ok repo
         | `Id _, repo -> Ok repo
         | `Team t', _ -> Error ("team " ^ t'.Team.name ^ " is a member of " ^ t.Team.name ^ ", another team")
@@ -52,31 +90,30 @@ let load_id ?debug ?out repo id =
       foldM load_id repo (S.elements t.Team.members)
    | `Nothing, repo -> Ok repo
 
-let load_janitors ?(valid = fun _ _ -> true) ?debug ?out repo =
-  let dbg = dbg debug
-  and warn = warn out
-  in
+let load_janitors ?(valid = fun _ _ -> true) repo =
   match read_team repo "janitors" with
-  | Error e -> maybe repo warn (str pp_r_err e) repo
+  | Error e -> if strict repo then Error (str pp_r_err e) else
+      (Log.warn (fun m -> m "%a" pp_r_err e) ; Ok repo)
   | Ok team ->
-    dbg (str Team.pp_team team) ;
+    Log.debug (fun m -> m "%a" Team.pp_team team) ;
     foldM (fun acc id ->
         match read_index repo id with
-        | Error e -> maybe repo warn (str pp_r_err e) acc
+        | Error e -> if strict repo then Error (str pp_r_err e) else
+            (Log.warn (fun m -> m "%a" pp_r_err e) ; Ok acc)
         | Ok idx ->
-          (dbg (str Index.pp_index idx) ;
-           Ok (idx :: acc)))
+          Log.debug (fun m -> m "%a" Index.pp_index idx) ;
+           Ok (idx :: acc))
       [] (S.elements team.Team.members) >>= fun idxs ->
   (* for each, validate public key(s): signs the index, resource is contained *)
   let valid_idxs =
     List.fold_left (fun acc idx ->
         let id = idx.Index.name in
         let good, warnings = verify_signatures idx in
-        List.iter (fun (_, e) -> warn (str pp_verification_error e)) warnings ;
+        List.iter (fun (_, e) -> Log.warn (fun m -> m "%a" pp_verification_error e)) warnings ;
         let f k = contains idx id `PublicKey (Conex_data_persistency.publickey_to_t id k) in
         match List.filter f good with
-        | [] -> warn ("ignoring " ^ id ^ " due to missing self-signature") ; acc
-        | xs -> dbg ("janitor index " ^ id ^ " is self-signed") ; (xs, idx) :: acc)
+        | [] -> Log.warn (fun m -> m "ignoring %s due to missing self-signature" id) ; acc
+        | xs -> Log.debug (fun m -> m "janitor index %s is self-signed" id) ; (xs, idx) :: acc)
       [] idxs
   in
   (* filter by fingerprint, create a repository *)
@@ -84,17 +121,18 @@ let load_janitors ?(valid = fun _ _ -> true) ?debug ?out repo =
     List.fold_left (fun (good, bad) (keys, idx) ->
         let id = idx.Index.name in
         let approved = List.filter (fun k -> valid id (Conex_nocrypto.id k)) keys in
-        if List.length approved > 0 then
-          (dbg ("fingerprint valid for janitor " ^ id) ;
-           ((approved, idx) :: good, bad))
-        else
-          (dbg ("ignoring janitor " ^ id ^ ": missing valid fingerprint") ;
-           (good, (keys, idx) :: bad)))
+        if List.length approved > 0 then begin
+          Log.debug (fun m -> m "fingerprint valid for janitor %s" id) ;
+          ((approved, idx) :: good, bad)
+        end else begin
+          Log.debug (fun m -> m "ignoring janitor %s: missing valid fingerprint" id) ;
+          (good, (keys, idx) :: bad)
+        end)
       ([], []) valid_idxs
   in
   let add_warn repo idx =
     let repo, warns = add_index repo idx in
-    List.iter warn warns ;
+    List.iter (fun msg -> Log.warn (fun m -> m "%s" msg)) warns ;
     repo
   in
   let jrepo = List.fold_left add_warn repo (List.map snd approved) in
@@ -112,18 +150,19 @@ let load_janitors ?(valid = fun _ _ -> true) ?debug ?out repo =
             keys
         with
         | Ok _ ->
-          dbg ("janitor index " ^ idx.Index.name ^ " has an approved key") ;
+          Log.debug (fun m -> m "janitor index %s has an approved key" idx.Index.name) ;
           (idx :: good, bad)
         | Error _ ->
-          dbg ("janitor index " ^ idx.Index.name ^ " has no approved key") ;
+          Log.debug (fun m -> m "janitor index %s has no approved key" idx.Index.name) ;
           good, (keys, idx) :: bad)
       ([], []) approved
   in
   (* verify the team janitor *)
   let good_j_repo = List.fold_left add_warn repo good_idxs in
   (match verify_team good_j_repo team with
-   | Error e -> maybe repo warn (str pp_error e) good_j_repo
-   | Ok (repo, ok) -> dbg ("team janitors verified " ^ str pp_ok ok) ; Ok repo) >>= fun repo ->
+   | Error e -> if strict repo then Error (str pp_error e) else
+       (Log.warn (fun m -> m "%a" pp_error e) ; Ok good_j_repo)
+   | Ok (repo, ok) -> Log.debug (fun m -> m "team janitors verified %a" pp_ok ok) ; Ok repo) >>= fun repo ->
   (* team is good, there may be more janitors: esp notyet and others *)
   (* load in a similar style:
        - add all the idxs
@@ -139,65 +178,67 @@ let load_janitors ?(valid = fun _ _ -> true) ?debug ?out repo =
           (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
           keys
       with
-      | Ok ok -> dbg ("janitor key " ^ idx.Index.name ^ " approved by " ^ str pp_ok ok) ; Ok (idx :: acc)
-      | Error e -> maybe repo warn (str pp_error e) acc)
+      | Ok ok -> Log.debug (fun m -> m "janitor key %s approved by %a" idx.Index.name pp_ok ok) ; Ok (idx :: acc)
+      | Error e -> if strict repo then Error (str pp_error e) else
+          (Log.warn (fun m -> m "%a" pp_error e) ; Ok acc))
     [] (notyet@others) >>= fun good_idx ->
   Ok (List.fold_left add_warn repo good_idx)
 
-let verify_single_release dbg warn repo auth rel version =
+let verify_single_release repo auth rel version =
   match read_checksum repo version with
-  | Error e -> maybe repo warn (str pp_r_err e) ()
+  | Error e -> if strict repo then Error (str pp_r_err e) else
+      (Log.warn (fun m -> m "%a" pp_r_err e) ; Ok ())
   | Ok cs ->
-    dbg (str Checksum.pp_checksums cs) ;
+    Log.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
     match verify_checksum repo auth rel cs with
-    | Error e -> maybe repo warn (str pp_error e) ()
-    | Ok ok -> dbg (str pp_ok ok) ; Ok ()
+    | Error e -> if strict repo then Error (str pp_error e) else
+        (Log.warn (fun m -> m "%a" pp_error e) ; Ok ())
+    | Ok ok -> Log.debug (fun m -> m "%a" pp_ok ok) ; Ok ()
 
-let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) ?debug ?out repo name =
-  let dbg = dbg debug
-  and warn = warn out
-  in
+let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) repo name =
   (match read_authorisation repo name with
-   | Error e -> maybe repo warn (str pp_r_err e) (Authorisation.authorisation name, repo)
+   | Error e -> if strict repo then Error (str pp_r_err e) else
+       (Log.warn (fun m -> m "%a" pp_r_err e) ;
+        Ok (Authorisation.authorisation name, repo))
    | Ok auth ->
-     dbg (str Authorisation.pp_authorisation auth) ;
+     Log.debug (fun m ->m "%a" Authorisation.pp_authorisation auth) ;
      match verify_authorisation repo auth with
-     | Error e -> maybe repo warn (str pp_error e) (auth, repo)
+     | Error e -> if strict repo then Error (str pp_error e) else
+         (Log.warn (fun m ->m "%a" pp_error e) ; Ok (auth, repo))
      | Ok ok ->
-       dbg (str pp_ok ok) ;
-       foldM (load_id ?debug ?out) repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
+       Log.debug (fun m -> m "%a" pp_ok ok) ;
+       foldM load_id repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
        Ok (auth, repo)) >>= fun (auth, repo) ->
   (if authorised auth.Authorisation.authorised then
      (match read_releases repo name with
       | Error e ->
         (match Releases.releases ~releases:(subitems repo name) name with
-         | Ok rel -> maybe repo warn (str pp_r_err e) rel
+         | Ok rel -> if strict repo then Error (str pp_r_err e) else
+             (Log.warn (fun m -> m "%a" pp_r_err e) ; Ok rel)
          | Error e -> Error e)
       | Ok rel ->
-        dbg (str Releases.pp_releases rel) ;
+        Log.debug (fun m -> m "%a" Releases.pp_releases rel) ;
         match verify_releases repo auth rel with
-        | Error e -> maybe repo warn (str pp_error e) rel
-        | Ok ok -> dbg (str pp_ok ok) ; Ok rel) >>= fun rel ->
+        | Error e -> if strict repo then Error (str pp_error e) else
+            (Log.warn (fun m -> m "%a" pp_error e) ; Ok rel)
+        | Ok ok -> Log.debug (fun m -> m "%a" pp_ok ok) ; Ok rel) >>= fun rel ->
      foldM (fun () n ->
          if release n then
-           verify_single_release dbg warn repo auth rel n
+           verify_single_release repo auth rel n
          else
            Ok ())
        ()
        (S.elements rel.Releases.releases)
    else
-     (dbg ("ignoring " ^ name) ; Ok ())) >>= fun () ->
+     (Log.debug (fun m -> m "ignoring %s" name) ; Ok ())) >>= fun () ->
   Ok repo
 
-let verify_patch ?debug ?out repo newrepo (ids, auths, rels, pkgs) =
-  let dbg = dbg debug
-  and warn = warn out
-  in
+let verify_patch repo newrepo (ids, auths, rels, pkgs) =
   let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
-  dbg (Format.sprintf "verifying a diff with %d ids %d auths %d rels %d pkgs"
-         (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
+  Log.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d pkgs"
+                   (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
   (* all public keys of janitors in repo are valid. *)
-  load_janitors ?debug ?out repo >>= fun repo ->
+  load_janitors repo >>= fun repo ->
   let janitor_keys =
     S.fold (fun id acc ->
         match read_index repo id with
@@ -208,7 +249,7 @@ let verify_patch ?debug ?out repo newrepo (ids, auths, rels, pkgs) =
   in
   (* load all those janitors in newrepo which are valid (and verify janitors team) *)
   let valid _id key = S.mem key janitor_keys in
-  load_janitors ?debug ?out ~valid newrepo >>= fun newrepo ->
+  load_janitors ~valid newrepo >>= fun newrepo ->
   (* now we do a full verification of the new repository *)
   foldM verify_item newrepo (S.elements (items newrepo)) >>= fun newrepo ->
   (* we could try to be more smart:
@@ -251,27 +292,31 @@ let verify_patch ?debug ?out repo newrepo (ids, auths, rels, pkgs) =
   foldM (fun () id ->
       match monotonicity repo newrepo `Index id with
       | Ok () -> Ok ()
-      | Error e -> maybe repo warn (str pp_m_err e) ())
+      | Error e -> if strict repo then Error (str pp_m_err e) else
+          (Log.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
     () (S.elements ids) >>= fun () ->
   foldM (fun () id ->
       match monotonicity repo newrepo `Authorisation id with
       | Ok () -> Ok ()
-      | Error e -> maybe repo warn (str pp_m_err e) ())
+      | Error e -> if strict repo then Error (str pp_m_err e) else
+          (Log.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
     () (S.elements auths) >>= fun () ->
   foldM (fun () id ->
       match monotonicity repo newrepo `Releases id with
       | Ok () -> Ok ()
-      | Error e -> maybe repo warn (str pp_m_err e) ())
+      | Error e -> if strict repo then Error (str pp_m_err e) else
+          (Log.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
     () (S.elements rels) >>= fun () ->
   foldM (fun () id ->
       match monotonicity repo newrepo `Checksums id with
       | Ok () -> Ok ()
-      | Error e -> maybe repo warn (str pp_m_err e) ())
+      | Error e -> if strict repo then Error (str pp_m_err e) else
+          (Log.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
     () packages >>= fun () ->
   Ok newrepo
 
-let verify_diff ?debug ?out repo data =
+let verify_diff repo data =
   let diffs = Conex_diff.to_diffs data in
   let comp = Conex_diff.diffs_to_components diffs in
   let repo' = List.fold_left Conex_diff.apply repo diffs in
-  verify_patch ?debug ?out repo repo' comp
+  verify_patch repo repo' comp
