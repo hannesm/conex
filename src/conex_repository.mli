@@ -4,9 +4,10 @@ open Conex_resource
 
 type t
 
-val repository : ?quorum:int -> Provider.t -> t
+val repository : ?quorum:int -> ?strict:bool -> Provider.t -> t
 val provider : t -> Provider.t
 val quorum : t -> int
+val strict : t -> bool
 
 val find_team : t -> identifier -> S.t option
 
@@ -19,6 +20,10 @@ val change_provider : t -> Provider.t -> t
 val verify : pub -> string -> Signature.t -> (unit, [> verification_error]) result
 
 val verify_index : t -> Index.t -> (t * string list * identifier, [> verification_error ]) result
+
+val verify_signatures : Index.t -> pub list * (pub * verification_error) list
+
+val contains : ?queued:bool -> Index.t -> name -> resource -> Conex_data_persistency.t -> bool
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 
@@ -69,6 +74,7 @@ val verify_checksum : t -> Authorisation.t -> Releases.t -> Checksum.t ->
 
 (* Unsafe operation, think before usage! *)
 val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
+val add_index : t -> Index.t -> t * string list
 
 (* Unsafe operation, think before usage! *)
 val add_team : t -> Team.t -> t
@@ -100,6 +106,3 @@ val write_releases : t -> Releases.t -> unit
 
 val read_checksum : t -> name -> (Checksum.t, [> r_err ]) result
 val write_checksum : t -> Checksum.t -> unit
-
-val load_janitors : ?valid:(identifier * string -> bool) -> t ->
-  (t, [> base_error | r_err | `InsufficientQuorum of name * resource * S.t ]) result

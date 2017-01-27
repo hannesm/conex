@@ -1,4 +1,5 @@
 open Conex_utils
+open Conex_core
 
 type hunk = {
   mine_start : int ;
@@ -127,7 +128,70 @@ let to_diffs data =
   in
   doit [] lines
 
-let apply filedata diff =
+let patch filedata diff =
   let lines = match filedata with None -> [] | Some x -> to_lines x in
   let lines = List.fold_left apply_hunk lines diff.hunks in
   String.concat "\n" lines
+
+let diffs_to_components diffs =
+  List.fold_left (fun (ids, auths, rels, pkgs) diff ->
+      match Conex_opam_layout.categorise (string_to_path (file diff)) with
+      | `Id id -> S.add id ids, auths, rels, pkgs
+      | `Authorisation id -> ids, S.add id auths, rels, pkgs
+      | `Releases id -> ids, auths, S.add id rels, pkgs
+      | `Package (name, version) ->
+        let s = try M.find name pkgs with Not_found -> S.empty in
+        ids, auths, rels, M.add name (S.add version s) pkgs
+      | _ -> ids, auths, rels, pkgs)
+    (S.empty, S.empty, S.empty, M.empty) diffs
+
+let apply_diff provider diff =
+  let read path =
+    if file diff = path_to_string path then
+      match provider.Provider.read path with
+      | Ok data -> Ok (patch (Some data) diff)
+      | Error _ -> Ok (patch None diff)
+    else
+      provider.Provider.read path
+  and file_type path =
+    let pn = path_to_string path
+    and name = file diff
+    in
+    if pn = name then
+      Ok File
+    else if Conex_utils.String.is_prefix ~prefix:(pn ^ "/") name then
+      Ok Directory
+    else
+      provider.Provider.file_type path
+  and read_dir path =
+    let name = List.rev (string_to_path (file diff))
+    and path = List.rev path
+    in
+    (* XXX: unlikely to be correct... *)
+    let data = match name with
+      | fn::xs when xs = path -> Some (`File fn)
+      | _ -> None
+    in
+    match provider.Provider.read_dir path, data with
+      | Ok files, Some data -> Ok (data :: files)
+      | Ok files, None -> Ok files
+      | Error _, Some data -> Ok [data]
+      | Error e, None -> Error e
+  and write _ = invalid_arg "cannot write on a diff provider, is read-only!"
+  and exists path =
+    let pn = path_to_string path
+    and name = file diff
+    in
+    if pn = name then
+      true
+    else
+      provider.Provider.exists path
+  and name = provider.Provider.name
+  and description = "Patch provider"
+  in
+  { Provider.name ; description ; file_type ; read ; write ; read_dir ; exists }
+
+let apply repo diff =
+  let provider = Conex_repository.provider repo in
+  let new_provider = apply_diff provider diff in
+  Conex_repository.change_provider repo new_provider

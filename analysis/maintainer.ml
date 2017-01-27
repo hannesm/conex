@@ -169,7 +169,7 @@ module PR = struct
         (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
     in
     let diffs = Conex_diff.to_diffs content in
-    let _ids, _auths, _rels, packages = Conex_patch.diffs_to_components diffs in
+    let _ids, _auths, _rels, packages = Conex_diff.diffs_to_components diffs in
 
     let add_it p map =
       M.add p (S.add github (try M.find p map with Not_found -> S.empty)) map

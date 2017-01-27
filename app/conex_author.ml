@@ -122,71 +122,8 @@ let find_cs r name =
      Logs.debug (fun m -> m "read %a" Checksum.pp_checksums cs) ;
      cs)
 
-let show_release r a rel item =
-  let prov = Conex_repository.provider r
-  and dir = Conex_opam_layout.checksum_dir item
-  in
-  match prov.Provider.file_type dir with
-  | Error `NotFound -> Logs.warn (fun m -> m "directory %s not found in repository" (path_to_string dir))
-  | Error (`UnknownFileType s) -> Logs.warn (fun m -> m "unknown filetype of %s: %s" item s)
-  | Ok File -> Logs.warn (fun m -> m "expected directory %s, but found a file" item)
-  | Ok Directory ->
-    warn_e Conex_repository.pp_r_err
-      (Conex_repository.read_checksum r item >>| fun cs ->
-       Logs.debug (fun m -> m "read %a" Checksum.pp_checksums cs) ;
-       warn_e Conex_repository.pp_error
-         (Conex_repository.verify_checksum r a rel cs >>| fun ok ->
-          Logs.info (fun m -> m "verified %a" Conex_repository.pp_ok ok)))
-
-let rec load_id id r =
-  if not (Conex_repository.id_loaded r id) then
-    R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r)
-      (let r = Conex_repository.add_id r id in
-       Conex_repository.read_id r id >>| function
-        | `Id idx ->
-          Logs.debug (fun m -> m "read %a" Index.pp_index idx);
-          R.ignore_error
-            ~use:(fun e -> w pp_verification_error e ; r)
-            (Conex_repository.verify_index r idx >>| fun (r, warn, id) ->
-             Logs.info (fun m -> m "verified index and added resources %s" id) ;
-             List.iter (fun w -> Logs.warn (fun m -> m "%s" w)) warn ;
-             r)
-        | `Team t ->
-          Logs.debug (fun m -> m "read %a" Team.pp_team t);
-          let r = S.fold load_id t.Team.members r in
-          R.ignore_error
-            ~use:(fun e -> w Conex_repository.pp_error e ; r)
-            (Conex_repository.verify_team r t >>| fun (r, ok) ->
-             Logs.info (fun m -> m "verified team %s %a" id Conex_repository.pp_ok ok) ;
-             r))
-  else
-    (Logs.debug (fun m -> m "%s already present in repository" id) ; r)
-
-let load_ids r ids = S.fold load_id ids r
-
-let show_package id showit item r =
-  let pn, set = match Conex_opam_layout.authorisation_of_item item with
-    | None -> item, (fun r -> r.Releases.releases)
-    | Some pn -> pn, (fun _ -> S.singleton item)
-  in
-  let a, fresh = find_auth r pn in
-  if showit a.Authorisation.authorised then begin
-    let r = load_ids r a.Authorisation.authorised in
-    if not (fresh || Conex_repository.authorised r a id) then
-      Logs.warn (fun m -> m "%s is not authorised for package %s" id pn) ;
-    if not fresh then
-      warn_e Conex_repository.pp_error
-        (Conex_repository.verify_authorisation r a >>| fun ok ->
-         Logs.info (fun m -> m "authorisation %s %a" pn Conex_repository.pp_ok ok)) ;
-    let rel, fresh = find_rel r pn in
-    if not fresh then
-      warn_e Conex_repository.pp_error
-        (Conex_repository.verify_releases r a rel >>| fun ok ->
-         Logs.info (fun m -> m "releases %s %a" pn Conex_repository.pp_ok ok)) ;
-    S.iter (show_release r a rel) (set rel) ;
-    r
-  end else
-    r
+let load_ids r ids =
+  foldM (Conex_api.load_id ~out:Format.std_formatter ~debug:Format.std_formatter) r (S.elements ids)
 
 let self r o =
   R.error_to_msg ~pp_error:Conex_private.pp_err
@@ -197,35 +134,22 @@ let self r o =
   id
 
 let load_self_queued r id =
-  R.ignore_error ~use:(fun e -> w Conex_repository.pp_r_err e ; r)
-    (Conex_repository.read_id r id >>| function
-      | `Id idx -> (* verify (ignoring error), add queued *)
-        let use e =
-          w pp_verification_error e ;
-          List.fold_left (fun repo r ->
-              match Conex_repository.add_valid_resource repo id r with
-              | Ok repo -> Logs.debug (fun m -> m "%s (self) added resource %a" id Index.pp_resource r) ; repo
-              | Error e -> Logs.warn (fun m -> m "error %s while adding own resource %a" e Index.pp_resource r) ; repo)
-            r idx.Index.resources
-        in
-        let repo = R.ignore_error ~use
-            (Conex_repository.verify_index r idx >>| fun (r, w, _id) ->
-             List.iter (fun w -> Logs.warn (fun m -> m "while loading own index %s" w)) w ;
-             r)
-        in
-        List.fold_left (fun r res ->
-            R.ignore_error
-              ~use:(fun e -> Logs.warn (fun m -> m "failed to add queued %a %s" Index.pp_resource res e) ; r)
-              (Conex_repository.add_valid_resource r id res >>| fun r ->
-               Logs.info (fun m -> m "added own queued %a" Index.pp_resource res);
-               r))
-            repo idx.Index.queued
-      | `Team t -> (* load team members!? *)
-        load_ids r t.Team.members)
+  let idx = R.ignore_error ~use:(fun _ -> Index.index id)
+      (Conex_repository.read_index r id)
+  in
+  match Conex_api.load_id ~debug:Format.std_formatter r id with
+  | Ok r -> r
+  | Error e ->
+    Logs.warn (fun m -> m "error while loading id %s" e) ;
+    let r, warns = Conex_repository.add_index r idx in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warns ;
+    match foldM (fun repo r -> Conex_repository.add_valid_resource repo id r) r idx.Index.queued with
+    | Ok r -> r
+    | Error e -> Logs.warn (fun m -> m "while adding %s" e) ; r
 
 let status_all r id no_team =
   R.error_to_msg ~pp_error:Conex_repository.pp_r_err
-    (Conex_repository.read_id r id) >>| function
+    (Conex_repository.read_id r id) >>= function
   | `Id _ ->
     let me =
       s_of_list
@@ -242,29 +166,32 @@ let status_all r id no_team =
            in
            id :: List.map (fun t -> t.Team.name) teams)
     in
-    S.fold
-      (show_package id (fun a -> not (S.is_empty (S.inter me a))))
-      (Conex_repository.items r) r
+    let authorised auth = not (S.is_empty (S.inter me auth)) in
+    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised ~debug:Format.std_formatter r id)
+                  r (S.elements (Conex_repository.items r)))
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
-    S.fold
-      (show_package id (fun a -> S.mem t.Team.name a))
-      (Conex_repository.items r) r
+    let authorised auth = S.mem t.Team.name auth in
+    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised ~debug:Format.std_formatter r id)
+                  r (S.elements (Conex_repository.items r)))
 
-let status_single r id name =
+let status_single r _id name =
   Logs.info (fun m -> m "information on package %s" name) ;
-  let _r = show_package id (fun _ -> true) name r in
+  let pn, release = match Conex_opam_layout.authorisation_of_item name with
+    | None -> name, (fun _ -> true)
+    | Some pn -> pn, (fun nam -> name_equal nam name)
+  in
+  let _ = Conex_api.verify_item ~release ~debug:Format.std_formatter r pn in
   ()
 
 let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
+(*  let debug msg = Logs.debug (fun m -> m "%s" msg)
+  and out msg = Logs.warn (fun m -> m "%s" msg)
+    in *)
   msg_to_cmdliner
-    (let r =
-       R.ignore_error
-         ~use:(fun _ -> Logs.warn (fun m -> m "error while loading janitors") ; r)
-         (Conex_repository.load_janitors r)
-     in
+    (str_to_msg (Conex_api.load_janitors ~debug:Format.std_formatter r) >>= fun r ->
      self r o >>= fun id ->
      let r = load_self_queued r id in
      if name = "" then
@@ -280,13 +207,6 @@ let add_r idx name typ data =
   let res = Index.r counter name size typ digest in
   Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
   Index.add_resource idx res
-
-let r_in_idx idx name typ data =
-  let encoded = Conex_data.encode data in
-  let size = Uint.of_int (String.length encoded) in
-  let digest = Conex_nocrypto.digest encoded in
-  let res = Index.r Uint.zero name size typ digest in
-  List.exists (Index.r_equal res) (idx.Index.resources @ idx.Index.queued)
 
 let initialise r id email =
   (match Conex_repository.read_id r id with
@@ -382,7 +302,7 @@ let auth _ o remove members p =
        let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "modified authorisation and added resource to your index.")
-     else if not (r_in_idx idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth)) then
+     else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth)) then
        let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "added resource to your index.")
@@ -398,7 +318,7 @@ let release _ o remove p =
        | Some n -> n, S.singleton p
      in
      let auth, _ = find_auth r pn in
-     let r = load_ids r auth.Authorisation.authorised in
+     str_to_msg (load_ids r auth.Authorisation.authorised) >>= fun r ->
      if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
      let rel, _ = find_rel r pn in
@@ -413,7 +333,7 @@ let release _ o remove p =
          Conex_repository.write_releases r rel ;
          Logs.info (fun m -> m "wrote %a" Releases.pp_releases rel) ;
          add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
-       else if not (r_in_idx idx pn `Releases (Conex_data_persistency.releases_to_t rel')) then
+       else if not (Conex_repository.contains ~queued:true idx pn `Releases (Conex_data_persistency.releases_to_t rel')) then
          add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
        else
          idx
@@ -430,7 +350,7 @@ let release _ o remove p =
          Conex_repository.write_checksum r cs' ;
          Logs.info (fun m -> m "wrote %a" Checksum.pp_checksums cs') ;
          add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs')
-       else if not (r_in_idx idx name `Checksums (Conex_data_persistency.checksums_to_t cs)) then
+       else if not (Conex_repository.contains ~queued:true idx name `Checksums (Conex_data_persistency.checksums_to_t cs)) then
          add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs)
        else
          idx
@@ -464,7 +384,7 @@ let team _ o remove members tid =
        let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "modified team and added resource to your index.")
-     else if not (r_in_idx idx tid `Team (Conex_data_persistency.team_to_t team)) then
+     else if not (Conex_repository.contains ~queued:true idx tid `Team (Conex_data_persistency.team_to_t team)) then
        let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
        Conex_repository.write_index r idx ;
        Logs.app (fun m -> m "added resource to your index.")

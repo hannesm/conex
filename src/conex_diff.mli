@@ -1,3 +1,5 @@
+open Conex_core
+
 type hunk
 
 type diff = {
@@ -7,5 +9,8 @@ type diff = {
 }
 
 val file : diff -> string
-val apply : string option -> diff -> string
 val to_diffs : string -> diff list
+
+val diffs_to_components : diff list -> (S.t * S.t * S.t * S.t M.t)
+
+val apply : Conex_repository.t -> diff -> Conex_repository.t

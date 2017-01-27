@@ -33,59 +33,25 @@ true
 
  *)
 
-let out a b = Format.fprintf Format.std_formatter (a ^^ "\n") b
-
-let load_id id repo =
-  if Conex_repository.id_loaded repo id then
-    repo
-  else
-    match Conex_repository.read_id repo id with
-    | Error e -> out "%a" Conex_repository.pp_r_err e ; repo
-    | Ok (`Id idx) -> begin match Conex_repository.verify_index repo idx with
-        | Ok (repo, _, _) -> repo
-        | Error e -> out "%a" pp_verification_error e ; repo
-      end
-    | Ok (`Team t) -> match Conex_repository.verify_team repo t with
-      | Ok (repo, _) -> repo
-      | Error e -> out "%a" Conex_repository.pp_error e ; repo
-
-let checksum repo auth rel release =
-  match Conex_repository.read_checksum repo release with
-  | Error e -> out "%a" Conex_repository.pp_r_err e
-  | Ok cs -> match Conex_repository.verify_checksum repo auth rel cs with
-    | Error e -> out "%a" Conex_repository.pp_error e
-    | Ok _ -> ()
-
-let package name repo =
-  match Conex_repository.read_authorisation repo name with
-  | Error e -> out "while loading %a" Conex_repository.pp_r_err e ; repo
-  | Ok a -> match Conex_repository.verify_authorisation repo a with
-    | Error e -> out "%a" Conex_repository.pp_error e ; repo
-    | Ok (`Quorum _) ->
-      (* load + verify authorised ids *)
-      let repo = S.fold load_id a.Authorisation.authorised repo in
-      (* load + verify releases ++ checksums *)
-      match Conex_repository.read_releases repo name with
-      | Error e -> out "%a" Conex_repository.pp_r_err e ; repo
-      | Ok r -> match Conex_repository.verify_releases repo a r with
-        | Error e -> out "%a" Conex_repository.pp_error e ; repo
-        | Ok _ -> S.iter (checksum repo a r) r.Releases.releases ; repo
-
 let verify_patch _repo _patch _verbose _strict =
   Ok ()
 
 let verify_full repo anchors _verbose _strict =
-  let valid (id, digest) =
+  let valid id digest =
     if S.mem digest anchors then
       (Printf.printf "accepting ta %s\n%!" id ; true)
     else
       (Printf.printf "rejecting ta %s\n%!" id ; false)
   in
-  match Conex_repository.load_janitors ~valid repo with
+  match Conex_api.load_janitors ~valid repo with
   | Ok repo ->
     (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
-    let _ = S.fold package (Conex_repository.items repo) repo in
-    Ok ()
+    S.fold (fun item repo ->
+        repo >>= fun repo ->
+        match Conex_api.verify_item ~debug:Format.std_formatter repo item with
+        | Ok r -> Ok r
+        | Error e -> Error e)
+      (Conex_repository.items repo) (Ok repo)
   | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function
@@ -103,7 +69,8 @@ let verify_it repo quorum anchors incremental dir patch verbose strict =
        verify_patch (r repo) p verbose strict
      | false, None, Some d ->
        let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
-       verify_full (r d) ta verbose strict
+       verify_full (r d) ta verbose strict >>= fun _ ->
+       Ok ()
      | _ ->
        Error "invalid combination of incremental, patch and dir")
 

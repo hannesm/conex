@@ -1,5 +1,5 @@
 true : color(always), bin_annot, safe_string, principal
-true : warn(+A-4-33-44-58)
+true : warn(+A-4-33-44-48-58)
 "src" : include
 
 <src/conex_nocrypto.{ml,mli}>: package(x509 nocrypto cstruct)

@@ -69,7 +69,7 @@ let handle_one base commit pr github mail maps =
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
   in
   let diffs = Conex_diff.to_diffs content in
-  let _ids, _auths, _rels, packages = Conex_patch.diffs_to_components diffs in
+  let _ids, _auths, _rels, packages = Conex_diff.diffs_to_components diffs in
   M.fold (fun pn _pvs (github_map, package_map) ->
       Format.fprintf Format.std_formatter "handling %s\n" pn ;
       let github_map =
