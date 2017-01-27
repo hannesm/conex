@@ -189,44 +189,13 @@ let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release
      (dbg ("ignoring " ^ name) ; Ok ())) >>= fun () ->
   Ok repo
 
-let monotonicity repo repo' resource name =
-  match resource with
-  | `Index ->
-    (match read_id repo name, read_id repo' name with
-     | Ok (`Id idx), Ok (`Id idx') ->
-       guard (Uint.compare idx'.Index.counter idx.Index.counter = 1) ("counter of index " ^ name ^ " not increased")
-     | Ok (`Team team), Ok (`Team team') ->
-       guard (Uint.compare team'.Team.counter team.Team.counter = 1) ("counter of team " ^ name ^ " not increased")
-     | Error _, Ok _ -> Ok () (* allow creation (could check for valid + unique id) *)
-     | Ok _, Error e -> Error (str pp_r_err e) (* DO NOT allow index deletions *)
-     | Error e, Error _ -> Error (str pp_r_err e)
-     | Ok (`Id _), Ok (`Team _) -> Error ("id " ^ name ^ " is now a team")
-     | Ok (`Team _), Ok (`Id _) -> Error ("team " ^ name ^ " is now an id") )
-  | `Checksums ->
-    (match read_checksum repo name, read_checksum repo' name with
-     | Ok cs, Ok cs' ->
-       guard (Uint.compare cs'.Checksum.counter cs.Checksum.counter = 1) ("counter of checksum " ^ name ^ " not increased")
-     | Error _, Ok _ -> Ok () (* allow creation *)
-     | Ok _, Error _ -> Ok () (* allow deletion of checksums *)
-     | Error e, Error _ -> Error (str pp_r_err e))
-  | `Releases ->
-    (match read_releases repo name, read_releases repo' name with
-     | Ok rel, Ok rel' ->
-       guard (Uint.compare rel'.Releases.counter rel.Releases.counter = 1) ("counter of releases " ^ name ^ " not increased")
-     | Error _, Ok _ -> Ok () (* allow creation *)
-     | Ok _, Error e -> Error (str pp_r_err e) (* DO NOT allow deletion of releases *)
-     | Error e, Error _ -> Error (str pp_r_err e))
-  | `Authorisation ->
-    (match read_authorisation repo name, read_authorisation repo' name with
-     | Ok auth, Ok auth' ->
-       guard (Uint.compare auth'.Authorisation.counter auth.Authorisation.counter = 1) ("counter of authorisation " ^ name ^ " not increased")
-     | Error _, Ok _ -> Ok () (* allow creation *)
-     | Ok _, Error e -> Error (str pp_r_err e) (* DO NOT allow deletion of authorsations *)
-     | Error e, Error _ -> Error (str pp_r_err e))
-  | `PublicKey | `Team -> Error "not sure what you wanted to do"
-
 let verify_patch ?debug ?out repo newrepo (ids, auths, rels, pkgs) =
-  let warn = warn out in
+  let dbg = dbg debug
+  and warn = warn out
+  in
+  let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
+  dbg (Format.sprintf "verifying a diff with %d ids %d auths %d rels %d pkgs"
+         (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
   (* all public keys of janitors in repo are valid. *)
   load_janitors ?debug ?out repo >>= fun repo ->
   let janitor_keys =
@@ -282,23 +251,22 @@ let verify_patch ?debug ?out repo newrepo (ids, auths, rels, pkgs) =
   foldM (fun () id ->
       match monotonicity repo newrepo `Index id with
       | Ok () -> Ok ()
-      | Error str -> maybe repo warn str ())
+      | Error e -> maybe repo warn (str pp_m_err e) ())
     () (S.elements ids) >>= fun () ->
   foldM (fun () id ->
       match monotonicity repo newrepo `Authorisation id with
       | Ok () -> Ok ()
-      | Error str -> maybe repo warn str ())
+      | Error e -> maybe repo warn (str pp_m_err e) ())
     () (S.elements auths) >>= fun () ->
   foldM (fun () id ->
       match monotonicity repo newrepo `Releases id with
       | Ok () -> Ok ()
-      | Error str -> maybe repo warn str ())
+      | Error e -> maybe repo warn (str pp_m_err e) ())
     () (S.elements rels) >>= fun () ->
-  let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
   foldM (fun () id ->
       match monotonicity repo newrepo `Checksums id with
       | Ok () -> Ok ()
-      | Error str -> maybe repo warn str ())
+      | Error e -> maybe repo warn (str pp_m_err e) ())
     () packages >>= fun () ->
   Ok newrepo
 

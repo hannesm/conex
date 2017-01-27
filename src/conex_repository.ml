@@ -377,3 +377,52 @@ let write_checksum repo csum =
   let name = Conex_opam_layout.checksum_path csum.Checksum.name in
   repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.checksums_to_t csum))
 
+type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
+
+let pp_m_err ppf =
+  let s = resource_to_string in
+  function
+  | #r_err as e -> pp_r_err ppf e
+  | `NotIncreased (res, nam) -> Format.fprintf ppf "monotonicity: counter of %s %s was not increased" (s res) nam
+  | `Deleted (res, nam) -> Format.fprintf ppf "monotonicity: %s %s was deleted" (s res) nam
+  | `Msg s -> Format.fprintf ppf "monotonicity: %s" s
+
+let monotonicity repo repo' resource name =
+  let e = (resource, name) in
+  let incr c c' =
+    guard (Uint.compare c' c = 1) (`NotIncreased e)
+  in
+  match resource with
+  | `Index ->
+    begin match read_id repo name, read_id repo' name with
+     | Ok (`Id idx), Ok (`Id idx') -> incr idx'.Index.counter idx.Index.counter
+     | Ok (`Team team), Ok (`Team team') -> incr team'.Team.counter team.Team.counter
+     | Error _, Ok _ -> Ok () (* allow creation (could check for valid + unique id) *)
+     | Ok _, Error _ -> Error (`Deleted e) (* DO NOT allow index deletions *)
+     | Error e, Error _ -> Error e
+     | Ok (`Id _), Ok (`Team _) -> Error (`Msg ("id " ^ name ^ " is now a team"))
+     | Ok (`Team _), Ok (`Id _) -> Error (`Msg ("team " ^ name ^ " is now an id"))
+    end
+  | `Checksums ->
+    begin match read_checksum repo name, read_checksum repo' name with
+     | Ok cs, Ok cs' -> incr cs'.Checksum.counter cs.Checksum.counter
+     | Error _, Ok _ -> Ok () (* allow creation *)
+     | Ok _, Error _ -> Ok () (* allow deletion of checksums *)
+     | Error e, Error _ -> Error e
+    end
+  | `Releases ->
+    begin match read_releases repo name, read_releases repo' name with
+     | Ok rel, Ok rel' -> incr rel'.Releases.counter rel.Releases.counter
+     | Error _, Ok _ -> Ok () (* allow creation *)
+     | Ok _, Error _ -> Error (`Deleted e) (* DO NOT allow deletion of releases *)
+     | Error e, Error _ -> Error e
+    end
+  | `Authorisation ->
+    begin match read_authorisation repo name, read_authorisation repo' name with
+     | Ok auth, Ok auth' -> incr auth'.Authorisation.counter auth.Authorisation.counter
+     | Error _, Ok _ -> Ok () (* allow creation *)
+     | Ok _, Error _ -> Error (`Deleted e) (* DO NOT allow deletion of authorsations *)
+     | Error e, Error _ -> Error e
+    end
+  | `PublicKey | `Team -> Error (`Msg "not sure what you wanted to do")
+

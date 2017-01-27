@@ -106,3 +106,9 @@ val write_releases : t -> Releases.t -> unit
 
 val read_checksum : t -> name -> (Checksum.t, [> r_err ]) result
 val write_checksum : t -> Checksum.t -> unit
+
+type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
+
+val pp_m_err : Format.formatter -> [< m_err ] -> unit
+
+val monotonicity : t -> t -> resource -> name -> (unit, [> m_err ]) result

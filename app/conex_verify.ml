@@ -33,8 +33,9 @@ true
 
  *)
 
-let verify_patch _repo _patch _verbose _strict =
-  Ok ()
+let verify_patch repo patch _verbose _strict =
+  let data = Conex_persistency.read_file patch in
+  Conex_api.verify_diff ~debug:Format.std_formatter repo data
 
 let verify_full repo anchors _verbose _strict =
   let valid id digest =
@@ -64,15 +65,15 @@ let verify_it repo quorum anchors incremental dir patch verbose strict =
     Conex_repository.repository ?quorum p
   in
   err_to_cmdliner
-    (match incremental, patch, dir with
-     | true, Some p, None ->
-       verify_patch (r repo) p verbose strict
-     | false, None, Some d ->
-       let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
-       verify_full (r d) ta verbose strict >>= fun _ ->
-       Ok ()
-     | _ ->
-       Error "invalid combination of incremental, patch and dir")
+    ((match incremental, patch, dir with
+        | true, Some p, None ->
+          verify_patch (r repo) p verbose strict
+        | false, None, Some d ->
+          let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
+          verify_full (r d) ta verbose strict
+        | _ ->
+          Error "invalid combination of incremental, patch and dir") >>= fun _ ->
+     Ok ())
 
 open Cmdliner
 
