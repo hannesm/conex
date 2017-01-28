@@ -56,52 +56,37 @@ let verify_full repo anchors =
   | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function
-  | Ok () -> `Ok ()
+  | Ok _ -> `Ok ()
   | Error m -> `Error (false, m)
 
-
-let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_color =
+let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_c =
   let level = match verbose, quiet with
     | true, false -> `Debug
     | false, true -> `Warn
     | _ -> `Info
   in
   Conex_api.Log.set_level level ;
-  Conex_api.Log.set_styled (not no_color) ;
+  let styled = if no_c then false else match Conex_opts.terminal () with `Ansi_tty -> true | `None -> false
+  in
+  Conex_api.Log.set_styled styled ;
+  let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
   let r p =
     let p = Conex_provider.fs_ro_provider p in
     Conex_repository.repository ~strict ?quorum p
   in
   err_to_cmdliner
-    ((match incremental, patch, dir with
-        | true, Some p, None ->
-          verify_patch (r repo) p
-        | false, None, Some d ->
-          let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
-          verify_full (r d) ta
-        | _ ->
-          Error "invalid combination of incremental, patch and dir") >>= fun _ ->
-     Ok ())
-
+    (match incremental, patch, dir with
+     | true, Some p, None -> verify_patch (r repo) p
+     | false, None, Some d -> verify_full (r d) ta
+     | _ -> Error "invalid combination of incremental, patch and dir")
 
 
 open Cmdliner
+open Conex_opts
 
 let incremental =
   let doc = "do incremental verification" in
   Arg.(value & flag & info [ "incremental" ] ~doc)
-
-let quorum =
-  let doc = "Pass the quorum for the repository" in
-  Arg.(value & opt (some int) None & info [ "quorum" ] ~doc)
-
-let repo =
-    let doc = "Repository base directory" in
-    Arg.(value & opt dir "/tmp/conex" & info [ "repository" ] ~doc)
-
-let anchors =
-    let doc = "Trust anchors" in
-    Arg.(value & opt_all string [] & info [ "trust-anchors" ] ~doc)
 
 let dir =
     let doc = "To be verified directory" in
@@ -118,10 +103,6 @@ let quiet =
 let verbose =
     let doc = "Increase verbosity" in
     Arg.(value & flag & info [ "verbose" ] ~doc)
-
-let strict =
-    let doc = "Strict verification" in
-    Arg.(value & flag & info [ "strict" ] ~doc)
 
 let no_color =
     let doc = "No colored output" in

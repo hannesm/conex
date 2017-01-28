@@ -52,6 +52,12 @@ let setup_log style_renderer level =
   Logs.set_level level;
   let reporter = Logs_fmt.reporter ~dst:Format.std_formatter () in
   Logs.set_reporter reporter ;
+  (match style_renderer with
+   | Some `None -> Conex_api.Log.set_styled false
+   | Some `Ansi_tty -> ()
+   | None -> match Conex_opts.terminal () with
+     | `None -> Conex_api.Log.set_styled false
+     | _ -> ()) ;
   match level with
   | Some Logs.Info -> Conex_api.Log.set_level `Info
   | Some Logs.Debug -> Conex_api.Log.set_level `Debug
