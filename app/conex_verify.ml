@@ -40,9 +40,9 @@ let verify_patch repo patch =
 let verify_full repo anchors =
   let valid id digest =
     if S.mem digest anchors then
-      (Printf.printf "accepting ta %s\n%!" id ; true)
+      (Conex_api.Log.debug (fun m -> m "accepting ta %s" id) ; true)
     else
-      (Printf.printf "rejecting ta %s\n%!" id ; false)
+      (Conex_api.Log.debug (fun m -> m "rejecting ta %s" id) ; false)
   in
   match Conex_api.load_janitors ~valid repo with
   | Ok repo ->
