@@ -192,9 +192,6 @@ let status_single r _id name =
 let status _ o name no_rec =
   let r = o.Conex_opts.repo in
   Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-(*  let debug msg = Logs.debug (fun m -> m "%s" msg)
-  and out msg = Logs.warn (fun m -> m "%s" msg)
-    in *)
   msg_to_cmdliner
     (str_to_msg (Conex_api.load_janitors r) >>= fun r ->
      self r o >>= fun id ->
