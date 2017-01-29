@@ -186,14 +186,13 @@ let status_all r id no_team =
     str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised r id)
                   r (S.elements (Conex_repository.items r)))
 
-let status_single r _id name =
+let status_single r name =
   Logs.info (fun m -> m "information on package %s" name) ;
   let pn, release = match Conex_opam_layout.authorisation_of_item name with
     | None -> name, (fun _ -> true)
     | Some pn -> pn, (fun nam -> name_equal nam name)
   in
-  let _ = Conex_api.verify_item ~release r pn in
-  ()
+  Conex_api.verify_item ~release r pn
 
 let status _ o name no_rec =
   let r = o.Conex_opts.repo in
@@ -205,7 +204,7 @@ let status _ o name no_rec =
      if name = "" then
        status_all r id no_rec >>| fun _r -> ()
      else
-       Ok (status_single r id name))
+       let _ = status_single r name in Ok ())
 
 let add_r idx name typ data =
   let counter = Index.next_id idx in

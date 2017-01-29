@@ -61,7 +61,7 @@ let t_t =
     let doc = "Use specified identity" in
     Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
   in
-  Term.(const t $ dry $ repo $ id $ anchors $ quorum $strict)
+  Term.(const t $ dry $ repo $ id $ anchors $ quorum $ strict)
 
 let remove =
   let doc = "Remove" in

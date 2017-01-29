@@ -161,7 +161,7 @@ let load_janitors ?(valid = fun _ _ -> true) repo =
   let good_j_repo = List.fold_left add_warn repo good_idxs in
   (match verify_team good_j_repo team with
    | Error e -> if strict repo then Error (str pp_error e) else
-       (Log.warn (fun m -> m "%a" pp_error e) ; Ok good_j_repo)
+       (Log.warn (fun m -> m "%a" pp_error e) ; Ok (add_team good_j_repo team))
    | Ok (repo, ok) -> Log.debug (fun m -> m "team janitors verified %a" pp_ok ok) ; Ok repo) >>= fun repo ->
   (* team is good, there may be more janitors: esp notyet and others *)
   (* load in a similar style:

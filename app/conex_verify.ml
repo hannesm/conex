@@ -1,6 +1,5 @@
 open Conex_result
 open Conex_core
-open Conex_resource
 
 (* to be called by opam (see http://opam.ocaml.org/doc/2.0/Manual.html#configfield-repository-validation-command, https://github.com/ocaml/opam/pull/2754/files#diff-5f9ccd1bb288197c5cf2b18366a73363R312):
 
@@ -47,12 +46,7 @@ let verify_full repo anchors =
   match Conex_api.load_janitors ~valid repo with
   | Ok repo ->
     (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
-    S.fold (fun item repo ->
-        repo >>= fun repo ->
-        match Conex_api.verify_item repo item with
-        | Ok r -> Ok r
-        | Error e -> Error e)
-      (Conex_repository.items repo) (Ok repo)
+    foldM Conex_api.verify_item repo (S.elements (Conex_repository.items repo))
   | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function
