@@ -1,7 +1,7 @@
 open Conex_result
 open Conex_core
 open Conex_utils
-
+open Conex_resource
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
@@ -31,15 +31,15 @@ let private_key_path path id =
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
 let sign_index idx priv =
-  let idx, _overflow = Conex_resource.Index.prep_sig idx in
-  let data = Conex_data.encode (Conex_data_persistency.index_to_t idx)
+  let idx, _overflow = Index.prep_sig idx in
+  let data = Conex_data.encode (Index.wire_resources idx)
   and created = Uint.of_float (Unix.time ())
-  and signame = idx.Conex_resource.Index.name
+  and signame = idx.Index.name
   in
   let hdr = { created ; sigtyp = `RSA_PSS_SHA256 ; signame } in
   let data = extend_sig hdr data in
   Conex_nocrypto.sign priv data >>= fun signature ->
-  Ok (Conex_resource.Index.add_sig idx (hdr, signature))
+  Ok (Index.add_sig idx (hdr, signature))
 
 let write_private_key repo id key =
   let base = (Conex_repository.provider repo).Provider.name in

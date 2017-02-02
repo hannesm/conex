@@ -1,10 +1,11 @@
 open Conex_result
 open Conex_core
+open Conex_resource
 
 let np = ("", 0, 0)
 
 let rec encode_s = function
-  | Conex_data_persistency.Map s ->
+  | Wire.Map s ->
     if s = M.empty then
       OpamParserTypes.Ident (np, "emptymap")
     else
@@ -13,9 +14,9 @@ let rec encode_s = function
           s []
       in
       OpamParserTypes.List (np, data)
-  | Conex_data_persistency.List l -> OpamParserTypes.List (np, List.map encode_s l)
-  | Conex_data_persistency.String s -> OpamParserTypes.String (np, s)
-  | Conex_data_persistency.Int i -> OpamParserTypes.Ident (np, "UINT" ^ Uint.to_string i)
+  | Wire.List l -> OpamParserTypes.List (np, List.map encode_s l)
+  | Wire.String s -> OpamParserTypes.String (np, s)
+  | Wire.Int i -> OpamParserTypes.Ident (np, "UINT" ^ Uint.to_string i)
 
 let encode t =
   let file_contents =
@@ -30,14 +31,13 @@ let rec decode_s = function
   | OpamParserTypes.Ident (_, data) ->
     let l = String.length data in
     if l > 4 && String.sub data 0 4 = "UINT" then
-      Ok (Conex_data_persistency.Int (Uint.of_string (String.sub data 4 (l - 4))))
+      Ok (Wire.Int (Uint.of_string (String.sub data 4 (l - 4))))
     else if data = "emptymap" then
-      Ok (Conex_data_persistency.Map M.empty)
+      Ok (Wire.Map M.empty)
     else
       Error "unexpected ident"
-  | OpamParserTypes.String (_, s) -> Ok (Conex_data_persistency.String s)
-  | OpamParserTypes.List (_, []) ->
-    Ok (Conex_data_persistency.List [])
+  | OpamParserTypes.String (_, s) -> Ok (Wire.String s)
+  | OpamParserTypes.List (_, []) -> Ok (Wire.List [])
   | OpamParserTypes.List (_, l) ->
     let is_pair = function
         OpamParserTypes.List (_, [OpamParserTypes.String _ ; _]) -> true
@@ -51,14 +51,14 @@ let rec decode_s = function
             (decode_s v >>= fun v -> Ok (M.add k v m))
           | _ -> Error "can not happen")
         (Ok M.empty) l >>= fun map ->
-      Ok (Conex_data_persistency.Map map)
+      Ok (Wire.Map map)
     end else
       List.fold_left (fun xs s ->
           xs >>= fun xs ->
           decode_s s >>= fun x ->
           Ok (x :: xs))
           (Ok []) l >>= fun xs ->
-      Ok (Conex_data_persistency.List xs)
+      Ok (Wire.List xs)
   | _ -> Error "unexpected thing while decoding"
 
 let decode data =

@@ -72,18 +72,25 @@ type identifier = string
 val pp_id : Format.formatter -> identifier -> unit
 val id_equal : identifier -> identifier -> bool
 
-type signature_hdr = {
+type sig_hdr = {
   created : Uint.t ;
   sigtyp : sigtype ;
   signame : identifier ;
 }
-val extend_sig : signature_hdr -> string -> string
+val extend_sig : sig_hdr -> string -> string
 
-type signature = signature_hdr * string
+type signature = sig_hdr * string
 val pp_signature : Format.formatter -> signature -> unit
 
-type digest = string
+
+type digest_typ = [ `SHA256 ]
+val digest_typ_to_string : digest_typ -> string
+val string_to_digest_typ : string -> digest_typ option
+
+type digest = [ `SHA256 ] * string
+val digest_to_string : digest -> string
 val pp_digest : Format.formatter -> digest -> unit
+val digest_eq : digest -> digest -> bool
 
 type resource = [
   | `PublicKey

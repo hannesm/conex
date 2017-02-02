@@ -139,7 +139,7 @@ let pp_id ppf x = Format.pp_print_string ppf x
 
 let id_equal a b = String.compare_insensitive a b
 
-type signature_hdr = {
+type sig_hdr = {
   created : Uint.t ;
   sigtyp : sigtype ;
   signame : identifier ;
@@ -148,17 +148,27 @@ let extend_sig hdr data =
   String.concat "M  A   R   K"
     [ Uint.to_string hdr.created ; sigtype_to_string hdr.sigtyp ; hdr.signame ; data ]
 
-type signature = signature_hdr * string
+type signature = sig_hdr * string
 
 let pp_signature ppf (hdr, data) =
   Format.fprintf ppf "signature %s (created %s) type %s: %d bytes"
     hdr.signame (Uint.to_string hdr.created) (sigtype_to_string hdr.sigtyp)
     (String.length data)
 
-type digest = string
+type digest_typ = [ `SHA256 ]
+let digest_typ_to_string = function `SHA256 -> "SHA256"
+let string_to_digest_typ = function
+  | "SHA256" -> Some `SHA256
+  | _ -> None
+
+type digest = digest_typ * string
+let digest_to_string (a, b) = digest_typ_to_string a ^ b
+let digest_eq (ta, a) (tb, b) = match ta, tb with
+  | `SHA256, `SHA256 -> String.compare a b = 0
 
 (*BISECT-IGNORE-BEGIN*)
-let pp_digest ppf x = Format.pp_print_string ppf x
+let pp_digest ppf (`SHA256, x) =
+  Format.fprintf ppf "SHA256: %s" x
 (*BISECT-IGNORE-END*)
 
 

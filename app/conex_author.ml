@@ -247,7 +247,7 @@ let init _ dry path id email =
        and resources = idx.Index.resources
        in
        let idx = Index.index ~accounts ~keys ~counter ~resources ~signatures ~queued id in
-       let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t id public) in
+       let idx = add_r idx id `PublicKey (Wire.wire_pub id public) in
        str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
        str_to_msg (Conex_repository.write_index r idx) >>= fun () ->
        Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
@@ -303,11 +303,11 @@ let auth _ dry path id remove members p =
          Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
        str_to_msg (Conex_repository.write_authorisation r auth) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Authorisation.pp_authorisation auth) ;
-       let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
+       let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
        str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "modified authorisation and added resource to your index.")
-     end else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth)) then begin
-       let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
+     end else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Authorisation.wire auth)) then begin
+       let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
        str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your index.")
      end else begin
@@ -337,9 +337,9 @@ let release _ dry path id remove p =
           Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
         str_to_msg (Conex_repository.write_releases r rel) >>| fun () ->
         Logs.info (fun m -> m "wrote %a" Releases.pp_releases rel) ;
-        add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
-       end else if not (Conex_repository.contains ~queued:true idx pn `Releases (Conex_data_persistency.releases_to_t rel')) then begin
-        Ok (add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel))
+        add_r idx pn `Releases (Releases.wire rel)
+       end else if not (Conex_repository.contains ~queued:true idx pn `Releases (Releases.wire rel')) then begin
+        Ok (add_r idx pn `Releases (Releases.wire rel))
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
        acc >>= fun idx ->
@@ -352,9 +352,9 @@ let release _ dry path id remove p =
          if overflow then Logs.warn (fun m -> m "counter overflow in checksum %s, needs approval" name) ;
          str_to_msg (Conex_repository.write_checksum r cs') >>| fun () ->
          Logs.info (fun m -> m "wrote %a" Checksum.pp_checksums cs') ;
-         add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs')
-       else if not (Conex_repository.contains ~queued:true idx name `Checksums (Conex_data_persistency.checksums_to_t cs)) then
-         Ok (add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs))
+         add_r idx name `Checksums (Checksum.wire cs')
+       else if not (Conex_repository.contains ~queued:true idx name `Checksums (Checksum.wire cs)) then
+         Ok (add_r idx name `Checksums (Checksum.wire cs))
        else
          Ok idx
      in
@@ -381,11 +381,11 @@ let team _ dry repo id remove members tid =
          Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
        str_to_msg (Conex_repository.write_team r team) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Team.pp_team team) ;
-       let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
+       let idx = add_r idx tid `Team (Team.wire team) in
        str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "modified team and added resource to your index.")
-     end else if not (Conex_repository.contains ~queued:true idx tid `Team (Conex_data_persistency.team_to_t team)) then begin
-       let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
+     end else if not (Conex_repository.contains ~queued:true idx tid `Team (Team.wire team)) then begin
+       let idx = add_r idx tid `Team (Team.wire team) in
        str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your index.")
      end else begin

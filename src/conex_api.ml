@@ -110,7 +110,7 @@ let load_janitors ?(valid = fun _ _ -> true) repo =
         let id = idx.Index.name in
         let good, warnings = verify_signatures idx in
         List.iter (fun (_, e) -> Log.warn (fun m -> m "%a" pp_verification_error e)) warnings ;
-        let f k = contains idx id `PublicKey (Conex_data_persistency.publickey_to_t id k) in
+        let f k = contains idx id `PublicKey (Wire.wire_pub id k) in
         match List.filter f good with
         | [] -> Log.warn (fun m -> m "ignoring %s due to missing self-signature" id) ; acc
         | xs -> Log.debug (fun m -> m "janitor index %s is self-signed" id) ; (xs, idx) :: acc)

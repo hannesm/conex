@@ -23,7 +23,7 @@ val verify_index : t -> Index.t -> (t * string list * identifier, [> verificatio
 
 val verify_signatures : Index.t -> pub list * (pub * verification_error) list
 
-val contains : ?queued:bool -> Index.t -> name -> resource -> Conex_data_persistency.t -> bool
+val contains : ?queued:bool -> Index.t -> name -> resource -> Wire.t -> bool
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 

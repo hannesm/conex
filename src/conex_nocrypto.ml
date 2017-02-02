@@ -80,7 +80,7 @@ let digest data =
   let cs = Cstruct.of_string data in
   let check = Nocrypto.Hash.digest `SHA256 cs in
   let b64 = Nocrypto.Base64.encode check in
-  Cstruct.to_string b64
+  (`SHA256, Cstruct.to_string b64)
 
 let id = function
-  | `RSA_pub rsa -> "RSA:" ^ digest rsa
+  | `RSA_pub rsa -> "RSA:" ^ snd (digest rsa)

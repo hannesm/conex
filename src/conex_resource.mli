@@ -1,21 +1,34 @@
 open Conex_result
 open Conex_core
 
+module Wire : sig
+  type s =
+    | Map of s M.t
+    | List of s list
+    | String of string
+    | Int of Uint.t
+  type t = s M.t
+
+  val wire_pub : identifier -> pub -> t
+end
+
 module Team : sig
   type t = private {
     counter : Uint.t ;
-    version : Uint.t ;
     name : identifier ;
     members : S.t
   }
 
-  val team : ?counter:Uint.t -> ?version:Uint.t -> ?members:S.t -> identifier -> t
+  val team : ?counter:Uint.t -> ?members:S.t -> identifier -> t
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
   val prep : t -> t * bool
 
   val equal : t -> t -> bool
+
+  val of_wire : Wire.t -> (t, string) result
+  val wire : t -> Wire.t
 
   val pp_team : Format.formatter -> t -> unit
 end
@@ -23,18 +36,20 @@ end
 module Authorisation : sig
   type t = private {
     counter : Uint.t ;
-    version : Uint.t ;
     name : name ;
     authorised : S.t ;
   }
 
-  val authorisation : ?counter:Uint.t -> ?version:Uint.t -> ?authorised:S.t -> name -> t
+  val authorisation : ?counter:Uint.t -> ?authorised:S.t -> name -> t
 
   val add : t -> identifier -> t
   val remove : t -> identifier -> t
   val prep : t -> t * bool
 
   val equal : t -> t -> bool
+
+  val of_wire : Wire.t -> (t, string) result
+  val wire : t -> Wire.t
 
   val pp_authorisation : Format.formatter -> t -> unit
   val pp_authorised : Format.formatter -> S.t -> unit
@@ -43,12 +58,11 @@ end
 module Releases : sig
   type t = private {
     counter : Uint.t ;
-    version : Uint.t ;
     name : name ;
     releases : S.t ;
   }
 
-  val releases : ?counter:Uint.t -> ?version:Uint.t -> ?releases:S.t -> name -> (t, string) result
+  val releases : ?counter:Uint.t -> ?releases:S.t -> name -> (t, string) result
 
   val add : t -> name -> t
   val remove : t -> name -> t
@@ -56,14 +70,17 @@ module Releases : sig
 
   val equal : t -> t -> bool
 
+  val of_wire : Wire.t -> (t, string) result
+  val wire : t -> Wire.t
+
   val pp_releases : Format.formatter -> t -> unit
 end
 
 module Checksum : sig
   type c = {
     filename : name ;
-    bytesize : Uint.t ;
-    checksum : digest ;
+    size     : Uint.t ;
+    digest   : digest ;
   }
 
   val pp_checksum : Format.formatter -> c -> unit
@@ -74,14 +91,16 @@ module Checksum : sig
 
   type t = private {
     counter : Uint.t ;
-    version : Uint.t ;
     name : name ;
     files : checksum_map ;
   }
 
   val pp_checksums : Format.formatter -> t -> unit
 
-  val checksums : ?counter:Uint.t -> ?version:Uint.t -> string -> c list -> t
+  val checksums : ?counter:Uint.t -> string -> c list -> t
+
+  val of_wire : Wire.t -> (t, string) result
+  val wire : t -> Wire.t
 
   val equal : t -> t -> bool
 
@@ -126,7 +145,6 @@ module Index : sig
     accounts : service list ;
     keys : pub list ;
     counter : Uint.t ;
-    version : Uint.t ;
     name : identifier ;
     resources : r list ;
     signatures : signature list ;
@@ -135,7 +153,11 @@ module Index : sig
 
   val pp_index : Format.formatter -> t -> unit
 
-  val index : ?accounts:(service list) -> ?keys:(pub list) -> ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(signature list) -> ?queued:(r list) -> identifier -> t
+  val index : ?accounts:(service list) -> ?keys:(pub list) -> ?counter:Uint.t -> ?resources:(r list) -> ?signatures:(signature list) -> ?queued:(r list) -> identifier -> t
+
+  val of_wire : Wire.t -> (t, string) result
+  val wire : t -> Wire.t
+  val wire_resources : t -> Wire.t
 
   val next_id : t -> Uint.t
 

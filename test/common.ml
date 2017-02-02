@@ -52,7 +52,7 @@ let team =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let idx_eq a b =
-  Index.equal a b && a.Index.counter = b.Index.counter && a.Index.version = b.Index.version
+  Index.equal a b && a.Index.counter = b.Index.counter
 
 let ji =
   let module M = struct
@@ -80,7 +80,6 @@ let auth =
     let equal a b =
       let open Authorisation in
       a.counter = b.counter &&
-      a.version = b.version &&
       name_equal a.name b.name &&
       S.equal a.authorised b.authorised
   end in
@@ -93,7 +92,6 @@ let releases =
     let equal a b =
       let open Releases in
       a.counter = b.counter &&
-      a.version = b.version &&
       a.name = b.name &&
       S.equal a.releases b.releases
   end in

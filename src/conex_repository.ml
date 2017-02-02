@@ -46,8 +46,9 @@ let authorised r a id =
 let add_valid_resource repo id res =
   let open Index in
   let t = repo.valid in
+  let dgst_str = digest_to_string res.digest in
   try
-    let n, s, r, ids = M.find res.digest t in
+    let n, s, r, ids = M.find dgst_str t in
     if not (name_equal n res.rname) then
       Error ("name not equal: " ^ n ^ " vs " ^ res.rname)
     else if not (resource_equal r res.resource) then
@@ -55,9 +56,9 @@ let add_valid_resource repo id res =
     else if not (s = res.size) then
       Error ("size not equal: " ^ Uint.to_string s ^ " vs " ^ Uint.to_string res.size)
     else
-      Ok ({ repo with valid = M.add res.digest (n, s, r, S.add id ids) t })
+      Ok ({ repo with valid = M.add dgst_str (n, s, r, S.add id ids) t })
   with Not_found ->
-    Ok ({ repo with valid = M.add res.digest (res.rname, res.size, res.resource, S.singleton id) t})
+    Ok ({ repo with valid = M.add dgst_str (res.rname, res.size, res.resource, S.singleton id) t})
 
 let change_provider t data = { t with data }
 
@@ -107,9 +108,10 @@ let pp_error ppf = function
 
 let verify_resource repo owners name resource data =
   let csum = Conex_nocrypto.digest data in
+  let csum_str = digest_to_string csum in
   let n, _s, r, ids =
-    if M.mem csum repo.valid then
-      M.find csum repo.valid
+    if M.mem csum_str repo.valid then
+      M.find csum_str repo.valid
     else
       (name, Uint.of_int (String.length data), resource, S.empty)
   in
@@ -131,13 +133,13 @@ let verify_resource repo owners name resource data =
   | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
 
 let verify_key repo id key =
-  verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Conex_data_persistency.publickey_to_t id key)) >>= function
+  verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Wire.wire_pub id key)) >>= function
   | `Both b -> Ok (`Both b)
   | `Quorum _ -> Error (`MissingSignature id)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `PublicKey, js))
 
 let verify_signatures idx =
-  let tbv = Conex_data.encode (Conex_data_persistency.index_to_t idx) in
+  let tbv = Conex_data.encode (Index.wire_resources idx) in
   List.fold_left (fun (good, warn) k ->
       match List.fold_left (fun r s ->
           match r, verify k tbv s with
@@ -177,12 +179,12 @@ let verify_index repo idx =
   let id = idx.Index.name in
   let signed_keys, _s_warn = verify_signatures idx in
   let valid_keys, _r_warn = List.partition
-      (fun key -> contains idx id `PublicKey (Conex_data_persistency.publickey_to_t id key))
+      (fun key -> contains idx id `PublicKey (Wire.wire_pub id key))
       signed_keys
   in
   match valid_keys, idx.Index.resources with
   | [], [] ->
-    begin match verify_resource repo S.empty id `Index (Conex_data.encode (Conex_data_persistency.index_sigs_to_t idx)) with
+    begin match verify_resource repo S.empty id `Index (Conex_data.encode (Index.wire idx)) with
       | Ok _ -> Ok (add_id repo id, [], id)
       | Error _ -> Error `NoSignature
     end
@@ -205,7 +207,7 @@ let verify_index repo idx =
 
 let verify_team repo team =
   let id = team.Team.name in
-  match verify_resource repo S.empty id `Team (Conex_data.encode (Conex_data_persistency.team_to_t team)) with
+  match verify_resource repo S.empty id `Team (Conex_data.encode (Team.wire team)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (add_team repo team, `Quorum js)
@@ -215,7 +217,7 @@ let verify_team repo team =
 
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
-  match verify_resource repo S.empty name `Authorisation (Conex_data.encode (Conex_data_persistency.authorisation_to_t auth)) with
+  match verify_resource repo S.empty name `Authorisation (Conex_data.encode (Authorisation.wire auth)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (`Quorum js)
@@ -238,7 +240,7 @@ let ensure_releases repo r =
 let verify_releases repo a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (Conex_data.encode (Conex_data_persistency.releases_to_t r)) >>= fun res ->
+  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (Conex_data.encode (Releases.wire r)) >>= fun res ->
   match ensure_releases repo r with
   | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
   | Ok () -> match res with
@@ -265,7 +267,7 @@ let verify_checksum repo a r cs =
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`NotInReleases (cs.Checksum.name, r.Releases.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Conex_data.encode (Conex_data_persistency.checksums_to_t cs)) >>= fun r ->
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Conex_data.encode (Checksum.wire cs)) >>= fun r ->
   let name = cs.Checksum.name in
   compute_checksum repo name >>= fun css ->
   Checksum.compare_checksums cs css >>= fun () ->
@@ -287,7 +289,7 @@ let read_team repo name =
   match repo.data.Provider.read (Conex_opam_layout.id_path name) with
   | Error _ -> Error (`NotFound ("team", name))
   | Ok data ->
-    match Conex_data.decode data >>= Conex_data_persistency.t_to_team with
+    match Conex_data.decode data >>= Team.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok team ->
       if id_equal team.Team.name name then
@@ -297,13 +299,13 @@ let read_team repo name =
 
 let write_team repo t =
   let id = t.Team.name in
-  repo.data.Provider.write (Conex_opam_layout.id_path id) (Conex_data.encode (Conex_data_persistency.team_to_t t))
+  repo.data.Provider.write (Conex_opam_layout.id_path id) (Conex_data.encode (Team.wire t))
 
 let read_index repo name =
   match repo.data.Provider.read (Conex_opam_layout.id_path name) with
   | Error _ -> Error (`NotFound ("index", name))
   | Ok data ->
-    match Conex_data.decode data >>= Conex_data_persistency.t_to_index with
+    match Conex_data.decode data >>= Index.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok i ->
       if id_equal i.Index.name name then
@@ -313,7 +315,7 @@ let read_index repo name =
 
 let write_index repo i =
   let name = Conex_opam_layout.id_path i.Index.name in
-  repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.index_sigs_to_t i))
+  repo.data.Provider.write name (Conex_data.encode (Index.wire i))
 
 let read_id repo id =
   match read_team repo id with
@@ -329,7 +331,7 @@ let read_authorisation repo name =
   match repo.data.Provider.read (Conex_opam_layout.authorisation_path name) with
   | Error _ -> Error (`NotFound ("authorisation", name))
   | Ok data ->
-    match Conex_data.decode data >>= Conex_data_persistency.t_to_authorisation with
+    match Conex_data.decode data >>= Authorisation.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok auth ->
       if name_equal auth.Authorisation.name name then
@@ -340,7 +342,7 @@ let read_authorisation repo name =
 let write_authorisation repo a =
   repo.data.Provider.write
     (Conex_opam_layout.authorisation_path a.Authorisation.name)
-    (Conex_data.encode (Conex_data_persistency.authorisation_to_t a))
+    (Conex_data.encode (Authorisation.wire a))
 
 let items repo = S.of_list (Conex_opam_layout.items repo.data)
 let subitems repo name = S.of_list (Conex_opam_layout.subitems repo.data name)
@@ -349,7 +351,7 @@ let read_releases repo name =
   match repo.data.Provider.read (Conex_opam_layout.releases_path name) with
   | Error _ -> Error (`NotFound ("releases", name))
   | Ok data ->
-    match Conex_data.decode data >>= Conex_data_persistency.t_to_releases with
+    match Conex_data.decode data >>= Releases.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok r ->
       if name_equal r.Releases.name name then
@@ -359,13 +361,13 @@ let read_releases repo name =
 
 let write_releases repo r =
   let name = Conex_opam_layout.releases_path r.Releases.name in
-  repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.releases_to_t r))
+  repo.data.Provider.write name (Conex_data.encode (Releases.wire r))
 
 let read_checksum repo name =
   match repo.data.Provider.read (Conex_opam_layout.checksum_path name) with
   | Error _ -> Error (`NotFound ("checksum", name))
   | Ok data ->
-    match Conex_data.decode data >>= Conex_data_persistency.t_to_checksums with
+    match Conex_data.decode data >>= Checksum.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok csum ->
       if name_equal csum.Checksum.name name then
@@ -375,7 +377,7 @@ let read_checksum repo name =
 
 let write_checksum repo csum =
   let name = Conex_opam_layout.checksum_path csum.Checksum.name in
-  repo.data.Provider.write name (Conex_data.encode (Conex_data_persistency.checksums_to_t csum))
+  repo.data.Provider.write name (Conex_data.encode (Checksum.wire csum))
 
 type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
 
