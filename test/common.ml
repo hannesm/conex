@@ -22,7 +22,7 @@ let gen_pub () =
   in
   match Conex_nocrypto.pub_of_priv priv with
   | Ok pub -> (pub, priv)
-  | Error e -> invalid_arg e
+  | Error e -> Alcotest.fail e
 
 let result (type a) (type e) a e =
   let (module A: Alcotest.TESTABLE with type t = a) = a in

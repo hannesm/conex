@@ -177,7 +177,7 @@ let apply_diff provider diff =
       | Ok files, None -> Ok files
       | Error _, Some data -> Ok [data]
       | Error e, None -> Error e
-  and write _ = invalid_arg "cannot write on a diff provider, is read-only!"
+  and write _ _ = Error "read only"
   and exists path =
     let pn = path_to_string path
     and name = file diff

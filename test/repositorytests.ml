@@ -43,7 +43,7 @@ module Mem = struct
       in
       let xs = List.filter (fun n -> name n <> p') xs in
       Node (x, node::xs)
-    | _ -> invalid_arg "should not happen"
+    | _ -> Alcotest.fail "should not happen"
 
   let find_f t path = find t ("/"::path)
 
@@ -1108,7 +1108,7 @@ let r_err =
 let safe_rel ?releases name =
   match Releases.releases ?releases name with
   | Ok r -> r
-  | Error _ -> invalid_arg "shouldn't happen"
+  | Error _ -> Alcotest.fail "shouldn't happen"
 
 let rel () =
   let p = Mem.mem_provider () in
