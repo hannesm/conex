@@ -325,8 +325,8 @@ let basic_persistency () =
   let csums = Checksum.checksums "foo" [csum] in
   Alcotest.check (result cs str_err) "can parse checksum"
     (Ok csums) (t_to_checksums css) ;
-  let s = List [ Int Uint.zero ; String "barf" ] in
-  let s' = (Uint.zero, "barf") in
+  let s = List [ Int Uint.zero ; String (sigtype_to_string `RSA_PSS_SHA256) ; String "foobar" ; String "barf" ] in
+  let s' = ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "barf" }, "frab") in
   let idx =
     M.add "name" (String "foo")
       (M.add "counter" (Int Uint.zero)
@@ -607,9 +607,9 @@ let idx_s_v_dupl () =
   Alcotest.check (result r_ok verr) "idx signed properly, but one resource ignored"
     (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx) ;
   let signatures =
-    (Uint.zero, "foobar") ::
+    ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "foobar" }, "foobar") ::
     signed_idx.Index.signatures @
-    [ (Uint.zero, "foobar") ]
+    [ ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "foobar" }, "foobar") ]
   in
   let signed_idx = Index.index ~keys:[pub] ~counter:(Uint.of_int 1) ~resources ~signatures id in
   Alcotest.check (result r_ok verr) "idx signed properly (second sig), but one resource ignored"

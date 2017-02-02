@@ -106,7 +106,7 @@ let raw_sign p d = match Conex_nocrypto.sign p d with
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub () in
-  let d = Signature.extend_data pid Uint.zero in
+  let d = extend_sig {created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = pid} pid in
   let sigval = raw_sign p d in
   Alcotest.check (result Alcotest.unit verr)
     "signature is good" (Ok ())
@@ -203,7 +203,7 @@ let verify_fail () =
     (Error `InvalidSignature)
     (Conex_repository.verify k
        (Conex_data.encode (Conex_data_persistency.index_to_t signed))
-       (Uint.zero, sigval)) ;
+       ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "foo"}, sigval)) ;
   let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 ())) with
     | Ok p -> p
     | Error _ -> Alcotest.fail "couldn't pub_of_priv"

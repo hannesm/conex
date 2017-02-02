@@ -1,15 +1,6 @@
 open Conex_result
 open Conex_core
 
-module Signature : sig
-  (* a signature is a tuple *)
-  type t = Uint.t * string
-
-  val extend_data : string -> Uint.t -> string
-
-  val pp_signature : Format.formatter -> t -> unit
-end
-
 module Team : sig
   type t = private {
     counter : Uint.t ;
@@ -138,13 +129,13 @@ module Index : sig
     version : Uint.t ;
     name : identifier ;
     resources : r list ;
-    signatures : Signature.t list ;
+    signatures : signature list ;
     queued : r list ;
   }
 
   val pp_index : Format.formatter -> t -> unit
 
-  val index : ?accounts:(service list) -> ?keys:(pub list) -> ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(Signature.t list) -> ?queued:(r list) -> identifier -> t
+  val index : ?accounts:(service list) -> ?keys:(pub list) -> ?counter:Uint.t -> ?version:Uint.t -> ?resources:(r list) -> ?signatures:(signature list) -> ?queued:(r list) -> identifier -> t
 
   val next_id : t -> Uint.t
 
@@ -156,5 +147,5 @@ module Index : sig
 
   val prep_sig : t -> t * bool
 
-  val add_sig : t -> Signature.t -> t
+  val add_sig : t -> signature -> t
 end

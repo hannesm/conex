@@ -17,7 +17,7 @@ val authorised : t -> Authorisation.t -> identifier -> bool
 
 val change_provider : t -> Provider.t -> t
 
-val verify : pub -> string -> Signature.t -> (unit, [> verification_error]) result
+val verify : pub -> string -> signature -> (unit, [> verification_error]) result
 
 val verify_index : t -> Index.t -> (t * string list * identifier, [> verification_error ]) result
 

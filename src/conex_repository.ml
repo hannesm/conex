@@ -67,8 +67,8 @@ let add_team repo team =
     ids = S.add team.Team.name repo.ids
   }
 
-let verify key data (ts, sigval) =
-  let data = Signature.extend_data data ts in
+let verify key data (hdr, sigval) =
+  let data = extend_sig hdr data in
   Conex_nocrypto.verify key data sigval
 
 

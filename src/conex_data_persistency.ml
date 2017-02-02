@@ -143,10 +143,17 @@ let checksums_to_t cs =
 
 let signature data =
   list data >>= function
-    | [ Int created ;  String d ] -> Ok (created, d)
-    | _ -> Error "couldn't parse signature"
+  | [ Int created ; String typ ; String signame ; String d ] ->
+    (match string_to_sigtype typ with
+     | Some `RSA_PSS_SHA256 -> Ok ({ created ; sigtyp = `RSA_PSS_SHA256 ; signame }, d)
+     | None -> Error "couldn't parse signature type")
+  | _ -> Error "couldn't parse signature"
 
-let wire_signature (ts, s) = [ Int ts ; String s ]
+let wire_signature (hdr, s) =
+  [ Int hdr.created ;
+    String (sigtype_to_string hdr.sigtyp) ;
+    String hdr.signame ;
+    String s ]
 
 let resource data =
   map data >>= fun map ->

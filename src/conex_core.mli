@@ -59,6 +59,10 @@ val pp_pub : Format.formatter -> pub -> unit
 val pubtype_to_string : pub -> string
 val string_to_pubtype : string -> pub option
 
+type sigtype = [ `RSA_PSS_SHA256 ]
+val sigtype_to_string : sigtype -> string
+val string_to_sigtype : string -> sigtype option
+
 type name = string
 val pp_name : Format.formatter -> name -> unit
 val name_equal : name -> name -> bool
@@ -67,6 +71,16 @@ val name_equal : name -> name -> bool
 type identifier = string
 val pp_id : Format.formatter -> identifier -> unit
 val id_equal : identifier -> identifier -> bool
+
+type signature_hdr = {
+  created : Uint.t ;
+  sigtyp : sigtype ;
+  signame : identifier ;
+}
+val extend_sig : signature_hdr -> string -> string
+
+type signature = signature_hdr * string
+val pp_signature : Format.formatter -> signature -> unit
 
 type digest = string
 val pp_digest : Format.formatter -> digest -> unit

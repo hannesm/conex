@@ -113,6 +113,15 @@ let string_to_pubtype = function
   | "RSA" -> Some (`RSA_pub "")
   | _ -> None
 
+type sigtype = [ `RSA_PSS_SHA256 ]
+
+let sigtype_to_string = function
+  | `RSA_PSS_SHA256 -> "RSA-PSS-SHA256"
+
+let string_to_sigtype = function
+  | "RSA-PSS-SHA256" -> Some `RSA_PSS_SHA256
+  | _ -> None
+
 type name = string
 
 (*BISECT-IGNORE-BEGIN*)
@@ -130,6 +139,21 @@ let pp_id ppf x = Format.pp_print_string ppf x
 
 let id_equal a b = String.compare_insensitive a b
 
+type signature_hdr = {
+  created : Uint.t ;
+  sigtyp : sigtype ;
+  signame : identifier ;
+}
+let extend_sig hdr data =
+  String.concat "M  A   R   K"
+    [ Uint.to_string hdr.created ; sigtype_to_string hdr.sigtyp ; hdr.signame ; data ]
+
+type signature = signature_hdr * string
+
+let pp_signature ppf (hdr, data) =
+  Format.fprintf ppf "signature %s (created %s) type %s: %d bytes"
+    hdr.signame (Uint.to_string hdr.created) (sigtype_to_string hdr.sigtyp)
+    (String.length data)
 
 type digest = string
 

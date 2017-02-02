@@ -2,18 +2,6 @@ open Conex_result
 open Conex_core
 open Conex_utils
 
-module Signature = struct
-  type t = Uint.t * string
-
-  let extend_data data ts =
-    String.concat " " [ data ; Uint.to_string ts ]
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_signature ppf (ts, _) =
-    Format.fprintf ppf "signature created at 0x%s" (Uint.to_string ts)
-  (*BISECT-IGNORE-END*)
-end
-
 module Team = struct
   type t = {
     counter : Uint.t ;
@@ -259,7 +247,7 @@ module Index = struct
     version : Uint.t ;
     name : identifier ;
     resources : r list ;
-    signatures : Signature.t list ;
+    signatures : signature list ;
     queued : r list ;
   }
 
@@ -298,7 +286,7 @@ module Index = struct
       (pp_list pp_pub) i.keys
       (pp_list pp_resource) i.resources
       (pp_list pp_resource) i.queued
-      (pp_list Signature.pp_signature) i.signatures
+      (pp_list pp_signature) i.signatures
   (*BISECT-IGNORE-END*)
 
   let prep_sig i =
