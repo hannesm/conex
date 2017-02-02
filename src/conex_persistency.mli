@@ -1,11 +1,12 @@
+open Conex_result
 open Conex_core
 
 val exists : string -> bool
-val mkdir : ?mode:int -> string -> unit
-val remove : string -> unit
-val rename : string -> string -> unit
-val file_type : string -> file_type option
-val read_file : string -> string
-val write_file : ?mode:int -> string -> string -> unit
-val write_replace : ?mode:int -> string -> string -> unit
-val collect_dir : string -> string list
+val mkdir : ?mode:int -> string -> (unit, string) result
+val remove : string -> (unit, string) result
+val rename : string -> string -> (unit, string) result
+val file_type : string -> (file_type, string) result
+val read_file : string -> (string, string) result
+val write_file : ?mode:int -> string -> string -> (unit, string) result
+val write_replace : ?mode:int -> string -> string -> (unit, string) result
+val collect_dir : string -> (string list, string) result

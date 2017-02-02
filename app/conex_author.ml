@@ -63,12 +63,14 @@ let setup_log style_renderer level =
   | Some Logs.Debug -> Conex_api.Log.set_level `Debug
   | _ -> Conex_api.Log.set_level `Warn
 
-let help _ _copts man_format cmds = function
+let init_repo ?quorum ?strict dry path =
+  str_to_msg (Conex_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
+  Ok (Conex_repository.repository ?quorum ?strict prov)
+
+let help _ _ _ _ _ _ man_format cmds = function
   | None -> `Help (`Pager, None)
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
-
-let docs = Conex_opts.docs
 
 let w pp a = Logs.warn (fun m -> m "%a" pp a)
 let warn_e pp = R.ignore_error ~use:(w pp)
@@ -136,9 +138,9 @@ let find_cs r name =
 let load_ids r ids =
   foldM Conex_api.load_id r (S.elements ids)
 
-let self r o =
+let self r id =
   R.error_to_msg ~pp_error:Conex_private.pp_err
-    (match o.Conex_opts.id with
+    (match id with
      | None -> Conex_private.read_private_key r >>| fst
      | Some id -> Ok id) >>| fun id ->
   Logs.debug (fun m -> m "using identifier %s" id);
@@ -194,12 +196,12 @@ let status_single r name =
   in
   Conex_api.verify_item ~release r pn
 
-let status _ o name no_rec =
-  let r = o.Conex_opts.repo in
-  Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
+let status _ dry path quorum strict id name no_rec =
   msg_to_cmdliner
-    (str_to_msg (Conex_api.load_janitors r) >>= fun r ->
-     self r o >>= fun id ->
+    (init_repo ?quorum ~strict dry path >>= fun r ->
+     Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
+     str_to_msg (Conex_api.load_janitors r) >>= fun r ->
+     self r id >>= fun id ->
      let r = load_self_queued r id in
      if name = "" then
        status_all r id no_rec >>| fun _r -> ()
@@ -215,55 +217,50 @@ let add_r idx name typ data =
   Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
   Index.add_resource idx res
 
-let initialise r id email =
-  (match Conex_repository.read_id r id with
-   | Ok (`Team _) ->
-     Error (`Msg ("team " ^ id ^ " exists"))
-   | Ok (`Id idx) when List.length idx.Index.keys > 0 ->
-     Error (`Msg ("key " ^ id ^ " exists and includes a public key"))
-   | Ok (`Id k) -> Ok k
-   | Error _ -> Ok (Index.index id)) >>= fun idx ->
-  let priv =
-    let use _ =
-      let p = Conex_nocrypto.generate () in
-      Conex_private.write_private_key r id p ;
-      Logs.info (fun m -> m "generated and wrote private key %s" id) ;
-      p
-    in
-    R.ignore_error ~use (Conex_private.read_private_key ~id r >>| fun (_, priv) -> priv)
-  in
-  str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
-  let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Index.accounts
-  and counter = idx.Index.counter
-  and keys = public :: idx.Index.keys
-  and signatures = idx.Index.signatures
-  and queued = idx.Index.queued
-  and resources = idx.Index.resources
-  in
-  let idx = Index.index ~accounts ~keys ~counter ~resources ~signatures ~queued id in
-  let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t id public) in
-  str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
-  Conex_repository.write_index r idx ;
-  Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
-  R.error_to_msg ~pp_error:pp_verification_error
-    (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
-     Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
-  Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id)
-
-let init _ o email =
-  match o.Conex_opts.id with
-  | None -> `Error (false, "please provide '--id'")
-  | Some id ->
-    Nocrypto_entropy_unix.initialize () ;
-    let r = o.Conex_opts.repo in
-    Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-    msg_to_cmdliner (initialise r id email)
-
-let sign _ o =
-  let r = o.Conex_opts.repo in
+let init _ dry path id email =
   msg_to_cmdliner
-    (R.error_to_msg ~pp_error:Conex_private.pp_err
-       (Conex_private.read_private_key ?id:o.Conex_opts.id r) >>= fun (id, priv) ->
+    (match id with
+     | None -> Error (`Msg "please provide '--id'")
+     | Some id ->
+       Nocrypto_entropy_unix.initialize () ;
+       init_repo dry path >>= fun r ->
+       Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
+       (match Conex_repository.read_id r id with
+        | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
+        | Ok (`Id idx) when List.length idx.Index.keys > 0 ->
+          Error (`Msg ("key " ^ id ^ " exists and includes a public key"))
+        | Ok (`Id k) -> Ok k
+        | Error _ -> Ok (Index.index id)) >>= fun idx ->
+       (match Conex_private.read_private_key ~id r with
+        | Ok (_, priv) -> Ok priv
+        | Error _ ->
+          let p = Conex_nocrypto.generate () in
+          str_to_msg (Conex_private.write_private_key r id p) >>| fun () ->
+          Logs.info (fun m -> m "generated and wrote private key %s" id) ;
+          p) >>= fun priv ->
+       str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
+       let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Index.accounts
+       and counter = idx.Index.counter
+       and keys = public :: idx.Index.keys
+       and signatures = idx.Index.signatures
+       and queued = idx.Index.queued
+       and resources = idx.Index.resources
+       in
+       let idx = Index.index ~accounts ~keys ~counter ~resources ~signatures ~queued id in
+       let idx = add_r idx id `PublicKey (Conex_data_persistency.publickey_to_t id public) in
+       str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
+       str_to_msg (Conex_repository.write_index r idx) >>= fun () ->
+       Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
+       R.error_to_msg ~pp_error:pp_verification_error
+         (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
+          Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
+       Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id))
+
+let sign _ dry path id =
+  msg_to_cmdliner
+    (init_repo dry path >>= fun r ->
+     R.error_to_msg ~pp_error:Conex_private.pp_err
+       (Conex_private.read_private_key ?id r) >>= fun (id, priv) ->
      Logs.info (fun m -> m "using private key %s" id) ;
      let idx, _ = find_idx r id in
      match idx.Index.queued with
@@ -274,52 +271,54 @@ let sign _ o =
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (Conex_private.sign_index idx priv) >>| fun idx ->
+       str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
        Logs.info (fun m -> m "signed index %a" Index.pp_index idx) ;
-       Conex_repository.write_index r idx ;
+       str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "wrote index %s to disk" id))
 
-let reset _ o =
-  let r = o.Conex_opts.repo in
+let reset _ dry path id =
   msg_to_cmdliner
-    (self r o >>| fun id ->
+    (init_repo dry path >>= fun r ->
+     self r id >>= fun id ->
      let idx, _ = find_idx r id in
      List.iter
        (fun r -> Logs.app (fun m -> m "dropping %a" Index.pp_resource r))
        idx.Index.queued ;
      let idx = Index.reset idx in
-     Conex_repository.write_index r idx ;
+     str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
      Logs.app (fun m -> m "wrote index %s to disk" id))
 
-let auth _ o remove members p =
-  let r = o.Conex_opts.repo in
+let auth _ dry path id remove members p =
   msg_to_cmdliner
-    (self r o >>| fun id ->
+    (init_repo dry path >>= fun r ->
+     self r id >>= fun id ->
      let auth, _ = find_auth r p in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
      let auth' = List.fold_left f auth members in
      let idx, _ = find_idx r id in
-     if not (Authorisation.equal auth auth') then
+     if not (Authorisation.equal auth auth') then begin
        let auth, overflow = Authorisation.prep auth' in
        if overflow then
          Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
-       Conex_repository.write_authorisation r auth ;
+       str_to_msg (Conex_repository.write_authorisation r auth) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Authorisation.pp_authorisation auth) ;
        let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
-       Conex_repository.write_index r idx ;
+       str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "modified authorisation and added resource to your index.")
-     else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth)) then
+     end else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth)) then begin
        let idx = add_r idx p `Authorisation (Conex_data_persistency.authorisation_to_t auth) in
-       Conex_repository.write_index r idx ;
+       str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your index.")
-     else
-       Logs.app (fun m -> m "nothing changed."))
+     end else begin
+       Logs.app (fun m -> m "nothing changed.") ;
+       Ok ()
+     end)
 
-let release _ o remove p =
-  let r = o.Conex_opts.repo in
+let release _ dry path id remove p =
   msg_to_cmdliner
-    (self r o >>= fun id ->
+    (init_repo dry path >>= fun r ->
+     self r id >>= fun id ->
      let pn, releases = match Conex_opam_layout.authorisation_of_item p with
        | None -> p, Conex_repository.subitems r p
        | Some n -> n, S.singleton p
@@ -332,73 +331,72 @@ let release _ o remove p =
      let f m t = if remove then Releases.remove t m else Releases.add t m in
      let rel' = S.fold f releases rel in
      let idx, _ = find_idx r id in
-     let idx' =
-       if not (Releases.equal rel rel') then
-         let rel, overflow = Releases.prep rel' in
-         if overflow then
-           Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
-         Conex_repository.write_releases r rel ;
-         Logs.info (fun m -> m "wrote %a" Releases.pp_releases rel) ;
-         add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
-       else if not (Conex_repository.contains ~queued:true idx pn `Releases (Conex_data_persistency.releases_to_t rel')) then
-         add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
-       else
-         idx
-     in
+     (if not (Releases.equal rel rel') then begin
+        let rel, overflow = Releases.prep rel' in
+        if overflow then
+          Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
+        str_to_msg (Conex_repository.write_releases r rel) >>| fun () ->
+        Logs.info (fun m -> m "wrote %a" Releases.pp_releases rel) ;
+        add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel)
+       end else if not (Conex_repository.contains ~queued:true idx pn `Releases (Conex_data_persistency.releases_to_t rel')) then begin
+        Ok (add_r idx pn `Releases (Conex_data_persistency.releases_to_t rel))
+       end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
        acc >>= fun idx ->
        let cs = find_cs r name in
        R.error_to_msg ~pp_error:Conex_repository.pp_error
-         (Conex_repository.compute_checksum r name) >>| fun cs' ->
+         (Conex_repository.compute_checksum r name) >>= fun cs' ->
        if not (Checksum.equal cs cs') then
          let cs' = Checksum.set_counter cs' cs'.Checksum.counter in
          let cs', overflow = Checksum.prep cs' in
          if overflow then Logs.warn (fun m -> m "counter overflow in checksum %s, needs approval" name) ;
-         Conex_repository.write_checksum r cs' ;
+         str_to_msg (Conex_repository.write_checksum r cs') >>| fun () ->
          Logs.info (fun m -> m "wrote %a" Checksum.pp_checksums cs') ;
          add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs')
        else if not (Conex_repository.contains ~queued:true idx name `Checksums (Conex_data_persistency.checksums_to_t cs)) then
-         add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs)
+         Ok (add_r idx name `Checksums (Conex_data_persistency.checksums_to_t cs))
        else
-         idx
+         Ok idx
      in
-     (if not remove then
-        S.fold add_cs releases (Ok idx')
-      else
-        Ok idx') >>| fun idx' ->
+     (if not remove then S.fold add_cs releases (Ok idx') else Ok idx') >>= fun idx' ->
      if not (Index.equal idx idx') then begin
-       Conex_repository.write_index r idx' ;
+       str_to_msg (Conex_repository.write_index r idx') >>| fun () ->
        Logs.info (fun m -> m "wrote %a" Index.pp_index idx') ;
        Logs.app (fun m -> m "released and added resources to your index.")
      end else
-       Logs.app (fun m -> m "nothing happened"))
+       Ok (Logs.app (fun m -> m "nothing happened")))
 
-let team _ o remove members tid =
-  let r = o.Conex_opts.repo in
+let team _ dry repo id remove members tid =
   msg_to_cmdliner
-    (self r o >>| fun id ->
+    (init_repo dry repo >>= fun r ->
+     self r id >>= fun id ->
      let team = find_team r tid in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Team.remove else Team.add in
      let team' = List.fold_left f team members in
      let idx, _ = find_idx r id in
-     if not (Team.equal team team') then
+     if not (Team.equal team team') then begin
        let team, overflow = Team.prep team' in
        if overflow then
          Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
-       Conex_repository.write_team r team ;
+       str_to_msg (Conex_repository.write_team r team) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Team.pp_team team) ;
        let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
-       Conex_repository.write_index r idx ;
+       str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "modified team and added resource to your index.")
-     else if not (Conex_repository.contains ~queued:true idx tid `Team (Conex_data_persistency.team_to_t team)) then
+     end else if not (Conex_repository.contains ~queued:true idx tid `Team (Conex_data_persistency.team_to_t team)) then begin
        let idx = add_r idx tid `Team (Conex_data_persistency.team_to_t team) in
-       Conex_repository.write_index r idx ;
+       str_to_msg (Conex_repository.write_index r idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your index.")
-     else
-       Logs.app (fun m -> m "nothing changed."))
+     end else begin
+       Logs.app (fun m -> m "nothing changed.") ;
+       Ok ()
+     end)
+
 
 open Cmdliner
+
+let docs = Conex_opts.docs
 
 let setup_log =
   Term.(const setup_log
@@ -433,7 +431,7 @@ let status_cmd =
     [`S "DESCRIPTION";
      `P "Shows information about yourself."]
   in
-  Term.(ret (const status $ setup_log $ Conex_opts.t_t $ Conex_opts.package $ noteam)),
+  Term.(ret Conex_opts.(const status $ setup_log $ dry $ repo $ quorum $ strict $ id $ package $ noteam)),
   Term.info "status" ~doc ~man
 
 let package_cmd =
@@ -442,7 +440,7 @@ let package_cmd =
     [`S "DESCRIPTION";
      `P "Modifies authorisaton of a package."]
   in
-  Term.(ret (const auth $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ Conex_opts.package)),
+  Term.(ret Conex_opts.(const auth $ setup_log $ dry $ repo $ id $ remove $ members $ package)),
   Term.info "package" ~doc ~man
 
 let release_cmd =
@@ -451,7 +449,7 @@ let release_cmd =
     [`S "DESCRIPTION";
      `P "Modifies releases of a package."]
   in
-  Term.(ret (const release $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.package)),
+  Term.(ret Conex_opts.(const release $ setup_log $ dry $ repo $ id $ remove $ package)),
   Term.info "release" ~doc ~man
 
 let team_cmd =
@@ -460,7 +458,7 @@ let team_cmd =
     [`S "DESCRIPTION";
      `P "Modifies members of a team."]
   in
-  Term.(ret (const team $ setup_log $ Conex_opts.t_t $ Conex_opts.remove $ Conex_opts.members $ team_a)),
+  Term.(ret Conex_opts.(const team $ setup_log $ dry $ repo $ id $ remove $ members $ team_a)),
   Term.info "team" ~doc ~man
 
 let reset_cmd =
@@ -469,7 +467,7 @@ let reset_cmd =
     [`S "DESCRIPTION";
      `P "Resets queued changes to your index."]
   in
-  Term.(ret (const reset $ setup_log $ Conex_opts.t_t)),
+  Term.(ret Conex_opts.(const reset $ setup_log $ dry $ repo $ id)),
   Term.info "reset" ~doc ~man
 
 let sign_cmd =
@@ -478,7 +476,7 @@ let sign_cmd =
     [`S "DESCRIPTION";
      `P "Cryptographically signs queued changes to your index."]
   in
-  Term.(ret (const sign $ setup_log $ Conex_opts.t_t)),
+  Term.(ret Conex_opts.(const sign $ setup_log $ dry $ repo $ id)),
   Term.info "sign" ~doc ~man
 
 let init_cmd =
@@ -491,7 +489,7 @@ let init_cmd =
     [`S "DESCRIPTION";
      `P "Generates a private key and conex key entry."]
   in
-  Term.(ret (const init $ setup_log $ Conex_opts.t_t $ emails)),
+  Term.(ret Conex_opts.(const init $ setup_log $ dry $ repo $ id $ emails)),
   Term.info "init" ~doc ~man
 
 let help_cmd =
@@ -502,16 +500,15 @@ let help_cmd =
   let doc = "display help about conex_author" in
   let man =
     [`S "DESCRIPTION";
-     `P "Prints help about conex commands and other subjects..."] @ help_secs
+     `P "Prints help about conex commands and subcommands"] @ help_secs
   in
-  Term.(ret
-          (const help $ setup_log $ Conex_opts.t_t $ Term.man_format $ Term.choice_names $ topic)),
+  Term.(ret Conex_opts.(const help $ setup_log $ dry $ repo $ quorum $ strict $ id $ Term.man_format $ Term.choice_names $ topic)),
   Term.info "help" ~doc ~man
 
 let default_cmd =
   let doc = "cryptographically sign your released packages" in
   let man = help_secs in
-  Term.(ret (const (fun _ _ -> `Help (`Pager, None)) $ setup_log $ Conex_opts.t_t)),
+  Term.(ret Conex_opts.(const help $ setup_log $ dry $ repo $ quorum $ strict $ id $ Term.man_format $ Term.choice_names $ Term.pure None)),
   Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
 
 let cmds = [ help_cmd ; status_cmd ;

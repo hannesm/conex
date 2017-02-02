@@ -130,13 +130,13 @@ module PR = struct
   (* Maps github id -> mail address list *)
   let github_mail _dir commit pr github mail (g_m, m_g) =
     if bad_mail mail then
-      (Log.debug (fun m -> m "ignoring bad mail %s (%s) in %s (%s)" mail github pr commit) ; (g_m, m_g))
+      (Log.debug (fun m -> m "ignoring bad mail %s (%s) in %s (%s)" mail github pr commit) ; Ok (g_m, m_g))
     else if S.mem github ignore_github then
-      (Log.debug (fun m -> m "ignoring github id %s (%s) in %s (%s)" github mail pr commit) ; (g_m, m_g))
+      (Log.debug (fun m -> m "ignoring github id %s (%s) in %s (%s)" github mail pr commit) ; Ok (g_m, m_g))
     else if S.mem mail ignore_mail then
-      (Log.debug (fun m -> m "ignoring mail %s (%s) in %s (%s)" mail github pr commit) ; (g_m, m_g))
+      (Log.debug (fun m -> m "ignoring mail %s (%s) in %s (%s)" mail github pr commit) ; Ok (g_m, m_g))
     else if S.mem pr ignore_pr then
-      (Log.debug (fun m -> m "ignoring pr (%s -> %s) %s (%s)" github mail pr commit) ; (g_m, m_g))
+      (Log.debug (fun m -> m "ignoring pr (%s -> %s) %s (%s)" github mail pr commit) ; Ok (g_m, m_g))
     else
     let mails = try M.find github g_m with Not_found -> S.empty in
     let ids =
@@ -150,7 +150,7 @@ module PR = struct
         Log.debug (fun m -> m "new mapping %s -> %s in %s (%s)" github mail pr commit) ;
         S.empty
     in
-    (M.add github (S.add mail mails) g_m, M.add mail (S.add github ids) m_g)
+    Ok (M.add github (S.add mail mails) g_m, M.add mail (S.add github ids) m_g)
 
   let janitors = s_of_list [
       "avsm" ; "mirage" ; "samoht" ; "gasche" ;
@@ -164,47 +164,49 @@ module PR = struct
   let mteams = s_of_list [ "mirage" ; "janestreet" ; "ocsigen" ; "xapi-project" ; "alt-ergo" ]
 
   let check authorised base commit pr github _mail acc =
-    if S.mem github janitors then (Log.info (fun m -> m "%s %s janitor" pr github) ; acc) else
-    let content = Conex_persistency.read_file
-        (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
-    in
+    if S.mem github janitors then (Log.info (fun m -> m "%s %s janitor" pr github) ; Ok acc) else
+    Conex_persistency.read_file
+      (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff"))) >>= fun content ->
     let diffs = Conex_diff.to_diffs content in
     let _ids, _auths, _rels, packages = Conex_diff.diffs_to_components diffs in
 
     let add_it p map =
       M.add p (S.add github (try M.find p map with Not_found -> S.empty)) map
     in
-    M.fold (fun pn _pvs (empty, violation, teams) ->
-        if Conex_persistency.exists
-            (Filename.concat base (String.concat ~sep:"/" (Conex_opam_layout.authorisation_path pn)))
-        then
-          let auth = M.find pn authorised in
-          let authorised = auth.Authorisation.authorised in
-          if S.mem github authorised then begin
-            Log.debug (fun m -> m "%s %s %s valid access" pr pn github) ;
-            (empty, violation, teams)
-          end else if S.cardinal authorised = 1 && S.mem (S.choose authorised) mteams then begin
-            Log.warn (fun m -> m "%s %s %s team owned, add!? (%s)" pr pn github (S.choose authorised)) ;
-            (empty, violation, add_it (S.choose authorised) teams)
-          end else if S.is_empty authorised then begin
+    let stuff =
+      M.fold (fun pn _pvs (empty, violation, teams) ->
+          if Conex_persistency.exists
+              (Filename.concat base (String.concat ~sep:"/" (Conex_opam_layout.authorisation_path pn)))
+          then
+            let auth = M.find pn authorised in
+            let authorised = auth.Authorisation.authorised in
+            if S.mem github authorised then begin
+              Log.debug (fun m -> m "%s %s %s valid access" pr pn github) ;
+              (empty, violation, teams)
+            end else if S.cardinal authorised = 1 && S.mem (S.choose authorised) mteams then begin
+              Log.warn (fun m -> m "%s %s %s team owned, add!? (%s)" pr pn github (S.choose authorised)) ;
+              (empty, violation, add_it (S.choose authorised) teams)
+            end else if S.is_empty authorised then begin
               Log.info (fun m -> m "%s %s %s (empty maintainer)" pr pn github) ;
               (add_it pn empty, violation, teams)
-          end else begin
-            Log.warn (fun m -> m "%s %s %s not maintainer (%s)" pr pn github (String.concat ~sep:" " (S.elements authorised))) ;
-            (empty, add_it pn violation, teams)
-          end
-        else begin
-          Log.debug (fun m -> m "%s %s ignoring deleted package" pr pn) ;
-          (empty, violation, teams)
-        end)
-      packages acc
+            end else begin
+              Log.warn (fun m -> m "%s %s %s not maintainer (%s)" pr pn github (String.concat ~sep:" " (S.elements authorised))) ;
+              (empty, add_it pn violation, teams)
+            end
+          else begin
+            Log.debug (fun m -> m "%s %s ignoring deleted package" pr pn) ;
+            (empty, violation, teams)
+          end)
+        packages acc
+    in
+    Ok stuff
 
   let handle_prs dir f acc =
     let base = Filename.concat dir "prs" in
-    let prs = Conex_persistency.collect_dir base in
-    List.fold_left
+    Conex_persistency.collect_dir base >>= fun prs ->
+    foldM
       (fun acc pr ->
-         let data = Conex_persistency.read_file (Filename.concat base pr) in
+         Conex_persistency.read_file (Filename.concat base pr) >>= fun data ->
          let eles = Astring.String.cuts ~sep:" " data in
          let cid = List.nth eles 0
          and pr = List.nth eles 1
@@ -263,86 +265,97 @@ let known_ids =
     `Team ([ "mirageos-devel@lists.openmirage.org" ; "mirageos-devel@lists.xenproject.org" ; "mirageos-devel" ], "mirage")
   ]
 
-let infer_maintainers base lvl =
-  Logs.set_level lvl ;
-  Logs.set_reporter (Logs_fmt.reporter ()) ;
-  let provider = Conex_provider.fs_provider base in
-  let repo = Conex_repository.repository provider in
-  let github_mail, _mail_github = PR.handle_prs base PR.github_mail (M.empty, M.empty) in
-  Logs.info (fun m -> m "github-email %a" pp_map github_mail) ;
-  let idxs = M.fold (fun k v acc ->
-      let accounts = `GitHub k :: List.map (fun e -> `Email e) (S.elements v) in
-      let idx = Index.index ~accounts k in
-      Conex_repository.write_index repo idx ;
-      idx :: acc)
-      github_mail []
-  in
-  let more_idxs = List.fold_left (fun acc ->
-      function
-      | `Team (mails, id) ->
-        let t = Team.team id in
-        Conex_repository.write_team repo t ;
-        let idx =
-          let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
-          Index.index ~accounts id
-        in
-        idx :: acc
-      | `Key k ->
-        Conex_repository.write_index repo k ;
-        k :: acc)
-      [] known_ids
-  in
+let to_cmd = function
+  | Ok () -> `Ok ()
+  | Error e -> `Error (false, e)
 
-  let find_by_mail email =
-    List.fold_left (fun r k ->
-        match r with
-        | None ->
-          let contains =
-            let f = function `Email e when e = email -> true | _ -> false in
-            List.exists f k.Index.accounts
+let infer_maintainers base lvl =
+  to_cmd
+    (Logs.set_level lvl ;
+     Logs.set_reporter (Logs_fmt.reporter ()) ;
+     Conex_provider.fs_provider base >>= fun provider ->
+     let repo = Conex_repository.repository provider in
+     PR.handle_prs base PR.github_mail (M.empty, M.empty) >>= fun (github_mail, _mail_github) ->
+     Logs.info (fun m -> m "github-email %a" pp_map github_mail) ;
+     M.fold (fun k v acc ->
+         acc >>= fun acc ->
+         let accounts = `GitHub k :: List.map (fun e -> `Email e) (S.elements v) in
+         let idx = Index.index ~accounts k in
+         Conex_repository.write_index repo idx >>= fun () ->
+         Ok (idx :: acc))
+       github_mail (Ok []) >>= fun idxs ->
+     (List.fold_left (fun acc id ->
+          acc >>= fun acc ->
+          match id with
+          | `Team (mails, id) ->
+            let t = Team.team id in
+            Conex_repository.write_team repo t >>= fun () ->
+            let idx =
+              let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
+              Index.index ~accounts id
+            in
+            Ok (idx :: acc)
+          | `Key k ->
+            Conex_repository.write_index repo k >>= fun () ->
+            Ok (k :: acc))
+         (Ok []) known_ids) >>= fun more_idxs ->
+
+     let find_by_mail email =
+       List.fold_left (fun r k ->
+           match r with
+           | None ->
+             let contains =
+               let f = function `Email e when e = email -> true | _ -> false in
+               List.exists f k.Index.accounts
+             in
+             if contains then Some k.Index.name else None
+           | Some x -> Some x)
+         None (idxs @ more_idxs)
+     in
+     (* this is a set of package name without maintainer,
+        and a map pkgname -> email address (or name) set *)
+     let mapping = OpamMaintainer.infer repo in
+     (M.fold (fun k ids acc ->
+          acc >>= fun acc ->
+          let authorised = S.fold (fun s acc ->
+              if String.is_infix ~affix:"@" s then
+                match find_by_mail s with
+                | None -> acc
+                | Some x -> S.add x acc
+              else
+                S.add s acc)
+              ids S.empty
           in
-          if contains then Some k.Index.name else None
-        | Some x -> Some x)
-      None (idxs @ more_idxs)
-  in
-  (* this is a set of package name without maintainer,
-     and a map pkgname -> email address (or name) set *)
-  let mapping = OpamMaintainer.infer repo in
-  let authorisations = M.fold (fun k ids acc ->
-      let authorised = S.fold (fun s acc ->
-          if String.is_infix ~affix:"@" s then
-            match find_by_mail s with
-            | None -> acc
-            | Some x -> S.add x acc
-          else
-            S.add s acc)
-          ids S.empty
-      in
-      let authorisation = Authorisation.authorisation ~authorised k in
-      Logs.info (fun m -> m "%a" Authorisation.pp_authorisation authorisation) ;
-      Conex_repository.write_authorisation repo authorisation ;
-      M.add k authorisation acc)
-      mapping M.empty
-  in
-  (* authorisation contains pkgname -> github id
-     mapping contains pkgname -> mail address
-     if a team is authorised, maybe add committer to team?
-  *)
-  (* NOW! we can go through all the diffs of the PRs and look around a bit:
-     - filter out maintainers for commits
-     - add maintainer mail address to id/ subdir if sensible *)
-  Logs.app (fun m -> m "MARK") ;
-  let empty, _violation, team = PR.handle_prs base (PR.check authorisations) (M.empty, M.empty, M.empty) in
-  Logs.app (fun m -> m "potentially\n%a" pp_map empty) ;
-  Logs.app (fun m -> m "teams\n%a" pp_map team) ;
-  M.iter (fun t members ->
-      let t = Team.team ~members t in
-      Conex_repository.write_team repo t)
-    team ;
-  M.iter (fun p authorised -> if S.cardinal authorised = 1 then
-             let a = Authorisation.authorisation ~authorised p in
-             Conex_repository.write_authorisation repo a)
-    empty
+          let authorisation = Authorisation.authorisation ~authorised k in
+          Logs.info (fun m -> m "%a" Authorisation.pp_authorisation authorisation) ;
+          Conex_repository.write_authorisation repo authorisation >>= fun () ->
+          Ok (M.add k authorisation acc))
+         mapping (Ok M.empty)) >>= fun authorisations ->
+     (* authorisation contains pkgname -> github id
+        mapping contains pkgname -> mail address
+        if a team is authorised, maybe add committer to team?
+     *)
+     (* NOW! we can go through all the diffs of the PRs and look around a bit:
+        - filter out maintainers for commits
+        - add maintainer mail address to id/ subdir if sensible *)
+     Logs.app (fun m -> m "MARK") ;
+     PR.handle_prs base (PR.check authorisations) (M.empty, M.empty, M.empty) >>= fun (empty, _violation, team) ->
+     Logs.app (fun m -> m "potentially %a" pp_map empty) ;
+     Logs.app (fun m -> m "teams %a" pp_map team) ;
+     M.iter (fun name members ->
+         let t = Team.team ~members name in
+         match Conex_repository.write_team repo t with
+         | Ok () -> ()
+         | Error e -> Logs.err (fun m -> m "error %s while writing team %s" e name))
+       team ;
+     M.iter (fun p authorised ->
+         if S.cardinal authorised = 1 then
+           let a = Authorisation.authorisation ~authorised p in
+           match Conex_repository.write_authorisation repo a with
+           | Ok () -> ()
+           | Error e -> Logs.err (fun m -> m "error %s while writing authorisation for %s" e p))
+       empty ;
+     Ok ())
 
 open Cmdliner
 
@@ -356,7 +369,7 @@ let cmd =
     `S "DESCRIPTION" ;
     `P "$(tname) infers actual maintainers of opam packages"
   ] in
-  Term.(pure infer_maintainers $ repo $ Logs_cli.level ()),
+  Term.(ret (const infer_maintainers $ repo $ Logs_cli.level ())),
   Term.info "maintainer" ~version:"%%VERSION_NUM%%" ~doc ~man
 
 let () =

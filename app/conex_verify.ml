@@ -33,8 +33,7 @@ true
  *)
 
 let verify_patch repo patch =
-  let data = Conex_persistency.read_file patch in
-  Conex_api.verify_diff repo data
+  Conex_persistency.read_file patch >>= Conex_api.verify_diff repo
 
 let verify_full repo anchors =
   let valid id digest =
@@ -65,13 +64,13 @@ let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_
   Conex_api.Log.set_styled styled ;
   let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
   let r p =
-    let p = Conex_provider.fs_ro_provider p in
-    Conex_repository.repository ~strict ?quorum p
+    Conex_provider.fs_ro_provider p >>= fun p ->
+    Ok (Conex_repository.repository ~strict ?quorum p)
   in
   err_to_cmdliner
     (match incremental, patch, dir with
-     | true, Some p, None -> verify_patch (r repo) p
-     | false, None, Some d -> verify_full (r d) ta
+     | true, Some p, None -> r repo >>= fun repo -> verify_patch repo p
+     | false, None, Some d -> r d >>= fun repo -> verify_full repo ta
      | _ -> Error "invalid combination of incremental, patch and dir")
 
 

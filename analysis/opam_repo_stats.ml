@@ -1,5 +1,6 @@
+open Conex_result
 open Conex_core
-
+open Conex_resource
 
 let ignore_pr = [
   "5190" ; (* added dev-repo to github packages (AltGr) *)
@@ -32,107 +33,105 @@ Date:   Thu Nov 21 13:30:25 2013 +0100
  *)
 
 
-let get_authorised data =
-  let open OpamParserTypes in
-  let authorised =
-    List.find
-      (function Variable (_, s, _) when s = "authorised" -> true | _ -> false)
-      data.file_contents
-  in
-  match authorised with
-  | Variable (_, _, List (_, vs)) -> List.map (function String (_, id) -> id | _ -> invalid_arg "unexpected" ) vs
-  | _ -> invalid_arg "unexpected"
-
-let read_auth base pkgname =
-  let path = Conex_opam_layout.authorisation_path pkgname in
-  let file = Filename.concat base (path_to_string path) in
-  if Sys.file_exists file then
-    let data = Conex_persistency.read_file file in
-    let parsed = OpamParser.string data "" in
-    get_authorised parsed
-  else
-    (Printf.printf "couldn't find authorisation for %s\n%!" file ;
-     [])
-
 (*
 several useful maps should be part of the output:
 <github-id> -> mail addresses
 <package> -> {<committer> -> [bool * PR] }
  *)
 
-let handle_one base commit pr github mail maps =
-  Format.fprintf Format.std_formatter "handle_one (%s) %s@." pr commit ;
+let handle_one repo base commit pr github mail maps =
+  Logs.app (fun m -> m "handle_one (%s) %s@." pr commit) ;
   if List.mem pr ignore_pr then
-    (Printf.printf "ignored PR" ; maps)
+    (Logs.app (fun m -> m "ignored PR") ; Ok maps)
   else
-  let content = Conex_persistency.read_file
-      (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff")))
-  in
+  Conex_persistency.read_file
+    (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff"))) >>= fun content ->
   let diffs = Conex_diff.to_diffs content in
   let _ids, _auths, _rels, packages = Conex_diff.diffs_to_components diffs in
-  M.fold (fun pn _pvs (github_map, package_map) ->
-      Format.fprintf Format.std_formatter "handling %s\n" pn ;
-      let github_map =
-        let vals = if M.mem github github_map then M.find github github_map else S.empty in
-        M.add github (S.add mail vals) github_map
-      in
-      if Sys.file_exists (Filename.concat base (Filename.concat "packages" pn)) then
-        let ms = read_auth base pn in
-        let valid = List.mem mail ms in
-        let package_map =
-          let vals = try M.find pn package_map with Not_found -> M.empty in
-          let entries = try M.find mail vals with Not_found -> [] in
-          let maybe =
-            if List.exists (fun (_, pr') -> pr = pr') entries then
-              entries
-            else
-              (valid, pr) :: entries
-          in
-          M.add pn (M.add mail maybe vals) package_map
+  let maps =
+    M.fold (fun pn _pvs (github_map, package_map) ->
+        Logs.app (fun m -> m "handling %s" pn) ;
+        let github_map =
+          let vals = if M.mem github github_map then M.find github github_map else S.empty in
+          M.add github (S.add mail vals) github_map
         in
-        (github_map, package_map)
-      else
-        (Printf.printf "ignoring deleted package %s\n" pn ;
-         (github_map, package_map)))
-    packages maps
+        if Sys.file_exists (Filename.concat base (Filename.concat "packages" pn)) then
+          let ms = match Conex_repository.read_authorisation repo pn with
+            | Error e ->
+              Logs.err (fun m -> m "%a while reading authorisation %s" Conex_repository.pp_r_err e pn) ;
+              S.empty
+            | Ok auth -> auth.Authorisation.authorised
+          in
+          let valid = S.mem mail ms in
+          let package_map =
+            let vals = try M.find pn package_map with Not_found -> M.empty in
+            let entries = try M.find mail vals with Not_found -> [] in
+            let maybe =
+              if List.exists (fun (_, pr') -> pr = pr') entries then
+                entries
+              else
+                (valid, pr) :: entries
+            in
+            M.add pn (M.add mail maybe vals) package_map
+          in
+          (github_map, package_map)
+        else
+          (Printf.printf "ignoring deleted package %s\n" pn ;
+           (github_map, package_map)))
+      packages maps
+  in
+  Ok maps
 
 (* what do I want in the end? *)
 (* map GitHub ID -> (email, package list) [of invalid pushes] *)
 let handle_prs dir =
+  Conex_provider.fs_ro_provider dir >>= fun prov ->
+  let repo = Conex_repository.repository prov in
   let base = Filename.concat dir "prs" in
-  let prs = Conex_persistency.collect_dir base in
+  Conex_persistency.collect_dir base >>= fun prs ->
   let total = List.length prs in
   let (github_map, package_map), _ = List.fold_left
       (fun (map, i) pr ->
-         Printf.printf "%d/%d\n%!" i total ;
-         let data = Conex_persistency.read_file (Filename.concat base pr) in
-         let eles = Astring.String.cuts ~sep:" " data in
-         let cid = List.nth eles 0
-         and pr = List.nth eles 1
-         and gid = List.nth eles 2
-         and mail = String.trim (List.nth eles 3)
-         in
-         handle_one dir cid pr gid mail map, succ i)
+         Logs.app (fun m -> m "%d/%d" i total) ;
+         match Conex_persistency.read_file (Filename.concat base pr) with
+         | Ok data ->
+           let eles = Astring.String.cuts ~sep:" " data in
+           let cid = List.nth eles 0
+           and pr = List.nth eles 1
+           and gid = List.nth eles 2
+           and mail = String.trim (List.nth eles 3)
+           in
+           (match handle_one repo dir cid pr gid mail map with
+            | Ok x -> (x, succ i)
+            | Error e ->
+              Logs.warn (fun m -> m "error while handling %s: %s" pr e) ;
+              (map, succ i))
+         | Error e ->
+           Logs.err (fun m -> m "error %s while reading pr %s" e pr) ;
+           (map, succ i))
       ((M.empty, M.empty), 0)
       prs
   in
-  print_endline "github id to mail" ;
-  M.iter (fun k v -> Printf.printf "(%s (%s))\n" k (String.concat " " (S.elements v))) github_map ;
-  print_endline "\nchanges" ;
+  Logs.app (fun m -> m "github id to mail") ;
+  M.iter (fun k v -> Logs.app (fun m -> m "(%s (%s))" k (String.concat " " (S.elements v)))) github_map ;
+  Logs.app (fun m -> m "changes") ;
   M.iter (fun k v ->
-      Printf.printf "package %s\n" k ;
+      Logs.app (fun m -> m "package %s" k) ;
       let bindings = M.bindings v in
       (* github id, [valid,pr] *)
       let good, bad = List.partition (fun (_, xs) -> match xs with | (true, _)::_ -> true | _ -> false) bindings in
       let goodprs = List.map (fun (id, xs) -> id, List.map snd xs) good in
       let badprs = List.map (fun (id, xs) -> id, List.map snd xs) bad in
       let p (id, prs) = Printf.sprintf "%s (%s)" id (String.concat ", " prs) in
-      Printf.printf "GOOD:\n  %s\nBAD\n  %s\n\n"
-        (String.concat "\n  " (List.map p goodprs))
-        (String.concat "\n  " (List.map p badprs)))
-    package_map
+      Logs.app (fun m -> m "GOOD:\n  %s\nBAD\n  %s\n\n"
+                   (String.concat "\n  " (List.map p goodprs))
+                   (String.concat "\n  " (List.map p badprs))))
+    package_map ;
+  Ok ()
 
 let () =
   match Sys.argv with
-  | [| _ ; prs |] -> handle_prs prs
+  | [| _ ; prs |] -> (match handle_prs prs with
+      | Ok () -> ()
+      | Error e -> Logs.err (fun m -> m "error %s" e))
   | _ -> invalid_arg "expecting exactly one argument"

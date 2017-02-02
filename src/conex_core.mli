@@ -38,15 +38,13 @@ module Provider : sig
     | `Dir of string
   ]
 
-  type err = [ `NotFound | `UnknownFileType of string ]
-
   type t = {
     name : string ;
     description : string ;
-    file_type : path -> (file_type, err) result ;
-    read : path -> (string, err) result ;
-    write : path -> string -> unit ;
-    read_dir : path -> (item list, err) result ;
+    file_type : path -> (file_type, string) result ;
+    read : path -> (string, string) result ;
+    write : path -> string -> (unit, string) result ;
+    read_dir : path -> (item list, string) result ;
     exists : path -> bool ;
   }
 

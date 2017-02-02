@@ -93,19 +93,19 @@ val read_id : t -> identifier ->
    [> r_err ]) result
 
 val read_team : t -> identifier -> (Team.t, [> r_err ]) result
-val write_team : t -> Team.t -> unit
+val write_team : t -> Team.t -> (unit, string) result
 
 val read_index : t -> identifier -> (Index.t, [> r_err ]) result
-val write_index : t -> Index.t -> unit
+val write_index : t -> Index.t -> (unit, string) result
 
 val read_authorisation : t -> name -> (Authorisation.t, [> r_err ]) result
-val write_authorisation : t -> Authorisation.t -> unit
+val write_authorisation : t -> Authorisation.t -> (unit, string) result
 
 val read_releases : t -> name -> (Releases.t, [> r_err ]) result
-val write_releases : t -> Releases.t -> unit
+val write_releases : t -> Releases.t -> (unit, string) result
 
 val read_checksum : t -> name -> (Checksum.t, [> r_err ]) result
-val write_checksum : t -> Checksum.t -> unit
+val write_checksum : t -> Checksum.t -> (unit, string) result
 
 type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
 

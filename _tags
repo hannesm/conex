@@ -12,5 +12,5 @@ true : warn(+A-4-33-44-48-58)
 <test/*.{ml,byte,native}>: package(alcotest)
 <test/tests.{ml,native}>: package(cstruct nocrypto x509 nocrypto.unix opam-file-format)
 
-<analysis/opam_repo_stats.{ml,native}>: package(cstruct nocrypto x509 cmdliner sexplib astring opam-file-format)
+<analysis/opam_repo_stats.{ml,native}>: package(cstruct nocrypto x509 sexplib astring opam-file-format logs)
 <analysis/maintainer.{ml,native}>: package(cstruct nocrypto x509 astring opam-file-format opam-format logs cmdliner logs.cli logs.fmt fmt)

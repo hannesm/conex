@@ -9,13 +9,10 @@ val valid_name : identifier -> bool
 
 val authorisation_of_item : name -> name option
 
-val private_keys : Provider.t -> identifier list
 val ids : Provider.t -> identifier list
 val items : Provider.t -> name list
 val subitems : Provider.t -> name -> name list
 
-val private_dir : string
-val private_key_path : string -> identifier -> string
 val id_path : identifier -> path
 val authorisation_path : name -> path
 val releases_path : name -> path

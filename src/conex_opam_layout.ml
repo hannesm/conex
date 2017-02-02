@@ -23,30 +23,6 @@ let authorisation_of_item x =
   | Some (pre, _) -> Some pre
   | None -> None
 
-let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
-
-let private_keys p =
-  let is_private s =
-    if String.is_suffix ~suffix:".private" s then
-      let p = string_to_path (p.Provider.name) in
-      match List.rev (String.cuts '.' s) with
-      | _::id::path when p = List.rev path -> Some id
-      | _ -> None
-    else
-      None
-  in
-  List.fold_left
-    (fun acc s -> option acc (fun s -> s :: acc) (is_private s))
-    []
-    (Conex_persistency.collect_dir private_dir)
-
-let private_key_path path id =
-  let filename =
-    let els = string_to_path path @ [id ; "private"] in
-    String.concat "." els
-  in
-  "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
-
 let id_dir = "id"
 
 let ids p =

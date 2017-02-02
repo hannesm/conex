@@ -1,19 +1,7 @@
-type t = {
-  repo : Conex_repository.t ;
-  id : string option ;
-  trust_anchors : string list ;
-}
 
 open Cmdliner
 
 let docs = "COMMON OPTIONS"
-
-let t dry repo id trust_anchors quorum strict =
-  let repo =
-    let provider = if dry then Conex_provider.fs_ro_provider repo else Conex_provider.fs_provider repo in
-    Conex_repository.repository ?quorum ~strict provider
-  in
-  { repo ; id ; trust_anchors }
 
 let id_c =
   let parse s =
@@ -53,15 +41,13 @@ let anchors =
   let doc = "Trust anchors" in
   Arg.(value & opt_all string [] & info [ "trust-anchors" ] ~doc)
 
-let t_t =
-  let dry =
-    let doc = "Try run. Do not write anything." in
-    Arg.(value & flag & info ["dry-run"] ~docs ~doc)
-  and id =
-    let doc = "Use specified identity" in
-    Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
-  in
-  Term.(const t $ dry $ repo $ id $ anchors $ quorum $ strict)
+let dry =
+  let doc = "Try run. Do not write anything." in
+  Arg.(value & flag & info ["dry-run"] ~docs ~doc)
+
+let id =
+  let doc = "Use specified identity" in
+  Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
 
 let remove =
   let doc = "Remove" in
