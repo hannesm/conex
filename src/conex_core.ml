@@ -97,13 +97,21 @@ module Provider = struct
   (*BISECT-IGNORE-END*)
 end
 
-type pub = [ `RSA_pub of string ]
 type priv = [ `RSA_priv of string ]
+
+type pub = [ `RSA_pub of string ]
 
 let pub_equal (`RSA_pub a) (`RSA_pub b) = String.compare a b = 0
 (*BISECT-IGNORE-BEGIN*)
 let pp_pub ppf (`RSA_pub x) = Format.pp_print_int ppf (String.length x)
 (*BISECT-IGNORE-END*)
+
+let pubtype_to_string = function
+  | `RSA_pub _ -> "RSA"
+
+let string_to_pubtype = function
+  | "RSA" -> Some (`RSA_pub "")
+  | _ -> None
 
 type name = string
 

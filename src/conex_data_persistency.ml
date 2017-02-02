@@ -189,11 +189,10 @@ let wire_account m = function
 
 let key data =
   list data >>= function
-  | [ Int typ ; String data ] ->
-    if Uint.compare Uint.zero typ = 0 then
-      Ok (`RSA_pub data)
-    else
-      Error "unknown key type"
+  | [ String typ ; String data ] ->
+    (match string_to_pubtype typ with
+     | Some (`RSA_pub _) -> Ok (`RSA_pub data)
+     | None -> Error "unknown key type")
   | _ -> Error "unknown key"
 
 let t_to_index data =
@@ -219,16 +218,17 @@ let index_to_t i =
 
 let publickey_to_t id k =
   let typ, data =
-    match k with
-    | `RSA_pub k -> (Uint.zero, k)
+    (pubtype_to_string k,
+     match k with `RSA_pub k -> k)
   in
-  M.add "type" (Int typ)
+  M.add "type" (String typ)
     (M.add "key" (String data)
        (M.add "name" (String id) M.empty))
 
 let wire_key k =
-  match k with
-  | `RSA_pub k -> List [ Int Uint.zero ; String k ]
+  let typ = pubtype_to_string k in
+  let data = match k with `RSA_pub k -> String k in
+  List [ String typ ; data ]
 
 let index_sigs_to_t i =
   M.add "keys" (List (List.map wire_key i.Index.keys))

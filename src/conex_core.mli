@@ -51,11 +51,13 @@ module Provider : sig
   val pp_provider : Format.formatter -> t -> unit
 end
 
+type priv = [ `RSA_priv of string ]
 
 type pub = [ `RSA_pub of string ]
-type priv = [ `RSA_priv of string ]
 val pub_equal : pub -> pub -> bool
 val pp_pub : Format.formatter -> pub -> unit
+val pubtype_to_string : pub -> string
+val string_to_pubtype : string -> pub option
 
 type name = string
 val pp_name : Format.formatter -> name -> unit
