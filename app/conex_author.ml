@@ -3,6 +3,9 @@ open Conex_resource
 
 open Rresult
 
+(* this should likely be elsewhere (conex-bells&whistles) *)
+module C = Conex_api.Make(Logs)
+
 let str_to_msg = function
   | Ok x -> Ok x
   | Error s -> Error (`Msg s)
@@ -50,18 +53,7 @@ let msg_to_cmdliner = function
 let setup_log style_renderer level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
   Logs.set_level level;
-  let reporter = Logs_fmt.reporter ~dst:Format.std_formatter () in
-  Logs.set_reporter reporter ;
-  (match style_renderer with
-   | Some `None -> Conex_api.Log.set_styled false
-   | Some `Ansi_tty -> ()
-   | None -> match Conex_opts.terminal () with
-     | `None -> Conex_api.Log.set_styled false
-     | _ -> ()) ;
-  match level with
-  | Some Logs.Info -> Conex_api.Log.set_level `Info
-  | Some Logs.Debug -> Conex_api.Log.set_level `Debug
-  | _ -> Conex_api.Log.set_level `Warn
+  Logs.set_reporter (Logs_fmt.reporter ~dst:Format.std_formatter ())
 
 let init_repo ?quorum ?strict dry path =
   str_to_msg (Conex_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
@@ -136,7 +128,7 @@ let find_cs r name =
      cs)
 
 let load_ids r ids =
-  foldM Conex_api.load_id r (S.elements ids)
+  foldM C.load_id r (S.elements ids)
 
 let self r id =
   R.error_to_msg ~pp_error:Conex_private.pp_err
@@ -150,7 +142,7 @@ let load_self_queued r id =
   let idx = R.ignore_error ~use:(fun _ -> Index.index id)
       (Conex_repository.read_index r id)
   in
-  match Conex_api.load_id r id with
+  match C.load_id r id with
   | Ok r -> r
   | Error e ->
     Logs.warn (fun m -> m "error while loading id %s" e) ;
@@ -180,12 +172,12 @@ let status_all r id no_team =
            id :: List.map (fun t -> t.Team.name) teams)
     in
     let authorised auth = not (S.is_empty (S.inter me auth)) in
-    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised r id)
+    str_to_msg (foldM (C.verify_item ~authorised)
                   r (S.elements (Conex_repository.items r)))
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
     let authorised auth = S.mem t.Team.name auth in
-    str_to_msg (foldM (fun r id -> Conex_api.verify_item ~authorised r id)
+    str_to_msg (foldM (C.verify_item ~authorised)
                   r (S.elements (Conex_repository.items r)))
 
 let status_single r name =
@@ -194,13 +186,13 @@ let status_single r name =
     | None -> name, (fun _ -> true)
     | Some pn -> pn, (fun nam -> name_equal nam name)
   in
-  Conex_api.verify_item ~release r pn
+  C.verify_item ~release r pn
 
 let status _ dry path quorum strict id name no_rec =
   msg_to_cmdliner
     (init_repo ?quorum ~strict dry path >>= fun r ->
      Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
-     str_to_msg (Conex_api.load_janitors r) >>= fun r ->
+     str_to_msg (C.load_janitors r) >>= fun r ->
      self r id >>= fun id ->
      let r = load_self_queued r id in
      if name = "" then

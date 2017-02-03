@@ -2,27 +2,32 @@ open Conex_result
 open Conex_core
 open Conex_repository
 
-module Log : sig
-  type ('a, 'b) msgf = (?header:string -> ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
+(* this is stripped down from Logs library *)
+module type LOGS = sig
+  module Tag : sig
+    type set
+  end
+
+  type ('a, 'b) msgf =
+    (?header:string -> ?tags:Tag.set ->
+     ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
   type 'a log = ('a, unit) msgf -> unit
 
-  type level = [ `Debug | `Info | `Warn ]
+  type src
 
-  val set_level : level -> unit
-
-  val set_styled : bool -> unit
-
-  val debug : 'a log
-  val info : 'a log
-  val warn : 'a log
+  val debug : ?src:src -> 'a log
+  val info : ?src:src -> 'a log
+  val warn : ?src:src -> 'a log
 end
 
-val load_janitors : ?valid:(identifier -> string -> bool) -> t -> (t, string) result
+module Make (L : LOGS) : sig
+  val load_janitors : ?valid:(identifier -> string -> bool) -> t -> (t, string) result
 
-val load_id : t -> identifier -> (t, string) result
+  val load_id : t -> identifier -> (t, string) result
 
-val verify_item :
-  ?authorised:(S.t -> bool) -> ?release:(name -> bool) -> t -> name ->
-  (t, string) result
+  val verify_item :
+    ?authorised:(S.t -> bool) -> ?release:(name -> bool) -> t -> name ->
+    (t, string) result
 
-val verify_diff : t -> string -> (t, string) result
+  val verify_diff : t -> string -> (t, string) result
+end

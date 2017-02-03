@@ -1,6 +1,75 @@
 open Conex_result
 open Conex_core
 
+(* this is the barebones verify with minimal dependencies
+   (goal: cmdliner, opam-file-format, Unix, external openssl)
+ *)
+
+module type EXTLOGS = sig
+  include Conex_api.LOGS
+
+  type level = [ `Debug | `Info | `Warn ]
+  val set_level : level -> unit
+  val set_styled : bool -> unit
+end
+
+module Log : EXTLOGS = struct
+  module Tag = struct
+    type set
+  end
+
+  type ('a, 'b) msgf =
+    (?header:string -> ?tags:Tag.set ->
+     ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
+  type 'a log = ('a, unit) msgf -> unit
+
+  type src
+
+  type level = [ `Debug | `Info | `Warn ]
+  let curr_level = ref `Info
+  let set_level lvl = curr_level := lvl
+  let level_to_string = function
+    | `Debug -> "DEBUG"
+    | `Info -> "INFO"
+    | `Warn -> "WARN"
+
+  let curr_styled = ref true
+  let set_styled b = curr_styled := b
+  let style level txt =
+    if !curr_styled then
+      let rst = "\027[m" in
+      match level with
+      | `Debug -> "\027[32m" ^ txt ^ rst
+      | `Info -> "\027[34m" ^ txt ^ rst
+      | `Warn -> "\027[31m" ^ txt ^ rst
+    else
+      txt
+
+  let report level k msgf =
+    let k _ = k () in
+    msgf @@ fun ?header ?tags:_ fmt ->
+    let hdr = match header with None -> "" | Some s -> s ^ " " in
+    Format.kfprintf k Format.std_formatter ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
+
+  let kunit _ = ()
+  let kmsg : type a b. (unit -> b) -> level -> (a, b) msgf -> b =
+    fun k level msgf ->
+      let doit =
+        match level, !curr_level with
+        | `Info, `Debug | `Info, `Info -> true
+        | `Warn, _ -> true
+        | `Debug, `Debug -> true
+        | _ -> false
+      in
+      if doit then report level k msgf else k ()
+
+  let debug ?src:_ msgf = kmsg kunit `Debug msgf
+  let info ?src:_ msgf = kmsg kunit `Info msgf
+  let warn ?src:_ msgf = kmsg kunit `Warn msgf
+end
+
+module C = Conex_api.Make(Log)
+
 (* to be called by opam (see http://opam.ocaml.org/doc/2.0/Manual.html#configfield-repository-validation-command, https://github.com/ocaml/opam/pull/2754/files#diff-5f9ccd1bb288197c5cf2b18366a73363R312):
 
 %{quorum}% - a non-negative integer (--quorum)
@@ -33,19 +102,19 @@ true
  *)
 
 let verify_patch repo patch =
-  Conex_persistency.read_file patch >>= Conex_api.verify_diff repo
+  Conex_persistency.read_file patch >>= C.verify_diff repo
 
 let verify_full repo anchors =
   let valid id digest =
     if S.mem digest anchors then
-      (Conex_api.Log.debug (fun m -> m "accepting ta %s" id) ; true)
+      (Log.debug (fun m -> m "accepting ta %s" id) ; true)
     else
-      (Conex_api.Log.debug (fun m -> m "rejecting ta %s" id) ; false)
+      (Log.debug (fun m -> m "rejecting ta %s" id) ; false)
   in
-  match Conex_api.load_janitors ~valid repo with
+  match C.load_janitors ~valid repo with
   | Ok repo ->
     (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
-    foldM Conex_api.verify_item repo (S.elements (Conex_repository.items repo))
+    foldM C.verify_item repo (S.elements (Conex_repository.items repo))
   | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function
@@ -58,10 +127,10 @@ let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_
     | false, true -> `Warn
     | _ -> `Info
   in
-  Conex_api.Log.set_level level ;
+  Log.set_level level ;
   let styled = if no_c then false else match Conex_opts.terminal () with `Ansi_tty -> true | `None -> false
   in
-  Conex_api.Log.set_styled styled ;
+  Log.set_styled styled ;
   let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
   let r p =
     Conex_provider.fs_ro_provider p >>= fun p ->
