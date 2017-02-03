@@ -24,31 +24,13 @@ let authorisation_of_item x =
   | None -> None
 
 let id_dir = "id"
-
-let ids p =
-  match p.Conex_provider.read_dir [ id_dir ] with
-  | Error _ -> []
-  | Ok data ->
-    let f = function
-      | `File f -> Some f
-      | _ -> None
-    in
-    filter_map ~f data
-
-let id_path ji = [ id_dir ; ji ]
+let id_path = [ id_dir ]
+let id_file id = [ id_dir ; id ]
 
 let data_dir = "packages"
-let authorisation_filename = "authorisation"
+let data_path = [ data_dir ]
 
-let items p =
-  match p.Conex_provider.read_dir [ data_dir ] with
-  | Error _ -> []
-  | Ok data ->
-    let f = function
-      | `Dir d -> Some d
-      | `File _ -> None
-    in
-    filter_map ~f data
+let authorisation_filename = "authorisation"
 
 let authorisation_path id = [ data_dir ; id ; authorisation_filename ]
 
@@ -57,16 +39,6 @@ let releases_path id = [ data_dir ; id ; releases_filename ]
 
 let checksum_filename = "checksum"
 
-let subitems p id =
-  match p.Conex_provider.read_dir [ data_dir ; id ] with
-  | Error _ -> []
-  | Ok data ->
-    let f = function
-      | `Dir d -> Some d
-      | `File _ -> None
-    in
-    filter_map ~f data
-
 let checksum_dir p =
   match authorisation_of_item p with
   | Some d -> [ data_dir ; d ; p ]
@@ -74,32 +46,6 @@ let checksum_dir p =
 
 let checksum_path p =
   checksum_dir p @ [checksum_filename]
-
-let checksum_files p da =
-  let st = match authorisation_of_item da with
-    | Some de -> [ data_dir ; de ; da ]
-    | None -> [ data_dir ; da ; da ]
-  in
-  let rec collect1 acc d = function
-    | `File f when d = [] && f = checksum_filename -> acc
-    | `File f -> (d@[f]) :: acc
-    | `Dir dir ->
-      let sub = d @ [ dir ] in
-      match p.Conex_provider.read_dir (st@sub) with
-      | Error _ -> []
-      | Ok data ->
-        List.fold_left
-          (fun acc x -> collect1 acc sub x)
-          acc
-          data
-  in
-  match p.Conex_provider.read_dir st with
-  | Error _ -> []
-  | Ok data ->
-    List.fold_left
-      (fun acc x -> collect1 [] [] x @ acc)
-      []
-      data
 
 let categorise = function
   | idx ::id :: [] when idx = id_dir -> `Id id

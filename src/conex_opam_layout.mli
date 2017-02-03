@@ -9,16 +9,13 @@ val valid_name : identifier -> bool
 
 val authorisation_of_item : name -> name option
 
-val ids : Conex_provider.t -> identifier list
-val items : Conex_provider.t -> name list
-val subitems : Conex_provider.t -> name -> name list
-
-val id_path : identifier -> path
+val data_path : path
+val id_path : path
+val id_file : identifier -> path
+val checksum_filename : name
 val authorisation_path : name -> path
 val releases_path : name -> path
 val checksum_path : name -> path
 val checksum_dir : name -> path
-
-val checksum_files : Conex_provider.t -> string -> path list
 
 val categorise : path -> [ `Id of identifier | `Authorisation of identifier | `Releases of name | `Package of name * name | `Compiler of name * name | `Unknown ]

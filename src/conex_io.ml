@@ -1,4 +1,5 @@
 open Conex_result
+open Conex_utils
 open Conex_core
 open Conex_resource
 open Conex_provider
@@ -12,12 +13,30 @@ let pp_cc_err ppf = function
   | `NotADirectory n -> Format.fprintf ppf "expected %a to be a directory, but it is a file" pp_name n
  (*BISECT-IGNORE-END*)
 
+let checksum_files t pv =
+  (match authorisation_of_item pv with
+   | Some de -> Ok (data_path@[ de ; pv ])
+   | None -> Error (`FileNotFound pv )) >>= fun st ->
+  let rec collect1 acc d = function
+    | `File f when d = [] && f = checksum_filename -> acc
+    | `File f -> (d@[f]) :: acc
+    | `Dir dir ->
+      let sub = d @ [ dir ] in
+      match t.read_dir (st@sub) with
+      | Error _ -> []
+      | Ok data -> List.fold_left (fun acc x -> collect1 acc sub x) acc data
+  in
+  match t.read_dir st with
+  | Error _ -> Error (`FileNotFound pv)
+  | Ok data ->
+    Ok (List.fold_left (fun acc x -> collect1 [] [] x @ acc) [] data)
+
 let compute_checksum t name =
   match t.file_type (checksum_dir name) with
   | Error _ -> Error (`FileNotFound name)
   | Ok File -> Error (`NotADirectory name)
   | Ok Directory ->
-    let fs = checksum_files t name in
+    checksum_files t name >>= fun fs ->
     let d = checksum_dir name in
     foldM (fun acc f ->
         match t.read (d@f) with
@@ -26,9 +45,19 @@ let compute_checksum t name =
     let r = List.(map2 Checksum.checksum (map path_to_string fs) (rev ds)) in
     Ok (Checksum.checksums name r)
 
-let ids t = S.of_list (Conex_opam_layout.ids t)
-let items t = S.of_list (items t)
-let subitems t name = S.of_list (subitems t name)
+let read_dir f t path =
+  let xs = match t.read_dir path with
+    | Error _ -> []
+    | Ok data -> filter_map ~f data
+  in
+  S.of_list xs
+
+let ids t = read_dir (function `File f -> Some f | _ -> None) t id_path
+
+let dirs = (function `Dir d -> Some d | _ -> None)
+
+let items t = read_dir dirs t data_path
+let subitems t name = read_dir dirs t (data_path@[name])
 
 let compute_releases t name = Releases.releases ~releases:(subitems t name) name
 
@@ -43,7 +72,7 @@ let pp_r_err ppf = function
 (*BISECT-IGNORE-END*)
 
 let read_team t name =
-  match t.read (id_path name) with
+  match t.read (id_file name) with
   | Error _ -> Error (`NotFound ("team", name))
   | Ok data ->
     match Conex_data.decode data >>= Team.of_wire with
@@ -56,10 +85,10 @@ let read_team t name =
 
 let write_team t team =
   let id = team.Team.name in
-  t.write (id_path id) (Conex_data.encode (Team.wire team))
+  t.write (id_file id) (Conex_data.encode (Team.wire team))
 
 let read_index t name =
-  match t.read (id_path name) with
+  match t.read (id_file name) with
   | Error _ -> Error (`NotFound ("index", name))
   | Ok data ->
     match Conex_data.decode data >>= Index.of_wire with
@@ -71,7 +100,7 @@ let read_index t name =
         Error (`NameMismatch (name, i.Index.name))
 
 let write_index t i =
-  let name = id_path i.Index.name in
+  let name = id_file i.Index.name in
   t.write name (Conex_data.encode (Index.wire i))
 
 let read_id t id =
