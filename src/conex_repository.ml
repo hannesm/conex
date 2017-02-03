@@ -10,7 +10,7 @@ type teams = S.t M.t
 type t = {
   quorum : int ;
   strict : bool ;
-  data : Provider.t ;
+  data : Conex_provider.t ;
   valid : valid_resources ;
   teams : teams ;
   ids : S.t ;
@@ -249,14 +249,14 @@ let verify_releases repo a r =
     | `IdNoQuorum (id, _) -> Ok (`Signed id)
 
 let compute_checksum repo name =
-  match repo.data.Provider.file_type (Conex_opam_layout.checksum_dir name) with
+  match repo.data.Conex_provider.file_type (Conex_opam_layout.checksum_dir name) with
   | Error _ -> Error (`FileNotFound name)
   | Ok File -> Error (`NotADirectory name)
   | Ok Directory ->
     let fs = Conex_opam_layout.checksum_files repo.data name in
     let d = Conex_opam_layout.checksum_dir name in
     foldM (fun acc f ->
-        match repo.data.Provider.read (d@f) with
+        match repo.data.Conex_provider.read (d@f) with
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
         | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
     let r = List.(map2 Checksum.checksum (map path_to_string fs) (rev ds)) in
@@ -286,7 +286,7 @@ let pp_r_err ppf = function
 (*BISECT-IGNORE-END*)
 
 let read_team repo name =
-  match repo.data.Provider.read (Conex_opam_layout.id_path name) with
+  match repo.data.Conex_provider.read (Conex_opam_layout.id_path name) with
   | Error _ -> Error (`NotFound ("team", name))
   | Ok data ->
     match Conex_data.decode data >>= Team.of_wire with
@@ -299,10 +299,10 @@ let read_team repo name =
 
 let write_team repo t =
   let id = t.Team.name in
-  repo.data.Provider.write (Conex_opam_layout.id_path id) (Conex_data.encode (Team.wire t))
+  repo.data.Conex_provider.write (Conex_opam_layout.id_path id) (Conex_data.encode (Team.wire t))
 
 let read_index repo name =
-  match repo.data.Provider.read (Conex_opam_layout.id_path name) with
+  match repo.data.Conex_provider.read (Conex_opam_layout.id_path name) with
   | Error _ -> Error (`NotFound ("index", name))
   | Ok data ->
     match Conex_data.decode data >>= Index.of_wire with
@@ -315,7 +315,7 @@ let read_index repo name =
 
 let write_index repo i =
   let name = Conex_opam_layout.id_path i.Index.name in
-  repo.data.Provider.write name (Conex_data.encode (Index.wire i))
+  repo.data.Conex_provider.write name (Conex_data.encode (Index.wire i))
 
 let read_id repo id =
   match read_team repo id with
@@ -328,7 +328,7 @@ let read_id repo id =
 let ids repo = S.of_list (Conex_opam_layout.ids repo.data)
 
 let read_authorisation repo name =
-  match repo.data.Provider.read (Conex_opam_layout.authorisation_path name) with
+  match repo.data.Conex_provider.read (Conex_opam_layout.authorisation_path name) with
   | Error _ -> Error (`NotFound ("authorisation", name))
   | Ok data ->
     match Conex_data.decode data >>= Authorisation.of_wire with
@@ -340,7 +340,7 @@ let read_authorisation repo name =
         Error (`NameMismatch (name, auth.Authorisation.name))
 
 let write_authorisation repo a =
-  repo.data.Provider.write
+  repo.data.Conex_provider.write
     (Conex_opam_layout.authorisation_path a.Authorisation.name)
     (Conex_data.encode (Authorisation.wire a))
 
@@ -348,7 +348,7 @@ let items repo = S.of_list (Conex_opam_layout.items repo.data)
 let subitems repo name = S.of_list (Conex_opam_layout.subitems repo.data name)
 
 let read_releases repo name =
-  match repo.data.Provider.read (Conex_opam_layout.releases_path name) with
+  match repo.data.Conex_provider.read (Conex_opam_layout.releases_path name) with
   | Error _ -> Error (`NotFound ("releases", name))
   | Ok data ->
     match Conex_data.decode data >>= Releases.of_wire with
@@ -361,10 +361,10 @@ let read_releases repo name =
 
 let write_releases repo r =
   let name = Conex_opam_layout.releases_path r.Releases.name in
-  repo.data.Provider.write name (Conex_data.encode (Releases.wire r))
+  repo.data.Conex_provider.write name (Conex_data.encode (Releases.wire r))
 
 let read_checksum repo name =
-  match repo.data.Provider.read (Conex_opam_layout.checksum_path name) with
+  match repo.data.Conex_provider.read (Conex_opam_layout.checksum_path name) with
   | Error _ -> Error (`NotFound ("checksum", name))
   | Ok data ->
     match Conex_data.decode data >>= Checksum.of_wire with
@@ -377,7 +377,7 @@ let read_checksum repo name =
 
 let write_checksum repo csum =
   let name = Conex_opam_layout.checksum_path csum.Checksum.name in
-  repo.data.Provider.write name (Conex_data.encode (Checksum.wire csum))
+  repo.data.Conex_provider.write name (Conex_data.encode (Checksum.wire csum))
 
 type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
 

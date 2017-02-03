@@ -75,28 +75,6 @@ let path_to_string path =
 
 let string_to_path str = String.cuts '/' str
 
-module Provider = struct
-  type item = [
-    | `File of string
-    | `Dir of string
-  ]
-
-  type t = {
-    name : string ;
-    description : string ;
-    file_type : path -> (file_type, string) result ;
-    read : path -> (string, string) result ;
-    write : path -> string -> (unit, string) result ;
-    read_dir : path -> (item list, string) result ;
-    exists : path -> bool ;
-  }
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_provider ppf t =
-    Format.fprintf ppf "repository %s: %s" t.name t.description
-  (*BISECT-IGNORE-END*)
-end
-
 type priv = [ `RSA_priv of string ]
 
 type pub = [ `RSA_pub of string ]

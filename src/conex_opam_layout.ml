@@ -26,7 +26,7 @@ let authorisation_of_item x =
 let id_dir = "id"
 
 let ids p =
-  match p.Provider.read_dir [ id_dir ] with
+  match p.Conex_provider.read_dir [ id_dir ] with
   | Error _ -> []
   | Ok data ->
     let f = function
@@ -41,7 +41,7 @@ let data_dir = "packages"
 let authorisation_filename = "authorisation"
 
 let items p =
-  match p.Provider.read_dir [ data_dir ] with
+  match p.Conex_provider.read_dir [ data_dir ] with
   | Error _ -> []
   | Ok data ->
     let f = function
@@ -58,7 +58,7 @@ let releases_path id = [ data_dir ; id ; releases_filename ]
 let checksum_filename = "checksum"
 
 let subitems p id =
-  match p.Provider.read_dir [ data_dir ; id ] with
+  match p.Conex_provider.read_dir [ data_dir ; id ] with
   | Error _ -> []
   | Ok data ->
     let f = function
@@ -85,7 +85,7 @@ let checksum_files p da =
     | `File f -> (d@[f]) :: acc
     | `Dir dir ->
       let sub = d @ [ dir ] in
-      match p.Provider.read_dir (st@sub) with
+      match p.Conex_provider.read_dir (st@sub) with
       | Error _ -> []
       | Ok data ->
         List.fold_left
@@ -93,7 +93,7 @@ let checksum_files p da =
           acc
           data
   in
-  match p.Provider.read_dir st with
+  match p.Conex_provider.read_dir st with
   | Error _ -> []
   | Ok data ->
     List.fold_left

@@ -32,25 +32,6 @@ type path = string list
 val path_to_string : path -> string
 val string_to_path : string -> path
 
-module Provider : sig
-  type item = [
-    | `File of string
-    | `Dir of string
-  ]
-
-  type t = {
-    name : string ;
-    description : string ;
-    file_type : path -> (file_type, string) result ;
-    read : path -> (string, string) result ;
-    write : path -> string -> (unit, string) result ;
-    read_dir : path -> (item list, string) result ;
-    exists : path -> bool ;
-  }
-
-  val pp_provider : Format.formatter -> t -> unit
-end
-
 type priv = [ `RSA_priv of string ]
 
 type pub = [ `RSA_pub of string ]

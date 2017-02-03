@@ -191,7 +191,7 @@ let status_single r name =
 let status _ dry path quorum strict id name no_rec =
   msg_to_cmdliner
     (init_repo ?quorum ~strict dry path >>= fun r ->
-     Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
+     Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Conex_provider.name) ;
      str_to_msg (C.load_janitors r) >>= fun r ->
      self r id >>= fun id ->
      let r = load_self_queued r id in
@@ -216,7 +216,7 @@ let init _ dry path id email =
      | Some id ->
        Nocrypto_entropy_unix.initialize () ;
        init_repo dry path >>= fun r ->
-       Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Provider.name) ;
+       Logs.info (fun m -> m "repository %s" (Conex_repository.provider r).Conex_provider.name) ;
        (match Conex_repository.read_id r id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
         | Ok (`Id idx) when List.length idx.Index.keys > 0 ->

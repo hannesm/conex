@@ -5,7 +5,7 @@ open Conex_resource
 open Common
 
 module Mem = struct
-  open Provider
+  open Conex_provider
   type tree = Leaf of string * string | Node of string * tree list
 
   let name = function Leaf (x, _) -> x | Node (x, _) -> x
@@ -49,7 +49,7 @@ module Mem = struct
 
   let ins t path v = insert t ("/"::path) v
 
-  let mem_provider () : Provider.t =
+  let mem_provider () : Conex_provider.t =
     let root = ref (Node ("/", [])) in
     let file_type path =
       find_f !root path >>= function
@@ -96,7 +96,7 @@ let ft =
 
 let it =
   let module M = struct
-    type t = Provider.item
+    type t = Conex_provider.item
     let pp ppf = function
       | `File f -> Format.fprintf ppf "file %s" f
       | `Dir d -> Format.fprintf ppf "directory %s" d
@@ -108,7 +108,7 @@ let it =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let empty_p () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   Alcotest.check Alcotest.bool "no 'foo' in empty mem store" false (p.exists ["foo"]) ;
   Alcotest.check (result Alcotest.string str_err) "reading 'foo' in empty mem store" (Error "") (p.read ["foo"]) ;
@@ -116,7 +116,7 @@ let empty_p () =
   Alcotest.check (result (Alcotest.list it) str_err) "read_dir of 'foo' in empty mem store" (Error "") (p.read_dir ["foo"])
 
 let basic_p () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar' to 'foo'"
     (Ok ()) (p.write ["foo"] "bar") ;
@@ -130,7 +130,7 @@ let basic_p () =
   Alcotest.check (result (Alcotest.list it) str_err) "read_dir of 'foo' in simple store" (Error "") (p.read_dir ["foo"])
 
 let more_p () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar' to 'packages/foo'"
     (Ok ()) (p.write ["packages"; "foo"] "bar") ;
@@ -249,7 +249,7 @@ let team_r () =
               (Some (S.singleton "bar")) (Conex_repository.find_team r "foo"))
 
 let checks_r () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar' to 'packages/foo/foo.0/foo'"
@@ -369,7 +369,7 @@ let basic_persistency () =
     (Error "") (Index.of_wire idxs)
 
 let bad_id_r () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result ji re) "index foo not found"
@@ -422,7 +422,7 @@ let bad_id_r () =
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_id r "foobar")
 
 let bad_idx_r () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result ji re) "index foo not found"
@@ -442,7 +442,7 @@ let bad_idx_r () =
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_index r "foobar")
 
 let bad_auth_r () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result auth re) "authorisation foo not found"
@@ -462,7 +462,7 @@ let bad_auth_r () =
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_authorisation r "foobar")
 
 let bad_rel_r () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result releases re) "releases foo not found"
@@ -482,7 +482,7 @@ let bad_rel_r () =
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_repository.read_releases r "foobar")
 
 let bad_cs_r () =
-  let open Provider in
+  let open Conex_provider in
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
   Alcotest.check (result cs re) "checksum foo not found"
@@ -1198,19 +1198,19 @@ let rel_missing_releases () =
     (Error (`InvalidReleases (pname, S.empty, S.singleton v)))
     (Conex_repository.verify_releases r auth rel) ;
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
-    (Ok ()) (p.Provider.write ["packages"; pname; v; "checksum"] "") ;
+    (Ok ()) (p.Conex_provider.write ["packages"; pname; v; "checksum"] "") ;
   Alcotest.check (result r_ok r_err) "all good"
     (Ok (`Signed id))
     (Conex_repository.verify_releases r auth rel) ;
   let v2 = pname ^ ".1" in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v2/checksum'"
-    (Ok ()) (p.Provider.write ["packages"; pname; v2; "checksum"] "") ;
+    (Ok ()) (p.Conex_provider.write ["packages"; pname; v2; "checksum"] "") ;
   Alcotest.check (result r_ok r_err) "missing in releases"
     (Error (`InvalidReleases (pname, S.singleton v2, S.empty)))
     (Conex_repository.verify_releases r auth rel) ;
   let v3 = pname ^ ".2" in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$oname/$v3/checksum'"
-    (Ok ()) (p.Provider.write ["packages"; pname; v3; "checksum"] "") ;
+    (Ok ()) (p.Conex_provider.write ["packages"; pname; v3; "checksum"] "") ;
   Alcotest.check (result r_ok r_err) "missing in releases"
     (Error (`InvalidReleases (pname, S.add v3 (S.singleton v2), S.empty)))
     (Conex_repository.verify_releases r auth rel)
@@ -1322,7 +1322,7 @@ let cs_base () =
   in
   let r = add_rs r id resources in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
-    (Ok ()) (p.Provider.write ["packages"; pname; v; "checksum"] "") ;
+    (Ok ()) (p.Conex_provider.write ["packages"; pname; v; "checksum"] "") ;
   Alcotest.check (result r_ok c_err) "good checksum"
     (Ok (`Signed id))
     (Conex_repository.verify_checksum r auth rel cs) ;
@@ -1353,7 +1353,7 @@ let cs_quorum () =
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
-    (Ok ()) (p.Provider.write ["packages"; pname; v; "checksum"] "") ;
+    (Ok ()) (p.Conex_provider.write ["packages"; pname; v; "checksum"] "") ;
   Alcotest.check (result r_ok c_err) "good checksum (quorum)"
     (Ok (`Quorum (S.singleton jid)))
     (Conex_repository.verify_checksum r auth rel cs)
@@ -1361,7 +1361,7 @@ let cs_quorum () =
 let cs_bad () =
   let p = Mem.mem_provider () in
   let r = Conex_repository.repository ~quorum:1 p in
-  let open Provider in
+  let open Conex_provider in
   let pname = "foo" in
   let v = pname ^ ".0" in
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar' to 'packages/$pname/$v/foo'"

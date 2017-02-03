@@ -148,11 +148,11 @@ let diffs_to_components diffs =
 let apply_diff provider diff =
   let read path =
     if file diff = path_to_string path then
-      match provider.Provider.read path with
+      match provider.Conex_provider.read path with
       | Ok data -> Ok (patch (Some data) diff)
       | Error _ -> Ok (patch None diff)
     else
-      provider.Provider.read path
+      provider.Conex_provider.read path
   and file_type path =
     let pn = path_to_string path
     and name = file diff
@@ -162,7 +162,7 @@ let apply_diff provider diff =
     else if Conex_utils.String.is_prefix ~prefix:(pn ^ "/") name then
       Ok Directory
     else
-      provider.Provider.file_type path
+      provider.Conex_provider.file_type path
   and read_dir path =
     let name = List.rev (string_to_path (file diff))
     and path = List.rev path
@@ -172,7 +172,7 @@ let apply_diff provider diff =
       | fn::xs when xs = path -> Some (`File fn)
       | _ -> None
     in
-    match provider.Provider.read_dir path, data with
+    match provider.Conex_provider.read_dir path, data with
       | Ok files, Some data -> Ok (data :: files)
       | Ok files, None -> Ok files
       | Error _, Some data -> Ok [data]
@@ -185,11 +185,11 @@ let apply_diff provider diff =
     if pn = name then
       true
     else
-      provider.Provider.exists path
-  and name = provider.Provider.name
+      provider.Conex_provider.exists path
+  and name = provider.Conex_provider.name
   and description = "Patch provider"
   in
-  { Provider.name ; description ; file_type ; read ; write ; read_dir ; exists }
+  { Conex_provider.name ; description ; file_type ; read ; write ; read_dir ; exists }
 
 let apply repo diff =
   let provider = Conex_repository.provider repo in

@@ -4,8 +4,8 @@ open Conex_resource
 
 type t
 
-val repository : ?quorum:int -> ?strict:bool -> Provider.t -> t
-val provider : t -> Provider.t
+val repository : ?quorum:int -> ?strict:bool -> Conex_provider.t -> t
+val provider : t -> Conex_provider.t
 val quorum : t -> int
 val strict : t -> bool
 
@@ -15,7 +15,7 @@ val id_loaded : t -> identifier -> bool
 
 val authorised : t -> Authorisation.t -> identifier -> bool
 
-val change_provider : t -> Provider.t -> t
+val change_provider : t -> Conex_provider.t -> t
 
 val verify : pub -> string -> signature -> (unit, [> verification_error]) result
 
