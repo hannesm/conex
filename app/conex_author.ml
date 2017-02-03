@@ -69,66 +69,6 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let find_team io tid =
-  let use e =
-    w IO.pp_r_err e ;
-    let team = Team.team tid in
-    Logs.info (fun m -> m "fresh %a" Team.pp_team team) ;
-    team
-  in
-  R.ignore_error ~use
-    (IO.read_team io tid >>| fun team ->
-     Logs.debug (fun m -> m "read %a" Team.pp_team team) ;
-     team)
-
-let find_auth io name =
-  let use e =
-    w IO.pp_r_err e ;
-    let a = Authorisation.authorisation name in
-    Logs.info (fun m -> m "fresh %a" Authorisation.pp_authorisation a);
-    (a, true)
-  in
-  R.ignore_error ~use
-    (IO.read_authorisation io name >>| fun a ->
-     Logs.debug (fun m -> m "read %a" Authorisation.pp_authorisation a);
-     (a, false))
-
-let find_rel io name =
-  let use e =
-    w IO.pp_r_err e ;
-    match Releases.releases name with
-    | Ok r -> Logs.info (fun m -> m "fresh %a" Releases.pp_releases r) ; (r, true)
-    | Error e -> invalid_arg e
-  in
-  R.ignore_error ~use
-    (IO.read_releases io name >>| fun rel ->
-     Logs.debug (fun m -> m "read %a" Releases.pp_releases rel) ;
-     (rel, false))
-
-let find_idx io name =
-  let use e =
-    w IO.pp_r_err e ;
-    let idx = Index.index name in
-    Logs.info (fun m -> m "fresh %a" Index.pp_index idx) ;
-    (idx, true)
-  in
-  R.ignore_error ~use
-    (IO.read_index io name >>| fun idx ->
-     Logs.debug (fun m -> m "read %a" Index.pp_index idx) ;
-     (idx, false))
-
-let find_cs io name =
-  let use e =
-    w IO.pp_r_err e ;
-    let c = Checksum.checksums name [] in
-    Logs.info (fun m -> m "fresh %a" Checksum.pp_checksums c);
-    c
-  in
-  R.ignore_error ~use
-    (IO.read_checksum io name >>| fun cs ->
-     Logs.debug (fun m -> m "read %a" Checksum.pp_checksums cs) ;
-     cs)
-
 let load_ids io r ids =
   foldM (C.load_id io) r (S.elements ids)
 
@@ -250,6 +190,18 @@ let init _ dry path id email =
           Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
        Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id))
 
+let find_idx io name =
+  let use e =
+    w IO.pp_r_err e ;
+    let idx = Index.index name in
+    Logs.info (fun m -> m "fresh %a" Index.pp_index idx) ;
+    (idx, true)
+  in
+  R.ignore_error ~use
+    (IO.read_index io name >>| fun idx ->
+     Logs.debug (fun m -> m "read %a" Index.pp_index idx) ;
+     (idx, false))
+
 let sign _ dry path id =
   msg_to_cmdliner
     (init_repo dry path >>= fun (_r, io) ->
@@ -281,6 +233,18 @@ let reset _ dry path id =
      let idx = Index.reset idx in
      str_to_msg (IO.write_index io idx) >>| fun () ->
      Logs.app (fun m -> m "wrote index %s to disk" id))
+
+let find_auth io name =
+  let use e =
+    w IO.pp_r_err e ;
+    let a = Authorisation.authorisation name in
+    Logs.info (fun m -> m "fresh %a" Authorisation.pp_authorisation a);
+    (a, true)
+  in
+  R.ignore_error ~use
+    (IO.read_authorisation io name >>| fun a ->
+     Logs.debug (fun m -> m "read %a" Authorisation.pp_authorisation a);
+     (a, false))
 
 let auth _ dry path id remove members p =
   msg_to_cmdliner
@@ -321,7 +285,18 @@ let release _ dry path id remove p =
      str_to_msg (load_ids io r auth.Authorisation.authorised) >>= fun r ->
      if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
-     let rel, _ = find_rel io pn in
+     let rel =
+       let use e =
+         w IO.pp_r_err e ;
+         match Releases.releases pn with
+         | Ok r -> Logs.info (fun m -> m "fresh %a" Releases.pp_releases r) ; r
+         | Error e -> invalid_arg e
+       in
+       R.ignore_error ~use
+         (IO.read_releases io pn >>| fun rel ->
+          Logs.debug (fun m -> m "read %a" Releases.pp_releases rel) ;
+          rel)
+     in
      let f m t = if remove then Releases.remove t m else Releases.add t m in
      let rel' = S.fold f releases rel in
      let idx, _ = find_idx io id in
@@ -337,7 +312,18 @@ let release _ dry path id remove p =
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
        acc >>= fun idx ->
-       let cs = find_cs io name in
+       let cs =
+         let use e =
+           w IO.pp_r_err e ;
+           let c = Checksum.checksums name [] in
+           Logs.info (fun m -> m "fresh %a" Checksum.pp_checksums c);
+           c
+         in
+         R.ignore_error ~use
+           (IO.read_checksum io name >>| fun cs ->
+            Logs.debug (fun m -> m "read %a" Checksum.pp_checksums cs) ;
+            cs)
+       in
        R.error_to_msg ~pp_error:IO.pp_cc_err
          (IO.compute_checksum io name) >>= fun cs' ->
        if not (Checksum.equal cs cs') then
@@ -364,7 +350,18 @@ let team _ dry repo id remove members tid =
   msg_to_cmdliner
     (init_repo dry repo >>= fun (_r, io) ->
      self io id >>= fun id ->
-     let team = find_team io tid in
+     let team =
+       let use e =
+         w IO.pp_r_err e ;
+         let team = Team.team tid in
+         Logs.info (fun m -> m "fresh %a" Team.pp_team team) ;
+         team
+       in
+       R.ignore_error ~use
+         (IO.read_team io tid >>| fun team ->
+          Logs.debug (fun m -> m "read %a" Team.pp_team team) ;
+          team)
+     in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Team.remove else Team.add in
      let team' = List.fold_left f team members in
