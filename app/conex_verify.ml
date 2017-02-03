@@ -100,28 +100,29 @@ echo "$*"
 true
 
  *)
+module IO = Conex_io
 
-let verify_patch repo patch =
-  Conex_persistency.read_file patch >>= C.verify_diff repo
+let verify_patch io repo patch =
+  Conex_persistency.read_file patch >>= C.verify_diff io repo
 
-let verify_full repo anchors =
+let verify_full io repo anchors =
   let valid id digest =
     if S.mem digest anchors then
       (Log.debug (fun m -> m "accepting ta %s" id) ; true)
     else
       (Log.debug (fun m -> m "rejecting ta %s" id) ; false)
   in
-  match C.load_janitors ~valid repo with
+  match C.load_janitors ~valid io repo with
   | Ok repo ->
     (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
-    foldM C.verify_item repo (S.elements (Conex_repository.items repo))
+    foldM (C.verify_item io) repo (S.elements (IO.items io))
   | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function
   | Ok _ -> `Ok ()
   | Error m -> `Error (false, m)
 
-let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_c =
+let verify_it repodir quorum anchors incremental dir patch verbose quiet strict no_c =
   let level = match verbose, quiet with
     | true, false -> `Debug
     | false, true -> `Warn
@@ -132,14 +133,11 @@ let verify_it repo quorum anchors incremental dir patch verbose quiet strict no_
   in
   Log.set_styled styled ;
   let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
-  let r p =
-    Conex_provider.fs_ro_provider p >>= fun p ->
-    Ok (Conex_repository.repository ~strict ?quorum p)
-  in
   err_to_cmdliner
-    (match incremental, patch, dir with
-     | true, Some p, None -> r repo >>= fun repo -> verify_patch repo p
-     | false, None, Some d -> r d >>= fun repo -> verify_full repo ta
+    (let repo = Conex_repository.repository ~strict ?quorum () in
+     match incremental, patch, dir with
+     | true, Some p, None -> Conex_provider.fs_ro_provider repodir >>= fun io -> verify_patch io repo p
+     | false, None, Some d -> Conex_provider.fs_ro_provider d >>= fun io -> verify_full io repo ta
      | _ -> Error "invalid combination of incremental, patch and dir")
 
 

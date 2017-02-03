@@ -10,20 +10,17 @@ type teams = S.t M.t
 type t = {
   quorum : int ;
   strict : bool ;
-  data : Conex_provider.t ;
   valid : valid_resources ;
   teams : teams ;
   ids : S.t ;
 }
 
-let repository ?(quorum = 3) ?(strict = false) data =
-  { quorum ; strict ; data ; valid = M.empty ; teams = M.empty ; ids = S.empty }
+let repository ?(quorum = 3) ?(strict = false) () =
+  { quorum ; strict ; valid = M.empty ; teams = M.empty ; ids = S.empty }
 
 let quorum r = r.quorum
 
 let strict r = r.strict
-
-let provider r = r.data
 
 let find_team r id = try Some (M.find id r.teams) with Not_found -> None
 
@@ -60,8 +57,6 @@ let add_valid_resource repo id res =
   with Not_found ->
     Ok ({ repo with valid = M.add dgst_str (res.rname, res.size, res.resource, S.singleton id) t})
 
-let change_provider t data = { t with data }
-
 let add_team repo team =
   { repo with
     teams = M.add team.Team.name team.Team.members repo.teams ;
@@ -71,7 +66,6 @@ let add_team repo team =
 let verify key data (hdr, sigval) =
   let data = extend_sig hdr data in
   Conex_nocrypto.verify key data sigval
-
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
@@ -101,8 +95,6 @@ let pp_error ppf = function
   | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
   | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
   | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
-  | `FileNotFound n -> Format.fprintf ppf "couldn't find file %a" pp_name n
-  | `NotADirectory n -> Format.fprintf ppf "expected %a to be a directory, but it is a file" pp_name n
   | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
 (*BISECT-IGNORE-END*)
 
@@ -225,10 +217,10 @@ let verify_authorisation repo auth =
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
   (* should verify that all ids exist? *)
 
-let ensure_releases repo r =
-  let dirs = Conex_opam_layout.subitems repo.data r.Releases.name in
-  let dirs = S.of_list dirs in
-  let rels = r.Releases.releases in
+let ensure_releases rel disk =
+  let rels = rel.Releases.releases
+  and dirs = disk.Releases.releases
+  in
   if S.equal rels dirs then
     Ok ()
   else
@@ -237,194 +229,33 @@ let ensure_releases repo r =
     in
     Error (have, want)
 
-let verify_releases repo a r =
+let verify_releases repo ?on_disk a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (Conex_data.encode (Releases.wire r)) >>= fun res ->
-  match ensure_releases repo r with
-  | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
-  | Ok () -> match res with
+  let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
     | `IdNoQuorum (id, _) -> Ok (`Signed id)
+  in
+  match on_disk with
+  | None -> res
+  | Some rels ->
+    match ensure_releases r rels with
+    | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
+    | Ok () -> res
 
-let compute_checksum repo name =
-  match repo.data.Conex_provider.file_type (Conex_opam_layout.checksum_dir name) with
-  | Error _ -> Error (`FileNotFound name)
-  | Ok File -> Error (`NotADirectory name)
-  | Ok Directory ->
-    let fs = Conex_opam_layout.checksum_files repo.data name in
-    let d = Conex_opam_layout.checksum_dir name in
-    foldM (fun acc f ->
-        match repo.data.Conex_provider.read (d@f) with
-        | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
-        | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
-    let r = List.(map2 Checksum.checksum (map path_to_string fs) (rev ds)) in
-    Ok (Checksum.checksums name r)
-
-let verify_checksum repo a r cs =
+let verify_checksum repo ?on_disk a r cs =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`NotInReleases (cs.Checksum.name, r.Releases.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Conex_data.encode (Checksum.wire cs)) >>= fun r ->
-  let name = cs.Checksum.name in
-  compute_checksum repo name >>= fun css ->
-  Checksum.compare_checksums cs css >>= fun () ->
-  match r with
-  | `Both b -> Ok (`Both b)
-  | `Quorum js -> Ok (`Quorum js)
-  | `IdNoQuorum (id, _) -> Ok (`Signed id)
-
-type r_err = [ `NotFound of string * string | `ParseError of name * string | `NameMismatch of string * string ]
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_r_err ppf = function
-  | `NotFound (x, y) -> Format.fprintf ppf "%s %s was not found in repository" x y
-  | `ParseError (n, e) -> Format.fprintf ppf "parse error while parsing %a: %s" pp_name n e
-  | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
-(*BISECT-IGNORE-END*)
-
-let read_team repo name =
-  match repo.data.Conex_provider.read (Conex_opam_layout.id_path name) with
-  | Error _ -> Error (`NotFound ("team", name))
-  | Ok data ->
-    match Conex_data.decode data >>= Team.of_wire with
-    | Error p -> Error (`ParseError (name, p))
-    | Ok team ->
-      if id_equal team.Team.name name then
-        Ok team
-      else
-        Error (`NameMismatch (name, team.Team.name))
-
-let write_team repo t =
-  let id = t.Team.name in
-  repo.data.Conex_provider.write (Conex_opam_layout.id_path id) (Conex_data.encode (Team.wire t))
-
-let read_index repo name =
-  match repo.data.Conex_provider.read (Conex_opam_layout.id_path name) with
-  | Error _ -> Error (`NotFound ("index", name))
-  | Ok data ->
-    match Conex_data.decode data >>= Index.of_wire with
-    | Error p -> Error (`ParseError (name, p))
-    | Ok i ->
-      if id_equal i.Index.name name then
-        Ok i
-      else
-        Error (`NameMismatch (name, i.Index.name))
-
-let write_index repo i =
-  let name = Conex_opam_layout.id_path i.Index.name in
-  repo.data.Conex_provider.write name (Conex_data.encode (Index.wire i))
-
-let read_id repo id =
-  match read_team repo id with
-  | Ok team -> Ok (`Team team)
-  | Error (`NameMismatch (a, b)) -> Error (`NameMismatch (a, b))
-  | Error _ -> match read_index repo id with
-    | Ok idx -> Ok (`Id idx)
-    | Error e -> Error e
-
-let ids repo = S.of_list (Conex_opam_layout.ids repo.data)
-
-let read_authorisation repo name =
-  match repo.data.Conex_provider.read (Conex_opam_layout.authorisation_path name) with
-  | Error _ -> Error (`NotFound ("authorisation", name))
-  | Ok data ->
-    match Conex_data.decode data >>= Authorisation.of_wire with
-    | Error p -> Error (`ParseError (name, p))
-    | Ok auth ->
-      if name_equal auth.Authorisation.name name then
-        Ok auth
-      else
-        Error (`NameMismatch (name, auth.Authorisation.name))
-
-let write_authorisation repo a =
-  repo.data.Conex_provider.write
-    (Conex_opam_layout.authorisation_path a.Authorisation.name)
-    (Conex_data.encode (Authorisation.wire a))
-
-let items repo = S.of_list (Conex_opam_layout.items repo.data)
-let subitems repo name = S.of_list (Conex_opam_layout.subitems repo.data name)
-
-let read_releases repo name =
-  match repo.data.Conex_provider.read (Conex_opam_layout.releases_path name) with
-  | Error _ -> Error (`NotFound ("releases", name))
-  | Ok data ->
-    match Conex_data.decode data >>= Releases.of_wire with
-    | Error p -> Error (`ParseError (name, p))
-    | Ok r ->
-      if name_equal r.Releases.name name then
-        Ok r
-      else
-        Error (`NameMismatch (name, r.Releases.name))
-
-let write_releases repo r =
-  let name = Conex_opam_layout.releases_path r.Releases.name in
-  repo.data.Conex_provider.write name (Conex_data.encode (Releases.wire r))
-
-let read_checksum repo name =
-  match repo.data.Conex_provider.read (Conex_opam_layout.checksum_path name) with
-  | Error _ -> Error (`NotFound ("checksum", name))
-  | Ok data ->
-    match Conex_data.decode data >>= Checksum.of_wire with
-    | Error p -> Error (`ParseError (name, p))
-    | Ok csum ->
-      if name_equal csum.Checksum.name name then
-        Ok csum
-      else
-        Error (`NameMismatch (name, csum.Checksum.name))
-
-let write_checksum repo csum =
-  let name = Conex_opam_layout.checksum_path csum.Checksum.name in
-  repo.data.Conex_provider.write name (Conex_data.encode (Checksum.wire csum))
-
-type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
-
-let pp_m_err ppf =
-  let s = resource_to_string in
-  function
-  | #r_err as e -> pp_r_err ppf e
-  | `NotIncreased (res, nam) -> Format.fprintf ppf "monotonicity: counter of %s %s was not increased" (s res) nam
-  | `Deleted (res, nam) -> Format.fprintf ppf "monotonicity: %s %s was deleted" (s res) nam
-  | `Msg s -> Format.fprintf ppf "monotonicity: %s" s
-
-let monotonicity repo repo' resource name =
-  let e = (resource, name) in
-  let incr c c' =
-    guard (Uint.compare c' c = 1) (`NotIncreased e)
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Conex_data.encode (Checksum.wire cs)) >>= fun res ->
+  let res = match res with
+    | `Both b -> Ok (`Both b)
+    | `Quorum js -> Ok (`Quorum js)
+    | `IdNoQuorum (id, _) -> Ok (`Signed id)
   in
-  match resource with
-  | `Index ->
-    begin match read_id repo name, read_id repo' name with
-     | Ok (`Id idx), Ok (`Id idx') -> incr idx'.Index.counter idx.Index.counter
-     | Ok (`Team team), Ok (`Team team') -> incr team'.Team.counter team.Team.counter
-     | Error _, Ok _ -> Ok () (* allow creation (could check for valid + unique id) *)
-     | Ok _, Error _ -> Error (`Deleted e) (* DO NOT allow index deletions *)
-     | Error e, Error _ -> Error e
-     | Ok (`Id _), Ok (`Team _) -> Error (`Msg ("id " ^ name ^ " is now a team"))
-     | Ok (`Team _), Ok (`Id _) -> Error (`Msg ("team " ^ name ^ " is now an id"))
-    end
-  | `Checksums ->
-    begin match read_checksum repo name, read_checksum repo' name with
-     | Ok cs, Ok cs' -> incr cs'.Checksum.counter cs.Checksum.counter
-     | Error _, Ok _ -> Ok () (* allow creation *)
-     | Ok _, Error _ -> Ok () (* allow deletion of checksums *)
-     | Error e, Error _ -> Error e
-    end
-  | `Releases ->
-    begin match read_releases repo name, read_releases repo' name with
-     | Ok rel, Ok rel' -> incr rel'.Releases.counter rel.Releases.counter
-     | Error _, Ok _ -> Ok () (* allow creation *)
-     | Ok _, Error _ -> Error (`Deleted e) (* DO NOT allow deletion of releases *)
-     | Error e, Error _ -> Error e
-    end
-  | `Authorisation ->
-    begin match read_authorisation repo name, read_authorisation repo' name with
-     | Ok auth, Ok auth' -> incr auth'.Authorisation.counter auth.Authorisation.counter
-     | Error _, Ok _ -> Ok () (* allow creation *)
-     | Ok _, Error _ -> Error (`Deleted e) (* DO NOT allow deletion of authorsations *)
-     | Error e, Error _ -> Error e
-    end
-  | `PublicKey | `Team -> Error (`Msg "not sure what you wanted to do")
-
+  match on_disk with
+  | None -> res
+  | Some css -> Checksum.compare_checksums cs css >>= fun () -> res

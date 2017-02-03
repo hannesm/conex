@@ -21,13 +21,13 @@ module type LOGS = sig
 end
 
 module Make (L : LOGS) : sig
-  val load_janitors : ?valid:(identifier -> string -> bool) -> t -> (t, string) result
+  val load_janitors : ?valid:(identifier -> string -> bool) -> Conex_provider.t -> t -> (t, string) result
 
-  val load_id : t -> identifier -> (t, string) result
+  val load_id : Conex_provider.t -> t -> identifier -> (t, string) result
 
   val verify_item :
-    ?authorised:(S.t -> bool) -> ?release:(name -> bool) -> t -> name ->
+    ?authorised:(S.t -> bool) -> ?release:(name -> bool) -> Conex_provider.t -> t -> name ->
     (t, string) result
 
-  val verify_diff : t -> string -> (t, string) result
+  val verify_diff : Conex_provider.t -> t -> string -> (t, string) result
 end

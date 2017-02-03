@@ -37,7 +37,7 @@ module OpamMaintainer = struct
   let mirage_packages = s_of_list [ "io-page" ; "cstruct" ; "dns" ; "tcpip" ; "vmnet" ; "channel" ; "fat-filesystem" ; "pcap-format" ; "functoria" ; "mbr-format" ; "protocol-9p" ; "qcow-format" ; "vchan" ; "gmp-freestanding" ; "gmp-xen" ; "zarith-xen" ; "zarith-freestanding" ; "conduit" ; "cow"]
   let xapi_packages = s_of_list [ "vhdlib" ; "vhd-format" ; "nbd" ; "cdrom"]
 
-  let maintainers provider p r =
+  let maintainers io p r =
     (* contact@ocamlpro.com -- good if tag org:ocamlpro is around (opam lint does this)
        opam-devel@lists.ocaml.org *)
     if String.is_prefix ~affix:"mirage" p then S.singleton "mirage" else
@@ -46,7 +46,7 @@ module OpamMaintainer = struct
     if String.is_prefix ~affix:"xen" p then S.singleton "xapi-project" else
     if S.mem p xapi_packages then S.singleton "xapi-project" else
     if String.is_prefix ~affix:"ocp" p then S.singleton "OCamlPro" else
-    match provider.Conex_provider.read ["packages" ; p ; r ; "opam" ] with
+    match io.Conex_provider.read ["packages" ; p ; r ; "opam" ] with
     | Ok data ->
       let opam = OpamFile.OPAM.read_from_string data in
       let ms = S.of_list
@@ -67,16 +67,16 @@ module OpamMaintainer = struct
         ms
     | Error _ -> Log.err (fun m -> m "couldn't read opam file: %s/%s" p r) ; S.empty
 
-  let infer repo =
-    let packages = Conex_repository.items repo in
+  let infer io =
+    let packages = Conex_io.items io in
     List.fold_left (fun map p ->
-        let releases = Conex_opam_layout.subitems (Conex_repository.provider repo) p in
-        let releases = List.rev (List.sort OpamVersionCompare.compare releases) in
+        let releases = Conex_io.subitems io p in
+        let releases = List.rev (List.sort OpamVersionCompare.compare (S.elements releases)) in
         let maintainers =
           List.fold_left
             (fun s r ->
                if S.is_empty s then
-                 maintainers (Conex_repository.provider repo) p r
+                 maintainers io p r
                else
                  s)
             S.empty releases
@@ -273,15 +273,14 @@ let infer_maintainers base lvl =
   to_cmd
     (Logs.set_level lvl ;
      Logs.set_reporter (Logs_fmt.reporter ()) ;
-     Conex_provider.fs_provider base >>= fun provider ->
-     let repo = Conex_repository.repository provider in
+     Conex_provider.fs_provider base >>= fun io ->
      PR.handle_prs base PR.github_mail (M.empty, M.empty) >>= fun (github_mail, _mail_github) ->
      Logs.info (fun m -> m "github-email %a" pp_map github_mail) ;
      M.fold (fun k v acc ->
          acc >>= fun acc ->
          let accounts = `GitHub k :: List.map (fun e -> `Email e) (S.elements v) in
          let idx = Index.index ~accounts k in
-         Conex_repository.write_index repo idx >>= fun () ->
+         Conex_io.write_index io idx >>= fun () ->
          Ok (idx :: acc))
        github_mail (Ok []) >>= fun idxs ->
      (List.fold_left (fun acc id ->
@@ -289,14 +288,14 @@ let infer_maintainers base lvl =
           match id with
           | `Team (mails, id) ->
             let t = Team.team id in
-            Conex_repository.write_team repo t >>= fun () ->
+            Conex_io.write_team io t >>= fun () ->
             let idx =
               let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
               Index.index ~accounts id
             in
             Ok (idx :: acc)
           | `Key k ->
-            Conex_repository.write_index repo k >>= fun () ->
+            Conex_io.write_index io k >>= fun () ->
             Ok (k :: acc))
          (Ok []) known_ids) >>= fun more_idxs ->
 
@@ -314,7 +313,7 @@ let infer_maintainers base lvl =
      in
      (* this is a set of package name without maintainer,
         and a map pkgname -> email address (or name) set *)
-     let mapping = OpamMaintainer.infer repo in
+     let mapping = OpamMaintainer.infer io in
      (M.fold (fun k ids acc ->
           acc >>= fun acc ->
           let authorised = S.fold (fun s acc ->
@@ -328,7 +327,7 @@ let infer_maintainers base lvl =
           in
           let authorisation = Authorisation.authorisation ~authorised k in
           Logs.info (fun m -> m "%a" Authorisation.pp_authorisation authorisation) ;
-          Conex_repository.write_authorisation repo authorisation >>= fun () ->
+          Conex_io.write_authorisation io authorisation >>= fun () ->
           Ok (M.add k authorisation acc))
          mapping (Ok M.empty)) >>= fun authorisations ->
      (* authorisation contains pkgname -> github id
@@ -344,14 +343,14 @@ let infer_maintainers base lvl =
      Logs.app (fun m -> m "teams %a" pp_map team) ;
      M.iter (fun name members ->
          let t = Team.team ~members name in
-         match Conex_repository.write_team repo t with
+         match Conex_io.write_team io t with
          | Ok () -> ()
          | Error e -> Logs.err (fun m -> m "error %s while writing team %s" e name))
        team ;
      M.iter (fun p authorised ->
          if S.cardinal authorised = 1 then
            let a = Authorisation.authorisation ~authorised p in
-           match Conex_repository.write_authorisation repo a with
+           match Conex_io.write_authorisation io a with
            | Ok () -> ()
            | Error e -> Logs.err (fun m -> m "error %s while writing authorisation for %s" e p))
        empty ;

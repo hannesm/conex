@@ -145,7 +145,7 @@ let diffs_to_components diffs =
       | _ -> ids, auths, rels, pkgs)
     (S.empty, S.empty, S.empty, M.empty) diffs
 
-let apply_diff provider diff =
+let apply provider diff =
   let read path =
     if file diff = path_to_string path then
       match provider.Conex_provider.read path with
@@ -190,8 +190,3 @@ let apply_diff provider diff =
   and description = "Patch provider"
   in
   { Conex_provider.name ; description ; file_type ; read ; write ; read_dir ; exists }
-
-let apply repo diff =
-  let provider = Conex_repository.provider repo in
-  let new_provider = apply_diff provider diff in
-  Conex_repository.change_provider repo new_provider

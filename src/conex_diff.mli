@@ -13,4 +13,4 @@ val to_diffs : string -> diff list
 
 val diffs_to_components : diff list -> (S.t * S.t * S.t * S.t M.t)
 
-val apply : Conex_repository.t -> diff -> Conex_repository.t
+val apply : Conex_provider.t -> diff -> Conex_provider.t

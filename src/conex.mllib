@@ -2,6 +2,7 @@ Conex_api
 Conex_core
 Conex_data
 Conex_diff
+Conex_io
 Conex_nocrypto
 Conex_opam_layout
 Conex_persistency

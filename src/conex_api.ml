@@ -25,13 +25,15 @@ let str pp e =
   Format.(fprintf str_formatter "%a" pp e) ;
   Format.flush_str_formatter ()
 
+module IO = Conex_io
+
 module Make (L : LOGS) = struct
 
-  let load_id_aux repo id =
-    match read_id repo id with
+  let load_id_aux io repo id =
+    match IO.read_id io id with
     | Error e ->
-      if strict repo then Error (str pp_r_err e) else
-        (L.warn (fun m -> m "%a" pp_r_err e) ; Ok (`Nothing, repo))
+      if strict repo then Error (str IO.pp_r_err e) else
+        (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok (`Nothing, repo))
     | Ok (`Id idx) ->
       (L.debug (fun m -> m "%a" Index.pp_index idx) ;
        match verify_index repo idx with
@@ -45,16 +47,16 @@ module Make (L : LOGS) = struct
            (L.warn (fun m -> m "%a" pp_error e) ; Ok (`Nothing, repo))
        | Ok (r, ok) -> L.debug (fun m -> m "%a" pp_ok ok) ; Ok (`Team t, r))
 
-  let load_id repo id =
+  let load_id io repo id =
     if id_loaded repo id then
       Ok repo
     else
       let repo = add_id repo id in
-      load_id_aux repo id >>= function
+      load_id_aux io repo id >>= function
       | `Id _, repo ->  Ok repo
       | `Team t, repo ->
         let load_id repo id =
-          load_id_aux repo id >>= function
+          load_id_aux io repo id >>= function
           | `Nothing, repo -> Ok repo
           | `Id _, repo -> Ok repo
           | `Team t', _ -> Error ("team " ^ t'.Team.name ^ " is a member of " ^ t.Team.name ^ ", another team")
@@ -62,16 +64,16 @@ module Make (L : LOGS) = struct
         foldM load_id repo (S.elements t.Team.members)
       | `Nothing, repo -> Ok repo
 
-  let load_janitors ?(valid = fun _ _ -> true) repo =
-    match read_team repo "janitors" with
-    | Error e -> if strict repo then Error (str pp_r_err e) else
-        (L.warn (fun m -> m "%a" pp_r_err e) ; Ok repo)
+  let load_janitors ?(valid = fun _ _ -> true) io repo =
+    match IO.read_team io "janitors" with
+    | Error e -> if strict repo then Error (str IO.pp_r_err e) else
+        (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok repo)
     | Ok team ->
       L.debug (fun m -> m "%a" Team.pp_team team) ;
       foldM (fun acc id ->
-          match read_index repo id with
-          | Error e -> if strict repo then Error (str pp_r_err e) else
-              (L.warn (fun m -> m "%a" pp_r_err e) ; Ok acc)
+          match IO.read_index io id with
+          | Error e -> if strict repo then Error (str IO.pp_r_err e) else
+              (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok acc)
           | Ok idx ->
             L.debug (fun m -> m "%a" Index.pp_index idx) ;
             Ok (idx :: acc))
@@ -156,21 +158,26 @@ module Make (L : LOGS) = struct
         [] (notyet@others) >>= fun good_idx ->
       Ok (List.fold_left add_warn repo good_idx)
 
-  let verify_single_release repo auth rel version =
-    match read_checksum repo version with
-    | Error e -> if strict repo then Error (str pp_r_err e) else
-        (L.warn (fun m -> m "%a" pp_r_err e) ; Ok ())
+  let verify_single_release io repo auth rel version =
+    match IO.read_checksum io version with
+    | Error e -> if strict repo then Error (str IO.pp_r_err e) else
+        (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok ())
     | Ok cs ->
       L.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
-      match verify_checksum repo auth rel cs with
+      (match IO.compute_checksum io version with
+       | Error e -> if strict repo then Error (str Conex_io.pp_cc_err e) else
+           (L.warn (fun m -> m "couldn't compute checksum of %s: %a" version Conex_io.pp_cc_err e) ;
+            Ok None)
+       | Ok cs -> Ok (Some cs)) >>= fun on_disk ->
+      match verify_checksum repo ?on_disk auth rel cs with
       | Error e -> if strict repo then Error (str pp_error e) else
           (L.warn (fun m -> m "%a" pp_error e) ; Ok ())
       | Ok ok -> L.debug (fun m -> m "%a" pp_ok ok) ; Ok ()
 
-  let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) repo name =
-    (match read_authorisation repo name with
-     | Error e -> if strict repo then Error (str pp_r_err e) else
-         (L.warn (fun m -> m "%a" pp_r_err e) ;
+  let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
+    (match IO.read_authorisation io name with
+     | Error e -> if strict repo then Error (str IO.pp_r_err e) else
+         (L.warn (fun m -> m "%a" IO.pp_r_err e) ;
           Ok (Authorisation.authorisation name, repo))
      | Ok auth ->
        L.debug (fun m ->m "%a" Authorisation.pp_authorisation auth) ;
@@ -179,24 +186,29 @@ module Make (L : LOGS) = struct
            (L.warn (fun m ->m "%a" pp_error e) ; Ok (auth, repo))
        | Ok ok ->
          L.debug (fun m -> m "%a" pp_ok ok) ;
-         foldM load_id repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
+         foldM (load_id io) repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
          Ok (auth, repo)) >>= fun (auth, repo) ->
     (if authorised auth.Authorisation.authorised then
-       (match read_releases repo name with
+       (match IO.read_releases io name with
         | Error e ->
-          (match Releases.releases ~releases:(subitems repo name) name with
-           | Ok rel -> if strict repo then Error (str pp_r_err e) else
-               (L.warn (fun m -> m "%a" pp_r_err e) ; Ok rel)
+          (match Releases.releases ~releases:(IO.subitems io name) name with
+           | Ok rel -> if strict repo then Error (str IO.pp_r_err e) else
+               (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok rel)
            | Error e -> Error e)
         | Ok rel ->
           L.debug (fun m -> m "%a" Releases.pp_releases rel) ;
-          match verify_releases repo auth rel with
+          (match IO.compute_releases io name with
+           | Error e -> if strict repo then Error e else
+               (L.warn (fun m -> m "couldn't compute releases %s: %s" name e) ;
+                Ok None)
+           | Ok on_disk -> Ok (Some on_disk)) >>= fun on_disk ->
+          match verify_releases repo ?on_disk auth rel with
           | Error e -> if strict repo then Error (str pp_error e) else
               (L.warn (fun m -> m "%a" pp_error e) ; Ok rel)
           | Ok ok -> L.debug (fun m -> m "%a" pp_ok ok) ; Ok rel) >>= fun rel ->
        foldM (fun () n ->
            if release n then
-             verify_single_release repo auth rel n
+             verify_single_release io repo auth rel n
            else
              Ok ())
          ()
@@ -205,15 +217,15 @@ module Make (L : LOGS) = struct
        (L.debug (fun m -> m "ignoring %s" name) ; Ok ())) >>= fun () ->
     Ok repo
 
-  let verify_patch repo newrepo (ids, auths, rels, pkgs) =
+  let verify_patch repo io newio (ids, auths, rels, pkgs) =
     let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
     L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d pkgs"
                 (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
     (* all public keys of janitors in repo are valid. *)
-    load_janitors repo >>= fun repo ->
+    load_janitors io repo >>= fun repo ->
     let janitor_keys =
       S.fold (fun id acc ->
-          match read_index repo id with
+          match IO.read_index io id with
           | Ok idx -> S.union acc (s_of_list (List.map Conex_nocrypto.id idx.Index.keys))
           | Error _ -> acc)
         (match find_team repo "janitors" with None -> S.empty | Some x -> x)
@@ -221,9 +233,10 @@ module Make (L : LOGS) = struct
     in
     (* load all those janitors in newrepo which are valid (and verify janitors team) *)
     let valid _id key = S.mem key janitor_keys in
-    load_janitors ~valid newrepo >>= fun newrepo ->
+    let fresh_repo = repository ~quorum:(quorum repo) ~strict:(strict repo) () in
+    load_janitors ~valid newio fresh_repo >>= fun newrepo ->
     (* now we do a full verification of the new repository *)
-    foldM verify_item newrepo (S.elements (items newrepo)) >>= fun newrepo ->
+    foldM (verify_item newio) newrepo (S.elements (IO.items newio)) >>= fun newrepo ->
     (* we could try to be more smart:
        - only check all modified authorisations, releases, packages
        --> but if a team is modified, or an index is modified (add/remove!), we
@@ -262,34 +275,34 @@ module Make (L : LOGS) = struct
 
     (* foreach id in ids: monotonicity! *)
     foldM (fun () id ->
-        match monotonicity repo newrepo `Index id with
+        match IO.monotonicity io newio `Index id with
         | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str pp_m_err e) else
-            (L.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
+        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
+            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
       () (S.elements ids) >>= fun () ->
     foldM (fun () id ->
-        match monotonicity repo newrepo `Authorisation id with
+        match IO.monotonicity io newio `Authorisation id with
         | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str pp_m_err e) else
-            (L.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
+        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
+            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
       () (S.elements auths) >>= fun () ->
     foldM (fun () id ->
-        match monotonicity repo newrepo `Releases id with
+        match IO.monotonicity io newio `Releases id with
         | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str pp_m_err e) else
-            (L.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
+        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
+            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
       () (S.elements rels) >>= fun () ->
     foldM (fun () id ->
-        match monotonicity repo newrepo `Checksums id with
+        match IO.monotonicity io newio `Checksums id with
         | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str pp_m_err e) else
-            (L.warn (fun m -> m "%a" pp_m_err e) ; Ok ()))
+        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
+            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
       () packages >>= fun () ->
     Ok newrepo
 
-  let verify_diff repo data =
+  let verify_diff io repo data =
     let diffs = Conex_diff.to_diffs data in
     let comp = Conex_diff.diffs_to_components diffs in
-    let repo' = List.fold_left Conex_diff.apply repo diffs in
-    verify_patch repo repo' comp
+    let newio = List.fold_left Conex_diff.apply io diffs in
+    verify_patch repo io newio comp
 end

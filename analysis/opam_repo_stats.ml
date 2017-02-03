@@ -39,7 +39,7 @@ several useful maps should be part of the output:
 <package> -> {<committer> -> [bool * PR] }
  *)
 
-let handle_one repo base commit pr github mail maps =
+let handle_one io base commit pr github mail maps =
   Logs.app (fun m -> m "handle_one (%s) %s@." pr commit) ;
   if List.mem pr ignore_pr then
     (Logs.app (fun m -> m "ignored PR") ; Ok maps)
@@ -56,9 +56,9 @@ let handle_one repo base commit pr github mail maps =
           M.add github (S.add mail vals) github_map
         in
         if Sys.file_exists (Filename.concat base (Filename.concat "packages" pn)) then
-          let ms = match Conex_repository.read_authorisation repo pn with
+          let ms = match Conex_io.read_authorisation io pn with
             | Error e ->
-              Logs.err (fun m -> m "%a while reading authorisation %s" Conex_repository.pp_r_err e pn) ;
+              Logs.err (fun m -> m "%a while reading authorisation %s" Conex_io.pp_r_err e pn) ;
               S.empty
             | Ok auth -> auth.Authorisation.authorised
           in
@@ -85,8 +85,7 @@ let handle_one repo base commit pr github mail maps =
 (* what do I want in the end? *)
 (* map GitHub ID -> (email, package list) [of invalid pushes] *)
 let handle_prs dir =
-  Conex_provider.fs_ro_provider dir >>= fun prov ->
-  let repo = Conex_repository.repository prov in
+  Conex_provider.fs_ro_provider dir >>= fun io ->
   let base = Filename.concat dir "prs" in
   Conex_persistency.collect_dir base >>= fun prs ->
   let total = List.length prs in
@@ -101,7 +100,7 @@ let handle_prs dir =
            and gid = List.nth eles 2
            and mail = String.trim (List.nth eles 3)
            in
-           (match handle_one repo dir cid pr gid mail map with
+           (match handle_one io dir cid pr gid mail map with
             | Ok x -> (x, succ i)
             | Error e ->
               Logs.warn (fun m -> m "error while handling %s: %s" pr e) ;

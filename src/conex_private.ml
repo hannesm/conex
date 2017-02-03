@@ -41,8 +41,8 @@ let sign_index idx priv =
   Conex_nocrypto.sign priv data >>= fun signature ->
   Ok (Index.add_sig idx (hdr, signature))
 
-let write_private_key repo id key =
-  let base = (Conex_repository.provider repo).Conex_provider.name in
+let write_private_key prov id key =
+  let base = prov.Conex_provider.name in
   let filename = private_key_path base id in
   (if Conex_persistency.exists filename then begin
       let ts =
@@ -79,9 +79,9 @@ let pp_err ppf = function
   | `Msg m -> Format.fprintf ppf "error %s while trying to read private key" m
 (*BISECT-IGNORE-END*)
 
-let read_private_key ?id repo =
+let read_private_key ?id prov =
   let read id =
-    let base = (Conex_repository.provider repo).Conex_provider.name in
+    let base = prov.Conex_provider.name in
     let fn = private_key_path base id in
     if Conex_persistency.exists fn then
       match Conex_persistency.read_file fn with
@@ -92,7 +92,7 @@ let read_private_key ?id repo =
   in
   match id with
   | Some x -> read x
-  | None -> match private_keys (Conex_repository.provider repo) with
+  | None -> match private_keys prov with
     | Ok [x] -> read x
     | Ok [] -> Error `NoPrivateKey
     | Ok xs -> Error (`MultiplePrivateKeys xs)
