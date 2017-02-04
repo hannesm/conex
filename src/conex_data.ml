@@ -31,7 +31,9 @@ let rec decode_s = function
   | OpamParserTypes.Ident (_, data) ->
     let l = String.length data in
     if l > 4 && String.sub data 0 4 = "UINT" then
-      Ok (Wire.Int (Uint.of_string (String.sub data 4 (l - 4))))
+      match Uint.of_string (String.sub data 4 (l - 4)) with
+      | None -> Error "cannot parse unsigned integer"
+      | Some x -> Ok (Wire.Int x)
     else if data = "emptymap" then
       Ok (Wire.Map M.empty)
     else

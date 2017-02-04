@@ -25,7 +25,7 @@ let verify pub data sigval =
   | None -> Error `InvalidBase64Encoding
   | Some signature ->
     let cs_data = Cstruct.of_string data in
-    let x = match pub with `RSA_pub x -> x in
+    let x = match pub with `RSA, x -> x in
     match decode_key x with
     | Some (RSA_pub key) when good_rsa key ->
       if Pss_sha256.verify ~key ~signature cs_data then
@@ -49,15 +49,15 @@ let encode_priv = function
      Cstruct.to_string pem
 
 let generate ?(bits = 4096) () =
-  `RSA_priv (encode_priv (RSA_priv (Nocrypto.Rsa.generate bits)))
+  `RSA, (encode_priv (RSA_priv (Nocrypto.Rsa.generate bits)))
 
 let pub_of_priv = function
-  | `RSA_priv k ->
+  | `RSA, k ->
     match decode_priv k with
     | Some (RSA_priv k) ->
       let pub = Nocrypto.Rsa.pub_of_priv k in
       let pem = encode_key (RSA_pub pub) in
-      Ok (`RSA_pub pem)
+      Ok (`RSA, pem)
     | None -> Error "couldn't decode private key"
 
 let primitive_sign priv data =
@@ -70,7 +70,7 @@ let primitive_sign priv data =
   Cstruct.to_string b64
 
 let sign priv data = match priv with
-  | `RSA_priv priv -> match decode_priv priv with
+  | `RSA, priv -> match decode_priv priv with
     | Some priv ->
       let sigval = primitive_sign priv data in
       Ok sigval
@@ -83,4 +83,4 @@ let digest data =
   (`SHA256, Cstruct.to_string b64)
 
 let id = function
-  | `RSA_pub rsa -> "RSA:" ^ snd (digest rsa)
+  | `RSA, rsa -> "RSA:" ^ snd (digest rsa)

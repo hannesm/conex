@@ -22,7 +22,6 @@ val add_id : t -> identifier -> t
 
 val contains : ?queued:bool -> Index.t -> name -> resource -> Wire.t -> bool
 
-
 val authorised : t -> Authorisation.t -> identifier -> bool
 
 val verify : pub -> string -> signature -> (unit, [> verification_error]) result

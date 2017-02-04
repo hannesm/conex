@@ -219,26 +219,6 @@ module Make (L : LOGS) = struct
        (L.debug (fun m -> m "ignoring %s" name) ; Ok ())) >>= fun () ->
     Ok repo
 
-  let verify_patch repo io newio (ids, auths, rels, pkgs) =
-    let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
-    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d pkgs"
-                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
-    (* all public keys of janitors in repo are valid. *)
-    load_janitors io repo >>= fun repo ->
-    let janitor_keys =
-      S.fold (fun id acc ->
-          match IO.read_index io id with
-          | Ok idx -> S.union acc (s_of_list (List.map Conex_nocrypto.id idx.Index.keys))
-          | Error _ -> acc)
-        (match find_team repo "janitors" with None -> S.empty | Some x -> x)
-        S.empty
-    in
-    (* load all those janitors in newrepo which are valid (and verify janitors team) *)
-    let valid _id key = S.mem key janitor_keys in
-    let fresh_repo = repository ~quorum:(quorum repo) ~strict:(strict repo) () in
-    load_janitors ~valid newio fresh_repo >>= fun newrepo ->
-    (* now we do a full verification of the new repository *)
-    foldM (verify_item newio) newrepo (S.elements (IO.items newio)) >>= fun newrepo ->
     (* we could try to be more smart:
        - only check all modified authorisations, releases, packages
        --> but if a team is modified, or an index is modified (add/remove!), we
@@ -266,17 +246,29 @@ module Make (L : LOGS) = struct
        packages/foo/authorisation (maybe empty)
        packages/foo/releases <- empty
 *)
+  let verify_patch repo io newio (ids, auths, rels, pkgs) =
+    let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
+    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d pkgs"
+                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
+    (* all public keys of janitors in repo are valid. *)
+    load_janitors io repo >>= fun repo ->
+    let janitor_keys =
+      S.fold (fun id acc ->
+          match IO.read_index io id with
+          | Ok idx -> S.union acc (s_of_list (List.map Conex_nocrypto.id idx.Index.keys))
+          | Error _ -> acc)
+        (match find_team repo "janitors" with None -> S.empty | Some x -> x)
+        S.empty
+    in
+    (* load all those janitors in newrepo which are valid (and verify janitors team) *)
+    let valid _id key = S.mem key janitor_keys in
+    let fresh_repo = repository ~quorum:(quorum repo) ~strict:(strict repo) () in
+    load_janitors ~valid newio fresh_repo >>= fun newrepo ->
+    (* now we do a full verification of the new repository *)
+    foldM (verify_item newio) newrepo (S.elements (IO.items newio)) >>= fun newrepo ->
 
-  (* foreach changed item, we need to ensure monotonicity (counter incremented):
-     some resources may be removed (read of new is error), or be created (read of old is error)
-
-     there is no need to verify anything again (out of scope to treat the old repo as untrusted)
-
-     error behaviour: use maybe!
- *)
-
+    (* foreach changed item, we need to ensure monotonicity (counter incremented) *)
     let maybe_m = maybe repo pp_m_err () in
-    (* foreach x in changes: monotonicity! *)
     foldM (fun () id ->
         match IO.read_id io id, IO.read_id newio id with
         | Ok (`Id old), Ok (`Id now) -> maybe_m (monoton_index ~old ~now repo)

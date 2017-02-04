@@ -145,7 +145,7 @@ let status _ dry path quorum strict id name no_rec =
 let add_r idx name typ data =
   let counter = Index.next_id idx in
   let encoded = Conex_data.encode data in
-  let size = Uint.of_int (String.length encoded) in
+  let size = Uint.of_int_exn (String.length encoded) in
   let digest = Conex_nocrypto.digest encoded in
   let res = Index.r counter name size typ digest in
   Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;

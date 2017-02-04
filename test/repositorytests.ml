@@ -258,10 +258,10 @@ let checks_r () =
     (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "files"; "patch2"] "p2") ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
-    { Checksum.filename = "bar" ; size = Uint.of_int 3 ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
-    { Checksum.filename = "foo" ; size = Uint.of_int 3 ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
-    { Checksum.filename = "files/patch1" ; size = Uint.of_int 2 ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
-    { Checksum.filename = "files/patch2" ; size = Uint.of_int 2 ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
+    { Checksum.filename = "bar" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
+    { Checksum.filename = "foo" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
+    { Checksum.filename = "files/patch1" ; size = Uint.of_int_exn 2 ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
+    { Checksum.filename = "files/patch2" ; size = Uint.of_int_exn 2 ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
   ]
   in
   let css = Checksum.checksums "foo.0" csums in
@@ -308,7 +308,7 @@ let basic_persistency () =
     (Ok t) (Conex_data.decode (Conex_data.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     M.add "filename" (String "foo")
-      (M.add "size" (Int (Uint.of_int 3))
+      (M.add "size" (Int (Uint.of_int_exn 3))
          (M.add "digest" (List [ String "SHA256" ; String "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" ]) M.empty))
   in
   let css = M.add "name" (String "foo")
@@ -320,8 +320,8 @@ let basic_persistency () =
   let csums = Checksum.checksums "foo" [csum] in
   Alcotest.check (result cs str_err) "can parse checksum"
     (Ok csums) (Checksum.of_wire css) ;
-  let s = List [ Int Uint.zero ; String (sigtype_to_string `RSA_PSS_SHA256) ; String "foobar" ; String "barf" ] in
-  let s' = ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "barf" }, "frab") in
+  let s = List [ Int Uint.zero ; String (sigalg_to_string `RSA_PSS_SHA256) ; String "foobar" ; String "barf" ] in
+  let s' = ({ created = Uint.zero ; sigalg = `RSA_PSS_SHA256 ; signame = "barf" }, "frab") in
   let idx =
     M.add "name" (String "foo")
       (M.add "counter" (Int Uint.zero)
@@ -519,7 +519,7 @@ let r_ok =
 
 let res d =
   let data = Conex_data.encode d in
-  (Uint.of_int (String.length data), Conex_nocrypto.digest data)
+  (Uint.of_int_exn (String.length data), Conex_nocrypto.digest data)
 
 let idx_sign () =
   let r = Conex_repository.repository ~quorum:0 () in
@@ -529,7 +529,7 @@ let idx_sign () =
   Alcotest.check (result r_ok verr) "empty index signed properly (no resources, quorum 0)"
     (Ok (r, [], id)) (Conex_repository.verify_index r idx) ;
   let pubenc = Conex_data.encode (Wire.wire_pub id pub) in
-  let idx = Index.(add_resource idx (r (next_id idx) id (Uint.of_int (String.length pubenc)) `PublicKey (Conex_nocrypto.digest pubenc))) in
+  let idx = Index.(add_resource idx (r (next_id idx) id (Uint.of_int_exn (String.length pubenc)) `PublicKey (Conex_nocrypto.digest pubenc))) in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_ok verr) "signed_idx signed properly (1 resource, quorum 0)"
     (Ok (r, [], id)) (Conex_repository.verify_index r signed_idx) ;
@@ -561,7 +561,7 @@ let idx_sign_verify () =
   let idx' = Index.index ~keys:[pub] ~resources ~signatures id in
   Alcotest.check (result r_ok verr) "idx' not properly signed"
     (Error `NoSignature) (Conex_repository.verify_index r idx') ;
-  let idx'' = Index.index ~keys:[pub] ~queued:resources ~signatures ~counter:Uint.(of_int 1) id in
+  let idx'' = Index.index ~keys:[pub] ~queued:resources ~signatures ~counter:Uint.(of_int_exn 1) id in
   Alcotest.check (result r_ok verr) "idx'' properly signed (queue)"
     (Ok (r, [], id)) (Conex_repository.verify_index r idx'') ;
   let signed_idx' = sign_idx idx' priv in
@@ -577,7 +577,7 @@ let idx_sign_verify () =
                     (Index.r Uint.zero id s `Team d)) ;
     Alcotest.check (result r_fake str_err) "add errors on wrong size"
       (Error "") (Conex_repository.add_valid_resource r id
-                    (Index.r Uint.zero id (Uint.of_int 23) `PublicKey d))
+                    (Index.r Uint.zero id (Uint.of_int_exn 23) `PublicKey d))
   | Error e -> Alcotest.fail e
 
 let idx_s_v_dupl () =
@@ -587,18 +587,18 @@ let idx_s_v_dupl () =
   let s, d = res (Wire.wire_pub id pub) in
   let resources = [
     Index.r Uint.zero id s `PublicKey d ;
-    Index.r (Uint.of_int 1) id s `Team d ;
+    Index.r (Uint.of_int_exn 1) id s `Team d ;
   ] in
   let idx = Index.index ~keys:[pub] ~resources id in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_ok verr) "idx signed properly, but one resource ignored"
     (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx) ;
   let signatures =
-    ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "foobar" }, "foobar") ::
+    ({ created = Uint.zero ; sigalg = `RSA_PSS_SHA256 ; signame = "foobar" }, "foobar") ::
     signed_idx.Index.signatures @
-    [ ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "foobar" }, "foobar") ]
+    [ ({ created = Uint.zero ; sigalg = `RSA_PSS_SHA256 ; signame = "foobar" }, "foobar") ]
   in
-  let signed_idx = Index.index ~keys:[pub] ~counter:(Uint.of_int 1) ~resources ~signatures id in
+  let signed_idx = Index.index ~keys:[pub] ~counter:(Uint.of_int_exn 1) ~resources ~signatures id in
   Alcotest.check (result r_ok verr) "idx signed properly (second sig), but one resource ignored"
     (Ok (r, [""], id)) (Conex_repository.verify_index r signed_idx)
 
@@ -701,7 +701,7 @@ let no_janitor () =
     let s, d = res (Wire.wire_pub id pub)
     and s', d' = res (Wire.wire_pub id' pub)
     in
-    [ Index.r Uint.zero id s `PublicKey d ; Index.r (Uint.of_int 1) id' s' `PublicKey d' ]
+    [ Index.r Uint.zero id s `PublicKey d ; Index.r (Uint.of_int_exn 1) id' s' `PublicKey d' ]
   in
   let r = add_rs r jid resources in
   let r = add_rs r id resources in
@@ -819,7 +819,7 @@ let team_self_signed () =
     let s, d = res (Team.wire team)
     and s', d' = res (Wire.wire_pub id pub)
     in
-    [ Index.r Uint.zero pname s `Team d ; Index.r (Uint.of_int 1) id s' `PublicKey d' ]
+    [ Index.r Uint.zero pname s `Team d ; Index.r (Uint.of_int_exn 1) id s' `PublicKey d' ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result t_ok a_err) "team missing quorum"
@@ -961,7 +961,7 @@ let auth_self_signed () =
     let s, d = res (Authorisation.wire auth)
     and s', d' = res (Wire.wire_pub id pub)
     in
-    [ Index.r Uint.zero pname s `Authorisation d ; Index.r (Uint.of_int 1) id s' `PublicKey d' ]
+    [ Index.r Uint.zero pname s `Authorisation d ; Index.r (Uint.of_int_exn 1) id s' `PublicKey d' ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result a_ok a_err) "auth missing quorum"
@@ -1292,7 +1292,7 @@ let cs_base () =
     let s, d = res (Releases.wire rel)
     and s', d' = res (Checksum.wire cs)
     in
-    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int_exn 1) v s' `Checksums d' ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
@@ -1324,7 +1324,7 @@ let cs_quorum () =
     let s, d = res (Releases.wire rel)
     and s', d' = res (Checksum.wire cs)
     in
-    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int_exn 1) v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -1354,18 +1354,18 @@ let cs_bad () =
     (Ok ()) (io.write ["packages"; pname; v; "files"; "patch2"] "p2") ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
-    { Checksum.filename = "bar" ; size = Uint.of_int 3 ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
-    { Checksum.filename = "foo" ; size = Uint.of_int 3 ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
-    { Checksum.filename = "files/patch1" ; size = Uint.of_int 2 ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
-    { Checksum.filename = "files/patch2" ; size = Uint.of_int 2 ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
+    { Checksum.filename = "bar" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
+    { Checksum.filename = "foo" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
+    { Checksum.filename = "files/patch1" ; size = Uint.of_int_exn 2 ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
+    { Checksum.filename = "files/patch2" ; size = Uint.of_int_exn 2 ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
   ]
   in
   let css = Checksum.checksums v csums in
   Alcotest.check (result cs ch_err) "checksum computation works"
     (Ok css) (Conex_io.compute_checksum io "foo.0") ;
   let css' = Checksum.checksums v (List.tl csums) in
-  let css'' = Checksum.checksums v ({ Checksum.filename = "foobar" ; size = Uint.of_int 3 ; digest = (`SHA256, "") } :: csums) in
-  let other = { Checksum.filename = "bar" ; size = Uint.of_int 3 ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") } in
+  let css'' = Checksum.checksums v ({ Checksum.filename = "foobar" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "") } :: csums) in
+  let other = { Checksum.filename = "bar" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") } in
   let css''' = Checksum.checksums v (other :: List.tl csums) in
   let id = "id" in
   let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
@@ -1378,10 +1378,10 @@ let cs_bad () =
     and s4, d4 = res (Checksum.wire css''')
     in
     [ Index.r Uint.zero pname s `Releases d ;
-      Index.r (Uint.of_int 1) v s1 `Checksums d1 ;
-      Index.r (Uint.of_int 2) v s2 `Checksums d2 ;
-      Index.r (Uint.of_int 3) v s3 `Checksums d3 ;
-      Index.r (Uint.of_int 4) v s4 `Checksums d4 ]
+      Index.r (Uint.of_int_exn 1) v s1 `Checksums d1 ;
+      Index.r (Uint.of_int_exn 2) v s2 `Checksums d2 ;
+      Index.r (Uint.of_int_exn 3) v s3 `Checksums d3 ;
+      Index.r (Uint.of_int_exn 4) v s4 `Checksums d4 ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -1416,7 +1416,7 @@ let cs_bad_name () =
     let s, d = res (Releases.wire rel)
     and s', d' = res (Checksum.wire cs)
     in
-    [ Index.r Uint.zero reln s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
+    [ Index.r Uint.zero reln s `Releases d ; Index.r (Uint.of_int_exn 1) v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -1439,7 +1439,7 @@ let cs_bad_name2 () =
     let s, d = res (Releases.wire rel)
     and s', d' = res (Checksum.wire cs)
     in
-    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int_exn 1) v s' `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -1461,7 +1461,7 @@ let cs_wrong_name () =
     let s, d = res (Releases.wire rel)
     and s', d' = res (Checksum.wire cs)
     in
-    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) pname s' `Checksums d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int_exn 1) pname s' `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in
@@ -1483,7 +1483,7 @@ let cs_wrong_resource () =
     let s, d = res (Releases.wire rel)
     and s', d' = res (Checksum.wire cs)
     in
-    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int 1) v s' `Releases d' ]
+    [ Index.r Uint.zero pname s `Releases d ; Index.r (Uint.of_int_exn 1) v s' `Releases d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.team ~members:(S.singleton jid) "janitors") in

@@ -105,7 +105,7 @@ let verify_resource repo owners name resource data =
     if M.mem csum_str repo.valid then
       M.find csum_str repo.valid
     else
-      (name, Uint.of_int (String.length data), resource, S.empty)
+      (name, Uint.of_int_exn (String.length data), resource, S.empty)
   in
   let janitors = match find_team repo "janitors" with None -> S.empty | Some s -> s in
   let js = S.inter janitors ids in
@@ -147,7 +147,7 @@ let verify_signatures idx =
 let contains ?(queued = false) idx name typ data =
   let encoded = Conex_data.encode data in
   let digest = Conex_nocrypto.digest encoded in
-  let r = Index.r Uint.zero name (Uint.of_int (String.length encoded)) typ digest in
+  let r = Index.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
   let xs = if queued then idx.Index.resources @ idx.Index.queued else idx.Index.resources in
   List.exists (Index.r_equal r) xs
 

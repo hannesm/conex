@@ -11,9 +11,10 @@ module Ui = struct
     end in
     (module M: Alcotest.TESTABLE with type t = M.t)
 
-  let max = Uint.of_string "FFFFFFFFFFFFFFFF"
-  let max_int64 = Uint.of_string "7FFFFFFFFFFFFFFF"
-  let min_int64 = Uint.of_string "8000000000000000"
+  let the x = match Uint.of_string x with Some x -> x | None -> Alcotest.fail "cannot parse"
+  let max = the "FFFFFFFFFFFFFFFF"
+  let max_int64 = the "7FFFFFFFFFFFFFFF"
+  let min_int64 = the "8000000000000000"
 
   let compare_initial () =
     Alcotest.(check int "compare 0 0 is 0"
@@ -63,12 +64,12 @@ module Ui = struct
     for _i = 0 to n do
       let r = r () in
       Alcotest.(check string "to_of_string is identity"
-                  (trim0 r) Uint.(to_string (of_string r)))
+                  (trim0 r) Uint.(to_string (the r)))
     done
 
   let compare_random n () =
     for _i = 0 to n do
-      let r = Uint.of_string (r ()) in
+      let r = the (r ()) in
       let r = if r = Uint.zero then snd (Uint.succ r) else r in
       Alcotest.(check int ("compare " ^ Uint.to_string r ^ " 0 is 1")
                   1 Uint.(compare r zero)) ;
@@ -106,7 +107,7 @@ let raw_sign p d = match Conex_nocrypto.sign p d with
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub () in
-  let d = extend_sig {created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = pid} pid in
+  let d = extend_sig {created = Uint.zero ; sigalg = `RSA_PSS_SHA256 ; signame = pid} pid in
   let sigval = raw_sign p d in
   Alcotest.check (result Alcotest.unit verr)
     "signature is good" (Ok ())
@@ -145,24 +146,24 @@ let sign_single () =
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (empty)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA_pub "") raw sv) ;
-  let pub = match pub with `RSA_pub p -> p in
+    (Conex_nocrypto.verify (`RSA, "") raw sv) ;
+  let pub = snd pub in
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (prepended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA_pub ("\000" ^ pub)) raw sv) ;
+    (Conex_nocrypto.verify (`RSA, ("\000" ^ pub)) raw sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (prepended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA_pub ("abcd" ^ pub)) raw sv) ;
+    (Conex_nocrypto.verify (`RSA, ("abcd" ^ pub)) raw sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (appended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA_pub (pub ^ "abcd")) raw sv) ;
+    (Conex_nocrypto.verify (`RSA, (pub ^ "abcd")) raw sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (appended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA_pub (pub ^ "\000")) raw sv)
+    (Conex_nocrypto.verify (`RSA, (pub ^ "\000")) raw sv)
 
 let bad_priv () =
   let idx = Index.index "a" in
@@ -171,17 +172,18 @@ let bad_priv () =
   Alcotest.check (result Alcotest.string Alcotest.string)
     "sign with broken key is broken"
     (Error "couldn't decode private key")
-    (Conex_nocrypto.sign (`RSA_priv "") raw) ;
-  let get_pub p = match Conex_nocrypto.pub_of_priv (`RSA_priv p) with
-    | Ok (`RSA_pub p) -> Ok p
+    (Conex_nocrypto.sign (`RSA, "") raw) ;
+  let get_pub p = match Conex_nocrypto.pub_of_priv (`RSA, p) with
+    | Ok (`RSA, p) -> Ok p
     | Error e -> Error e
   in
   Alcotest.check (result Alcotest.string Alcotest.string)
     "pub_of_priv with broken key is broken"
     (Error "couldn't decode private key")
     (get_pub "") ;
-  let mypriv = match priv with `RSA_priv p -> p in
-  let mypub = match pub with `RSA_pub p -> p in
+  let mypriv = snd priv
+  and mypub = snd pub
+  in
   Alcotest.check (result Alcotest.string Alcotest.string)
     "pub_of_priv works fine"
     (Ok mypub)
@@ -203,7 +205,7 @@ let verify_fail () =
     (Error `InvalidSignature)
     (Conex_repository.verify k
        (Conex_data.encode (Index.wire_resources signed))
-       ({ created = Uint.zero ; sigtyp = `RSA_PSS_SHA256 ; signame = "foo"}, sigval)) ;
+       ({ created = Uint.zero ; sigalg = `RSA_PSS_SHA256 ; signame = "foo"}, sigval)) ;
   let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 ())) with
     | Ok p -> p
     | Error _ -> Alcotest.fail "couldn't pub_of_priv"
@@ -240,7 +242,7 @@ let idx_sign () =
     (Conex_repository.verify k
        (Conex_data.encode (Index.wire_resources signed))
        (ts, sigval)) ;
-  let r = Index.r (Index.next_id idx) "foo" (Uint.of_int 4) `PublicKey (`SHA256, "2342") in
+  let r = Index.r (Index.next_id idx) "foo" (Uint.of_int_exn 4) `PublicKey (`SHA256, "2342") in
   let idx' = Index.add_resource signed r in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Ok ())
@@ -293,7 +295,7 @@ let idx_sign_bad2 () =
     | [x] -> x
     | _ -> assert false
   in
-  let idx' = Index.index ~counter:(Uint.of_int 23) "b" in
+  let idx' = Index.index ~counter:(Uint.of_int_exn 23) "b" in
   let raw = Conex_data.encode (Index.wire_resources idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong data)"
     (Error `InvalidSignature)

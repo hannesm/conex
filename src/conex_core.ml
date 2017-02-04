@@ -23,19 +23,22 @@ module Uint = struct
 
   let to_string s = Printf.sprintf "%LX" s
 
-  let of_string s = Scanf.sscanf s "%LX" (fun x -> x)
+  let of_string s =
+    try Some (Int64.of_string ("0x" ^ s)) with Failure _ -> None
 
   let of_float f =
     if f < 0. then
-      invalid_arg "reading floating point smaller 0 not supported"
+      None
     else
-      Int64.of_float f
+      try Some (Int64.of_float f) with Failure _ -> None
 
-  let of_int i =
+  let of_int_exn i =
     if i < 0 then
-      invalid_arg "of_int with < 0 not supported"
+      invalid_arg "cannot convert integers smaller than 0"
     else
       Int64.of_int i
+
+  let of_int i = try Some (of_int_exn i) with Failure _ -> None
 end
 
 module S = Set.Make(String)
@@ -43,6 +46,8 @@ module S = Set.Make(String)
 let s_of_list es = List.fold_left (fun s v -> S.add v s) S.empty es
 
 module M = Map.Make(String)
+
+type 'a fmt = Format.formatter -> 'a -> unit
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_list pe ppf xs =
@@ -75,28 +80,28 @@ let path_to_string path =
 
 let string_to_path str = String.cuts '/' str
 
-type priv = [ `RSA_priv of string ]
+type keyalg = [ `RSA ]
 
-type pub = [ `RSA_pub of string ]
+let keyalg_to_string = function `RSA -> "RSA"
+let string_to_keyalg = function "RSA" -> Some `RSA | _ -> None
 
-let pub_equal (`RSA_pub a) (`RSA_pub b) = String.compare a b = 0
+type priv = keyalg * string
+
+type pub = keyalg * string
+
+let pub_equal a b = match a, b with
+  | (`RSA, a), (`RSA, b) -> String.compare a b = 0
 (*BISECT-IGNORE-BEGIN*)
-let pp_pub ppf (`RSA_pub x) = Format.pp_print_int ppf (String.length x)
+let pp_pub ppf (a, x) =
+  Format.fprintf ppf "%s pub: %d" (keyalg_to_string a) (String.length x)
 (*BISECT-IGNORE-END*)
 
-let pubtype_to_string = function
-  | `RSA_pub _ -> "RSA"
+type sigalg = [ `RSA_PSS_SHA256 ]
 
-let string_to_pubtype = function
-  | "RSA" -> Some (`RSA_pub "")
-  | _ -> None
-
-type sigtype = [ `RSA_PSS_SHA256 ]
-
-let sigtype_to_string = function
+let sigalg_to_string = function
   | `RSA_PSS_SHA256 -> "RSA-PSS-SHA256"
 
-let string_to_sigtype = function
+let string_to_sigalg = function
   | "RSA-PSS-SHA256" -> Some `RSA_PSS_SHA256
   | _ -> None
 
@@ -119,28 +124,28 @@ let id_equal a b = String.compare_insensitive a b
 
 type sig_hdr = {
   created : Uint.t ;
-  sigtyp : sigtype ;
+  sigalg : sigalg ;
   signame : identifier ;
 }
 let extend_sig hdr data =
   String.concat "M  A   R   K"
-    [ Uint.to_string hdr.created ; sigtype_to_string hdr.sigtyp ; hdr.signame ; data ]
+    [ Uint.to_string hdr.created ; sigalg_to_string hdr.sigalg ; hdr.signame ; data ]
 
 type signature = sig_hdr * string
 
 let pp_signature ppf (hdr, data) =
   Format.fprintf ppf "signature %s (created %s) type %s: %d bytes"
-    hdr.signame (Uint.to_string hdr.created) (sigtype_to_string hdr.sigtyp)
+    hdr.signame (Uint.to_string hdr.created) (sigalg_to_string hdr.sigalg)
     (String.length data)
 
-type digest_typ = [ `SHA256 ]
-let digest_typ_to_string = function `SHA256 -> "SHA256"
-let string_to_digest_typ = function
+type digestalg = [ `SHA256 ]
+let digestalg_to_string = function `SHA256 -> "SHA256"
+let string_to_digestalg = function
   | "SHA256" -> Some `SHA256
   | _ -> None
 
-type digest = digest_typ * string
-let digest_to_string (a, b) = digest_typ_to_string a ^ b
+type digest = digestalg * string
+let digest_to_string (a, b) = digestalg_to_string a ^ b
 let digest_eq (ta, a) (tb, b) = match ta, tb with
   | `SHA256, `SHA256 -> String.compare a b = 0
 

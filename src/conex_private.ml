@@ -36,10 +36,13 @@ let sign_index idx priv =
   and created = Uint.of_float (Unix.time ())
   and signame = idx.Index.name
   in
-  let hdr = { created ; sigtyp = `RSA_PSS_SHA256 ; signame } in
-  let data = extend_sig hdr data in
-  Conex_nocrypto.sign priv data >>= fun signature ->
-  Ok (Index.add_sig idx (hdr, signature))
+  match created with
+  | None -> Error "couldn't convert timestamp to uint"
+  | Some created ->
+    let hdr = { created ; sigalg = `RSA_PSS_SHA256 ; signame } in
+    let data = extend_sig hdr data in
+    Conex_nocrypto.sign priv data >>= fun signature ->
+    Ok (Index.add_sig idx (hdr, signature))
 
 let write_private_key prov id key =
   let base = prov.Conex_provider.name in
@@ -65,7 +68,7 @@ let write_private_key prov id key =
    else Ok ()) >>= fun () ->
   match Conex_persistency.file_type private_dir with
   | Ok Directory ->
-    let data = match key with `RSA_priv k -> k in
+    let data = match key with `RSA, k -> k in
     Conex_persistency.write_file ~mode:0o400 filename data
   | _ -> Error (private_dir ^ " is not a directory!")
 
@@ -86,7 +89,7 @@ let read_private_key ?id prov =
     if Conex_persistency.exists fn then
       match Conex_persistency.read_file fn with
       | Error e -> Error (`Msg e)
-      | Ok key -> Ok (id, `RSA_priv key)
+      | Ok key -> Ok (id, (`RSA, key))
     else
       Error (`NotFound id)
   in

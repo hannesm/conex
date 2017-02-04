@@ -88,39 +88,38 @@ module Wire = struct
   let digest data =
     list data >>= function
     | [ String typ ; String data ] ->
-      (match string_to_digest_typ typ with
+      (match string_to_digestalg typ with
        | Some `SHA256 when String.length data = 44 -> Ok (`SHA256, data)
        | Some `SHA256 -> Error "SHA256 digest of bad length"
        | None -> Error ("unknown digest typ " ^ typ))
     | _ -> Error "couldn't parse digest"
 
   let wire_digest (typ, data) =
-    List [ String (digest_typ_to_string typ) ; String data ]
+    List [ String (digestalg_to_string typ) ; String data ]
 
   let signature_of_wire data =
     list data >>= function
     | [ Int created ; String typ ; String signame ; String d ] ->
-      (match string_to_sigtype typ with
+      (match string_to_sigalg typ with
        (* TODO: lenght check for `d`? *)
-       | Some `RSA_PSS_SHA256 -> Ok ({ created ; sigtyp = `RSA_PSS_SHA256 ; signame }, d)
+       | Some `RSA_PSS_SHA256 -> Ok ({ created ; sigalg = `RSA_PSS_SHA256 ; signame }, d)
        | None -> Error "couldn't parse signature type")
     | _ -> Error "couldn't parse signature"
 
   let wire_signature (hdr, s) =
-    [ Int hdr.created ; String (sigtype_to_string hdr.sigtyp) ; String hdr.signame ; String s ]
+    [ Int hdr.created ; String (sigalg_to_string hdr.sigalg) ; String hdr.signame ; String s ]
 
   let key_of_wire data =
     list data >>= function
     | [ String typ ; String data ] ->
-      (match string_to_pubtype typ with
-       | Some (`RSA_pub _) -> Ok (`RSA_pub data)
+      (match string_to_keyalg typ with
+       | Some t -> Ok (t, data)
        | None -> Error "unknown key type")
     | _ -> Error "unknown key"
 
-  let wire_key k =
-    let typ = pubtype_to_string k in
-    let data = match k with `RSA_pub k -> String k in
-    List [ String typ ; data ]
+  let wire_key (t,k) =
+    let typ = keyalg_to_string t in
+    List [ String typ ; String k ]
 
   (* this is exposed *)
   let wire_pub id k =
@@ -283,7 +282,7 @@ module Checksum = struct
     name_equal a.filename b.filename && a.size = b.size && digest_eq a.digest b.digest
 
   let checksum filename data =
-    let size = Uint.of_int (String.length data)
+    let size = Uint.of_int_exn (String.length data)
     and digest = Conex_nocrypto.digest data
     in
     { filename ; size ; digest }
