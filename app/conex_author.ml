@@ -69,8 +69,7 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let load_ids io r ids =
-  foldM (C.load_id io) r (S.elements ids)
+let load_ids io r ids = foldS (C.load_id io) r ids
 
 let self io id =
   R.error_to_msg ~pp_error:Conex_sign.pp_err

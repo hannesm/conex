@@ -67,7 +67,7 @@ module Make (L : LOGS) = struct
           | `Id _, repo -> Ok repo
           | `Team t', _ -> Error ("team " ^ t'.Team.name ^ " is a member of " ^ t.Team.name ^ ", another team")
         in
-        foldM load_id repo (S.elements t.Team.members)
+        foldS load_id repo t.Team.members
       | `Nothing, repo -> Ok repo
 
   let load_janitors ?(valid = fun _ _ -> true) io repo =
@@ -77,12 +77,12 @@ module Make (L : LOGS) = struct
         (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok repo)
     | Ok team ->
       L.debug (fun m -> m "%a" Team.pp_team team) ;
-      foldM (fun acc id ->
+      foldS (fun acc id ->
           maybe repo IO.pp_r_err acc
             (IO.read_index io id >>= fun idx ->
              L.debug (fun m -> m "%a" Index.pp_index idx) ;
              Ok (idx :: acc)))
-        [] (S.elements team.Team.members) >>= fun idxs ->
+        [] team.Team.members >>= fun idxs ->
       (* for each, validate public key(s): signs the index, resource is contained *)
       let valid_idxs =
         List.fold_left (fun acc idx ->
@@ -188,7 +188,7 @@ module Make (L : LOGS) = struct
           Ok true) >>= (function
            | false -> Ok (auth, repo)
            | true ->
-             foldM (load_id io) repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
+             foldS (load_id io) repo auth.Authorisation.authorised >>= fun repo ->
              Ok (auth, repo))) >>= fun (auth, repo) ->
     (if authorised auth.Authorisation.authorised then
        (match IO.read_releases io name with
@@ -246,9 +246,9 @@ module Make (L : LOGS) = struct
        packages/foo/releases <- empty
 *)
   let verify_patch repo io newio (ids, auths, rels, pkgs) =
-    let packages = M.fold (fun _name versions acc -> S.elements versions @ acc) pkgs [] in
+    let packages = M.fold (fun _name versions acc -> S.union versions acc) pkgs S.empty in
     L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d pkgs"
-                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (List.length packages)) ;
+                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (S.cardinal packages)) ;
     (* all public keys of janitors in repo are valid. *)
     load_janitors io repo >>= fun repo ->
     let janitor_keys =
@@ -265,11 +265,11 @@ module Make (L : LOGS) = struct
     load_janitors ~valid newio fresh_repo >>= fun newrepo ->
     (* now we do a full verification of the new repository *)
     IO.items newio >>= fun items ->
-    foldM (verify_item newio) newrepo (S.elements items) >>= fun newrepo ->
+    foldS (verify_item newio) newrepo items >>= fun newrepo ->
 
     (* foreach changed item, we need to ensure monotonicity (counter incremented) *)
     let maybe_m = maybe repo pp_m_err () in
-    foldM (fun () id ->
+    foldS (fun () id ->
         match IO.read_id io id, IO.read_id newio id with
         | Ok (`Id old), Ok (`Id now) -> maybe_m (monoton_index ~old ~now repo)
         | Ok (`Team old), Ok (`Team now) -> maybe_m (monoton_team ~old ~now repo)
@@ -280,22 +280,22 @@ module Make (L : LOGS) = struct
         | Error _, Ok (`Id now) -> maybe_m (monoton_index ~now repo)
         | Error _, Ok (`Team now) -> maybe_m (monoton_team ~now repo)
         | Error _, Error _ -> maybe_m (monoton_index repo))
-      () (S.elements ids) >>= fun () ->
-    foldM (fun () id ->
+      () ids >>= fun () ->
+    foldS (fun () id ->
         match IO.read_authorisation io id, IO.read_authorisation newio id with
         | Ok old, Ok now -> maybe_m (monoton_authorisation ~old ~now repo)
         | Ok old, Error _ -> maybe_m (monoton_authorisation ~old repo)
         | Error _, Ok now -> maybe_m (monoton_authorisation ~now repo)
         | Error _, Error _ -> maybe_m (monoton_authorisation repo))
-      () (S.elements auths) >>= fun () ->
-    foldM (fun () id ->
+      () auths >>= fun () ->
+    foldS (fun () id ->
         match IO.read_releases io id, IO.read_releases newio id with
         | Ok old, Ok now -> maybe_m (monoton_releases ~old ~now repo)
         | Ok old, Error _ -> maybe_m (monoton_releases ~old repo)
         | Error _, Ok now -> maybe_m (monoton_releases ~now repo)
         | Error _, Error _ -> maybe_m (monoton_releases repo))
-      () (S.elements rels) >>= fun () ->
-    foldM (fun () id ->
+      () rels >>= fun () ->
+    foldS (fun () id ->
         match IO.read_checksum io id, IO.read_checksum newio id with
         | Ok old, Ok now -> maybe_m (monoton_checksum ~old ~now repo)
         | Ok old, Error _ -> maybe_m (monoton_checksum ~old repo)
