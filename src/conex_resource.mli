@@ -84,7 +84,6 @@ module Checksum : sig
   }
 
   val pp_checksum : Format.formatter -> c -> unit
-  val checksum : string -> string -> c
   val checksum_equal : c -> c -> bool
 
   type checksum_map

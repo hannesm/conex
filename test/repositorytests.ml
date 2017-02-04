@@ -5,6 +5,10 @@ open Conex_opam_encoding
 
 open Common
 
+let res d =
+  let data = encode d in
+  (Uint.of_int_exn (String.length data), Conex_nocrypto.digest data)
+
 module Mem = struct
   open Conex_provider
   type tree = Leaf of string * string | Node of string * tree list
@@ -309,15 +313,19 @@ let basic_persistency () =
     (Ok t) (decode (encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     M.add "filename" (String "foo")
-      (M.add "size" (Int (Uint.of_int_exn 3))
-         (M.add "digest" (List [ String "SHA256" ; String "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=" ]) M.empty))
+      (M.add "size" (Int (Uint.of_int_exn 0x64))
+         (M.add "digest" (List [ String "SHA256" ; String "aRmSN5vzKkBBTNT85yU4sKPSAOqTzDfqz0PC03BqSrk=" ])
+            M.empty))
   in
   let css = M.add "name" (String "foo")
       (M.add "counter" (Int Uint.zero)
          (M.add "version" (Int Uint.zero)
             (M.add "files" (List [Map checksum]) M.empty)))
   in
-  let csum = Checksum.checksum "foo" "bar" in
+  let csum =
+    let size, digest = res Index.(wire (index "bar")) in
+    { Checksum.filename = "foo" ; size ; digest }
+  in
   let csums = Checksum.checksums "foo" [csum] in
   Alcotest.check (result cs str_err) "can parse checksum"
     (Ok csums) (Checksum.of_wire css) ;
@@ -517,10 +525,6 @@ let r_ok =
     let equal (_, w, id) (_, w', id') = id_equal id id' && List.length w = List.length w'
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
-
-let res d =
-  let data = encode d in
-  (Uint.of_int_exn (String.length data), Conex_nocrypto.digest data)
 
 let idx_sign () =
   let r = Conex_repository.repository ~quorum:0 () in

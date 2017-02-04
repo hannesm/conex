@@ -33,6 +33,12 @@ let checksum_files t pv =
     Ok (List.fold_left (fun acc x -> collect1 [] [] x @ acc) [] data)
 
 let compute_checksum t name =
+  let checksum filename data =
+    let size = Uint.of_int_exn (String.length data)
+    and digest = Conex_nocrypto.digest data
+    in
+    { Checksum.filename ; size ; digest }
+  in
   match t.file_type (checksum_dir name) with
   | Error _ -> Error (`FileNotFound name)
   | Ok File -> Error (`NotADirectory name)
@@ -43,7 +49,7 @@ let compute_checksum t name =
         match t.read (d@f) with
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
         | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
-    let r = List.(map2 Checksum.checksum (map path_to_string fs) (rev ds)) in
+    let r = List.(map2 checksum (map path_to_string fs) (rev ds)) in
     Ok (Checksum.checksums name r)
 
 let read_dir f t path =

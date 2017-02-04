@@ -89,8 +89,7 @@ module Wire = struct
     list data >>= function
     | [ String typ ; String data ] ->
       (match string_to_digestalg typ with
-       | Some `SHA256 when String.length data = 44 -> Ok (`SHA256, data)
-       | Some `SHA256 -> Error "SHA256 digest of bad length"
+       | Some `SHA256 -> Ok (`SHA256, data)
        | None -> Error ("unknown digest typ " ^ typ))
     | _ -> Error "couldn't parse digest"
 
@@ -113,8 +112,8 @@ module Wire = struct
     list data >>= function
     | [ String typ ; String data ] ->
       (match string_to_keyalg typ with
-       | Some t -> Ok (t, data)
-       | None -> Error "unknown key type")
+       | Some `RSA -> Ok (`RSA, data)
+       | _ -> Error "unknown key type")
     | _ -> Error "unknown key"
 
   let wire_key (t,k) =
@@ -281,12 +280,6 @@ module Checksum = struct
 
   let checksum_equal a b =
     name_equal a.filename b.filename && a.size = b.size && digest_eq a.digest b.digest
-
-  let checksum filename data =
-    let size = Uint.of_int_exn (String.length data)
-    and digest = Conex_nocrypto.digest data
-    in
-    { filename ; size ; digest }
 
   let checksum_of_wire data =
     let open Wire in
