@@ -2,6 +2,7 @@ open Conex_result
 open Conex_core
 open Conex_resource
 open Conex_utils
+open Conex_opam_encoding
 
 type valid_resources = (name * Uint.t * resource * S.t) M.t
 
@@ -125,13 +126,13 @@ let verify_resource repo owners name resource data =
   | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
 
 let verify_key repo id key =
-  verify_resource repo (S.singleton id) id `PublicKey (Conex_data.encode (Wire.wire_pub id key)) >>= function
+  verify_resource repo (S.singleton id) id `PublicKey (encode (Wire.wire_pub id key)) >>= function
   | `Both b -> Ok (`Both b)
   | `Quorum _ -> Error (`MissingSignature id)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `PublicKey, js))
 
 let verify_signatures idx =
-  let tbv = Conex_data.encode (Index.wire_resources idx) in
+  let tbv = encode (Index.wire_resources idx) in
   List.fold_left (fun (good, warn) k ->
       match List.fold_left (fun r s ->
           match r, verify k tbv s with
@@ -145,7 +146,7 @@ let verify_signatures idx =
     ([], []) idx.Index.keys
 
 let contains ?(queued = false) idx name typ data =
-  let encoded = Conex_data.encode data in
+  let encoded = encode data in
   let digest = Conex_nocrypto.digest encoded in
   let r = Index.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
   let xs = if queued then idx.Index.resources @ idx.Index.queued else idx.Index.resources in
@@ -176,7 +177,7 @@ let verify_index repo idx =
   in
   match valid_keys, idx.Index.resources with
   | [], [] ->
-    begin match verify_resource repo S.empty id `Index (Conex_data.encode (Index.wire idx)) with
+    begin match verify_resource repo S.empty id `Index (encode (Index.wire idx)) with
       | Ok _ -> Ok (add_id repo id, [], id)
       | Error _ -> Error `NoSignature
     end
@@ -199,7 +200,7 @@ let verify_index repo idx =
 
 let verify_team repo team =
   let id = team.Team.name in
-  match verify_resource repo S.empty id `Team (Conex_data.encode (Team.wire team)) with
+  match verify_resource repo S.empty id `Team (encode (Team.wire team)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (add_team repo team, `Quorum js)
@@ -209,7 +210,7 @@ let verify_team repo team =
 
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
-  match verify_resource repo S.empty name `Authorisation (Conex_data.encode (Authorisation.wire auth)) with
+  match verify_resource repo S.empty name `Authorisation (encode (Authorisation.wire auth)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
   | Error e -> Error e
   | Ok (`Quorum js) -> Ok (`Quorum js)
@@ -232,7 +233,7 @@ let ensure_releases rel disk =
 let verify_releases repo ?on_disk a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (Conex_data.encode (Releases.wire r)) >>= fun res ->
+  verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (encode (Releases.wire r)) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
@@ -250,7 +251,7 @@ let verify_checksum repo ?on_disk a r cs =
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
   guard (S.mem cs.Checksum.name r.Releases.releases)
     (`NotInReleases (cs.Checksum.name, r.Releases.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (Conex_data.encode (Checksum.wire cs)) >>= fun res ->
+  verify_resource repo a.Authorisation.authorised cs.Checksum.name `Checksums (encode (Checksum.wire cs)) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)

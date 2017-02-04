@@ -32,7 +32,7 @@ let private_key_path path id =
 
 let sign_index idx priv =
   let idx, _overflow = Index.prep_sig idx in
-  let data = Conex_data.encode (Index.wire_resources idx)
+  let data = Conex_opam_encoding.encode (Index.wire_resources idx)
   and created = Uint.of_float (Unix.time ())
   and signame = idx.Index.name
   in

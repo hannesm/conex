@@ -176,7 +176,7 @@ module PR = struct
     let stuff =
       M.fold (fun pn _pvs (empty, violation, teams) ->
           if Conex_persistency.exists
-              (Filename.concat base (String.concat ~sep:"/" (Conex_opam_layout.authorisation_path pn)))
+              (Filename.concat base (String.concat ~sep:"/" (Conex_opam_repository_layout.authorisation_path pn)))
           then
             let auth = M.find pn authorised in
             let authorised = auth.Authorisation.authorised in

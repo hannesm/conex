@@ -101,7 +101,7 @@ module Wire = struct
     list data >>= function
     | [ Int created ; String typ ; String signame ; String d ] ->
       (match string_to_sigalg typ with
-       (* TODO: lenght check for `d`? *)
+       (* TODO: length check for `d`? *)
        | Some `RSA_PSS_SHA256 -> Ok ({ created ; sigalg = `RSA_PSS_SHA256 ; signame }, d)
        | None -> Error "couldn't parse signature type")
     | _ -> Error "couldn't parse signature"
@@ -224,7 +224,8 @@ module Releases = struct
   }
 
   let releases ?(counter = Uint.zero) ?(releases = S.empty) name =
-    let is_release a = match Conex_opam_layout.authorisation_of_item a with
+    (* TODO: this feels wrong here -- rather do it in verify (it's the only resource constructur which may fail) *)
+    let is_release a = match Conex_opam_repository_layout.authorisation_of_item a with
       | Some x -> name_equal name x
       | _ -> false
     in

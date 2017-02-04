@@ -119,6 +119,6 @@ let verr =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
-  match Conex_private.sign_index idx p with
+  match Conex_sign.sign_index idx p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

@@ -135,7 +135,7 @@ let patch filedata diff =
 
 let diffs_to_components diffs =
   List.fold_left (fun (ids, auths, rels, pkgs) diff ->
-      match Conex_opam_layout.categorise (string_to_path (file diff)) with
+      match Conex_opam_repository_layout.categorise (string_to_path (file diff)) with
       | `Id id -> S.add id ids, auths, rels, pkgs
       | `Authorisation id -> ids, S.add id auths, rels, pkgs
       | `Releases id -> ids, auths, S.add id rels, pkgs

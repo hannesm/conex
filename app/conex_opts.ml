@@ -5,7 +5,7 @@ let docs = "COMMON OPTIONS"
 
 let id_c =
   let parse s =
-    if Conex_opam_layout.valid_id s then
+    if Conex_opam_repository_layout.valid_id s then
       `Ok s
     else
       `Error "invalid identifier (valid: A-Za-z0-9)"
@@ -14,11 +14,11 @@ let id_c =
 
 let name_c =
   let parse s =
-    let pn = match Conex_opam_layout.authorisation_of_item s with
+    let pn = match Conex_opam_repository_layout.authorisation_of_item s with
       | None -> s
       | Some x -> x
     in
-    if Conex_opam_layout.valid_name pn then
+    if Conex_opam_repository_layout.valid_name pn then
       `Ok s
     else
       `Error "invalid package name (valid: A-Za-z0-9-_)"

@@ -1,12 +1,12 @@
 Conex_api
 Conex_core
-Conex_data
 Conex_diff
 Conex_io
 Conex_nocrypto
-Conex_opam_layout
+Conex_opam_encoding
+Conex_opam_repository_layout
 Conex_persistency
-Conex_private
 Conex_provider
 Conex_repository
 Conex_resource
+Conex_sign

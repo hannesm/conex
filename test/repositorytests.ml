@@ -1,6 +1,7 @@
 open Conex_result
 open Conex_core
 open Conex_resource
+open Conex_opam_encoding
 
 open Common
 
@@ -305,7 +306,7 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "could unparse/parse team"
     (Ok t) (Team.of_wire (Team.wire t)) ;
   Alcotest.check (result team str_err) "could unparse/parse team"
-    (Ok t) (Conex_data.decode (Conex_data.encode (Team.wire t)) >>= Team.of_wire) ;
+    (Ok t) (decode (encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     M.add "filename" (String "foo")
       (M.add "size" (Int (Uint.of_int_exn 3))
@@ -391,7 +392,7 @@ let bad_id_r () =
   Alcotest.check (result id re) "id foo parses"
     (Ok (`Id idx)) (Conex_io.read_id io "foo") ;
   Alcotest.check (result Alcotest.unit str_err) "writing sth to 'id/foobar'"
-    (Ok ()) (io.write ["id"; "foobar"] (Conex_data.encode (Index.wire idx))) ;
+    (Ok ()) (io.write ["id"; "foobar"] (encode (Index.wire idx))) ;
   Alcotest.check (result team re) "parse error on team foobar"
     (Error (`ParseError ("foobar", ""))) (Conex_io.read_team io "foobar") ;
   Alcotest.check (result ji re) "id foobar namemismatch"
@@ -408,7 +409,7 @@ let bad_id_r () =
   Alcotest.check (result id re) "id foo parses"
     (Ok (`Team t)) (Conex_io.read_id io "foo") ;
   Alcotest.check (result Alcotest.unit str_err) "writing sth to 'id/foobar'"
-    (Ok ()) (io.write ["id"; "foobar"] (Conex_data.encode (Team.wire t))) ;
+    (Ok ()) (io.write ["id"; "foobar"] (encode (Team.wire t))) ;
   Alcotest.check (result ji re) "parse error on index foobar"
     (Error (`ParseError ("foobar", ""))) (Conex_io.read_index io "foobar") ;
   Alcotest.check (result team re) "name mismatch on team foobar"
@@ -431,7 +432,7 @@ let bad_idx_r () =
   Alcotest.check (result ji re) "good index foo"
     (Ok idx) (Conex_io.read_index io "foo") ;
   Alcotest.check (result Alcotest.unit str_err) "writing sth to 'id/foobar'"
-    (Ok ()) (io.write ["id"; "foobar"] (Conex_data.encode (Index.wire idx))) ;
+    (Ok ()) (io.write ["id"; "foobar"] (encode (Index.wire idx))) ;
   Alcotest.check (result ji re) "name mismatch in foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_io.read_index io "foobar")
 
@@ -450,7 +451,7 @@ let bad_auth_r () =
   Alcotest.check (result auth re) "authorisation foo good"
     (Ok a) (Conex_io.read_authorisation io "foo") ;
   Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foobar/authorisation'"
-    (Ok ()) (io.write ["packages"; "foobar"; "authorisation"] (Conex_data.encode (Authorisation.wire a))) ;
+    (Ok ()) (io.write ["packages"; "foobar"; "authorisation"] (encode (Authorisation.wire a))) ;
   Alcotest.check (result auth re) "name mismatch on authorisation foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_io.read_authorisation io "foobar")
 
@@ -469,7 +470,7 @@ let bad_rel_r () =
   Alcotest.check (result releases re) "releases foo good"
     (Ok rel) (Conex_io.read_releases io "foo") ;
   Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foobar/releases'"
-    (Ok ()) (io.write ["packages"; "foobar"; "releases"] (Conex_data.encode (Releases.wire rel))) ;
+    (Ok ()) (io.write ["packages"; "foobar"; "releases"] (encode (Releases.wire rel))) ;
   Alcotest.check (result releases re) "name mismatch on releases foobar"
     (Error (`NameMismatch ("foobar", "foo"))) (Conex_io.read_releases io "foobar")
 
@@ -488,7 +489,7 @@ let bad_cs_r () =
   Alcotest.check (result cs re) "checksum foo.0 good"
     (Ok c) (Conex_io.read_checksum io "foo.0") ;
   Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foo/foo.1/checksum'"
-    (Ok ()) (io.write ["packages"; "foo"; "foo.1"; "checksum"] (Conex_data.encode (Checksum.wire c))) ;
+    (Ok ()) (io.write ["packages"; "foo"; "foo.1"; "checksum"] (encode (Checksum.wire c))) ;
   Alcotest.check (result cs re) "name mismatch on checksum foo.1"
     (Error (`NameMismatch ("foo.1", "foo.0"))) (Conex_io.read_checksum io "foo.1") ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'blubb' to 'packages/foo/foo.2'"
@@ -518,7 +519,7 @@ let r_ok =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let res d =
-  let data = Conex_data.encode d in
+  let data = encode d in
   (Uint.of_int_exn (String.length data), Conex_nocrypto.digest data)
 
 let idx_sign () =
@@ -528,7 +529,7 @@ let idx_sign () =
   let idx = Index.index ~keys:[pub] id in
   Alcotest.check (result r_ok verr) "empty index signed properly (no resources, quorum 0)"
     (Ok (r, [], id)) (Conex_repository.verify_index r idx) ;
-  let pubenc = Conex_data.encode (Wire.wire_pub id pub) in
+  let pubenc = encode (Wire.wire_pub id pub) in
   let idx = Index.(add_resource idx (r (next_id idx) id (Uint.of_int_exn (String.length pubenc)) `PublicKey (Conex_nocrypto.digest pubenc))) in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_ok verr) "signed_idx signed properly (1 resource, quorum 0)"

@@ -73,9 +73,9 @@ let load_ids io r ids =
   foldM (C.load_id io) r (S.elements ids)
 
 let self io id =
-  R.error_to_msg ~pp_error:Conex_private.pp_err
+  R.error_to_msg ~pp_error:Conex_sign.pp_err
     (match id with
-     | None -> Conex_private.read_private_key io >>| fst
+     | None -> Conex_sign.read_private_key io >>| fst
      | Some id -> Ok id) >>| fun id ->
   Logs.debug (fun m -> m "using identifier %s" id);
   id
@@ -124,7 +124,7 @@ let status_all io r id no_team =
 
 let status_single io r name =
   Logs.info (fun m -> m "information on package %s" name) ;
-  let pn, release = match Conex_opam_layout.authorisation_of_item name with
+  let pn, release = match Conex_opam_repository_layout.authorisation_of_item name with
     | None -> name, (fun _ -> true)
     | Some pn -> pn, (fun nam -> name_equal nam name)
   in
@@ -144,7 +144,7 @@ let status _ dry path quorum strict id name no_rec =
 
 let add_r idx name typ data =
   let counter = Index.next_id idx in
-  let encoded = Conex_data.encode data in
+  let encoded = Conex_opam_encoding.encode data in
   let size = Uint.of_int_exn (String.length encoded) in
   let digest = Conex_nocrypto.digest encoded in
   let res = Index.r counter name size typ digest in
@@ -165,11 +165,11 @@ let init _ dry path id email =
           Error (`Msg ("key " ^ id ^ " exists and includes a public key"))
         | Ok (`Id k) -> Ok k
         | Error _ -> Ok (Index.index id)) >>= fun idx ->
-       (match Conex_private.read_private_key ~id io with
+       (match Conex_sign.read_private_key ~id io with
         | Ok (_, priv) -> Ok priv
         | Error _ ->
           let p = Conex_nocrypto.generate () in
-          str_to_msg (Conex_private.write_private_key io id p) >>| fun () ->
+          str_to_msg (Conex_sign.write_private_key io id p) >>| fun () ->
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
        str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
@@ -182,7 +182,7 @@ let init _ dry path id email =
        in
        let idx = Index.index ~accounts ~keys ~counter ~resources ~signatures ~queued id in
        let idx = add_r idx id `PublicKey (Wire.wire_pub id public) in
-       str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
+       str_to_msg (Conex_sign.sign_index idx priv) >>= fun idx ->
        str_to_msg (IO.write_index io idx) >>= fun () ->
        Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
        R.error_to_msg ~pp_error:pp_verification_error
@@ -205,8 +205,8 @@ let find_idx io name =
 let sign _ dry path id =
   msg_to_cmdliner
     (init_repo dry path >>= fun (_r, io) ->
-     R.error_to_msg ~pp_error:Conex_private.pp_err
-       (Conex_private.read_private_key ?id io) >>= fun (id, priv) ->
+     R.error_to_msg ~pp_error:Conex_sign.pp_err
+       (Conex_sign.read_private_key ?id io) >>= fun (id, priv) ->
      Logs.info (fun m -> m "using private key %s" id) ;
      let idx, _ = find_idx io id in
      match idx.Index.queued with
@@ -217,7 +217,7 @@ let sign _ dry path id =
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (Conex_private.sign_index idx priv) >>= fun idx ->
+       str_to_msg (Conex_sign.sign_index idx priv) >>= fun idx ->
        Logs.info (fun m -> m "signed index %a" Index.pp_index idx) ;
        str_to_msg (IO.write_index io idx) >>| fun () ->
        Logs.app (fun m -> m "wrote index %s to disk" id))
@@ -277,7 +277,7 @@ let release _ dry path id remove p =
   msg_to_cmdliner
     (init_repo dry path >>= fun (r, io) ->
      self io id >>= fun id ->
-     let pn, releases = match Conex_opam_layout.authorisation_of_item p with
+     let pn, releases = match Conex_opam_repository_layout.authorisation_of_item p with
        | None -> p, IO.subitems io p
        | Some n -> n, S.singleton p
      in

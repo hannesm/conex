@@ -1,6 +1,7 @@
 open Conex_result
 open Conex_core
 open Conex_resource
+open Conex_opam_encoding
 
 module Ui = struct
   let ui =
@@ -116,7 +117,7 @@ let sig_good () =
 let sign_single () =
   let idx = Index.index "a" in
   let pub, priv = gen_pub () in
-  let raw = Conex_data.encode (Index.wire idx) in
+  let raw = encode (Index.wire idx) in
   let sv = raw_sign priv raw in
   Alcotest.check (result Alcotest.unit verr)
     "signature can be verified"
@@ -168,7 +169,7 @@ let sign_single () =
 let bad_priv () =
   let idx = Index.index "a" in
   let pub, priv = gen_pub () in
-  let raw = Conex_data.encode (Index.wire idx) in
+  let raw = encode (Index.wire idx) in
   Alcotest.check (result Alcotest.string Alcotest.string)
     "sign with broken key is broken"
     (Error "couldn't decode private key")
@@ -199,12 +200,12 @@ let verify_fail () =
   in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies" (Ok ())
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources signed))
+       (encode (Index.wire_resources signed))
        (ts, sigval)) ;
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources signed))
+       (encode (Index.wire_resources signed))
        ({ created = Uint.zero ; sigalg = `RSA_PSS_SHA256 ; signame = "foo"}, sigval)) ;
   let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 ())) with
     | Ok p -> p
@@ -213,12 +214,12 @@ let verify_fail () =
   Alcotest.check (result Alcotest.unit verr) "too small key"
     (Error `InvalidPublicKey)
     (Conex_repository.verify pub
-       (Conex_data.encode (Index.wire_resources signed))
+       (encode (Index.wire_resources signed))
        (ts, sigval)) ;
   Alcotest.check (result Alcotest.unit verr) "invalid b64 sig"
     (Error `InvalidBase64Encoding)
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources signed))
+       (encode (Index.wire_resources signed))
        (ts, "bad"))
 
 
@@ -240,20 +241,20 @@ let idx_sign () =
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ())
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources signed))
+       (encode (Index.wire_resources signed))
        (ts, sigval)) ;
   let r = Index.r (Index.next_id idx) "foo" (Uint.of_int_exn 4) `PublicKey (`SHA256, "2342") in
   let idx' = Index.add_resource signed r in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Ok ())
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources idx'))
+       (encode (Index.wire_resources idx'))
        (ts, sigval)) ;
   let idx', _ = Index.prep_sig idx' in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Error `InvalidSignature)
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources idx'))
+       (encode (Index.wire_resources idx'))
        (ts, sigval))
 
 let idx_sign_other () =
@@ -270,7 +271,7 @@ let idx_sign_other () =
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ())
     (Conex_repository.verify k
-       (Conex_data.encode (Index.wire_resources signed))
+       (encode (Index.wire_resources signed))
        signature)
 
 let idx_sign_bad () =
@@ -282,7 +283,7 @@ let idx_sign_bad () =
     | _ -> assert false
   in
   let idx' = Index.index "c" in
-  let raw = Conex_data.encode (Index.wire_resources idx') in
+  let raw = encode (Index.wire_resources idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong id)"
     (Error `InvalidSignature)
     (Conex_repository.verify k raw (ts, sigval))
@@ -296,7 +297,7 @@ let idx_sign_bad2 () =
     | _ -> assert false
   in
   let idx' = Index.index ~counter:(Uint.of_int_exn 23) "b" in
-  let raw = Conex_data.encode (Index.wire_resources idx') in
+  let raw = encode (Index.wire_resources idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong data)"
     (Error `InvalidSignature)
     (Conex_repository.verify k raw (ts, sigval))

@@ -3,7 +3,8 @@ open Conex_utils
 open Conex_core
 open Conex_resource
 open Conex_provider
-open Conex_opam_layout
+open Conex_opam_repository_layout
+open Conex_opam_encoding
 
 type cc_err = [ `FileNotFound of name | `NotADirectory of name ]
 
@@ -75,7 +76,7 @@ let read_team t name =
   match t.read (id_file name) with
   | Error _ -> Error (`NotFound ("team", name))
   | Ok data ->
-    match Conex_data.decode data >>= Team.of_wire with
+    match decode data >>= Team.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok team ->
       if id_equal team.Team.name name then
@@ -85,13 +86,13 @@ let read_team t name =
 
 let write_team t team =
   let id = team.Team.name in
-  t.write (id_file id) (Conex_data.encode (Team.wire team))
+  t.write (id_file id) (encode (Team.wire team))
 
 let read_index t name =
   match t.read (id_file name) with
   | Error _ -> Error (`NotFound ("index", name))
   | Ok data ->
-    match Conex_data.decode data >>= Index.of_wire with
+    match decode data >>= Index.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok i ->
       if id_equal i.Index.name name then
@@ -101,7 +102,7 @@ let read_index t name =
 
 let write_index t i =
   let name = id_file i.Index.name in
-  t.write name (Conex_data.encode (Index.wire i))
+  t.write name (encode (Index.wire i))
 
 let read_id t id =
   match read_team t id with
@@ -115,7 +116,7 @@ let read_authorisation t name =
   match t.read (authorisation_path name) with
   | Error _ -> Error (`NotFound ("authorisation", name))
   | Ok data ->
-    match Conex_data.decode data >>= Authorisation.of_wire with
+    match decode data >>= Authorisation.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok auth ->
       if name_equal auth.Authorisation.name name then
@@ -125,13 +126,13 @@ let read_authorisation t name =
 
 let write_authorisation t a =
   t.write (authorisation_path a.Authorisation.name)
-    (Conex_data.encode (Authorisation.wire a))
+    (encode (Authorisation.wire a))
 
 let read_releases t name =
   match t.read (releases_path name) with
   | Error _ -> Error (`NotFound ("releases", name))
   | Ok data ->
-    match Conex_data.decode data >>= Releases.of_wire with
+    match decode data >>= Releases.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok r ->
       if name_equal r.Releases.name name then
@@ -141,13 +142,13 @@ let read_releases t name =
 
 let write_releases t r =
   let name = releases_path r.Releases.name in
-  t.write name (Conex_data.encode (Releases.wire r))
+  t.write name (encode (Releases.wire r))
 
 let read_checksum t name =
   match t.read (checksum_path name) with
   | Error _ -> Error (`NotFound ("checksum", name))
   | Ok data ->
-    match Conex_data.decode data >>= Checksum.of_wire with
+    match decode data >>= Checksum.of_wire with
     | Error p -> Error (`ParseError (name, p))
     | Ok csum ->
       if name_equal csum.Checksum.name name then
@@ -157,4 +158,4 @@ let read_checksum t name =
 
 let write_checksum t csum =
   let name = checksum_path csum.Checksum.name in
-  t.write name (Conex_data.encode (Checksum.wire csum))
+  t.write name (encode (Checksum.wire csum))
