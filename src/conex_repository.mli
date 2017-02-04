@@ -44,6 +44,7 @@ val pp_error : Format.formatter ->
   | `MissingSignature of identifier
   | `AuthRelMismatch of name * name
   | `InvalidReleases of name * S.t * S.t
+  | `NoSharedPrefix of name * S.t
   | `NotInReleases of name * S.t
   | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]
   -> unit
@@ -62,7 +63,7 @@ val verify_authorisation : t -> Authorisation.t ->
 
 val verify_releases : t -> ?on_disk:Releases.t -> Authorisation.t -> Releases.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   [> base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t ]) result
+   [> base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t | `NoSharedPrefix of name * S.t ]) result
 
 val verify_checksum : t -> ?on_disk:Checksum.t -> Authorisation.t -> Releases.t -> Checksum.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],

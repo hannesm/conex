@@ -193,10 +193,9 @@ module Make (L : LOGS) = struct
     (if authorised auth.Authorisation.authorised then
        (match IO.read_releases io name with
         | Error e ->
-          (match Releases.releases ~releases:(IO.subitems io name) name with
-           | Ok rel -> if strict repo then Error (str IO.pp_r_err e) else
-               (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok rel)
-           | Error e -> Error e)
+          if strict repo then Error (str IO.pp_r_err e) else
+            (L.warn (fun m -> m "%a" IO.pp_r_err e) ;
+             IO.compute_releases io name)
         | Ok rel ->
           L.debug (fun m -> m "%a" Releases.pp_releases rel) ;
           (match IO.compute_releases io name with
@@ -265,7 +264,8 @@ module Make (L : LOGS) = struct
     let fresh_repo = repository ~quorum:(quorum repo) ~strict:(strict repo) () in
     load_janitors ~valid newio fresh_repo >>= fun newrepo ->
     (* now we do a full verification of the new repository *)
-    foldM (verify_item newio) newrepo (S.elements (IO.items newio)) >>= fun newrepo ->
+    IO.items newio >>= fun items ->
+    foldM (verify_item newio) newrepo (S.elements items) >>= fun newrepo ->
 
     (* foreach changed item, we need to ensure monotonicity (counter incremented) *)
     let maybe_m = maybe repo pp_m_err () in

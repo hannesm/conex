@@ -220,3 +220,8 @@ let guard p err = if p then Ok () else Error err
 let rec foldM f n = function
   | [] -> Ok n
   | x::xs -> f n x >>= fun n' -> foldM f n' xs
+
+let foldS f a s =
+  S.fold (fun id r ->
+      r >>= fun r ->
+      f r id) s (Ok a)

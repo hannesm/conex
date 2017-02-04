@@ -223,15 +223,7 @@ module Releases = struct
   }
 
   let releases ?(counter = Uint.zero) ?(releases = S.empty) name =
-    (* TODO: this feels wrong here -- rather do it in verify (it's the only resource constructur which may fail) *)
-    let is_release a = match Conex_opam_repository_layout.authorisation_of_item a with
-      | Some x -> name_equal name x
-      | _ -> false
-    in
-    if S.for_all is_release releases then
-      Ok { counter ; name ; releases }
-    else
-      Error "all releases must have the same package name"
+    { counter ; name ; releases }
 
   let of_wire data =
     let open Wire in
@@ -239,7 +231,7 @@ module Releases = struct
     ncv data >>= fun (name, counter, v) ->
     check_v version v >>= fun () ->
     opt_string_set (search data "releases") >>= fun rels ->
-    releases ~counter ~releases:rels name
+    Ok (releases ~counter ~releases:rels name)
 
   let wire r =
     let open Wire in

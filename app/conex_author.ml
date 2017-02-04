@@ -98,29 +98,29 @@ let status_all io r id no_team =
   R.error_to_msg ~pp_error:IO.pp_r_err
     (IO.read_id io id) >>= function
   | `Id _ ->
-    let me =
-      s_of_list
-        (if no_team then [id]
-         else
-           let teams =
-             S.fold (fun id' teams ->
-                 R.ignore_error
-                   ~use:(fun e -> w IO.pp_r_err e ; teams)
-                   (IO.read_id io id' >>| function
-                     | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
-                     | `Team _ | `Id _ -> teams))
-               (IO.ids io) []
-           in
-           id :: List.map (fun t -> t.Team.name) teams)
-    in
+    (if no_team then
+       Ok (S.singleton id)
+     else begin
+       str_to_msg (IO.ids io) >>= fun ids ->
+       let teams =
+         S.fold (fun id' teams ->
+             R.ignore_error
+               ~use:(fun e -> w IO.pp_r_err e ; teams)
+               (IO.read_id io id' >>| function
+                 | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
+                 | `Team _ | `Id _ -> teams))
+           ids []
+       in
+       Ok (s_of_list (id :: List.map (fun t -> t.Team.name) teams))
+     end) >>= fun me ->
     let authorised auth = not (S.is_empty (S.inter me auth)) in
-    str_to_msg (foldM (C.verify_item io ~authorised)
-                  r (S.elements (IO.items io)))
+    str_to_msg (IO.items io) >>= fun items ->
+    str_to_msg (foldS (C.verify_item io ~authorised) r items)
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
     let authorised auth = S.mem t.Team.name auth in
-    str_to_msg (foldM (C.verify_item io ~authorised)
-                  r (S.elements (IO.items io)))
+    str_to_msg (IO.items io) >>= fun items ->
+    str_to_msg (foldS (C.verify_item io ~authorised) r items)
 
 let status_single io r name =
   Logs.info (fun m -> m "information on package %s" name) ;
@@ -277,10 +277,10 @@ let release _ dry path id remove p =
   msg_to_cmdliner
     (init_repo dry path >>= fun (r, io) ->
      self io id >>= fun id ->
-     let pn, releases = match Conex_opam_repository_layout.authorisation_of_item p with
-       | None -> p, IO.subitems io p
-       | Some n -> n, S.singleton p
-     in
+     (match Conex_opam_repository_layout.authorisation_of_item p with
+      | Some n -> Ok (n, S.singleton p)
+      | None -> str_to_msg (IO.subitems io p) >>= fun rels -> Ok (p, rels))
+     >>= fun (pn, releases) ->
      let auth, _ = find_auth io pn in
      str_to_msg (load_ids io r auth.Authorisation.authorised) >>= fun r ->
      if not (Conex_repository.authorised r auth id) then
@@ -288,9 +288,7 @@ let release _ dry path id remove p =
      let rel =
        let use e =
          w IO.pp_r_err e ;
-         match Releases.releases pn with
-         | Ok r -> Logs.info (fun m -> m "fresh %a" Releases.pp_releases r) ; r
-         | Error e -> invalid_arg e
+         Releases.releases pn
        in
        R.ignore_error ~use
          (IO.read_releases io pn >>| fun rel ->

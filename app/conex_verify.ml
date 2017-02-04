@@ -115,7 +115,8 @@ let verify_full io repo anchors =
   match C.load_janitors ~valid io repo with
   | Ok repo ->
     (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
-    foldM (C.verify_item io) repo (S.elements (IO.items io))
+    IO.items io >>= fun items ->
+    foldS (C.verify_item io) repo items
   | Error _ -> Error "couldn't load janitors"
 
 let err_to_cmdliner = function

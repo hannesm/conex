@@ -10,9 +10,9 @@ val pp_cc_err : Format.formatter -> cc_err -> unit
 
 val compute_releases : t -> name -> (Releases.t, string) result
 
-val ids : t -> S.t
-val items : t -> S.t
-val subitems : t -> name -> S.t
+val ids : t -> (S.t, string) result
+val items : t -> (S.t, string) result
+val subitems : t -> name -> (S.t, string) result
 
 type r_err = [ `NotFound of string * string | `ParseError of name * string | `NameMismatch of string * string ]
 

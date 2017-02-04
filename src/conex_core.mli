@@ -223,3 +223,7 @@ val guard : bool -> 'a -> (unit, 'a) result
 (** [foldM f a xs] applies [f] to each element of [xs], returns either [Ok] and
     the produced value, or [Error]. *)
 val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
+
+(** [foldS f a s] applies [f] to each element of the set [s], returns either
+    [Ok] and the produced value, or [Error]. *)
+val foldS : ('a -> string -> ('a, 'c) result) -> 'a -> S.t -> ('a, 'c) result

@@ -53,11 +53,8 @@ let compute_checksum t name =
     Ok (Checksum.checksums name r)
 
 let read_dir f t path =
-  let xs = match t.read_dir path with
-    | Error _ -> []
-    | Ok data -> filter_map ~f data
-  in
-  S.of_list xs
+  t.read_dir path >>= fun data ->
+  Ok (S.of_list (filter_map ~f data))
 
 let ids t = read_dir (function `File f -> Some f | _ -> None) t id_path
 
@@ -66,7 +63,9 @@ let dirs = (function `Dir d -> Some d | _ -> None)
 let items t = read_dir dirs t data_path
 let subitems t name = read_dir dirs t (data_path@[name])
 
-let compute_releases t name = Releases.releases ~releases:(subitems t name) name
+let compute_releases t name =
+  subitems t name >>= fun releases ->
+  Ok (Releases.releases ~releases name)
 
 
 type r_err = [ `NotFound of string * string | `ParseError of name * string | `NameMismatch of string * string ]

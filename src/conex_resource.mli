@@ -62,7 +62,7 @@ module Releases : sig
     releases : S.t ;
   }
 
-  val releases : ?counter:Uint.t -> ?releases:S.t -> name -> (t, string) result
+  val releases : ?counter:Uint.t -> ?releases:S.t -> name -> t
 
   val add : t -> name -> t
   val remove : t -> name -> t

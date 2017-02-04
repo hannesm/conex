@@ -95,6 +95,7 @@ let pp_error ppf = function
   | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
   | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
   | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
+  | `NoSharedPrefix (n, rels) -> Format.fprintf ppf "releases %a contains releases where its name is not a prefix %a" pp_name n (pp_list pp_name) (S.elements rels)
   | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
   | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
 (*BISECT-IGNORE-END*)
@@ -230,9 +231,16 @@ let ensure_releases rel disk =
     in
     Error (have, want)
 
+let is_release name a =
+  match Conex_opam_repository_layout.authorisation_of_item a with
+  | Some x -> name_equal name x
+  | _ -> false
+
 let verify_releases repo ?on_disk a r =
   guard (name_equal a.Authorisation.name r.Releases.name)
     (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
+  guard (S.for_all (is_release r.Releases.name) r.Releases.releases)
+    (`NoSharedPrefix (r.Releases.name, r.Releases.releases)) >>= fun () ->
   verify_resource repo a.Authorisation.authorised r.Releases.name `Releases (encode (Releases.wire r)) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
