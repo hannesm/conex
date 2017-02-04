@@ -12,6 +12,17 @@ val find_team : t -> identifier -> S.t option
 
 val id_loaded : t -> identifier -> bool
 
+(* Unsafe operation, think before usage! *)
+val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
+val add_index : t -> Index.t -> t * string list
+
+(* Unsafe operation, think before usage! *)
+val add_team : t -> Team.t -> t
+val add_id : t -> identifier -> t
+
+val contains : ?queued:bool -> Index.t -> name -> resource -> Wire.t -> bool
+
+
 val authorised : t -> Authorisation.t -> identifier -> bool
 
 val verify : pub -> string -> signature -> (unit, [> verification_error]) result
@@ -19,8 +30,6 @@ val verify : pub -> string -> signature -> (unit, [> verification_error]) result
 val verify_index : t -> Index.t -> (t * string list * identifier, [> verification_error ]) result
 
 val verify_signatures : Index.t -> pub list * (pub * verification_error) list
-
-val contains : ?queued:bool -> Index.t -> name -> resource -> Wire.t -> bool
 
 val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
 
@@ -63,10 +72,13 @@ val verify_checksum : t -> ?on_disk:Checksum.t -> Authorisation.t -> Releases.t 
    | `NotInReleases of name * S.t
    | `ChecksumsDiff of name * name list * name list * (Checksum.c * Checksum.c) list ]) result
 
-(* Unsafe operation, think before usage! *)
-val add_valid_resource : t -> identifier -> Index.r -> (t, string) result
-val add_index : t -> Index.t -> t * string list
+(* Monotonicity *)
+type m_err = [ `NotIncreased of resource * name | `Deleted of resource * name | `Msg of resource * string ]
 
-(* Unsafe operation, think before usage! *)
-val add_team : t -> Team.t -> t
-val add_id : t -> identifier -> t
+val pp_m_err : Format.formatter -> m_err -> unit
+
+val monoton_index : ?old:Index.t -> ?now:Index.t -> t -> (unit, m_err) result
+val monoton_team : ?old:Team.t -> ?now:Team.t -> t -> (unit, m_err) result
+val monoton_authorisation : ?old:Authorisation.t -> ?now:Authorisation.t -> t -> (unit, m_err) result
+val monoton_releases : ?old:Releases.t -> ?now:Releases.t -> t -> (unit, m_err) result
+val monoton_checksum : ?old:Checksum.t -> ?now:Checksum.t -> t -> (unit, m_err) result

@@ -259,3 +259,50 @@ let verify_checksum repo ?on_disk a r cs =
   match on_disk with
   | None -> res
   | Some css -> Checksum.compare_checksums cs css >>= fun () -> res
+
+
+type m_err = [ `NotIncreased of resource * name | `Deleted of resource * name | `Msg of resource * string ]
+
+let pp_m_err ppf =
+  let s = resource_to_string in
+  function
+  | `NotIncreased (res, nam) -> Format.fprintf ppf "monotonicity: counter of %s %s was not increased" (s res) nam
+  | `Deleted (res, nam) -> Format.fprintf ppf "monotonicity: %s %s was deleted" (s res) nam
+  | `Msg (res, str) -> Format.fprintf ppf "monotonicity: %s %s" (s res) str
+
+let increased old ne r nam = guard (Uint.compare ne old = 1) (`NotIncreased (r, nam))
+
+let monoton_index ?old ?now _t =
+  match old, now with
+  | Some idx, Some idx' -> increased idx.Index.counter idx'.Index.counter `Index idx.Index.name
+  | None, Some _ -> Ok () (* allow creation of ids *)
+  | Some idx, None -> Error (`Deleted (`Index, idx.Index.name)) (* DO NOT allow index deletions *)
+  | None, None -> Error (`Msg (`Index, "both are none"))
+
+let monoton_team ?old ?now _t =
+  match old, now with
+  | Some team, Some team' -> increased team.Team.counter team'.Team.counter `Team team.Team.name
+  | None, Some _ -> Ok () (* allow creation of ids *)
+  | Some team, None -> Error (`Deleted (`Team, team.Team.name)) (* DO NOT allow team deletions *)
+  | None, None -> Error (`Msg (`Team, "both are none"))
+
+let monoton_authorisation ?old ?now _t =
+  match old, now with
+  | Some a, Some a' -> increased a.Authorisation.counter a'.Authorisation.counter `Authorisation a.Authorisation.name
+  | None, Some _ -> Ok () (* allow creation *)
+  | Some a, None -> Error (`Deleted (`Authorisation, a.Authorisation.name)) (* DO NOT allow deletion of authorsations *)
+  | None, None -> Error (`Msg (`Authorisation, "both are none"))
+
+let monoton_releases ?old ?now _t =
+  match old, now with
+  | Some rel, Some rel' -> increased rel.Releases.counter rel'.Releases.counter `Releases rel.Releases.name
+  | None, Some _ -> Ok () (* allow creation *)
+  | Some rel, None -> Error (`Deleted (`Releases, rel.Releases.name)) (* DO NOT allow deletion of releases *)
+  | None, None -> Error (`Msg (`Releases, "both are none"))
+
+let monoton_checksum ?old ?now _t =
+  match old, now with
+  | Some cs, Some cs' -> increased cs.Checksum.counter cs'.Checksum.counter `Checksums cs.Checksum.name
+  | None, Some _ -> Ok () (* allow creation *)
+  | Some _, None -> Ok () (* allow deletion of checksums *)
+  | None, None -> Error (`Msg (`Checksums, "both are none"))

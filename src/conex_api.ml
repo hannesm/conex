@@ -29,23 +29,29 @@ module IO = Conex_io
 
 module Make (L : LOGS) = struct
 
+  let maybe repo pp res = function
+    | Ok a -> Ok a
+    | Error err ->
+      if strict repo then Error (str pp err) else
+        (L.warn (fun m -> m "%a" pp err) ; Ok res)
+
   let load_id_aux io repo id =
     match IO.read_id io id with
     | Error e ->
       if strict repo then Error (str IO.pp_r_err e) else
-        (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok (`Nothing, repo))
+        Ok (`Nothing, repo)
     | Ok (`Id idx) ->
       (L.debug (fun m -> m "%a" Index.pp_index idx) ;
-       match verify_index repo idx with
-       | Error e -> if strict repo then Error (str pp_verification_error e) else
-           (L.warn (fun m -> m "%a" pp_verification_error e) ; Ok (`Nothing, repo))
-       | Ok (repo, msgs, _) -> List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ; Ok (`Id idx, repo))
+       maybe repo pp_verification_error (`Nothing, repo)
+         (verify_index repo idx >>= fun (repo, msgs, _) ->
+          List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
+          Ok (`Id idx, repo)))
     | Ok (`Team t) ->
       (L.debug (fun m -> m "%a" Team.pp_team t) ;
-       match verify_team repo t with
-       | Error e -> if strict repo then Error (str pp_error e) else
-           (L.warn (fun m -> m "%a" pp_error e) ; Ok (`Nothing, repo))
-       | Ok (r, ok) -> L.debug (fun m -> m "%a" pp_ok ok) ; Ok (`Team t, r))
+       maybe repo pp_error (`Nothing, repo)
+         (verify_team repo t >>= fun (r, ok) ->
+          L.debug (fun m -> m "%a" pp_ok ok) ;
+          Ok (`Team t, r)))
 
   let load_id io repo id =
     if id_loaded repo id then
@@ -66,17 +72,16 @@ module Make (L : LOGS) = struct
 
   let load_janitors ?(valid = fun _ _ -> true) io repo =
     match IO.read_team io "janitors" with
-    | Error e -> if strict repo then Error (str IO.pp_r_err e) else
+    | Error e ->
+      if strict repo then Error (str IO.pp_r_err e) else
         (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok repo)
     | Ok team ->
       L.debug (fun m -> m "%a" Team.pp_team team) ;
       foldM (fun acc id ->
-          match IO.read_index io id with
-          | Error e -> if strict repo then Error (str IO.pp_r_err e) else
-              (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok acc)
-          | Ok idx ->
-            L.debug (fun m -> m "%a" Index.pp_index idx) ;
-            Ok (idx :: acc))
+          maybe repo IO.pp_r_err acc
+            (IO.read_index io id >>= fun idx ->
+             L.debug (fun m -> m "%a" Index.pp_index idx) ;
+             Ok (idx :: acc)))
         [] (S.elements team.Team.members) >>= fun idxs ->
       (* for each, validate public key(s): signs the index, resource is contained *)
       let valid_idxs =
@@ -133,10 +138,10 @@ module Make (L : LOGS) = struct
       in
       (* verify the team janitor *)
       let good_j_repo = List.fold_left add_warn repo good_idxs in
-      (match verify_team good_j_repo team with
-       | Error e -> if strict repo then Error (str pp_error e) else
-           (L.warn (fun m -> m "%a" pp_error e) ; Ok (add_team good_j_repo team))
-       | Ok (repo, ok) -> L.debug (fun m -> m "team janitors verified %a" pp_ok ok) ; Ok repo) >>= fun repo ->
+      (maybe good_j_repo pp_error (add_team good_j_repo team)
+         (verify_team good_j_repo team >>= fun (repo, ok) ->
+          L.debug (fun m -> m "team janitors verified %a" pp_ok ok) ;
+          Ok repo)) >>= fun repo ->
       (* team is good, there may be more janitors: esp notyet and others *)
       (* load in a similar style:
          - add all the idxs
@@ -144,17 +149,15 @@ module Make (L : LOGS) = struct
          - insert all verified idx *)
       let jrepo' = List.fold_left add_warn repo (List.map snd (notyet@others)) in
       foldM (fun acc (keys, idx) ->
-          match
-            List.fold_left (fun r k ->
+          maybe repo pp_error acc
+            (List.fold_left (fun r k ->
                 match r, verify_key jrepo' idx.Index.name k with
                 | Ok x, _ -> Ok x
                 | Error _, x -> x)
-              (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
-              keys
-          with
-          | Ok ok -> L.debug (fun m -> m "janitor key %s approved by %a" idx.Index.name pp_ok ok) ; Ok (idx :: acc)
-          | Error e -> if strict repo then Error (str pp_error e) else
-              (L.warn (fun m -> m "%a" pp_error e) ; Ok acc))
+                (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
+                keys >>= fun ok ->
+             L.debug (fun m -> m "janitor key %s approved by %a" idx.Index.name pp_ok ok) ;
+             Ok (idx :: acc)))
         [] (notyet@others) >>= fun good_idx ->
       Ok (List.fold_left add_warn repo good_idx)
 
@@ -164,15 +167,13 @@ module Make (L : LOGS) = struct
         (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok ())
     | Ok cs ->
       L.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
-      (match IO.compute_checksum io version with
-       | Error e -> if strict repo then Error (str Conex_io.pp_cc_err e) else
-           (L.warn (fun m -> m "couldn't compute checksum of %s: %a" version Conex_io.pp_cc_err e) ;
-            Ok None)
-       | Ok cs -> Ok (Some cs)) >>= fun on_disk ->
-      match verify_checksum repo ?on_disk auth rel cs with
-      | Error e -> if strict repo then Error (str pp_error e) else
-          (L.warn (fun m -> m "%a" pp_error e) ; Ok ())
-      | Ok ok -> L.debug (fun m -> m "%a" pp_ok ok) ; Ok ()
+      maybe repo Conex_io.pp_cc_err None
+        (IO.compute_checksum io version >>= fun cs ->
+         Ok (Some cs)) >>= fun on_disk ->
+      maybe repo pp_error ()
+        (verify_checksum repo ?on_disk auth rel cs >>= fun ok ->
+         L.debug (fun m -> m "%a" pp_ok ok) ;
+         Ok ())
 
   let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
     (match IO.read_authorisation io name with
@@ -181,13 +182,14 @@ module Make (L : LOGS) = struct
           Ok (Authorisation.authorisation name, repo))
      | Ok auth ->
        L.debug (fun m ->m "%a" Authorisation.pp_authorisation auth) ;
-       match verify_authorisation repo auth with
-       | Error e -> if strict repo then Error (str pp_error e) else
-           (L.warn (fun m ->m "%a" pp_error e) ; Ok (auth, repo))
-       | Ok ok ->
-         L.debug (fun m -> m "%a" pp_ok ok) ;
-         foldM (load_id io) repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
-         Ok (auth, repo)) >>= fun (auth, repo) ->
+       maybe repo pp_error false
+         (verify_authorisation repo auth >>= fun ok->
+          L.debug (fun m -> m "%a" pp_ok ok) ;
+          Ok true) >>= (function
+           | false -> Ok (auth, repo)
+           | true ->
+             foldM (load_id io) repo (S.elements auth.Authorisation.authorised) >>= fun repo ->
+             Ok (auth, repo))) >>= fun (auth, repo) ->
     (if authorised auth.Authorisation.authorised then
        (match IO.read_releases io name with
         | Error e ->
@@ -202,10 +204,10 @@ module Make (L : LOGS) = struct
                (L.warn (fun m -> m "couldn't compute releases %s: %s" name e) ;
                 Ok None)
            | Ok on_disk -> Ok (Some on_disk)) >>= fun on_disk ->
-          match verify_releases repo ?on_disk auth rel with
-          | Error e -> if strict repo then Error (str pp_error e) else
-              (L.warn (fun m -> m "%a" pp_error e) ; Ok rel)
-          | Ok ok -> L.debug (fun m -> m "%a" pp_ok ok) ; Ok rel) >>= fun rel ->
+          maybe repo pp_error rel
+            (verify_releases repo ?on_disk auth rel >>= fun ok ->
+             L.debug (fun m -> m "%a" pp_ok ok) ;
+             Ok rel)) >>= fun rel ->
        foldM (fun () n ->
            if release n then
              verify_single_release io repo auth rel n
@@ -273,30 +275,40 @@ module Make (L : LOGS) = struct
      error behaviour: use maybe!
  *)
 
-    (* foreach id in ids: monotonicity! *)
+    let maybe_m = maybe repo pp_m_err () in
+    (* foreach x in changes: monotonicity! *)
     foldM (fun () id ->
-        match IO.monotonicity io newio `Index id with
-        | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
-            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
+        match IO.read_id io id, IO.read_id newio id with
+        | Ok (`Id old), Ok (`Id now) -> maybe_m (monoton_index ~old ~now repo)
+        | Ok (`Team old), Ok (`Team now) -> maybe_m (monoton_team ~old ~now repo)
+        | Ok (`Id old), Error _ -> maybe_m (monoton_index ~old repo)
+        | Ok (`Team old), Error _ -> maybe_m (monoton_team ~old repo)
+        | Ok (`Team _), Ok (`Id _)
+        | Ok (`Id _), Ok (`Team _) -> Error "team/id changes unsupported"
+        | Error _, Ok (`Id now) -> maybe_m (monoton_index ~now repo)
+        | Error _, Ok (`Team now) -> maybe_m (monoton_team ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_index repo))
       () (S.elements ids) >>= fun () ->
     foldM (fun () id ->
-        match IO.monotonicity io newio `Authorisation id with
-        | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
-            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
+        match IO.read_authorisation io id, IO.read_authorisation newio id with
+        | Ok old, Ok now -> maybe_m (monoton_authorisation ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_authorisation ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_authorisation ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_authorisation repo))
       () (S.elements auths) >>= fun () ->
     foldM (fun () id ->
-        match IO.monotonicity io newio `Releases id with
-        | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
-            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
+        match IO.read_releases io id, IO.read_releases newio id with
+        | Ok old, Ok now -> maybe_m (monoton_releases ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_releases ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_releases ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_releases repo))
       () (S.elements rels) >>= fun () ->
     foldM (fun () id ->
-        match IO.monotonicity io newio `Checksums id with
-        | Ok () -> Ok ()
-        | Error e -> if strict repo then Error (str IO.pp_m_err e) else
-            (L.warn (fun m -> m "%a" IO.pp_m_err e) ; Ok ()))
+        match IO.read_checksum io id, IO.read_checksum newio id with
+        | Ok old, Ok now -> maybe_m (monoton_checksum ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_checksum ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_checksum ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_checksum repo))
       () packages >>= fun () ->
     Ok newrepo
 

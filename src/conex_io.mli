@@ -36,10 +36,3 @@ val write_releases : t -> Releases.t -> (unit, string) result
 
 val read_checksum : t -> name -> (Checksum.t, [> r_err ]) result
 val write_checksum : t -> Checksum.t -> (unit, string) result
-
-(* this should likely live in the individual Conex_resource modules (which should get a module sig!?) *)
-type m_err = [ r_err | `NotIncreased of resource * name | `Deleted of resource * name | `Msg of string ]
-
-val pp_m_err : Format.formatter -> [< m_err ] -> unit
-
-val monotonicity : t -> t -> resource -> name -> (unit, [> m_err ]) result
