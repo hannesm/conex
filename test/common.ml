@@ -17,7 +17,7 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      let p = Conex_nocrypto.generate () in
+      let p = Conex_nocrypto.generate ~bits:2048 Uint.zero () in
       privkey := Some p ;
       p
   in

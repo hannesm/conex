@@ -50,11 +50,9 @@ let encode_priv = function
      let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
      Cstruct.to_string pem
 
-let generate ?(bits = 4096) () =
+let generate ?(bits = 4096) c () =
   let key = RSA_priv (Nocrypto.Rsa.generate bits) in
-  match Uint.of_float (Unix.time ()) with
-  | None -> invalid_arg "couldn't convert time to uint"
-  | Some c -> `Priv (`RSA, encode_priv key, c)
+  `Priv (`RSA, encode_priv key, c)
 
 let pub_of_priv = function
   | `Priv (`RSA, k, created) ->

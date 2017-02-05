@@ -203,7 +203,7 @@ let verify_fail () =
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
     (Conex_repository.verify "foo" k raw single_sig) ;
-  let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 ())) with
+  let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
     | Ok p -> p
     | Error _ -> Alcotest.fail "couldn't pub_of_priv"
   in

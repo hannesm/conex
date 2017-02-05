@@ -177,7 +177,7 @@ let init _ dry path id email =
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
         | Error _ ->
-          let p = Conex_nocrypto.generate () in
+          let p = Conex_nocrypto.generate now () in
           str_to_msg (Conex_sign.write_private_key io id p) >>| fun () ->
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
