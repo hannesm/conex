@@ -105,7 +105,7 @@ module Make (L : LOGS) = struct
       let approved, notyet =
         List.fold_left (fun (good, bad) (keys, idx) ->
             let id = idx.Author.name in
-            let approved = List.filter (fun k -> valid id (Conex_nocrypto.id k)) keys in
+            let approved = List.filter (fun k -> valid id (Conex_sign.id k)) keys in
             if List.length approved > 0 then begin
               L.debug (fun m -> m "fingerprint valid for janitor %s" id) ;
               ((approved, idx) :: good, bad)
@@ -258,7 +258,7 @@ module Make (L : LOGS) = struct
     let janitor_keys =
       S.fold (fun id acc ->
           match IO.read_author io id with
-          | Ok idx -> S.union acc (s_of_list (List.map Conex_nocrypto.id idx.Author.keys))
+          | Ok idx -> S.union acc (s_of_list (List.map Conex_sign.id idx.Author.keys))
           | Error _ -> acc)
         (match find_team repo "janitors" with None -> S.empty | Some x -> x)
         S.empty

@@ -7,7 +7,7 @@ open Common
 
 let res d =
   let data = Wire.to_string d in
-  (Uint.of_int_exn (String.length data), Conex_nocrypto.digest data)
+  (Uint.of_int_exn (String.length data), (`SHA256, Conex_nocrypto.b64sha256 data))
 
 module Mem = struct
   open Conex_provider
@@ -565,7 +565,7 @@ let idx_sign () =
   Alcotest.check (result r_ok verr) "empty index signed properly (no resources, quorum 0)"
     (Ok (r, [], id)) (Conex_repository.verify_author r idx) ;
   let pubenc = Wire.to_string (Key.wire id pub) in
-  let idx = Author.(add_resource idx (r (next_id idx) id (Uint.of_int_exn (String.length pubenc)) `Key (Conex_nocrypto.digest pubenc))) in
+  let idx = Author.(add_resource idx (r (next_id idx) id (Uint.of_int_exn (String.length pubenc)) `Key (`SHA256, Conex_nocrypto.b64sha256 pubenc))) in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_ok verr) "signed_idx signed properly (1 resource, quorum 0)"
     (Ok (r, [], id)) (Conex_repository.verify_author r signed_idx) ;

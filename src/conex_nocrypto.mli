@@ -1,17 +1,12 @@
 open Conex_result
-open Conex_resource
-open Conex_utils
 open Conex_core
 
-val verify : Key.t -> string -> string -> (unit, [> verification_error ]) result
+val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> verification_error ]) result
 
-val id : Key.t -> string
+val pub_of_priv_rsa : string -> (string, string) result
 
-val pub_of_priv : Key.priv -> (Key.t, string) result
+val generate_rsa : ?bits:int -> unit -> string
 
-val generate : ?bits:int -> Uint.t -> unit -> Key.priv
+val sign_rsa_pss : key:string -> string -> (string, string) result
 
-val sign : Key.priv -> string -> (string, string) result
-
-
-val digest : string -> Digest.t
+val b64sha256 : string -> string

@@ -17,11 +17,11 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      let p = Conex_nocrypto.generate ~bits:2048 Uint.zero () in
+      let p = Conex_sign.generate ~bits:2048 Uint.zero () in
       privkey := Some p ;
       p
   in
-  match Conex_nocrypto.pub_of_priv priv with
+  match Conex_sign.pub_of_priv priv with
   | Ok pub -> (pub, priv)
   | Error e -> Alcotest.fail e
 

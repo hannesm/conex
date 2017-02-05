@@ -1,6 +1,4 @@
 open Conex_result
-open Conex_resource
-open Conex_utils
 
 type nc_pub =
   | RSA_pub of Nocrypto.Rsa.pub
@@ -22,13 +20,12 @@ let decode_key data =
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let verify (alg, pub, _) data sigval =
-  match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
+let verify_rsa_pss ~key ~data ~signature =
+  match Nocrypto.Base64.decode (Cstruct.of_string signature) with
   | None -> Error `InvalidBase64Encoding
   | Some signature ->
     let cs_data = Cstruct.of_string data in
-    let x = match alg with `RSA -> pub in
-    match decode_key x with
+    match decode_key key with
     | Some (RSA_pub key) when good_rsa key ->
       if Pss_sha256.verify ~key ~signature cs_data then
         Ok ()
@@ -50,18 +47,17 @@ let encode_priv = function
      let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
      Cstruct.to_string pem
 
-let generate ?(bits = 4096) c () =
+let generate_rsa ?(bits = 4096) () =
   let key = RSA_priv (Nocrypto.Rsa.generate bits) in
-  `Priv (`RSA, encode_priv key, c)
+  encode_priv key
 
-let pub_of_priv = function
-  | `Priv (`RSA, k, created) ->
-    match decode_priv k with
-    | Some (RSA_priv k) ->
-      let pub = Nocrypto.Rsa.pub_of_priv k in
-      let pem = encode_key (RSA_pub pub) in
-      Ok (`RSA, pem, created)
-    | None -> Error "couldn't decode private key"
+let pub_of_priv_rsa k =
+  match decode_priv k with
+  | Some (RSA_priv k) ->
+    let pub = Nocrypto.Rsa.pub_of_priv k in
+    let pem = encode_key (RSA_pub pub) in
+    Ok pem
+  | None -> Error "couldn't decode private key"
 
 let primitive_sign priv data =
   let cs = Cstruct.of_string data in
@@ -72,18 +68,15 @@ let primitive_sign priv data =
   let b64 = Nocrypto.Base64.encode signature in
   Cstruct.to_string b64
 
-let sign priv data = match priv with
-  | `Priv (`RSA, priv, _) -> match decode_priv priv with
-    | Some priv ->
-      let sigval = primitive_sign priv data in
+let sign_rsa_pss ~key data =
+  match decode_priv key with
+    | Some key ->
+      let sigval = primitive_sign key data in
       Ok sigval
     | None -> Error "couldn't decode private key"
 
-let digest data =
+let b64sha256 data =
   let cs = Cstruct.of_string data in
   let check = Nocrypto.Hash.digest `SHA256 cs in
   let b64 = Nocrypto.Base64.encode check in
-  (`SHA256, Cstruct.to_string b64)
-
-let id (alg, data, _) =
-  (Key.alg_to_string alg) ^ snd (digest data)
+  Cstruct.to_string b64

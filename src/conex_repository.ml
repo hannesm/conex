@@ -62,7 +62,8 @@ let add_team repo team =
 
 let verify name key data (hdr, sigval) =
   let data = Signature.wire name hdr data in
-  Conex_nocrypto.verify key (Wire.to_string data) sigval
+  let key = match key with `RSA, k, _ -> k in
+  Conex_nocrypto.verify_rsa_pss ~key ~data:(Wire.to_string data) ~signature:sigval
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
@@ -99,7 +100,7 @@ let pp_error ppf = function
 (*BISECT-IGNORE-END*)
 
 let verify_resource repo owners name resource data =
-  let csum = Conex_nocrypto.digest data in
+  let csum = `SHA256, Conex_nocrypto.b64sha256 data in
   let csum_str = Digest.to_string csum in
   let n, _s, r, ids =
     if M.mem csum_str repo.valid then
@@ -146,7 +147,7 @@ let verify_signatures idx =
 
 let contains ?(queued = false) idx name typ data =
   let encoded = Wire.to_string data in
-  let digest = Conex_nocrypto.digest encoded in
+  let digest = `SHA256, Conex_nocrypto.b64sha256 encoded in
   let r = Author.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
   let xs = if queued then idx.Author.resources @ idx.Author.queued else idx.Author.resources in
   List.exists (Author.r_equal r) xs

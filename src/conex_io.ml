@@ -35,7 +35,7 @@ let checksum_files t pv =
 let compute_release t now name =
   let checksum filename data =
     let size = Uint.of_int_exn (String.length data)
-    and digest = Conex_nocrypto.digest data
+    and digest = (`SHA256, Conex_nocrypto.b64sha256 data)
     in
     { Release.filename ; size ; digest }
   in

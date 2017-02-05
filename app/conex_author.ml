@@ -147,7 +147,7 @@ let add_r idx name typ data =
   let counter = Author.next_id idx in
   let encoded = Wire.to_string data in
   let size = Uint.of_int_exn (String.length encoded) in
-  let digest = Conex_nocrypto.digest encoded in
+  let digest = (`SHA256, Conex_nocrypto.b64sha256 encoded) in
   let res = Author.r counter name size typ digest in
   Logs.info (fun m -> m "added %a to change queue" Author.pp_resource res) ;
   Author.add_resource idx res
@@ -177,11 +177,11 @@ let init _ dry path id email =
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
         | Error _ ->
-          let p = Conex_nocrypto.generate now () in
+          let p = Conex_sign.generate now () in
           str_to_msg (Conex_sign.write_private_key io id p) >>| fun () ->
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
-       str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
+       str_to_msg (Conex_sign.pub_of_priv priv) >>= fun public ->
        let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts
        and counter = idx.Author.counter
        and wraps = idx.Author.wraps

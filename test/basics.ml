@@ -99,70 +99,73 @@ end
 
 open Common
 
-let raw_sign p d = match Conex_nocrypto.sign p d with
+let raw_sign p d = match Conex_nocrypto.sign_rsa_pss ~key:p d with
   | Ok s -> s
   | Error e -> Alcotest.fail e
 
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub () in
+  let priv = match p with `Priv (`RSA, k, _) -> k in
+  let pu = match pub with `RSA, k, _ -> k in
   let d = Wire.to_string (Signature.wire pid (`RSA_PSS_SHA256, Uint.zero) pid) in
-  let sigval = raw_sign p d in
+  let signature = raw_sign priv d in
   Alcotest.check (result Alcotest.unit verr)
     "signature is good" (Ok ())
-    (Conex_nocrypto.verify pub d sigval)
+    (Conex_nocrypto.verify_rsa_pss ~key:pu ~data:d ~signature)
 
 let sign_single () =
   let idx = Author.t Uint.zero "a" in
   let pub, priv = gen_pub () in
+  let pri = match priv with `Priv (`RSA, k, _) -> k in
+  let key = match pub with `RSA, k, _ -> k in
   let raw = Wire.to_string (Author.wire idx) in
-  let sv = raw_sign priv raw in
+  let sv = raw_sign pri raw in
   Alcotest.check (result Alcotest.unit verr)
     "signature can be verified"
     (Ok ())
-    (Conex_nocrypto.verify pub raw sv) ;
+    (Conex_nocrypto.verify_rsa_pss ~key ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature empty"
     (Error `InvalidSignature)
-    (Conex_nocrypto.verify pub raw "") ;
+    (Conex_nocrypto.verify_rsa_pss ~key ~data:raw ~signature:"") ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (b64prefix)"
     (Error `InvalidBase64Encoding)
-    (Conex_nocrypto.verify pub raw ("\000" ^ sv)) ;
+    (Conex_nocrypto.verify_rsa_pss ~key ~data:raw ~signature:("\000" ^ sv)) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (prefix)"
     (Error `InvalidSignature)
-    (Conex_nocrypto.verify pub raw ("abcd" ^ sv)) ;
+    (Conex_nocrypto.verify_rsa_pss ~key ~data:raw ~signature:("abcd" ^ sv)) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (postfix)"
     (* should be invalid_b64 once nocrypto >0.5.3 is released *)
     (Error `InvalidSignature)
-    (Conex_nocrypto.verify pub raw (sv ^ "abcd")) ;
+    (Conex_nocrypto.verify_rsa_pss ~key ~data:raw ~signature:(sv ^ "abcd")) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (raw)"
     (Error `InvalidSignature)
-    (Conex_nocrypto.verify pub "" sv) ;
+    (Conex_nocrypto.verify_rsa_pss ~key ~data:"" ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (empty)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA, "", Uint.zero) raw sv) ;
-  let _, pub, _ = pub in
+    (Conex_nocrypto.verify_rsa_pss ~key:"" ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (prepended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA, "\000" ^ pub, Uint.zero) raw sv) ;
+    (Conex_nocrypto.verify_rsa_pss ~key:("\000" ^ key) ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (prepended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA, "abcd" ^ pub, Uint.zero) raw sv) ;
+    (Conex_nocrypto.verify_rsa_pss ~key:("abcd" ^ key) ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (appended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA, pub ^ "abcd", Uint.zero) raw sv) ;
+    (Conex_nocrypto.verify_rsa_pss ~key:(key ^ "abcd") ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (appended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.verify (`RSA, pub ^ "\000", Uint.zero) raw sv)
+    (Conex_nocrypto.verify_rsa_pss ~key:(key ^ "\000") ~data:raw ~signature:sv)
 
 let bad_priv () =
   let idx = Author.t Uint.zero "a" in
@@ -171,11 +174,8 @@ let bad_priv () =
   Alcotest.check (result Alcotest.string Alcotest.string)
     "sign with broken key is broken"
     (Error "couldn't decode private key")
-    (Conex_nocrypto.sign (`Priv (`RSA, "", Uint.zero)) raw) ;
-  let get_pub p = match Conex_nocrypto.pub_of_priv (`Priv (`RSA, p, Uint.zero)) with
-    | Ok (`RSA, p, _) -> Ok p
-    | Error e -> Error e
-  in
+    (Conex_nocrypto.sign_rsa_pss ~key:"" raw) ;
+  let get_pub p = Conex_nocrypto.pub_of_priv_rsa p in
   Alcotest.check (result Alcotest.string Alcotest.string)
     "pub_of_priv with broken key is broken"
     (Error "couldn't decode private key")
@@ -203,7 +203,7 @@ let verify_fail () =
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
     (Conex_repository.verify "foo" k raw single_sig) ;
-  let pub = match Conex_nocrypto.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
+  let pub = match Conex_sign.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
     | Ok p -> p
     | Error _ -> Alcotest.fail "couldn't pub_of_priv"
   in
