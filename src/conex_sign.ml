@@ -30,20 +30,15 @@ let private_key_path path id =
   in
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
-(* TODO: should get created as input *)
-let sign idx priv =
+let sign now idx priv =
   let idx, _overflow = Author.prep_sig idx in
-  let data = Conex_opam_encoding.encode (Author.wire_raw idx)
-  and created = Uint.of_float (Unix.time ())
+  let data = Wire.to_string (Author.wire_raw idx)
   and id = idx.Author.name
   in
-  match created with
-  | None -> Error "couldn't convert timestamp to uint"
-  | Some created ->
-    let hdr = `RSA_PSS_SHA256, created in
-    let data = Conex_opam_encoding.encode (Signature.wire id hdr data) in
-    Conex_nocrypto.sign priv data >>= fun signature ->
-    Ok (Author.add_sig idx (hdr, signature))
+  let hdr = `RSA_PSS_SHA256, now in
+  let data = Wire.to_string (Signature.wire id hdr data) in
+  Conex_nocrypto.sign priv data >>= fun signature ->
+  Ok (Author.add_sig idx (hdr, signature))
 
 let write_private_key prov id key =
   let base = prov.Conex_provider.name in

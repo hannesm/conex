@@ -60,7 +60,7 @@ let rec decode_s = function
           decode_s s >>= fun x ->
           Ok (x :: xs))
           (Ok []) l >>= fun xs ->
-      Ok (Wire.List xs)
+      Ok (Wire.List (List.rev xs))
   | _ -> Error "unexpected thing while decoding"
 
 let decode data =

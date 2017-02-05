@@ -27,7 +27,19 @@ module Wire = struct
     | String of string
     | Int of Uint.t
 
+  let rec s_to_string = function
+    | Int x -> "0x" ^ Uint.to_string x
+    | String s -> "'"^s^"'"
+    | List xs -> "[" ^ String.concat "; " (List.map s_to_string xs) ^ "]"
+    | Map m ->
+      let strs =
+        M.fold (fun k v acc -> (k ^ ": " ^ s_to_string v) :: acc) m []
+      in
+      "{" ^ String.concat "KEY" strs ^ "}"
+
   type t = s M.t
+
+  let to_string t = s_to_string (Map t)
 
   let search t k =
     try Some (M.find k t) with Not_found -> None

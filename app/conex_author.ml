@@ -145,11 +145,11 @@ let status _ dry path quorum strict id name no_rec =
 
 let add_r idx name typ data =
   let counter = Author.next_id idx in
-  let encoded = Conex_opam_encoding.encode data in
+  let encoded = Wire.to_string data in
   let size = Uint.of_int_exn (String.length encoded) in
   let digest = Conex_nocrypto.digest encoded in
   let res = Author.r counter name size typ digest in
-  Logs.info (fun m -> m "added %a to resource list" Author.pp_resource res) ;
+  Logs.info (fun m -> m "added %a to change queue" Author.pp_resource res) ;
   Author.add_resource idx res
 
 let init _ dry path id email =
@@ -158,16 +158,24 @@ let init _ dry path id email =
      | None -> Error (`Msg "please provide '--id'")
      | Some id ->
        Nocrypto_entropy_unix.initialize () ;
-       init_repo dry path >>= fun (r, io) ->
+       init_repo ~quorum:0 dry path >>= fun (r, io) ->
        Logs.info (fun m -> m "repository %s" io.Conex_provider.name) ;
        (match IO.read_id io id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
         | Ok (`Author idx) when List.length idx.Author.keys > 0 ->
           Error (`Msg ("key " ^ id ^ " exists and includes a public key"))
-        | Ok (`Author k) -> Ok k
-        | Error _ -> Ok (Author.t now id)) >>= fun idx ->
+        | Ok (`Author k) ->
+          Logs.info (fun m -> m "adding keys to %a" Author.pp k) ;
+          Ok k
+        | Error err ->
+          Logs.info (fun m -> m "error reading author %s %a, creating a fresh one"
+                         id Conex_io.pp_r_err err) ;
+          Ok (Author.t now id)) >>= fun idx ->
        (match Conex_sign.read_private_key ~id io with
-        | Ok (_, priv) -> Ok priv
+        | Ok (_, priv) ->
+          let created = match priv with `Priv (_, _, c) -> c in
+          Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
+          Ok priv
         | Error _ ->
           let p = Conex_nocrypto.generate () in
           str_to_msg (Conex_sign.write_private_key io id p) >>| fun () ->
@@ -185,9 +193,9 @@ let init _ dry path id email =
        in
        let idx = Author.t ~accounts ~keys ~counter ~wraps ~resources ~signatures ~queued created id in
        let idx = add_r idx id `Key (Key.wire id public) in
-       str_to_msg (Conex_sign.sign idx priv) >>= fun idx ->
+       str_to_msg (Conex_sign.sign now idx priv) >>= fun idx ->
        str_to_msg (IO.write_author io idx) >>= fun () ->
-       Logs.info (fun m -> m "wrote author %a" Author.pp idx) ;
+       Logs.info (fun m -> m "wrote %a" Author.pp idx) ;
        R.error_to_msg ~pp_error:pp_verification_error
          (Conex_repository.verify_author r idx >>| fun (_, _, id) ->
           Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
@@ -220,10 +228,10 @@ let sign _ dry path id =
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (Conex_sign.sign idx priv) >>= fun idx ->
+       str_to_msg (Conex_sign.sign now idx priv) >>= fun idx ->
        Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
        str_to_msg (IO.write_author io idx) >>| fun () ->
-       Logs.app (fun m -> m "wrote author %s to disk" id))
+       Logs.app (fun m -> m "wrote %s to disk" id))
 
 let reset _ dry path id =
   msg_to_cmdliner
@@ -235,7 +243,7 @@ let reset _ dry path id =
        idx.Author.queued ;
      let idx = Author.reset idx in
      str_to_msg (IO.write_author io idx) >>| fun () ->
-     Logs.app (fun m -> m "wrote author %s to disk" id))
+     Logs.app (fun m -> m "wrote %s to disk" id))
 
 let find_auth io name =
   let use e =

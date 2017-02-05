@@ -2,7 +2,6 @@ open Conex_result
 open Conex_core
 open Conex_resource
 open Conex_utils
-open Conex_opam_encoding
 
 type valid_resources = (name * Uint.t * typ * S.t) M.t
 
@@ -52,7 +51,7 @@ let add_valid_resource repo id res =
     else if not (typ_equal r res.rtyp) then
       Error ("resource not equal: " ^ typ_to_string r ^ " vs " ^ typ_to_string res.rtyp)
     else if not (s = res.size) then
-      Error ("size not equal: " ^ Uint.to_string s ^ " vs " ^ Uint.to_string res.size)
+      Error ("size not equal: " ^ Uint.decimal s ^ " vs " ^ Uint.decimal res.size)
     else
       Ok ({ repo with valid = M.add dgst_str (n, s, r, S.add id ids) t })
   with Not_found ->
@@ -63,7 +62,7 @@ let add_team repo team =
 
 let verify name key data (hdr, sigval) =
   let data = Signature.wire name hdr data in
-  Conex_nocrypto.verify key (Conex_opam_encoding.encode data) sigval
+  Conex_nocrypto.verify key (Wire.to_string data) sigval
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
@@ -126,13 +125,13 @@ let verify_resource repo owners name resource data =
   | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
 
 let verify_key repo id key =
-  verify_resource repo (S.singleton id) id `Key (encode (Key.wire id key)) >>= function
+  verify_resource repo (S.singleton id) id `Key (Wire.to_string (Key.wire id key)) >>= function
   | `Both b -> Ok (`Both b)
   | `Quorum _ -> Error (`MissingSignature id)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Key, js))
 
 let verify_signatures idx =
-  let tbv = encode (Author.wire_raw idx) in
+  let tbv = Wire.to_string (Author.wire_raw idx) in
   List.fold_left (fun (good, warn) k ->
       match List.fold_left (fun r s ->
           match r, verify idx.Author.name k tbv s with
@@ -146,7 +145,7 @@ let verify_signatures idx =
     ([], []) idx.Author.keys
 
 let contains ?(queued = false) idx name typ data =
-  let encoded = encode data in
+  let encoded = Wire.to_string data in
   let digest = Conex_nocrypto.digest encoded in
   let r = Author.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
   let xs = if queued then idx.Author.resources @ idx.Author.queued else idx.Author.resources in
@@ -175,7 +174,7 @@ let verify_author repo idx =
   match valid_keys, idx.Author.resources with
   | [], [] ->
     (* this is the case where deleted ids will end *)
-    begin match verify_resource repo S.empty id `Author (encode (Author.wire idx)) with
+    begin match verify_resource repo S.empty id `Author (Wire.to_string (Author.wire idx)) with
       | Ok _ -> Ok (add_id repo id, [], id)
       | Error _ -> Error `NoSignature
     end
@@ -198,7 +197,7 @@ let verify_author repo idx =
 
 let verify_team repo team =
   let id = team.Team.name in
-  match verify_resource repo S.empty id `Team (encode (Team.wire team)) with
+  match verify_resource repo S.empty id `Team (Wire.to_string (Team.wire team)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
   | Error e -> Error e
   | Ok (`Quorum js) ->
@@ -210,7 +209,7 @@ let verify_team repo team =
 
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
-  match verify_resource repo S.empty name `Authorisation (encode (Authorisation.wire auth)) with
+  match verify_resource repo S.empty name `Authorisation (Wire.to_string (Authorisation.wire auth)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
   | Error e -> Error e
   | Ok (`Quorum js) ->
@@ -243,7 +242,7 @@ let verify_package repo ?on_disk a r =
     (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
   guard (S.for_all (is_release r.Package.name) r.Package.releases)
     (`NoSharedPrefix (r.Package.name, r.Package.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised r.Package.name `Package (encode (Package.wire r)) >>= fun res ->
+  verify_resource repo a.Authorisation.authorised r.Package.name `Package (Wire.to_string (Package.wire r)) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
@@ -261,7 +260,7 @@ let verify_release repo ?on_disk a r cs =
     (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
   guard (S.mem cs.Release.name r.Package.releases)
     (`NotInReleases (cs.Release.name, r.Package.releases)) >>= fun () ->
-  verify_resource repo a.Authorisation.authorised cs.Release.name `Release (encode (Release.wire cs)) >>= fun res ->
+  verify_resource repo a.Authorisation.authorised cs.Release.name `Release (Wire.to_string (Release.wire cs)) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)

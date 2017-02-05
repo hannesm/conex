@@ -1,7 +1,8 @@
 open Conex_result
+open Conex_utils
 open Conex_resource
 
-val sign : Author.t -> Key.priv -> (Author.t, string) result
+val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
 
 val write_private_key : Conex_provider.t -> string -> Key.priv -> (unit, string) result
 

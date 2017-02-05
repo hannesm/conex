@@ -1,7 +1,6 @@
 open Conex_result
 open Conex_utils
 open Conex_resource
-open Conex_opam_encoding
 
 module Ui = struct
   let ui =
@@ -107,7 +106,7 @@ let raw_sign p d = match Conex_nocrypto.sign p d with
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub () in
-  let d = encode (Signature.wire pid (`RSA_PSS_SHA256, Uint.zero) pid) in
+  let d = Wire.to_string (Signature.wire pid (`RSA_PSS_SHA256, Uint.zero) pid) in
   let sigval = raw_sign p d in
   Alcotest.check (result Alcotest.unit verr)
     "signature is good" (Ok ())
@@ -116,7 +115,7 @@ let sig_good () =
 let sign_single () =
   let idx = Author.t Uint.zero "a" in
   let pub, priv = gen_pub () in
-  let raw = encode (Author.wire idx) in
+  let raw = Wire.to_string (Author.wire idx) in
   let sv = raw_sign priv raw in
   Alcotest.check (result Alcotest.unit verr)
     "signature can be verified"
@@ -168,7 +167,7 @@ let sign_single () =
 let bad_priv () =
   let idx = Author.t Uint.zero "a" in
   let pub, priv = gen_pub () in
-  let raw = encode (Author.wire idx) in
+  let raw = Wire.to_string (Author.wire idx) in
   Alcotest.check (result Alcotest.string Alcotest.string)
     "sign with broken key is broken"
     (Error "couldn't decode private key")
@@ -197,7 +196,7 @@ let verify_fail () =
     | [x] -> x
     | _ -> Alcotest.fail "expected a single signature"
   in
-  let raw = encode (Author.wire_raw signed) in
+  let raw = Wire.to_string (Author.wire_raw signed) in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies" (Ok ())
     (Conex_repository.verify "a" k raw single_sig) ;
   let (hdr, _) = single_sig in
@@ -214,7 +213,7 @@ let verify_fail () =
   Alcotest.check (result Alcotest.unit verr) "invalid b64 sig"
     (Error `InvalidBase64Encoding)
     (Conex_repository.verify "a" k
-       (encode (Author.wire_raw signed))
+       (Wire.to_string (Author.wire_raw signed))
        (hdr, "bad"))
 
 
@@ -236,19 +235,19 @@ let idx_sign () =
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ())
     (Conex_repository.verify "a" k
-       (encode (Author.wire_raw signed))
+       (Wire.to_string (Author.wire_raw signed))
        single_sig) ;
   let r = Author.r (Author.next_id idx) "foo" (Uint.of_int_exn 4) `Key (`SHA256, "2342") in
   let idx' = Author.add_resource signed r in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Ok ())
     (Conex_repository.verify "a" k
-       (encode (Author.wire_raw idx')) single_sig) ;
+       (Wire.to_string (Author.wire_raw idx')) single_sig) ;
   let idx', _ = Author.prep_sig idx' in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Error `InvalidSignature)
     (Conex_repository.verify "a" k
-       (encode (Author.wire_raw idx')) single_sig)
+       (Wire.to_string (Author.wire_raw idx')) single_sig)
 
 let idx_sign_other () =
   (* this shows that Publickey.verify does not check
@@ -264,7 +263,7 @@ let idx_sign_other () =
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ())
     (Conex_repository.verify "b" k
-       (encode (Author.wire_raw signed))
+       (Wire.to_string (Author.wire_raw signed))
        signature)
 
 let idx_sign_bad () =
@@ -276,7 +275,7 @@ let idx_sign_bad () =
     | _ -> Alcotest.fail "expected a single signature"
   in
   let idx' = Author.t Uint.zero "c" in
-  let raw = encode (Author.wire_raw idx') in
+  let raw = Wire.to_string (Author.wire_raw idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong id)"
     (Error `InvalidSignature)
     (Conex_repository.verify "c" k raw single_sig)
@@ -290,7 +289,7 @@ let idx_sign_bad2 () =
     | _ -> Alcotest.fail "expected a single signature"
   in
   let idx' = Author.t ~counter:(Uint.of_int_exn 23) Uint.zero "b" in
-  let raw = encode (Author.wire_raw idx') in
+  let raw = Wire.to_string (Author.wire_raw idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong data)"
     (Error `InvalidSignature)
     (Conex_repository.verify "b" k raw single_sig)

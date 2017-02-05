@@ -94,7 +94,7 @@ module Wire : sig
   (** The toplevel node, a Map *)
   type t = s M.t
 
-  (* TODO: to_string - my custom normalised representation used for digests *)
+  val to_string : t -> string
 end
 
 (** {1 Resource types} *)
