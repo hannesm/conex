@@ -5,6 +5,10 @@ open Conex_resource
 
 type t
 
+
+val digest : string -> Digest.t
+val id : Key.t -> string
+
 val repository : ?quorum:int -> ?strict:bool -> unit -> t
 val quorum : t -> int
 val strict : t -> bool

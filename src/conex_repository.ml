@@ -7,6 +7,11 @@ type valid_resources = (name * Uint.t * typ * S.t) M.t
 
 type teams = S.t M.t
 
+let digest data = (`SHA256, Conex_nocrypto.b64sha256 data)
+
+let id key = match key with
+  | `RSA, key, _ -> snd (digest key)
+
 type t = {
   quorum : int ;
   strict : bool ;
@@ -100,7 +105,7 @@ let pp_error ppf = function
 (*BISECT-IGNORE-END*)
 
 let verify_resource repo owners name resource data =
-  let csum = `SHA256, Conex_nocrypto.b64sha256 data in
+  let csum = digest data in
   let csum_str = Digest.to_string csum in
   let n, _s, r, ids =
     if M.mem csum_str repo.valid then
@@ -147,7 +152,7 @@ let verify_signatures idx =
 
 let contains ?(queued = false) idx name typ data =
   let encoded = Wire.to_string data in
-  let digest = `SHA256, Conex_nocrypto.b64sha256 encoded in
+  let digest = digest encoded in
   let r = Author.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
   let xs = if queued then idx.Author.resources @ idx.Author.queued else idx.Author.resources in
   List.exists (Author.r_equal r) xs

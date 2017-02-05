@@ -39,9 +39,6 @@ let pub_of_priv key = match key with
     Conex_nocrypto.pub_of_priv_rsa key >>= fun pub ->
     Ok (`RSA, pub, created)
 
-let id key = match key with
-  | `RSA, key, _ -> Conex_nocrypto.b64sha256 key
-
 let sign now idx priv =
   let idx, _overflow = Author.prep_sig idx in
   let data = Wire.to_string (Author.wire_raw idx)

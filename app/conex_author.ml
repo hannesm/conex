@@ -147,7 +147,7 @@ let add_r idx name typ data =
   let counter = Author.next_id idx in
   let encoded = Wire.to_string data in
   let size = Uint.of_int_exn (String.length encoded) in
-  let digest = (`SHA256, Conex_nocrypto.b64sha256 encoded) in
+  let digest = Conex_repository.digest encoded in
   let res = Author.r counter name size typ digest in
   Logs.info (fun m -> m "added %a to change queue" Author.pp_resource res) ;
   Author.add_resource idx res
