@@ -19,13 +19,13 @@ type t = {
 let repository ?(quorum = 3) ?(strict = false) () =
   { quorum ; strict ; valid = M.empty ; teams = M.empty ; ids = S.empty }
 
-let quorum r = r.quorum
+let quorum t = t.quorum
 
-let strict r = r.strict
+let strict t = t.strict
 
-let find_team r id = try Some (M.find id r.teams) with Not_found -> None
+let find_team t id = try Some (M.find id t.teams) with Not_found -> None
 
-let id_loaded t id = S.mem id t.ids
+let id_loaded t id = S.mem id t.ids || find_team t id <> None
 
 let add_id t id = { t with ids = S.add id t.ids }
 
@@ -59,10 +59,7 @@ let add_valid_resource repo id res =
     Ok ({ repo with valid = M.add dgst_str (res.rname, res.size, res.resource, S.singleton id) t})
 
 let add_team repo team =
-  { repo with
-    teams = M.add team.Team.name team.Team.members repo.teams ;
-    ids = S.add team.Team.name repo.ids
-  }
+  { repo with teams = M.add team.Team.name team.Team.members repo.teams  }
 
 let verify key data (hdr, sigval) =
   let data = extend_sig hdr data in
@@ -91,6 +88,8 @@ let pp_error ppf = function
   | `NotSigned (n, r, _) -> Format.fprintf ppf "unsigned %a %a" pp_resource r pp_name n
   | `InsufficientQuorum (name, r, goods) -> Format.fprintf ppf "quorum for %a %a insufficient: %a" pp_resource r pp_name name (pp_list pp_id) (S.elements goods)
   | `MissingSignature id -> Format.fprintf ppf "publickey %a: missing self-signature" pp_id id
+  | `IdNotPresent (n, s) -> Format.fprintf ppf "packages %a, authorised ids %a missing" pp_name n (pp_list pp_id) (S.elements s)
+  | `MemberNotPresent (n, s) -> Format.fprintf ppf "team %a, members %a missing" pp_id n (pp_list pp_id) (S.elements s)
   | `AuthRelMismatch (a, r) -> Format.fprintf ppf "package name in authorisation of %a is different from releases %a" pp_name a pp_name r
   | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
   | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
@@ -166,10 +165,7 @@ let verify_index repo idx =
      - use all keys of the idx, filter:
      - those with a valid signature for the idx
      - those with a valid resource entry
-     - those that can be verified (quorum)
-
-     --> or else maybe the (empty!) idx can be verified by janitors
- *)
+     - those that can be verified (quorum) *)
   let id = idx.Index.name in
   let signed_keys, _s_warn = verify_signatures idx in
   let valid_keys, _r_warn = List.partition
@@ -178,6 +174,7 @@ let verify_index repo idx =
   in
   match valid_keys, idx.Index.resources with
   | [], [] ->
+    (* this is the case where deleted ids will end *)
     begin match verify_resource repo S.empty id `Index (encode (Index.wire idx)) with
       | Ok _ -> Ok (add_id repo id, [], id)
       | Error _ -> Error `NoSignature
@@ -204,20 +201,25 @@ let verify_team repo team =
   match verify_resource repo S.empty id `Team (encode (Team.wire team)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
   | Error e -> Error e
-  | Ok (`Quorum js) -> Ok (add_team repo team, `Quorum js)
+  | Ok (`Quorum js) ->
+    guard (S.subset team.Team.members repo.ids)
+      (`MemberNotPresent (id, S.diff team.Team.members repo.ids)) >>= fun () ->
+    Ok (add_team repo team, `Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-  (* should verify that all members are on disk (and are index, not teams!!!) *)
 
 let verify_authorisation repo auth =
   let name = auth.Authorisation.name in
   match verify_resource repo S.empty name `Authorisation (encode (Authorisation.wire auth)) with
   | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
   | Error e -> Error e
-  | Ok (`Quorum js) -> Ok (`Quorum js)
+  | Ok (`Quorum js) ->
+    let all = auth.Authorisation.authorised in
+    guard (S.for_all (id_loaded repo) all)
+      (`IdNotPresent (name, S.filter (fun id -> not (id_loaded repo id)) all)) >>= fun () ->
+      Ok (`Quorum js)
   (* the following two cases will never happen, since authorised is S.empty! *)
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-  (* should verify that all ids exist? *)
 
 let ensure_releases rel disk =
   let rels = rel.Releases.releases

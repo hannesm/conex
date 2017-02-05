@@ -69,8 +69,6 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let load_ids io r ids = foldS (C.load_id io) r ids
-
 let self io id =
   R.error_to_msg ~pp_error:Conex_sign.pp_err
     (match id with
@@ -80,13 +78,11 @@ let self io id =
   id
 
 let load_self_queued io r id =
-  let idx = R.ignore_error ~use:(fun _ -> Index.index id)
-      (IO.read_index io id)
-  in
   match C.load_id io r id with
   | Ok r -> r
   | Error e ->
     Logs.warn (fun m -> m "error while loading id %s" e) ;
+    let idx = R.ignore_error ~use:(fun _ -> Index.index id) (IO.read_index io id) in
     let r, warns = Conex_repository.add_index r idx in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warns ;
     match foldM (fun repo r -> Conex_repository.add_valid_resource repo id r) r idx.Index.queued with
@@ -94,8 +90,7 @@ let load_self_queued io r id =
     | Error e -> Logs.warn (fun m -> m "while adding %s" e) ; r
 
 let status_all io r id no_team =
-  R.error_to_msg ~pp_error:IO.pp_r_err
-    (IO.read_id io id) >>= function
+  R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
   | `Id _ ->
     (if no_team then
        Ok (S.singleton id)
@@ -112,11 +107,13 @@ let status_all io r id no_team =
        in
        Ok (s_of_list (id :: List.map (fun t -> t.Team.name) teams))
      end) >>= fun me ->
+    str_to_msg (C.load_ids ~ids:me io r) >>= fun r ->
     let authorised auth = not (S.is_empty (S.inter me auth)) in
     str_to_msg (IO.items io) >>= fun items ->
     str_to_msg (foldS (C.verify_item io ~authorised) r items)
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
+    str_to_msg (C.load_ids ~ids:t.Team.members io r) >>= fun r ->
     let authorised auth = S.mem t.Team.name auth in
     str_to_msg (IO.items io) >>= fun items ->
     str_to_msg (foldS (C.verify_item io ~authorised) r items)
@@ -238,18 +235,18 @@ let find_auth io name =
     w IO.pp_r_err e ;
     let a = Authorisation.authorisation name in
     Logs.info (fun m -> m "fresh %a" Authorisation.pp_authorisation a);
-    (a, true)
+    a
   in
   R.ignore_error ~use
     (IO.read_authorisation io name >>| fun a ->
      Logs.debug (fun m -> m "read %a" Authorisation.pp_authorisation a);
-     (a, false))
+     a)
 
 let auth _ dry path id remove members p =
   msg_to_cmdliner
     (init_repo dry path >>= fun (_r, io) ->
      self io id >>= fun id ->
-     let auth, _ = find_auth io p in
+     let auth = find_auth io p in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
      let auth' = List.fold_left f auth members in
@@ -280,8 +277,8 @@ let release _ dry path id remove p =
       | Some n -> Ok (n, S.singleton p)
       | None -> str_to_msg (IO.subitems io p) >>= fun rels -> Ok (p, rels))
      >>= fun (pn, releases) ->
-     let auth, _ = find_auth io pn in
-     str_to_msg (load_ids io r auth.Authorisation.authorised) >>= fun r ->
+     let auth = find_auth io pn in
+     str_to_msg (C.load_ids ~ids:auth.Authorisation.authorised io r) >>= fun r ->
      if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
      let rel =

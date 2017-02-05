@@ -112,12 +112,10 @@ let verify_full io repo anchors =
     else
       (Log.debug (fun m -> m "rejecting ta %s" id) ; false)
   in
-  match C.load_janitors ~valid io repo with
-  | Ok repo ->
-    (* foreach package, read and verify authorisation (may need to load ids), releases, checksums *)
-    IO.items io >>= fun items ->
-    foldS (C.verify_item io) repo items
-  | Error _ -> Error "couldn't load janitors"
+  C.load_janitors ~valid io repo >>= fun repo ->
+  C.load_ids io repo >>= fun repo ->
+  IO.items io >>= fun items ->
+  foldS (C.verify_item io) repo items
 
 let err_to_cmdliner = function
   | Ok _ -> `Ok ()

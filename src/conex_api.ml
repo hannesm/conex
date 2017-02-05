@@ -35,40 +35,45 @@ module Make (L : LOGS) = struct
       if strict repo then Error (str pp err) else
         (L.warn (fun m -> m "%a" pp err) ; Ok res)
 
-  let load_id_aux io repo id =
-    match IO.read_id io id with
-    | Error e ->
-      if strict repo then Error (str IO.pp_r_err e) else
-        Ok (`Nothing, repo)
-    | Ok (`Id idx) ->
-      (L.debug (fun m -> m "%a" Index.pp_index idx) ;
-       maybe repo pp_verification_error (`Nothing, repo)
-         (verify_index repo idx >>= fun (repo, msgs, _) ->
-          List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
-          Ok (`Id idx, repo)))
-    | Ok (`Team t) ->
-      (L.debug (fun m -> m "%a" Team.pp_team t) ;
-       maybe repo pp_error (`Nothing, repo)
-         (verify_team repo t >>= fun (r, ok) ->
-          L.debug (fun m -> m "%a" pp_ok ok) ;
-          Ok (`Team t, r)))
-
   let load_id io repo id =
-    if id_loaded repo id then
-      Ok repo
-    else
-      let repo = add_id repo id in
-      load_id_aux io repo id >>= function
-      | `Id _, repo ->  Ok repo
-      | `Team t, repo ->
-        let load_id repo id =
-          load_id_aux io repo id >>= function
-          | `Nothing, repo -> Ok repo
-          | `Id _, repo -> Ok repo
-          | `Team t', _ -> Error ("team " ^ t'.Team.name ^ " is a member of " ^ t.Team.name ^ ", another team")
-        in
-        foldS load_id repo t.Team.members
-      | `Nothing, repo -> Ok repo
+    if id_loaded repo id then Ok repo else
+      match IO.read_index io id with
+      | Ok idx ->
+        (L.debug (fun m -> m "%a" Index.pp_index idx) ;
+         maybe repo pp_verification_error repo
+           (verify_index repo idx >>= fun (repo, msgs, _) ->
+            List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
+            Ok repo))
+      | Error e ->
+        if strict repo then Error (str IO.pp_r_err e) else Ok repo
+
+  let load_ids ?ids io repo =
+    (match ids with
+     | Some x -> Ok x
+     | None -> IO.ids io) >>= fun ids ->
+    let ids = S.filter (fun id -> not (id_loaded repo id)) ids in
+    foldS (fun acc id ->
+        maybe repo IO.pp_r_err acc (IO.read_id io id >>= fun x -> Ok (x :: acc)))
+      [] ids >>= fun ids ->
+    let users, teams =
+      List.fold_left (fun (is, ts) -> function
+          | `Id id -> id :: is, ts
+          | `Team t -> is, t :: ts)
+        ([], []) ids
+    in
+    foldM (fun repo id ->
+        maybe repo pp_verification_error repo
+          (verify_index repo id >>= fun (repo, warn, _) ->
+           List.iter (fun msg -> L.warn (fun m  -> m "%s" msg)) warn ;
+           Ok repo))
+      repo users >>= fun repo ->
+    foldM (fun repo t ->
+        foldS (load_id io) repo t.Team.members >>= fun repo ->
+        maybe repo pp_error repo
+          (verify_team repo t >>= fun (r, ok) ->
+           L.debug (fun m -> m "%a" pp_ok ok) ;
+           Ok r))
+      repo teams
 
   let load_janitors ?(valid = fun _ _ -> true) io repo =
     match IO.read_team io "janitors" with
@@ -182,14 +187,12 @@ module Make (L : LOGS) = struct
           Ok (Authorisation.authorisation name, repo))
      | Ok auth ->
        L.debug (fun m ->m "%a" Authorisation.pp_authorisation auth) ;
-       maybe repo pp_error false
-         (verify_authorisation repo auth >>= fun ok->
-          L.debug (fun m -> m "%a" pp_ok ok) ;
-          Ok true) >>= (function
-           | false -> Ok (auth, repo)
-           | true ->
-             foldS (load_id io) repo auth.Authorisation.authorised >>= fun repo ->
-             Ok (auth, repo))) >>= fun (auth, repo) ->
+       (* need to load indexes before verifying! *)
+       load_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
+       maybe repo pp_error ()
+         (verify_authorisation repo auth >>= fun ok ->
+          L.debug (fun m -> m "%a" pp_ok ok) ; Ok ()) >>= fun () ->
+       Ok (auth, repo)) >>= fun (auth, repo) ->
     (if authorised auth.Authorisation.authorised then
        (match IO.read_releases io name with
         | Error e ->
@@ -264,6 +267,7 @@ module Make (L : LOGS) = struct
     let fresh_repo = repository ~quorum:(quorum repo) ~strict:(strict repo) () in
     load_janitors ~valid newio fresh_repo >>= fun newrepo ->
     (* now we do a full verification of the new repository *)
+    load_ids newio newrepo >>= fun newrepo ->
     IO.items newio >>= fun items ->
     foldS (verify_item newio) newrepo items >>= fun newrepo ->
 

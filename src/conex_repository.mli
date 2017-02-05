@@ -18,7 +18,6 @@ val add_index : t -> Index.t -> t * string list
 
 (* Unsafe operation, think before usage! *)
 val add_team : t -> Team.t -> t
-val add_id : t -> identifier -> t
 
 val contains : ?queued:bool -> Index.t -> name -> resource -> Wire.t -> bool
 
@@ -42,6 +41,8 @@ val pp_error : Format.formatter ->
   [< base_error
   | `InsufficientQuorum of name * resource * S.t
   | `MissingSignature of identifier
+  | `IdNotPresent of name * S.t
+  | `MemberNotPresent of identifier * S.t
   | `AuthRelMismatch of name * name
   | `InvalidReleases of name * S.t * S.t
   | `NoSharedPrefix of name * S.t
@@ -55,11 +56,11 @@ val verify_key : t -> identifier -> pub ->
 
 val verify_team : t -> Team.t ->
   (t * [ `Quorum of S.t ],
-   [> base_error | `InsufficientQuorum of name * resource * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * resource * S.t | `MemberNotPresent of identifier * S.t ]) result
 
 val verify_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
-   [> base_error | `InsufficientQuorum of name * resource * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * resource * S.t | `IdNotPresent of name * S.t ]) result
 
 val verify_releases : t -> ?on_disk:Releases.t -> Authorisation.t -> Releases.t ->
   ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],

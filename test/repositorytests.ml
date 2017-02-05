@@ -776,13 +776,18 @@ let t_ok =
 
 let a_err =
   let module M = struct
-    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * resource * S.t ]
+    type t = [ Conex_repository.base_error
+             | `InsufficientQuorum of name * resource * S.t
+             | `IdNotPresent of name * S.t
+             | `MemberNotPresent of identifier * S.t ]
     let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InsufficientQuorum (id, r, q), `InsufficientQuorum (id', r', q') -> id_equal id id' && S.equal q q' && resource_equal r r'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && resource_equal w w' && resource_equal h h'
       | `NotSigned (n, r, js), `NotSigned (n', r', js') -> name_equal n n' && resource_equal r r' && S.equal js js'
+      | `IdNotPresent (n, s), `IdNotPresent (n', s') -> name_equal n n' && S.equal s s'
+      | `MemberNotPresent (n, s), `MemberNotPresent (n', s') -> id_equal n n' && S.equal s s'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -894,6 +899,19 @@ let team_dyn () =
     [ Index.r Uint.zero pname s `Team d ]
   in
   let r' = add_rs r jid resources in
+  Alcotest.check (result t_ok a_err) "team properly signed, but missing member"
+    (Error (`MemberNotPresent (pname, S.singleton "foobar")))
+    (Conex_repository.verify_team r' team) ;
+  let idx = Index.index "foobar" in
+  let resources =
+    let s', d' = res (Index.wire idx) in
+    [ Index.r (Uint.of_int_exn 1) "foobar" s' `Index d' ]
+  in
+  let r' = add_rs r' jid resources in
+  let r' = match Conex_repository.verify_index r' idx with
+    | Error _ -> Alcotest.fail "should not fail"
+    | Ok (r, _, _) -> r
+  in
   Alcotest.check (result t_ok a_err) "team properly signed"
     (Ok (r', `Quorum (S.singleton jid)))
     (Conex_repository.verify_team r' team) ;
@@ -1036,9 +1054,19 @@ let auth_dyn () =
     [ Index.r Uint.zero pname s `Authorisation d ]
   in
   let r' = add_rs r jid resources in
-  Alcotest.check (result a_ok a_err) "authorisation properly signed"
-    (Ok (`Quorum (S.singleton jid)))
+  Alcotest.check (result a_ok a_err) "authorisation properly signed, but missing id"
+    (Error (`IdNotPresent (pname, S.singleton "foobar")))
     (Conex_repository.verify_authorisation r' auth) ;
+  let idx = Index.index "foobar" in
+  let resources =
+    let s', d' = res (Index.wire idx) in
+    [ Index.r (Uint.of_int_exn 1) "foobar" s' `Index d' ]
+  in
+  let r' = add_rs r' jid resources in
+  let r' = match Conex_repository.verify_index r' idx with
+    | Error _ -> Alcotest.fail "should not fail"
+    | Ok (r, _, _) -> r
+  in
   let auth = Authorisation.remove auth "foo" in
   Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
@@ -1189,6 +1217,28 @@ let rel_missing_releases () =
           (Error (`InvalidReleases (pname, S.add v3 (S.singleton v2), S.empty)))
           (Conex_repository.verify_releases r ~on_disk auth rel)
 
+let bad_releases () =
+  let io = Mem.mem_provider () in
+  let r = Conex_repository.repository ~quorum:1 () in
+  let pname = "foop"
+  and id = "id"
+  in
+  let auth = Authorisation.authorisation ~authorised:(S.singleton id) pname in
+  let v = pname ^ pname ^ ".0" in
+  let rel = Releases.releases ~releases:(S.singleton v) pname in
+  let resources =
+    let s, d = res (Releases.wire rel) in
+    [ Index.r Uint.zero pname s `Releases d ]
+  in
+  let r = add_rs r id resources in
+  Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
+    (Ok ()) (io.Conex_provider.write ["packages"; pname; v; "checksum"] "") ;
+  match Conex_io.compute_releases io pname with
+  | Error _ -> Alcotest.fail "should be able to compute releases0"
+  | Ok on_disk ->
+    Alcotest.check (result r_ok r_err) "releases contains bad prefix"
+      (Error (`NoSharedPrefix (pname, S.singleton v)))
+      (Conex_repository.verify_releases r ~on_disk auth rel)
 
 let rel_name_mismatch () =
   let r = Conex_repository.repository ~quorum:1 () in
@@ -1243,6 +1293,7 @@ let rel_repo_tests = [
   "quorum on releases", `Quick, rel_quorum ;
   "not authorised", `Quick, rel_not_authorised ;
   "missing some releases", `Quick, rel_missing_releases ;
+  "bad releases on disk", `Quick, bad_releases ;
   "name mismatch (releases and authorisation)", `Quick, rel_name_mismatch ;
   "wrong name", `Quick, rel_wrong_name ;
   "wrong resource", `Quick, rel_wrong_resource ;
