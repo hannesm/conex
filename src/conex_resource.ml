@@ -726,8 +726,8 @@ module Release = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum ppf c =
-    Format.fprintf ppf "%a (0x%s bytes) %a"
-      pp_name c.filename (Uint.to_string c.size) Digest.pp c.digest
+    Format.fprintf ppf "%a (%s bytes) %a"
+      pp_name c.filename (Uint.decimal c.size) Digest.pp c.digest
   (*BISECT-IGNORE-END*)
 
   let checksum_equal a b =
