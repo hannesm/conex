@@ -1,4 +1,6 @@
 open Conex_result
+open Conex_resource
+open Conex_utils
 
 type nc_pub =
   | RSA_pub of Nocrypto.Rsa.pub
@@ -20,12 +22,12 @@ let decode_key data =
 
 module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-let verify pub data sigval =
+let verify (alg, pub, _) data sigval =
   match Nocrypto.Base64.decode (Cstruct.of_string sigval) with
   | None -> Error `InvalidBase64Encoding
   | Some signature ->
     let cs_data = Cstruct.of_string data in
-    let x = match pub with `RSA, x -> x in
+    let x = match alg with `RSA -> pub in
     match decode_key x with
     | Some (RSA_pub key) when good_rsa key ->
       if Pss_sha256.verify ~key ~signature cs_data then
@@ -49,15 +51,18 @@ let encode_priv = function
      Cstruct.to_string pem
 
 let generate ?(bits = 4096) () =
-  `RSA, (encode_priv (RSA_priv (Nocrypto.Rsa.generate bits)))
+  let key = RSA_priv (Nocrypto.Rsa.generate bits) in
+  match Uint.of_float (Unix.time ()) with
+  | None -> invalid_arg "couldn't convert time to uint"
+  | Some c -> `Priv (`RSA, encode_priv key, c)
 
 let pub_of_priv = function
-  | `RSA, k ->
+  | `Priv (`RSA, k, created) ->
     match decode_priv k with
     | Some (RSA_priv k) ->
       let pub = Nocrypto.Rsa.pub_of_priv k in
       let pem = encode_key (RSA_pub pub) in
-      Ok (`RSA, pem)
+      Ok (`RSA, pem, created)
     | None -> Error "couldn't decode private key"
 
 let primitive_sign priv data =
@@ -70,7 +75,7 @@ let primitive_sign priv data =
   Cstruct.to_string b64
 
 let sign priv data = match priv with
-  | `RSA, priv -> match decode_priv priv with
+  | `Priv (`RSA, priv, _) -> match decode_priv priv with
     | Some priv ->
       let sigval = primitive_sign priv data in
       Ok sigval
@@ -82,5 +87,5 @@ let digest data =
   let b64 = Nocrypto.Base64.encode check in
   (`SHA256, Cstruct.to_string b64)
 
-let id = function
-  | `RSA, rsa -> "RSA:" ^ snd (digest rsa)
+let id (alg, data, _) =
+  (Key.alg_to_string alg) ^ snd (digest data)

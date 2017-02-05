@@ -1,4 +1,6 @@
 open Conex_core
+open Conex_utils
+open Conex_resource
 
 val unique_id : S.t -> identifier -> bool
 val unique_data : S.t -> name -> bool
@@ -9,6 +11,7 @@ val valid_name : identifier -> bool
 
 val authorisation_of_item : name -> name option
 
+(* TODO: cleanup with new naming (releases -> package ; checksum -> release) *)
 val data_path : path
 val id_path : path
 val id_file : identifier -> path

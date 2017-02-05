@@ -1,3 +1,4 @@
+open Conex_utils
 open Conex_core
 open Conex_resource
 
@@ -13,6 +14,10 @@ let str_to_msg = function
 let msg_to_cmdliner = function
   | Ok () -> `Ok ()
   | Error (`Msg m) -> `Error (false, m)
+
+let now = match Uint.of_float (Unix.time ()) with
+  | None -> invalid_arg "cannot convert now to unsigned integer"
+  | Some x -> x
 
 (* WORKFLOW:
   init -- to get private key, public key entry
@@ -82,16 +87,16 @@ let load_self_queued io r id =
   | Ok r -> r
   | Error e ->
     Logs.warn (fun m -> m "error while loading id %s" e) ;
-    let idx = R.ignore_error ~use:(fun _ -> Index.index id) (IO.read_index io id) in
+    let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
     let r, warns = Conex_repository.add_index r idx in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warns ;
-    match foldM (fun repo r -> Conex_repository.add_valid_resource repo id r) r idx.Index.queued with
+    match foldM (fun repo r -> Conex_repository.add_valid_resource repo id r) r idx.Author.queued with
     | Ok r -> r
     | Error e -> Logs.warn (fun m -> m "while adding %s" e) ; r
 
 let status_all io r id no_team =
   R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
-  | `Id _ ->
+  | `Author _ ->
     (if no_team then
        Ok (S.singleton id)
      else begin
@@ -101,8 +106,8 @@ let status_all io r id no_team =
              R.ignore_error
                ~use:(fun e -> w IO.pp_r_err e ; teams)
                (IO.read_id io id' >>| function
-                 | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp_team t) ; t :: teams
-                 | `Team _ | `Id _ -> teams))
+                 | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp t) ; t :: teams
+                 | `Team _ | `Author _ -> teams))
            ids []
        in
        Ok (s_of_list (id :: List.map (fun t -> t.Team.name) teams))
@@ -112,7 +117,7 @@ let status_all io r id no_team =
     str_to_msg (IO.items io) >>= fun items ->
     str_to_msg (foldS (C.verify_item io ~authorised) r items)
   | `Team t ->
-    Logs.info (fun m -> m "%a" Conex_resource.Team.pp_team t) ;
+    Logs.info (fun m -> m "%a" Conex_resource.Team.pp t) ;
     str_to_msg (C.load_ids ~ids:t.Team.members io r) >>= fun r ->
     let authorised auth = S.mem t.Team.name auth in
     str_to_msg (IO.items io) >>= fun items ->
@@ -139,13 +144,13 @@ let status _ dry path quorum strict id name no_rec =
        let _ = status_single io r name in Ok ())
 
 let add_r idx name typ data =
-  let counter = Index.next_id idx in
+  let counter = Author.next_id idx in
   let encoded = Conex_opam_encoding.encode data in
   let size = Uint.of_int_exn (String.length encoded) in
   let digest = Conex_nocrypto.digest encoded in
-  let res = Index.r counter name size typ digest in
-  Logs.info (fun m -> m "added %a to index" Index.pp_resource res) ;
-  Index.add_resource idx res
+  let res = Author.r counter name size typ digest in
+  Logs.info (fun m -> m "added %a to resource list" Author.pp_resource res) ;
+  Author.add_resource idx res
 
 let init _ dry path id email =
   msg_to_cmdliner
@@ -157,10 +162,10 @@ let init _ dry path id email =
        Logs.info (fun m -> m "repository %s" io.Conex_provider.name) ;
        (match IO.read_id io id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
-        | Ok (`Id idx) when List.length idx.Index.keys > 0 ->
+        | Ok (`Author idx) when List.length idx.Author.keys > 0 ->
           Error (`Msg ("key " ^ id ^ " exists and includes a public key"))
-        | Ok (`Id k) -> Ok k
-        | Error _ -> Ok (Index.index id)) >>= fun idx ->
+        | Ok (`Author k) -> Ok k
+        | Error _ -> Ok (Author.t now id)) >>= fun idx ->
        (match Conex_sign.read_private_key ~id io with
         | Ok (_, priv) -> Ok priv
         | Error _ ->
@@ -169,34 +174,36 @@ let init _ dry path id email =
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
        str_to_msg (Conex_nocrypto.pub_of_priv priv) >>= fun public ->
-       let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Index.accounts
-       and counter = idx.Index.counter
-       and keys = public :: idx.Index.keys
-       and signatures = idx.Index.signatures
-       and queued = idx.Index.queued
-       and resources = idx.Index.resources
+       let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts
+       and counter = idx.Author.counter
+       and wraps = idx.Author.wraps
+       and keys = public :: idx.Author.keys
+       and signatures = idx.Author.signatures
+       and queued = idx.Author.queued
+       and resources = idx.Author.resources
+       and created = idx.Author.created
        in
-       let idx = Index.index ~accounts ~keys ~counter ~resources ~signatures ~queued id in
-       let idx = add_r idx id `PublicKey (Wire.wire_pub id public) in
-       str_to_msg (Conex_sign.sign_index idx priv) >>= fun idx ->
-       str_to_msg (IO.write_index io idx) >>= fun () ->
-       Logs.info (fun m -> m "wrote index %a" Index.pp_index idx) ;
+       let idx = Author.t ~accounts ~keys ~counter ~wraps ~resources ~signatures ~queued created id in
+       let idx = add_r idx id `Key (Key.wire id public) in
+       str_to_msg (Conex_sign.sign idx priv) >>= fun idx ->
+       str_to_msg (IO.write_author io idx) >>= fun () ->
+       Logs.info (fun m -> m "wrote author %a" Author.pp idx) ;
        R.error_to_msg ~pp_error:pp_verification_error
-         (Conex_repository.verify_index r idx >>| fun (_, _, id) ->
+         (Conex_repository.verify_author r idx >>| fun (_, _, id) ->
           Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
        Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id))
 
 let find_idx io name =
   let use e =
     w IO.pp_r_err e ;
-    let idx = Index.index name in
-    Logs.info (fun m -> m "fresh %a" Index.pp_index idx) ;
-    (idx, true)
+    let idx = Author.t now name in
+    Logs.info (fun m -> m "fresh %a" Author.pp idx) ;
+    idx
   in
   R.ignore_error ~use
-    (IO.read_index io name >>| fun idx ->
-     Logs.debug (fun m -> m "read %a" Index.pp_index idx) ;
-     (idx, false))
+    (IO.read_author io name >>| fun idx ->
+     Logs.debug (fun m -> m "read %a" Author.pp idx) ;
+     idx)
 
 let sign _ dry path id =
   msg_to_cmdliner
@@ -204,42 +211,42 @@ let sign _ dry path id =
      R.error_to_msg ~pp_error:Conex_sign.pp_err
        (Conex_sign.read_private_key ?id io) >>= fun (id, priv) ->
      Logs.info (fun m -> m "using private key %s" id) ;
-     let idx, _ = find_idx io id in
-     match idx.Index.queued with
+     let idx = find_idx io id in
+     match idx.Author.queued with
      | [] -> Logs.app (fun m -> m "nothing changed") ; Ok ()
      | els ->
        List.iter (fun r ->
-           Logs.app (fun m -> m "adding %a" Index.pp_resource r))
+           Logs.app (fun m -> m "adding %a" Author.pp_resource r))
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (Conex_sign.sign_index idx priv) >>= fun idx ->
-       Logs.info (fun m -> m "signed index %a" Index.pp_index idx) ;
-       str_to_msg (IO.write_index io idx) >>| fun () ->
-       Logs.app (fun m -> m "wrote index %s to disk" id))
+       str_to_msg (Conex_sign.sign idx priv) >>= fun idx ->
+       Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
+       str_to_msg (IO.write_author io idx) >>| fun () ->
+       Logs.app (fun m -> m "wrote author %s to disk" id))
 
 let reset _ dry path id =
   msg_to_cmdliner
     (init_repo dry path >>= fun (_r, io) ->
      self io id >>= fun id ->
-     let idx, _ = find_idx io id in
+     let idx = find_idx io id in
      List.iter
-       (fun r -> Logs.app (fun m -> m "dropping %a" Index.pp_resource r))
-       idx.Index.queued ;
-     let idx = Index.reset idx in
-     str_to_msg (IO.write_index io idx) >>| fun () ->
-     Logs.app (fun m -> m "wrote index %s to disk" id))
+       (fun r -> Logs.app (fun m -> m "dropping %a" Author.pp_resource r))
+       idx.Author.queued ;
+     let idx = Author.reset idx in
+     str_to_msg (IO.write_author io idx) >>| fun () ->
+     Logs.app (fun m -> m "wrote author %s to disk" id))
 
 let find_auth io name =
   let use e =
     w IO.pp_r_err e ;
-    let a = Authorisation.authorisation name in
-    Logs.info (fun m -> m "fresh %a" Authorisation.pp_authorisation a);
+    let a = Authorisation.t now name in
+    Logs.info (fun m -> m "fresh %a" Authorisation.pp a);
     a
   in
   R.ignore_error ~use
     (IO.read_authorisation io name >>| fun a ->
-     Logs.debug (fun m -> m "read %a" Authorisation.pp_authorisation a);
+     Logs.debug (fun m -> m "read %a" Authorisation.pp a);
      a)
 
 let auth _ dry path id remove members p =
@@ -250,20 +257,20 @@ let auth _ dry path id remove members p =
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
      let auth' = List.fold_left f auth members in
-     let idx, _ = find_idx io id in
+     let idx = find_idx io id in
      if not (Authorisation.equal auth auth') then begin
        let auth, overflow = Authorisation.prep auth' in
        if overflow then
          Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
        str_to_msg (IO.write_authorisation io auth) >>= fun () ->
-       Logs.info (fun m -> m "wrote %a" Authorisation.pp_authorisation auth) ;
+       Logs.info (fun m -> m "wrote %a" Authorisation.pp auth) ;
        let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
-       str_to_msg (IO.write_index io idx) >>| fun () ->
-       Logs.app (fun m -> m "modified authorisation and added resource to your index.")
+       str_to_msg (IO.write_author io idx) >>| fun () ->
+       Logs.app (fun m -> m "modified authorisation and added resource to your list.")
      end else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Authorisation.wire auth)) then begin
        let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
-       str_to_msg (IO.write_index io idx) >>| fun () ->
-       Logs.app (fun m -> m "added resource to your index.")
+       str_to_msg (IO.write_author io idx) >>| fun () ->
+       Logs.app (fun m -> m "added resource to your list.")
      end else begin
        Logs.app (fun m -> m "nothing changed.") ;
        Ok ()
@@ -284,59 +291,59 @@ let release _ dry path id remove p =
      let rel =
        let use e =
          w IO.pp_r_err e ;
-         Releases.releases pn
+         Package.t now pn
        in
        R.ignore_error ~use
-         (IO.read_releases io pn >>| fun rel ->
-          Logs.debug (fun m -> m "read %a" Releases.pp_releases rel) ;
+         (IO.read_package io pn >>| fun rel ->
+          Logs.debug (fun m -> m "read %a" Package.pp rel) ;
           rel)
      in
-     let f m t = if remove then Releases.remove t m else Releases.add t m in
+     let f m t = if remove then Package.remove t m else Package.add t m in
      let rel' = S.fold f releases rel in
-     let idx, _ = find_idx io id in
-     (if not (Releases.equal rel rel') then begin
-        let rel, overflow = Releases.prep rel' in
+     let idx = find_idx io id in
+     (if not (Package.equal rel rel') then begin
+        let rel, overflow = Package.prep rel' in
         if overflow then
           Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
-        str_to_msg (IO.write_releases io rel) >>| fun () ->
-        Logs.info (fun m -> m "wrote %a" Releases.pp_releases rel) ;
-        add_r idx pn `Releases (Releases.wire rel)
-       end else if not (Conex_repository.contains ~queued:true idx pn `Releases (Releases.wire rel')) then begin
-        Ok (add_r idx pn `Releases (Releases.wire rel))
+        str_to_msg (IO.write_package io rel) >>| fun () ->
+        Logs.info (fun m -> m "wrote %a" Package.pp rel) ;
+        add_r idx pn `Package (Package.wire rel)
+       end else if not (Conex_repository.contains ~queued:true idx pn `Package (Package.wire rel')) then begin
+        Ok (add_r idx pn `Package (Package.wire rel))
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
        acc >>= fun idx ->
        let cs =
          let use e =
            w IO.pp_r_err e ;
-           let c = Checksum.checksums name [] in
-           Logs.info (fun m -> m "fresh %a" Checksum.pp_checksums c);
+           let c = Release.t now name [] in
+           Logs.info (fun m -> m "fresh %a" Release.pp c);
            c
          in
          R.ignore_error ~use
-           (IO.read_checksum io name >>| fun cs ->
-            Logs.debug (fun m -> m "read %a" Checksum.pp_checksums cs) ;
+           (IO.read_release io name >>| fun cs ->
+            Logs.debug (fun m -> m "read %a" Release.pp cs) ;
             cs)
        in
        R.error_to_msg ~pp_error:IO.pp_cc_err
-         (IO.compute_checksum io name) >>= fun cs' ->
-       if not (Checksum.equal cs cs') then
-         let cs' = Checksum.set_counter cs' cs'.Checksum.counter in
-         let cs', overflow = Checksum.prep cs' in
+         (IO.compute_release io now name) >>= fun cs' ->
+       if not (Release.equal cs cs') then
+         let cs' = Release.set_counter cs' cs'.Release.counter in
+         let cs', overflow = Release.prep cs' in
          if overflow then Logs.warn (fun m -> m "counter overflow in checksum %s, needs approval" name) ;
-         str_to_msg (IO.write_checksum io cs') >>| fun () ->
-         Logs.info (fun m -> m "wrote %a" Checksum.pp_checksums cs') ;
-         add_r idx name `Checksums (Checksum.wire cs')
-       else if not (Conex_repository.contains ~queued:true idx name `Checksums (Checksum.wire cs)) then
-         Ok (add_r idx name `Checksums (Checksum.wire cs))
+         str_to_msg (IO.write_release io cs') >>| fun () ->
+         Logs.info (fun m -> m "wrote %a" Release.pp cs') ;
+         add_r idx name `Release (Release.wire cs')
+       else if not (Conex_repository.contains ~queued:true idx name `Release (Release.wire cs)) then
+         Ok (add_r idx name `Release (Release.wire cs))
        else
          Ok idx
      in
      (if not remove then S.fold add_cs releases (Ok idx') else Ok idx') >>= fun idx' ->
-     if not (Index.equal idx idx') then begin
-       str_to_msg (IO.write_index io idx') >>| fun () ->
-       Logs.info (fun m -> m "wrote %a" Index.pp_index idx') ;
-       Logs.app (fun m -> m "released and added resources to your index.")
+     if not (Author.equal idx idx') then begin
+       str_to_msg (IO.write_author io idx') >>| fun () ->
+       Logs.info (fun m -> m "wrote %a" Author.pp idx') ;
+       Logs.app (fun m -> m "released and added resources to your resource list.")
      end else
        Ok (Logs.app (fun m -> m "nothing happened")))
 
@@ -347,32 +354,32 @@ let team _ dry repo id remove members tid =
      let team =
        let use e =
          w IO.pp_r_err e ;
-         let team = Team.team tid in
-         Logs.info (fun m -> m "fresh %a" Team.pp_team team) ;
+         let team = Team.t now tid in
+         Logs.info (fun m -> m "fresh %a" Team.pp team) ;
          team
        in
        R.ignore_error ~use
          (IO.read_team io tid >>| fun team ->
-          Logs.debug (fun m -> m "read %a" Team.pp_team team) ;
+          Logs.debug (fun m -> m "read %a" Team.pp team) ;
           team)
      in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Team.remove else Team.add in
      let team' = List.fold_left f team members in
-     let idx, _ = find_idx io id in
+     let idx = find_idx io id in
      if not (Team.equal team team') then begin
        let team, overflow = Team.prep team' in
        if overflow then
          Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
        str_to_msg (IO.write_team io team) >>= fun () ->
-       Logs.info (fun m -> m "wrote %a" Team.pp_team team) ;
+       Logs.info (fun m -> m "wrote %a" Team.pp team) ;
        let idx = add_r idx tid `Team (Team.wire team) in
-       str_to_msg (IO.write_index io idx) >>| fun () ->
-       Logs.app (fun m -> m "modified team and added resource to your index.")
+       str_to_msg (IO.write_author io idx) >>| fun () ->
+       Logs.app (fun m -> m "modified team and added resource to your resource list.")
      end else if not (Conex_repository.contains ~queued:true idx tid `Team (Team.wire team)) then begin
        let idx = add_r idx tid `Team (Team.wire team) in
-       str_to_msg (IO.write_index io idx) >>| fun () ->
-       Logs.app (fun m -> m "added resource to your index.")
+       str_to_msg (IO.write_author io idx) >>| fun () ->
+       Logs.app (fun m -> m "added resource to your resource list.")
      end else begin
        Logs.app (fun m -> m "nothing changed.") ;
        Ok ()
@@ -450,7 +457,7 @@ let reset_cmd =
   let doc = "reset staged changes" in
   let man =
     [`S "DESCRIPTION";
-     `P "Resets queued changes to your index."]
+     `P "Resets queued changes of your resource list."]
   in
   Term.(ret Conex_opts.(const reset $ setup_log $ dry $ repo $ id)),
   Term.info "reset" ~doc ~man
@@ -459,7 +466,7 @@ let sign_cmd =
   let doc = "sign staged changes" in
   let man =
     [`S "DESCRIPTION";
-     `P "Cryptographically signs queued changes to your index."]
+     `P "Cryptographically signs queued changes to your resource list."]
   in
   Term.(ret Conex_opts.(const sign $ setup_log $ dry $ repo $ id)),
   Term.info "sign" ~doc ~man

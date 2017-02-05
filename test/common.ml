@@ -1,4 +1,5 @@
 open Conex_result
+open Conex_utils
 open Conex_core
 open Conex_resource
 
@@ -46,29 +47,29 @@ let team_eq a b =
 let team =
   let module M = struct
     type t = Team.t
-    let pp = Team.pp_team
+    let pp = Team.pp
     let equal = team_eq
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let idx_eq a b =
-  Index.equal a b && a.Index.counter = b.Index.counter
+  Author.equal a b && a.Author.counter = b.Author.counter
 
 let ji =
   let module M = struct
-    type t = Index.t
-    let pp = Index.pp_index
+    type t = Author.t
+    let pp = Author.pp
     let equal = idx_eq
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let id =
   let module M = struct
-    type t = [ `Id of Index.t | `Team of Team.t ]
-    let pp ppf = function `Team t -> Team.pp_team ppf t | `Id idx -> Index.pp_index ppf idx
+    type t = [ `Author of Author.t | `Team of Team.t ]
+    let pp ppf = function `Team t -> Team.pp ppf t | `Author idx -> Author.pp ppf idx
     let equal a b = match a, b with
       | `Team t, `Team t' -> team_eq t t'
-      | `Id k, `Id k' -> idx_eq k k'
+      | `Author k, `Author k' -> idx_eq k k'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -76,7 +77,7 @@ let id =
 let auth =
   let module M = struct
     type t = Authorisation.t
-    let pp = Authorisation.pp_authorisation
+    let pp = Authorisation.pp
     let equal a b =
       let open Authorisation in
       a.counter = b.counter &&
@@ -85,23 +86,23 @@ let auth =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let releases =
+let package =
   let module M = struct
-    type t = Releases.t
-    let pp = Releases.pp_releases
+    type t = Package.t
+    let pp = Package.pp
     let equal a b =
-      let open Releases in
+      let open Package in
       a.counter = b.counter &&
       a.name = b.name &&
       S.equal a.releases b.releases
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let cs =
+let rel =
   let module M = struct
-    type t = Checksum.t
-    let pp = Checksum.pp_checksums
-    let equal a b = match Checksum.compare_checksums a b with Ok () -> true | _ -> false
+    type t = Release.t
+    let pp = Release.pp
+    let equal a b = match Release.compare_checksums a b with Ok () -> true | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
@@ -119,6 +120,6 @@ let verr =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
-  match Conex_sign.sign_index idx p with
+  match Conex_sign.sign idx p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

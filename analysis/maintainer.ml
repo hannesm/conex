@@ -1,3 +1,5 @@
+open Conex_result
+open Conex_utils
 open Conex_core
 open Astring
 
@@ -231,35 +233,35 @@ let pp_map pp t =
     t
 
 let known_ids =
-  [ `Key (Index.index ~accounts:[ `GitHub "yallop" ; `Email "yallop@gmail.com" ] "yallop") ;
+  [ `Key (Author.t ~accounts:[ `GitHub "yallop" ; `Email "yallop@gmail.com" ] Uint.zero "yallop") ;
     (* them all should be inferred further down *)
-    `Key (Index.index ~accounts:[ `GitHub "seliopou" ; `Email "spiros@inhabitedtype.com" ; `Email "seliopou@gmail.com" ] "seliopou") ;
-    `Key (Index.index ~accounts:[ `GitHub "lefessan" ; `Email "fabrice.le_fessant@inria.fr" ; `Email "fabrice@ocamlpro.com" ; `Email "fabrice.le_fessant@ocamlpro.com" ; `Email "fabrice@lefessant.net" ] "lefessan") ;
-    `Key (Index.index ~accounts:[ `GitHub "c-cube" ; `Email "simon.cruanes.2007@m4x.org" ; `Email "simon.cruanes@inria.fr" ] "c-cube") ;
-    `Key (Index.index ~accounts:[ `GitHub "agarwal" ; `Email "ashish@solvuu.com" ; `Email "agarwal1975@gmail.com" ] "agarwal") ;
-    `Key (Index.index ~accounts:[ `GitHub "lpw25" ; `Email "lpw25@cl.cam.ac.uk" ; `Email "leo@lpw25.net" ] "lpw25") ;
-    `Key (Index.index ~accounts:[ `GitHub "314eter" ; `Email "3.14.e.ter@gmail.com" ] "314eter") ;
-    `Key (Index.index ~accounts:[ `GitHub "johnelse" ; `Email "john.else@gmail.com" ; `Email "john.else@eu.citrix.com" ; `Email "john.else@citrix.com" ] "johnelse") ;
-    `Key (Index.index ~accounts:[ `GitHub "juergenhoetzel" ; `Email "juergen@archlinux.org" ; `Email "juergen@hoetzel.info" ] "juergenhoetzel") ;
-    `Key (Index.index ~accounts:[ `GitHub "alainfrisch" ; `Email "alain.frisch@lexifi.com" ; `Email "alain@frisch.fr" ] "alainfrisch") ;
-    `Key (Index.index ~accounts:[ `GitHub "johnwhitington" ; `Email "contact@coherentgraphics.co.uk" ; `Email "john@coherentgraphics.co.uk" ] "johnwhitington") ;
-    `Key (Index.index ~accounts:[ `GitHub "darioteixeira" ; `Email "dario.teixeira@nleyten.com" ; `Email "darioteixeira@yahoo.com" ] "darioteixeira") ;
-    `Key (Index.index ~accounts:[ `GitHub "rdicosmo" ; `Email "roberto@dicosmo.org" ; `Email "github@dicosmo.org" ] "rdicosmo") ;
-    `Key (Index.index ~accounts:[ `GitHub "mzp" ; `Email "mzpppp@gmail.com" ; `Email "mzp.ppp@gmail.com" ] "mzp") ;
-    `Key (Index.index ~accounts:[ `GitHub "andrewray" ; `Email "evilkidder@gmail.com" ; `Email "andy.ray@ujamjar.com" ] "andrewray") ;
-    `Key (Index.index ~accounts:[ `GitHub "codinuum" ; `Email "codinuum@users.noreply.github.com" ; `Email "codinuum@me.com" ] "codinuum") ;
-    `Key (Index.index ~accounts:[ `GitHub "raphael-proust" ; `Email "raphael.proust@cl.cam.ac.uk" ; `Email "raphlalou@gmail.com" ] "raphael-proust") ;
-    `Key (Index.index ~accounts:[ `GitHub "madroach" ; `Email "madroach@gmerlin.de" ; `Email "christopher@gmerlin.de" ] "madroach") ;
-    `Key (Index.index ~accounts:[ `GitHub "testcocoon" ; `Email "sebastien.fricker@gmail.com" ; `Email "fricker@froglogic.com" ] "testcocoon") ;
-    `Key (Index.index ~accounts:[ `GitHub "protz" ; `Email "protz@microsoft.com" ; `Email "jonathan.protzenko@inria.fr" ; `Email "jonathan.protzenko@gmail.com" ] "protz") ;
-    `Key (Index.index ~accounts:[ `GitHub "AngryLawyer" ; `Email "tony@angry-lawyer.com" ; `Email "tony@dabapps.com" ] "AngryLawyer") ;
-    `Key (Index.index ~accounts:[ `GitHub "rixed" ; `Email "rixed-opam@happyleptic.org" ; `Email "rixed@happyleptic.org" ] "rixed") ;
-    `Key (Index.index ~accounts:[ `GitHub "backtracking" ; `Email "filliatr@lri.fr" ; `Email "Jean-Christophe.Filliatre@lri.fr" ] "backtracking") ;
-    `Key (Index.index ~accounts:[ `GitHub "andrenth" ; `Email "andre@digirati.com.br" ; `Email "andrenth@gmail.com" ] "andrenth") ;
-    `Key (Index.index ~accounts:[ `GitHub "mathiasbourgoin" ; `Email "mathias.bourgoin@gmail.com" ; `Email "mathias.bourgoin@lip6.fr" ] "mathiasbourgoin") ;
-    `Key (Index.index ~accounts:[ `GitHub "pmundkur" ; `Email "prashanth.mundkur@gmail.com" ; `Email "pmundkur.ocaml@gmail.com" ] "pmundkur") ;
-    `Key (Index.index ~accounts:[ `GitHub "pmeunier" ; `Email "pe@dhcp-135-214.caltech.edu" ; `Email "pe@patoline.org" ] "pmeunier") ;
-    `Key (Index.index ~accounts:[ `GitHub "eatonphil" ; `Email "philip@Philips-MacBook-Pro.local" ; `Email "me@eatonphil.com" ] "eatonphil") ;
+    `Key (Author.t ~accounts:[ `GitHub "seliopou" ; `Email "spiros@inhabitedtype.com" ; `Email "seliopou@gmail.com" ] Uint.zero "seliopou") ;
+    `Key (Author.t ~accounts:[ `GitHub "lefessan" ; `Email "fabrice.le_fessant@inria.fr" ; `Email "fabrice@ocamlpro.com" ; `Email "fabrice.le_fessant@ocamlpro.com" ; `Email "fabrice@lefessant.net" ] Uint.zero "lefessan") ;
+    `Key (Author.t ~accounts:[ `GitHub "c-cube" ; `Email "simon.cruanes.2007@m4x.org" ; `Email "simon.cruanes@inria.fr" ] Uint.zero "c-cube") ;
+    `Key (Author.t ~accounts:[ `GitHub "agarwal" ; `Email "ashish@solvuu.com" ; `Email "agarwal1975@gmail.com" ] Uint.zero "agarwal") ;
+    `Key (Author.t ~accounts:[ `GitHub "lpw25" ; `Email "lpw25@cl.cam.ac.uk" ; `Email "leo@lpw25.net" ] Uint.zero "lpw25") ;
+    `Key (Author.t ~accounts:[ `GitHub "314eter" ; `Email "3.14.e.ter@gmail.com" ] Uint.zero "314eter") ;
+    `Key (Author.t ~accounts:[ `GitHub "johnelse" ; `Email "john.else@gmail.com" ; `Email "john.else@eu.citrix.com" ; `Email "john.else@citrix.com" ] Uint.zero "johnelse") ;
+    `Key (Author.t ~accounts:[ `GitHub "juergenhoetzel" ; `Email "juergen@archlinux.org" ; `Email "juergen@hoetzel.info" ] Uint.zero "juergenhoetzel") ;
+    `Key (Author.t ~accounts:[ `GitHub "alainfrisch" ; `Email "alain.frisch@lexifi.com" ; `Email "alain@frisch.fr" ] Uint.zero "alainfrisch") ;
+    `Key (Author.t ~accounts:[ `GitHub "johnwhitington" ; `Email "contact@coherentgraphics.co.uk" ; `Email "john@coherentgraphics.co.uk" ] Uint.zero "johnwhitington") ;
+    `Key (Author.t ~accounts:[ `GitHub "darioteixeira" ; `Email "dario.teixeira@nleyten.com" ; `Email "darioteixeira@yahoo.com" ] Uint.zero "darioteixeira") ;
+    `Key (Author.t ~accounts:[ `GitHub "rdicosmo" ; `Email "roberto@dicosmo.org" ; `Email "github@dicosmo.org" ] Uint.zero "rdicosmo") ;
+    `Key (Author.t ~accounts:[ `GitHub "mzp" ; `Email "mzpppp@gmail.com" ; `Email "mzp.ppp@gmail.com" ] Uint.zero "mzp") ;
+    `Key (Author.t ~accounts:[ `GitHub "andrewray" ; `Email "evilkidder@gmail.com" ; `Email "andy.ray@ujamjar.com" ] Uint.zero "andrewray") ;
+    `Key (Author.t ~accounts:[ `GitHub "codinuum" ; `Email "codinuum@users.noreply.github.com" ; `Email "codinuum@me.com" ] Uint.zero "codinuum") ;
+    `Key (Author.t ~accounts:[ `GitHub "raphael-proust" ; `Email "raphael.proust@cl.cam.ac.uk" ; `Email "raphlalou@gmail.com" ] Uint.zero "raphael-proust") ;
+    `Key (Author.t ~accounts:[ `GitHub "madroach" ; `Email "madroach@gmerlin.de" ; `Email "christopher@gmerlin.de" ] Uint.zero "madroach") ;
+    `Key (Author.t ~accounts:[ `GitHub "testcocoon" ; `Email "sebastien.fricker@gmail.com" ; `Email "fricker@froglogic.com" ] Uint.zero "testcocoon") ;
+    `Key (Author.t ~accounts:[ `GitHub "protz" ; `Email "protz@microsoft.com" ; `Email "jonathan.protzenko@inria.fr" ; `Email "jonathan.protzenko@gmail.com" ] Uint.zero "protz") ;
+    `Key (Author.t ~accounts:[ `GitHub "AngryLawyer" ; `Email "tony@angry-lawyer.com" ; `Email "tony@dabapps.com" ] Uint.zero "AngryLawyer") ;
+    `Key (Author.t ~accounts:[ `GitHub "rixed" ; `Email "rixed-opam@happyleptic.org" ; `Email "rixed@happyleptic.org" ] Uint.zero "rixed") ;
+    `Key (Author.t ~accounts:[ `GitHub "backtracking" ; `Email "filliatr@lri.fr" ; `Email "Jean-Christophe.Filliatre@lri.fr" ] Uint.zero "backtracking") ;
+    `Key (Author.t ~accounts:[ `GitHub "andrenth" ; `Email "andre@digirati.com.br" ; `Email "andrenth@gmail.com" ] Uint.zero "andrenth") ;
+    `Key (Author.t ~accounts:[ `GitHub "mathiasbourgoin" ; `Email "mathias.bourgoin@gmail.com" ; `Email "mathias.bourgoin@lip6.fr" ] Uint.zero "mathiasbourgoin") ;
+    `Key (Author.t ~accounts:[ `GitHub "pmundkur" ; `Email "prashanth.mundkur@gmail.com" ; `Email "pmundkur.ocaml@gmail.com" ] Uint.zero "pmundkur") ;
+    `Key (Author.t ~accounts:[ `GitHub "pmeunier" ; `Email "pe@dhcp-135-214.caltech.edu" ; `Email "pe@patoline.org" ] Uint.zero "pmeunier") ;
+    `Key (Author.t ~accounts:[ `GitHub "eatonphil" ; `Email "philip@Philips-MacBook-Pro.local" ; `Email "me@eatonphil.com" ] Uint.zero "eatonphil") ;
     `Team ([ "opensource@janestreet.com" ], "janestreet") ;
     `Team ([ "xen-api@lists.xen.org" ], "xapi-project") ;
     `Team ([ "contact@ocamlpro.com" ], "OCamlPro") ;
@@ -282,23 +284,23 @@ let infer_maintainers base lvl =
      M.fold (fun k v acc ->
          acc >>= fun acc ->
          let accounts = `GitHub k :: List.map (fun e -> `Email e) (S.elements v) in
-         let idx = Index.index ~accounts k in
-         Conex_io.write_index io idx >>= fun () ->
+         let idx = Author.t ~accounts Uint.zero k in
+         Conex_io.write_author io idx >>= fun () ->
          Ok (idx :: acc))
        github_mail (Ok []) >>= fun idxs ->
      (List.fold_left (fun acc id ->
           acc >>= fun acc ->
           match id with
           | `Team (mails, id) ->
-            let t = Team.team id in
+            let t = Team.t Uint.zero id in
             Conex_io.write_team io t >>= fun () ->
             let idx =
               let accounts = `GitHub id :: List.map (fun e -> `Email e) mails in
-              Index.index ~accounts id
+              Author.t ~accounts Uint.zero id
             in
             Ok (idx :: acc)
           | `Key k ->
-            Conex_io.write_index io k >>= fun () ->
+            Conex_io.write_author io k >>= fun () ->
             Ok (k :: acc))
          (Ok []) known_ids) >>= fun more_idxs ->
 
@@ -308,9 +310,9 @@ let infer_maintainers base lvl =
            | None ->
              let contains =
                let f = function `Email e when e = email -> true | _ -> false in
-               List.exists f k.Index.accounts
+               List.exists f k.Author.accounts
              in
-             if contains then Some k.Index.name else None
+             if contains then Some k.Author.name else None
            | Some x -> Some x)
          None (idxs @ more_idxs)
      in
@@ -328,8 +330,8 @@ let infer_maintainers base lvl =
                 S.add s acc)
               ids S.empty
           in
-          let authorisation = Authorisation.authorisation ~authorised k in
-          Logs.info (fun m -> m "%a" Authorisation.pp_authorisation authorisation) ;
+          let authorisation = Authorisation.t ~authorised Uint.zero k in
+          Logs.info (fun m -> m "%a" Authorisation.pp authorisation) ;
           Conex_io.write_authorisation io authorisation >>= fun () ->
           Ok (M.add k authorisation acc))
          mapping (Ok M.empty)) >>= fun authorisations ->
@@ -345,14 +347,14 @@ let infer_maintainers base lvl =
      Logs.app (fun m -> m "potentially %a" pp_map empty) ;
      Logs.app (fun m -> m "teams %a" pp_map team) ;
      M.iter (fun name members ->
-         let t = Team.team ~members name in
+         let t = Team.t ~members Uint.zero name in
          match Conex_io.write_team io t with
          | Ok () -> ()
          | Error e -> Logs.err (fun m -> m "error %s while writing team %s" e name))
        team ;
      M.iter (fun p authorised ->
          if S.cardinal authorised = 1 then
-           let a = Authorisation.authorisation ~authorised p in
+           let a = Authorisation.t ~authorised Uint.zero p in
            match Conex_io.write_authorisation io a with
            | Ok () -> ()
            | Error e -> Logs.err (fun m -> m "error %s while writing authorisation for %s" e p))

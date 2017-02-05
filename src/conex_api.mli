@@ -1,5 +1,6 @@
 open Conex_result
-open Conex_core
+open Conex_utils
+open Conex_resource
 open Conex_repository
 
 (* this is stripped down from Logs library *)

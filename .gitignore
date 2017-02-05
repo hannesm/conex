@@ -1,14 +1,5 @@
 _build/
-setup.data
-setup.log
-log
-
-main.ml
-*.native
-*.byte
-*.docdir
-
-_tests/
-
 coverage/
 bisect*.out
+*.install
+*.native

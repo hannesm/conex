@@ -1,4 +1,4 @@
-open Conex_core
+open Conex_utils
 
 type hunk
 
@@ -13,4 +13,4 @@ val to_diffs : string -> diff list
 
 val diffs_to_components : diff list -> (S.t * S.t * S.t * S.t M.t)
 
-val apply : Conex_provider.t -> diff -> Conex_provider.t
+val patch : string option -> diff -> string

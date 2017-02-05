@@ -1,4 +1,5 @@
 open Conex_result
+open Conex_utils
 open Conex_core
 open Conex_resource
 open Conex_repository
@@ -37,11 +38,11 @@ module Make (L : LOGS) = struct
 
   let load_id io repo id =
     if id_loaded repo id then Ok repo else
-      match IO.read_index io id with
+      match IO.read_author io id with
       | Ok idx ->
-        (L.debug (fun m -> m "%a" Index.pp_index idx) ;
+        (L.debug (fun m -> m "%a" Author.pp idx) ;
          maybe repo pp_verification_error repo
-           (verify_index repo idx >>= fun (repo, msgs, _) ->
+           (verify_author repo idx >>= fun (repo, msgs, _) ->
             List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
             Ok repo))
       | Error e ->
@@ -57,13 +58,13 @@ module Make (L : LOGS) = struct
       [] ids >>= fun ids ->
     let users, teams =
       List.fold_left (fun (is, ts) -> function
-          | `Id id -> id :: is, ts
+          | `Author id -> id :: is, ts
           | `Team t -> is, t :: ts)
         ([], []) ids
     in
     foldM (fun repo id ->
         maybe repo pp_verification_error repo
-          (verify_index repo id >>= fun (repo, warn, _) ->
+          (verify_author repo id >>= fun (repo, warn, _) ->
            List.iter (fun msg -> L.warn (fun m  -> m "%s" msg)) warn ;
            Ok repo))
       repo users >>= fun repo ->
@@ -81,29 +82,29 @@ module Make (L : LOGS) = struct
       if strict repo then Error (str IO.pp_r_err e) else
         (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok repo)
     | Ok team ->
-      L.debug (fun m -> m "%a" Team.pp_team team) ;
+      L.debug (fun m -> m "%a" Team.pp team) ;
       foldS (fun acc id ->
           maybe repo IO.pp_r_err acc
-            (IO.read_index io id >>= fun idx ->
-             L.debug (fun m -> m "%a" Index.pp_index idx) ;
+            (IO.read_author io id >>= fun idx ->
+             L.debug (fun m -> m "%a" Author.pp idx) ;
              Ok (idx :: acc)))
         [] team.Team.members >>= fun idxs ->
       (* for each, validate public key(s): signs the index, resource is contained *)
       let valid_idxs =
         List.fold_left (fun acc idx ->
-            let id = idx.Index.name in
+            let id = idx.Author.name in
             let good, warnings = verify_signatures idx in
             List.iter (fun (_, e) -> L.warn (fun m -> m "%a" pp_verification_error e)) warnings ;
-            let f k = contains idx id `PublicKey (Wire.wire_pub id k) in
+            let f k = contains idx id `Key (Key.wire id k) in
             match List.filter f good with
-            | [] -> L.warn (fun m -> m "ignoring %s due to missing self-signature" id) ; acc
-            | xs -> L.debug (fun m -> m "janitor index %s is self-signed" id) ; (xs, idx) :: acc)
+            | [] -> L.warn (fun m -> m "ignoring janitor %s due to missing self-signature" id) ; acc
+            | xs -> L.debug (fun m -> m "janitor %s is self-signed" id) ; (xs, idx) :: acc)
           [] idxs
       in
       (* filter by fingerprint, create a repository *)
       let approved, notyet =
         List.fold_left (fun (good, bad) (keys, idx) ->
-            let id = idx.Index.name in
+            let id = idx.Author.name in
             let approved = List.filter (fun k -> valid id (Conex_nocrypto.id k)) keys in
             if List.length approved > 0 then begin
               L.debug (fun m -> m "fingerprint valid for janitor %s" id) ;
@@ -127,17 +128,17 @@ module Make (L : LOGS) = struct
         List.fold_left (fun (good, bad) (keys, idx) ->
             match
               List.fold_left (fun r k ->
-                  match r, verify_key jrepo idx.Index.name k with
+                  match r, verify_key jrepo idx.Author.name k with
                   | Ok x, _ -> Ok x
                   | Error _, x -> x)
-                (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
+                (Error (`NotSigned (idx.Author.name, `Key, S.empty)))
                 keys
             with
             | Ok _ ->
-              L.debug (fun m -> m "janitor index %s has an approved key" idx.Index.name) ;
+              L.debug (fun m -> m "janitor %s has an approved key" idx.Author.name) ;
               (idx :: good, bad)
             | Error _ ->
-              L.debug (fun m -> m "janitor index %s has no approved key" idx.Index.name) ;
+              L.debug (fun m -> m "janitor %s has no approved key" idx.Author.name) ;
               good, (keys, idx) :: bad)
           ([], []) approved
       in
@@ -156,27 +157,27 @@ module Make (L : LOGS) = struct
       foldM (fun acc (keys, idx) ->
           maybe repo pp_error acc
             (List.fold_left (fun r k ->
-                match r, verify_key jrepo' idx.Index.name k with
+                match r, verify_key jrepo' idx.Author.name k with
                 | Ok x, _ -> Ok x
                 | Error _, x -> x)
-                (Error (`NotSigned (idx.Index.name, `PublicKey, S.empty)))
+                (Error (`NotSigned (idx.Author.name, `Key, S.empty)))
                 keys >>= fun ok ->
-             L.debug (fun m -> m "janitor key %s approved by %a" idx.Index.name pp_ok ok) ;
+             L.debug (fun m -> m "janitor key %s approved by %a" idx.Author.name pp_ok ok) ;
              Ok (idx :: acc)))
         [] (notyet@others) >>= fun good_idx ->
       Ok (List.fold_left add_warn repo good_idx)
 
   let verify_single_release io repo auth rel version =
-    match IO.read_checksum io version with
+    match IO.read_release io version with
     | Error e -> if strict repo then Error (str IO.pp_r_err e) else
         (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok ())
     | Ok cs ->
-      L.debug (fun m -> m "%a" Checksum.pp_checksums cs) ;
+      L.debug (fun m -> m "%a" Release.pp cs) ;
       maybe repo Conex_io.pp_cc_err None
-        (IO.compute_checksum io version >>= fun cs ->
+        (IO.compute_release io Uint.zero version >>= fun cs ->
          Ok (Some cs)) >>= fun on_disk ->
       maybe repo pp_error ()
-        (verify_checksum repo ?on_disk auth rel cs >>= fun ok ->
+        (verify_release repo ?on_disk auth rel cs >>= fun ok ->
          L.debug (fun m -> m "%a" pp_ok ok) ;
          Ok ())
 
@@ -184,9 +185,9 @@ module Make (L : LOGS) = struct
     (match IO.read_authorisation io name with
      | Error e -> if strict repo then Error (str IO.pp_r_err e) else
          (L.warn (fun m -> m "%a" IO.pp_r_err e) ;
-          Ok (Authorisation.authorisation name, repo))
+          Ok (Authorisation.t Uint.zero name, repo))
      | Ok auth ->
-       L.debug (fun m ->m "%a" Authorisation.pp_authorisation auth) ;
+       L.debug (fun m ->m "%a" Authorisation.pp auth) ;
        (* need to load indexes before verifying! *)
        load_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
        maybe repo pp_error ()
@@ -194,20 +195,20 @@ module Make (L : LOGS) = struct
           L.debug (fun m -> m "%a" pp_ok ok) ; Ok ()) >>= fun () ->
        Ok (auth, repo)) >>= fun (auth, repo) ->
     (if authorised auth.Authorisation.authorised then
-       (match IO.read_releases io name with
+       (match IO.read_package io name with
         | Error e ->
           if strict repo then Error (str IO.pp_r_err e) else
             (L.warn (fun m -> m "%a" IO.pp_r_err e) ;
-             IO.compute_releases io name)
+             IO.compute_package io Uint.zero name)
         | Ok rel ->
-          L.debug (fun m -> m "%a" Releases.pp_releases rel) ;
-          (match IO.compute_releases io name with
+          L.debug (fun m -> m "%a" Package.pp rel) ;
+          (match IO.compute_package io Uint.zero name with
            | Error e -> if strict repo then Error e else
                (L.warn (fun m -> m "couldn't compute releases %s: %s" name e) ;
                 Ok None)
            | Ok on_disk -> Ok (Some on_disk)) >>= fun on_disk ->
           maybe repo pp_error rel
-            (verify_releases repo ?on_disk auth rel >>= fun ok ->
+            (verify_package repo ?on_disk auth rel >>= fun ok ->
              L.debug (fun m -> m "%a" pp_ok ok) ;
              Ok rel)) >>= fun rel ->
        foldM (fun () n ->
@@ -216,7 +217,7 @@ module Make (L : LOGS) = struct
            else
              Ok ())
          ()
-         (S.elements rel.Releases.releases)
+         (S.elements rel.Package.releases)
      else
        (L.debug (fun m -> m "ignoring %s" name) ; Ok ())) >>= fun () ->
     Ok repo
@@ -248,16 +249,16 @@ module Make (L : LOGS) = struct
        packages/foo/authorisation (maybe empty)
        packages/foo/releases <- empty
 *)
-  let verify_patch repo io newio (ids, auths, rels, pkgs) =
-    let packages = M.fold (fun _name versions acc -> S.union versions acc) pkgs S.empty in
-    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d pkgs"
-                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (S.cardinal packages)) ;
+  let verify_patch repo io newio (ids, auths, pkgs, rels) =
+    let releases = M.fold (fun _name versions acc -> S.union versions acc) rels S.empty in
+    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
+                (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
     (* all public keys of janitors in repo are valid. *)
     load_janitors io repo >>= fun repo ->
     let janitor_keys =
       S.fold (fun id acc ->
-          match IO.read_index io id with
-          | Ok idx -> S.union acc (s_of_list (List.map Conex_nocrypto.id idx.Index.keys))
+          match IO.read_author io id with
+          | Ok idx -> S.union acc (s_of_list (List.map Conex_nocrypto.id idx.Author.keys))
           | Error _ -> acc)
         (match find_team repo "janitors" with None -> S.empty | Some x -> x)
         S.empty
@@ -275,15 +276,15 @@ module Make (L : LOGS) = struct
     let maybe_m = maybe repo pp_m_err () in
     foldS (fun () id ->
         match IO.read_id io id, IO.read_id newio id with
-        | Ok (`Id old), Ok (`Id now) -> maybe_m (monoton_index ~old ~now repo)
+        | Ok (`Author old), Ok (`Author now) -> maybe_m (monoton_author ~old ~now repo)
         | Ok (`Team old), Ok (`Team now) -> maybe_m (monoton_team ~old ~now repo)
-        | Ok (`Id old), Error _ -> maybe_m (monoton_index ~old repo)
+        | Ok (`Author old), Error _ -> maybe_m (monoton_author ~old repo)
         | Ok (`Team old), Error _ -> maybe_m (monoton_team ~old repo)
-        | Ok (`Team _), Ok (`Id _)
-        | Ok (`Id _), Ok (`Team _) -> Error "team/id changes unsupported"
-        | Error _, Ok (`Id now) -> maybe_m (monoton_index ~now repo)
+        | Ok (`Team _), Ok (`Author _)
+        | Ok (`Author _), Ok (`Team _) -> Error "team/author changes unsupported"
+        | Error _, Ok (`Author now) -> maybe_m (monoton_author ~now repo)
         | Error _, Ok (`Team now) -> maybe_m (monoton_team ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_index repo))
+        | Error _, Error _ -> maybe_m (monoton_author repo))
       () ids >>= fun () ->
     foldS (fun () id ->
         match IO.read_authorisation io id, IO.read_authorisation newio id with
@@ -293,24 +294,24 @@ module Make (L : LOGS) = struct
         | Error _, Error _ -> maybe_m (monoton_authorisation repo))
       () auths >>= fun () ->
     foldS (fun () id ->
-        match IO.read_releases io id, IO.read_releases newio id with
-        | Ok old, Ok now -> maybe_m (monoton_releases ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_releases ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_releases ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_releases repo))
-      () rels >>= fun () ->
+        match IO.read_package io id, IO.read_package newio id with
+        | Ok old, Ok now -> maybe_m (monoton_package ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_package ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_package ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_package repo))
+      () pkgs >>= fun () ->
     foldS (fun () id ->
-        match IO.read_checksum io id, IO.read_checksum newio id with
-        | Ok old, Ok now -> maybe_m (monoton_checksum ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_checksum ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_checksum ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_checksum repo))
-      () packages >>= fun () ->
+        match IO.read_release io id, IO.read_release newio id with
+        | Ok old, Ok now -> maybe_m (monoton_release ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_release ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_release ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_release repo))
+      () releases >>= fun () ->
     Ok newrepo
 
   let verify_diff io repo data =
     let diffs = Conex_diff.to_diffs data in
     let comp = Conex_diff.diffs_to_components diffs in
-    let newio = List.fold_left Conex_diff.apply io diffs in
+    let newio = List.fold_left Conex_diff_provider.apply io diffs in
     verify_patch repo io newio comp
 end

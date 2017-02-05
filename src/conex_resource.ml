@@ -2,23 +2,35 @@ open Conex_result
 open Conex_core
 open Conex_utils
 
+
+type name = string
+
+(*BISECT-IGNORE-BEGIN*)
+let pp_name ppf x = Format.pp_print_string ppf x
+(*BISECT-IGNORE-END*)
+
+let name_equal a b = String.compare_insensitive a b
+
+
+type identifier = string
+
+(*BISECT-IGNORE-BEGIN*)
+let pp_id ppf x = Format.pp_print_string ppf x
+(*BISECT-IGNORE-END*)
+
+let id_equal a b = String.compare_insensitive a b
+
 module Wire = struct
   type s =
-  | Map of s M.t
-  | List of s list
-  | String of string
-  | Int of Uint.t
+    | Map of s M.t
+    | List of s list
+    | String of string
+    | Int of Uint.t
+
   type t = s M.t
 
   let search t k =
     try Some (M.find k t) with Not_found -> None
-
-  let check_v expect v =
-    if Uint.compare v expect = 0 then
-      Ok ()
-    else
-      Error (Printf.sprintf "unknown data version #%s, expected #%s"
-               (Uint.to_string v) (Uint.to_string expect))
 
   let opt_err = function
     | Some x -> Ok x
@@ -59,368 +71,322 @@ module Wire = struct
     | Some xs -> list xs
 
   let opt_string_set x = opt_list x >>= string_set
+end
+
+(* they're by no means equal:
+
+  - `Author, `Team, `Authorisation, `Package, `Release are written to individual files
+  - `Account, `Signature, and `Key are persistent via `Author
+  - `Wrap is writen implicitly with Header.t
+  - `Key, `Account, `Author, `Wrap, `Team, `Authorisation, `Package, `Release can be part of resource lists
+  - `Signature is never part of any resource list!
+ *)
+type typ = [
+  | `Signature
+  | `Key
+  | `Account
+  | `Author
+  | `Wrap
+  | `Team
+  | `Authorisation
+  | `Package
+  | `Release
+]
+
+let typ_equal a b = match a, b with
+  | `Signature, `Signature
+  | `Key, `Key
+  | `Account, `Account
+  | `Author, `Author
+  | `Wrap, `Wrap
+  | `Team, `Team
+  | `Authorisation, `Authorisation
+  | `Package, `Package
+  | `Release, `Release -> true
+  | _ -> false
+
+let typ_to_string = function
+  | `Signature -> "signature"
+  | `Key -> "key"
+  | `Account -> "account"
+  | `Author -> "author"
+  | `Wrap -> "wrap"
+  | `Team -> "team"
+  | `Authorisation -> "authorisation"
+  | `Package -> "package"
+  | `Release -> "release"
+
+let string_to_typ = function
+  | "signature" -> Some `Signature
+  | "key" -> Some `Key
+  | "account" -> Some `Account
+  | "author" -> Some `Author
+  | "wrap" -> Some `Wrap
+  | "team" -> Some `Team
+  | "authorisation" -> Some `Authorisation
+  | "package" -> Some `Package
+  | "release" -> Some `Release
+  | _ -> None
+
+(*BISECT-IGNORE-BEGIN*)
+let pp_typ ppf typ = Format.pp_print_string ppf (typ_to_string typ)
+(*BISECT-IGNORE-END*)
+
+let wire_typ typ = Wire.String (typ_to_string typ)
+let typ_of_wire = function
+  | Wire.String str ->
+    (match string_to_typ str with
+     | None -> Error "unknown resource type"
+     | Some x -> Ok x)
+  | _ -> Error "cannot parse resource type"
 
 
-  let ncv data =
-    opt_err (search data "counter") >>= int >>= fun counter ->
+module Header = struct
+  type t = {
+    version : Uint.t ;
+    created : Uint.t ;
+    counter : Uint.t ;
+    wraps : Uint.t ;
+    name : name ;
+    typ : typ
+  }
+
+  let of_wire data =
+    let open Wire in
     opt_err (search data "version") >>= int >>= fun version ->
+    opt_err (search data "created") >>= int >>= fun created ->
+    opt_err (search data "counter") >>= int >>= fun counter ->
+    opt_err (search data "wraps") >>= int >>= fun wraps ->
     opt_err (search data "name") >>= string >>= fun name ->
-    Ok (name, counter, version)
+    opt_err (search data "typ") >>= typ_of_wire >>= fun typ ->
+    Ok { version ; created ; counter ; wraps ; name ; typ }
 
-  let keys ncv additional map =
+  (*BISECT-IGNORE-BEGIN*)
+  let timestamp x = Uint.decimal x
+
+  let counter x wrap =
+    "#" ^ (Uint.decimal x) ^
+    (if Uint.compare wrap Uint.zero = 0 then ""
+     else "[" ^ (Uint.decimal wrap) ^ "]")
+
+  let pp ppf hdr =
+    Format.fprintf ppf "%a %a %s created %s"
+      pp_typ hdr.typ
+      pp_name hdr.name
+      (counter hdr.counter hdr.wraps)
+      (timestamp hdr.created)
+  (*BISECT-IGNORE-END*)
+
+  let wire t =
+    let open Wire in
+    M.add "version" (Int t.version)
+      (M.add "created" (Int t.created)
+         (M.add "counter" (Int t.counter)
+            (M.add "wraps" (Int t.wraps)
+               (M.add "name" (String t.name)
+                  (M.add "typ" (wire_typ t.typ) M.empty)))))
+
+  let keys ?(header = true) additional map =
     let wanted =
-      if ncv then
-        "counter" :: "version" :: "name" :: additional
+      if header then
+        "created" :: "counter" :: "version" :: "wraps" :: "name" :: "typ" :: additional
       else
         additional
     in
-    if S.subset (s_of_list (fst (List.split (M.bindings map)))) (s_of_list wanted) then
+    let have = s_of_list (fst (List.split (M.bindings map))) in
+    if S.subset have (s_of_list wanted) then
       Ok ()
     else
-      Error "key sets not compatible"
+      Error (Printf.sprintf "key sets not compatible: have %s want %s"
+               (String.concat ";" (S.elements have)) (String.concat ";" wanted))
 
-  let wire_ncv n c v =
-    M.add "counter" (Int c)
-      (M.add "name" (String n)
-         (M.add "version" (Int v)
-            M.empty))
+  let check t v hdr =
+    match Uint.compare hdr.version v, typ_equal t hdr.typ with
+    | 0, true -> Ok ()
+    | _, false -> Error (Printf.sprintf "expected resource type %s, found %s"
+                           (typ_to_string t) (typ_to_string hdr.typ))
+    | _, true ->
+      Error (Printf.sprintf "expected data version #%s, found #%s"
+               (Uint.decimal v) (Uint.decimal hdr.version))
 
-  let digest data =
+end
+
+
+module Key = struct
+  type alg = [ `RSA ]
+
+  let alg_to_string = function `RSA -> "RSA"
+  let string_to_alg = function "RSA" -> Some `RSA | _ -> None
+  let alg_equal a b = match a, b with
+    | `RSA, `RSA -> true
+
+  let version = Uint.zero
+  type t = alg * string * Uint.t
+
+  type priv = [ `Priv of alg * string * Uint.t ]
+
+  let equal (alg, data, _) (alg', data', _) =
+    alg_equal alg alg' && String.compare data data' = 0
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf (a, x, created) =
+    Format.fprintf ppf "%s key (created %s), %d bytes"
+      (alg_to_string a) (Header.timestamp created) (String.length x)
+  (*BISECT-IGNORE-END*)
+
+  (* stored persistently on disk in an author file containing a list of keys *)
+  let of_wire data =
+    let open Wire in
+    list data >>= function
+    | [ String typ ; String data ; Int created ] ->
+      (match string_to_alg typ with
+       | Some `RSA -> Ok (`RSA, data, created)
+       | _ -> Error "unknown key type")
+    | _ -> Error "cannot parse key"
+
+  let wire_raw (a, k, created) =
+    let open Wire in
+    let typ = alg_to_string a in
+    List [ String typ ; String k ; Int created ]
+
+  (* this is exposed, used for signing *)
+  let wire name (a, k, created) =
+    let open Wire in
+    let counter = Uint.zero
+    and wraps = Uint.zero
+    and typ = `Key
+    in
+    let header = { Header.created ; counter ; version ; wraps ; name ; typ } in
+    M.add "keytype" (String (alg_to_string a))
+      (M.add "keydata" (String k)
+         (Header.wire header))
+end
+
+module Signature = struct
+  type alg = [ `RSA_PSS_SHA256 ]
+
+  let alg_to_string = function
+    | `RSA_PSS_SHA256 -> "RSA-PSS-SHA256"
+
+  let string_to_alg = function
+    | "RSA-PSS-SHA256" -> Some `RSA_PSS_SHA256
+    | _ -> None
+
+  let version = Uint.zero
+  type hdr = alg * Uint.t
+
+  (* to-be-signed data: an identifer, algorithm, timestamp, and the actual data *)
+  let wire name (alg, created) data =
+    let open Wire in
+    let counter = Uint.zero
+    and wraps = Uint.zero
+    and typ = `Signature
+    in
+    let header = { Header.created ; counter ; version ; wraps ; name ; typ }
+    in
+    M.add "sigtype" (String (alg_to_string alg))
+      (M.add "data" (String data)
+         (Header.wire header))
+
+  type t = hdr * string
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf ((alg, created), data) =
+    Format.fprintf ppf "%s signature (created %s), %d bytes"
+      (alg_to_string alg) (Header.timestamp created) (String.length data)
+  (*BISECT-IGNORE-END*)
+
+  (* again stored on disk as part of author file *)
+  let of_wire data =
+    let open Wire in
+    list data >>= function
+    | [ Int created ; String typ ; String s ] ->
+      (match string_to_alg typ with
+       | Some alg -> Ok ((alg, created), s)
+       | None -> Error "couldn't parse signature type")
+    | _ -> Error "couldn't parse signature"
+
+  let wire_raw ((alg, created), s) =
+    let open Wire in
+    List [ Int created ; String (alg_to_string alg) ; String s ]
+end
+
+module Digest = struct
+  type alg = [ `SHA256 ]
+  let alg_to_string = function `SHA256 -> "SHA256"
+  let string_to_alg = function
+    | "SHA256" -> Some `SHA256
+    | _ -> None
+
+  type t = alg * string
+  let to_string (a, b) = alg_to_string a ^ b
+  let equal (ta, a) (tb, b) = match ta, tb with
+  | `SHA256, `SHA256 -> String.compare a b = 0
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf (`SHA256, x) = Format.fprintf ppf "SHA256: %s" x
+  (*BISECT-IGNORE-END*)
+
+  let of_wire data =
+    let open Wire in
     list data >>= function
     | [ String typ ; String data ] ->
-      (match string_to_digestalg typ with
+      (match string_to_alg typ with
        | Some `SHA256 -> Ok (`SHA256, data)
        | None -> Error ("unknown digest typ " ^ typ))
     | _ -> Error "couldn't parse digest"
 
-  let wire_digest (typ, data) =
-    List [ String (digestalg_to_string typ) ; String data ]
-
-  let signature_of_wire data =
-    list data >>= function
-    | [ Int created ; String typ ; String signame ; String d ] ->
-      (match string_to_sigalg typ with
-       (* TODO: length check for `d`? *)
-       | Some `RSA_PSS_SHA256 -> Ok ({ created ; sigalg = `RSA_PSS_SHA256 ; signame }, d)
-       | None -> Error "couldn't parse signature type")
-    | _ -> Error "couldn't parse signature"
-
-  let wire_signature (hdr, s) =
-    [ Int hdr.created ; String (sigalg_to_string hdr.sigalg) ; String hdr.signame ; String s ]
-
-  let key_of_wire data =
-    list data >>= function
-    | [ String typ ; String data ] ->
-      (match string_to_keyalg typ with
-       | Some `RSA -> Ok (`RSA, data)
-       | _ -> Error "unknown key type")
-    | _ -> Error "unknown key"
-
-  let wire_key (t,k) =
-    let typ = keyalg_to_string t in
-    List [ String typ ; String k ]
-
-  (* this is exposed *)
-  let wire_pub id k =
-    M.add "key" (wire_key k)
-      (M.add "name" (String id) M.empty)
+  let wire_raw (typ, data) =
+    let open Wire in
+    List [ String (alg_to_string typ) ; String data ]
 end
 
-module Team = struct
-  let version = Uint.zero
-  type t = {
-    counter : Uint.t ;
-    name : identifier ;
-    members : S.t
-  }
-
-  let team ?(counter = Uint.zero) ?(members = S.empty) name =
-    { counter ; members ; name }
-
-  let of_wire data =
-    let open Wire in
-    keys true ["members"] data >>= fun () ->
-    ncv data >>= fun (name, counter, v) ->
-    check_v version v >>= fun () ->
-    opt_string_set (search data "members") >>= fun members ->
-    Ok (team ~counter ~members name)
-
-  let wire d =
-    let open Wire in
-    M.add "members" (wire_string_set d.members)
-      (wire_ncv d.name d.counter version)
-
-  let equal a b =
-    id_equal a.name b.name && S.equal a.members b.members
-
-  let add t id = { t with members = S.add id t.members }
-
-  let remove t id = { t with members = S.remove id t.members }
-
-  let prep t =
-    let carry, counter = Uint.succ t.counter in
-    { t with counter }, carry
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
-
-  let pp_team ppf x =
-    Format.fprintf ppf "team #%s %a@ %a"
-      (Uint.to_string x.counter) pp_id x.name pp_mems x.members
-   (*BISECT-IGNORE-END*)
-end
-
-module Authorisation = struct
-  let version = Uint.zero
-  type t = {
-    counter : Uint.t ;
-    name : name ;
-    authorised : S.t ;
-  }
-
-  let authorisation ?(counter = Uint.zero) ?(authorised = S.empty) name =
-    { counter ; name ; authorised }
-
-  let of_wire data =
-    let open Wire in
-    keys true ["authorised"] data >>= fun () ->
-    ncv data >>= fun (name, counter, v) ->
-    check_v version v >>= fun () ->
-    opt_string_set (search data "authorised") >>= fun authorised ->
-    Ok (authorisation ~counter ~authorised name)
-
-  let wire d =
-    let open Wire in
-    M.add "authorised" (wire_string_set d.authorised)
-      (wire_ncv d.name d.counter version)
-
-  let equal a b =
-    name_equal a.name b.name && S.equal a.authorised b.authorised
-
-  let add t id = { t with authorised = S.add id t.authorised }
-
-  let remove t id = { t with authorised = S.remove id t.authorised }
-
-  let prep t =
-    let carry, counter = Uint.succ t.counter in
-    { t with counter }, carry
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
-
-  let pp_authorisation ppf d =
-    Format.fprintf ppf "authorisation #%s %a@ %a"
-      (Uint.to_string d.counter) pp_name d.name pp_authorised d.authorised
-  (*BISECT-IGNORE-END*)
-end
-
-module Releases = struct
-  let version = Uint.zero
-  type t = {
-    counter : Uint.t ;
-    name : name ;
-    releases : S.t ;
-  }
-
-  let releases ?(counter = Uint.zero) ?(releases = S.empty) name =
-    { counter ; name ; releases }
-
-  let of_wire data =
-    let open Wire in
-    keys true ["releases"] data >>= fun () ->
-    ncv data >>= fun (name, counter, v) ->
-    check_v version v >>= fun () ->
-    opt_string_set (search data "releases") >>= fun rels ->
-    Ok (releases ~counter ~releases:rels name)
-
-  let wire r =
-    let open Wire in
-    M.add "releases" (wire_string_set r.releases)
-      (wire_ncv r.name r.counter version)
-
-  let equal a b =
-    name_equal a.name b.name && S.equal a.releases b.releases
-
-  let add t i = { t with releases = S.add i t.releases }
-
-  let remove t i = { t with releases = S.remove i t.releases }
-
-  let prep t =
-    let carry, counter = Uint.succ t.counter in
-    { t with counter }, carry
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_releases ppf r =
-    Format.fprintf ppf "releases #%s %a@ %a"
-       (Uint.to_string r.counter) pp_name r.name
-      (pp_list pp_name) (S.elements r.releases)
-  (*BISECT-IGNORE-END*)
-end
-
-module Checksum = struct
-  type c = {
-    filename : name ;
-    size     : Uint.t ;
-    digest   : digest ;
-  }
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_checksum ppf c =
-    Format.fprintf ppf "%a (0x%s bytes) %a"
-      pp_name c.filename (Uint.to_string c.size) pp_digest c.digest
-  (*BISECT-IGNORE-END*)
-
-  let checksum_equal a b =
-    name_equal a.filename b.filename && a.size = b.size && digest_eq a.digest b.digest
-
-  let checksum_of_wire data =
-    let open Wire in
-    map data >>= fun map ->
-    keys false ["filename" ; "size" ; "digest"] map >>= fun () ->
-    opt_err (search map "filename") >>= string >>= fun filename ->
-    opt_err (search map "size") >>= int >>= fun size ->
-    opt_err (search map "digest") >>= digest >>= function digest ->
-    Ok ({ filename ; size ; digest })
-
-  let wire_checksum c =
-    let open Wire in
-    M.add "filename" (String c.filename)
-      (M.add "size" (Int c.size)
-         (M.add "digest" (wire_digest c.digest)
-            M.empty))
-
-  type checksum_map = c M.t
-
-  let fold f m acc = M.fold (fun _ c acc -> f c acc) m acc
-  let find m id = M.find id m
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_checksum_map ppf cs =
-    pp_list pp_checksum ppf
-      (List.sort (fun a b -> String.compare a.filename b.filename)
-         (snd (List.split (M.bindings cs))))
-  (*BISECT-IGNORE-END*)
-
-  let version = Uint.zero
-  type t = {
-    counter : Uint.t ;
-    name : name ;
-    files : checksum_map ;
-  }
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_checksums ppf c =
-    Format.fprintf ppf "checksums #%s %a@ %a"
-      (Uint.to_string c.counter)
-      pp_name c.name
-      pp_checksum_map c.files
-  (*BISECT-IGNORE-END*)
-
-  let checksums ?(counter = Uint.zero) name files =
-    let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
-    { counter ; name ; files }
-
-  let of_wire data =
-    let open Wire in
-    keys true ["files"] data >>= fun () ->
-    ncv data >>= fun (name, counter, v) ->
-    check_v version v >>= fun () ->
-    opt_list (search data "files") >>= fun sums ->
-    foldM (fun acc v -> checksum_of_wire v >>= fun cs -> Ok (cs :: acc))
-      [] sums >>= fun files ->
-    Ok (checksums ~counter name files)
-
-  let wire cs =
-    let open Wire in
-    let csums =
-      fold (fun c acc -> Map (wire_checksum c) :: acc) cs.files []
-    in
-    M.add "files" (List csums)
-      (wire_ncv cs.name cs.counter version)
-
-  let set_counter cs counter = { cs with counter }
-
-  let compare_checksums a b =
-    guard (name_equal a.name b.name) (`InvalidName (a.name, b.name)) >>= fun () ->
-    if M.equal checksum_equal a.files b.files then
-      Ok ()
-    else
-      let invalid, missing =
-        M.fold (fun k v (inv, miss) ->
-            if M.mem k b.files then
-              let c = M.find k b.files in
-              if checksum_equal c v then (inv, miss)
-              else ((c, v) :: inv, miss)
-            else (inv, k :: miss))
-          a.files ([], [])
-      and toomany =
-        M.fold (fun k _ acc ->
-            if M.mem k a.files then acc
-            else k :: acc)
-          b.files []
-      in
-      Error (`ChecksumsDiff (a.name, missing, toomany, invalid))
-
-  let equal a b =
-    match compare_checksums a b with
-    | Ok () -> true
-    | _ -> false
-
-  let prep t =
-    let carry, counter = Uint.succ t.counter in
-    { t with counter }, carry
-
-end
-
-module Index = struct
+module Author = struct
   type r = {
     index : Uint.t ;
     rname : string ;
     size : Uint.t ;
-    resource : resource ;
-    digest : digest ;
+    rtyp : typ ;
+    digest : Digest.t ;
   }
 
-  let r index rname size resource digest =
-    { index ; rname ; size ; resource ; digest }
+  let r index rname size rtyp digest =
+    { index ; rname ; size ; rtyp ; digest }
 
   let resource_of_wire data =
     let open Wire in
     map data >>= fun map ->
-    keys false ["index" ; "name" ; "size" ; "resource" ; "digest" ] map >>= fun () ->
+    Header.keys ~header:false ["index" ; "name" ; "size" ; "typ" ; "digest" ] map >>= fun () ->
     opt_err (search map "index") >>= int >>= fun index ->
-    opt_err (search map "name") >>= string >>= fun name ->
+    opt_err (search map "name") >>= string >>= fun rname ->
     opt_err (search map "size") >>= int >>= fun size ->
-    opt_err (search map "resource") >>= string >>= fun res ->
-    (match string_to_resource res with
-     | Some r -> Ok r
-     | None -> Error "unknown resource") >>= fun resource ->
-    opt_err (search map "digest") >>= digest >>= fun digest ->
-    Ok (r index name size resource digest)
+    opt_err (search map "typ") >>= typ_of_wire >>= fun rtyp ->
+    opt_err (search map "digest") >>= Digest.of_wire >>= fun digest ->
+    Ok (r index rname size rtyp digest)
 
   let wire_resource r =
     let open Wire in
     M.add "index" (Int r.index)
       (M.add "name" (String r.rname)
          (M.add "size" (Int r.size)
-            (M.add "resource" (String (resource_to_string r.resource))
-               (M.add "digest" (wire_digest r.digest)
+            (M.add "typ" (wire_typ r.rtyp)
+               (M.add "digest" (Digest.wire_raw r.digest)
                   M.empty))))
 
   let r_equal a b =
     name_equal a.rname b.rname &&
     Uint.compare a.size b.size = 0 &&
-    resource_equal a.resource b.resource &&
-    a.digest = b.digest
+    typ_equal a.rtyp b.rtyp &&
+    Digest.equal a.digest b.digest
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_resource ppf { index ; rname ; size ; resource ; digest } =
-    Format.fprintf ppf "%a #%s %a@ 0x%s bytes@ %a"
-      pp_resource resource
-      (Uint.to_string index)
+  let pp_resource ppf { index ; rname ; size ; rtyp ; digest } =
+    Format.fprintf ppf "%a #%s %a@ %s bytes@ %a"
+      pp_typ rtyp
+      (Uint.decimal index)
       pp_name rname
-      (Uint.to_string size)
-      pp_digest digest
+      (Uint.decimal size)
+      Digest.pp digest
   (*BISECT-IGNORE-END*)
 
   type email = identifier
@@ -466,49 +432,66 @@ module Index = struct
 
   let version = Uint.zero
   type t = {
-    accounts : service list ;
-    keys : pub list ;
+    created : Uint.t ;
     counter : Uint.t ;
+    wraps : Uint.t ;
     name : identifier ;
+    accounts : service list ;
+    keys : Key.t list ;
     resources : r list ;
-    signatures : signature list ;
+    signatures : Signature.t list ;
     queued : r list ;
   }
 
-  let index ?(accounts = []) ?(keys = []) ?(counter = Uint.zero) ?(resources = []) ?(signatures = []) ?(queued = []) name =
-    { accounts ; keys ; counter ; name ; resources ; signatures ; queued }
+  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(accounts = []) ?(keys = []) ?(resources = []) ?(signatures = []) ?(queued = []) created name =
+    { created ; counter ; wraps ; name ; accounts ; keys ; resources ; signatures ; queued }
 
+  (* wire representation is as follows:
+      accounts: service list
+      keys: pub list
+      signatures: sig list
+      queued: r list
+      signed:
+        Header.t with typ = `Author
+        resources (list, including matching `Key and `Account above)
+ *)
   let of_wire data =
     let open Wire in
-    keys false ["signatures" ; "signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
+    Header.keys ~header:false ["signatures" ; "signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
     opt_list (search data "signatures") >>= fun sigs ->
-    foldM (fun acc v -> signature_of_wire v >>= fun s -> Ok (s :: acc)) [] sigs >>= fun signatures ->
+    foldM (fun acc v -> Signature.of_wire v >>= fun s -> Ok (s :: acc)) [] sigs >>= fun signatures ->
     opt_err (search data "signed") >>= map >>= fun signed ->
-    keys true ["resources"] signed >>= fun () ->
-    ncv signed >>= fun (name, counter, v) ->
-    check_v version v >>= fun () ->
+    Header.keys ["resources"] signed >>= fun () ->
+    Header.of_wire signed >>= fun h ->
+    Header.check `Author version h >>= fun () ->
     opt_list (search signed "resources") >>= fun rs ->
     foldM (fun acc v -> resource_of_wire v >>= fun r -> Ok (r :: acc)) [] rs >>= fun resources ->
     opt_list (search data "queued") >>= fun qs ->
     foldM (fun acc v -> resource_of_wire v >>= fun r -> Ok (r :: acc)) [] qs >>= fun queued ->
     opt_list (search data "keys") >>= fun keys ->
-    foldM (fun acc k -> key_of_wire k >>= fun r -> Ok (r :: acc)) [] keys >>= fun keys ->
+    foldM (fun acc k -> Key.of_wire k >>= fun r -> Ok (r :: acc)) [] keys >>= fun keys ->
     opt_map (search data "accounts") >>= accounts_of_wire >>= fun accounts ->
-    Ok (index ~keys ~accounts ~counter ~resources ~queued ~signatures name)
+    Ok (t ~keys ~accounts ~counter:h.Header.counter ~wraps:h.Header.wraps ~resources ~queued ~signatures h.Header.created h.Header.name)
 
-  let wire_resources i =
+  let wire_raw t =
     let open Wire in
-    let resources = List.map (fun r -> Map (wire_resource r)) i.resources in
-    M.add "resources" (List resources)
-      (wire_ncv i.name i.counter version)
+    let created = t.created
+    and counter = t.counter
+    and wraps = t.wraps
+    and name = t.name
+    and typ = `Author
+    in
+    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    let resources = List.map (fun r -> Map (wire_resource r)) t.resources in
+    M.add "resources" (List resources) (Header.wire header)
 
   let wire i =
     let open Wire in
-    M.add "keys" (List (List.map wire_key i.keys))
+    M.add "keys" (List (List.map Key.wire_raw i.keys))
       (M.add "accounts" (Map (List.fold_left wire_account M.empty i.accounts))
          (M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) i.queued))
-            (M.add "signed" (Map (wire_resources i))
-               (M.add "signatures" (List (List.map (fun s -> List (wire_signature s)) i.signatures))
+            (M.add "signed" (Map (wire_raw i))
+               (M.add "signatures" (List (List.map Signature.wire_raw i.signatures))
                   M.empty))))
 
   let equal a b =
@@ -518,7 +501,7 @@ module Index = struct
     List.length a.resources = List.length b.resources &&
     List.length a.queued = List.length b.queued &&
     List.for_all (fun r -> List.exists (service_equal r) a.accounts) b.accounts &&
-    List.for_all (fun r -> List.exists (pub_equal r) a.keys) b.keys &&
+    List.for_all (fun r -> List.exists (Key.equal r) a.keys) b.keys &&
     List.for_all (fun r -> List.exists (r_equal r) a.resources) b.resources &&
     List.for_all (fun r -> List.exists (r_equal r) a.queued) b.queued
 
@@ -535,15 +518,16 @@ module Index = struct
   let reset t = { t with queued = [] }
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_index ppf i =
-    Format.fprintf ppf "index #%s %a@ accounts %a@ keys %a@ resources %a@ queued %a@ signatures %a"
-      (Uint.to_string i.counter)
+  let pp ppf i =
+    Format.fprintf ppf "author %a %s (created %s)@ accounts %a@ keys %a@ resources %a@ queued %a@ signatures %a"
       pp_id i.name
+      (Header.counter i.counter i.wraps)
+      (Header.timestamp i.created)
       (pp_list pp_service) i.accounts
-      (pp_list pp_pub) i.keys
+      (pp_list Key.pp) i.keys
       (pp_list pp_resource) i.resources
       (pp_list pp_resource) i.queued
-      (pp_list pp_signature) i.signatures
+      (pp_list Signature.pp) i.signatures
   (*BISECT-IGNORE-END*)
 
   let prep_sig i =
@@ -555,4 +539,288 @@ module Index = struct
     { i with signatures ; resources ; queued ; counter }, carry
 
   let add_sig i s = { i with signatures = s :: i.signatures }
+end
+
+
+module Team = struct
+  let version = Uint.zero
+  type t = {
+    created : Uint.t ;
+    counter : Uint.t ;
+    wraps : Uint.t ;
+    name : identifier ;
+    members : S.t
+  }
+
+  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(members = S.empty) created name =
+    { created ; counter ; wraps ; members ; name }
+
+  let of_wire data =
+    let open Wire in
+    Header.keys ["members"] data >>= fun () ->
+    Header.of_wire data >>= fun h ->
+    Header.check `Team version h >>= fun () ->
+    opt_string_set (search data "members") >>= fun members ->
+    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps ~members h.Header.created h.Header.name)
+
+  let wire t =
+    let open Wire in
+    let counter = t.counter
+    and wraps = t.wraps
+    and created = t.created
+    and typ = `Team
+    and name = t.name
+    in
+    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    M.add "members" (wire_string_set t.members) (Header.wire header)
+
+  let equal a b =
+    id_equal a.name b.name && S.equal a.members b.members
+
+  let add t id = { t with members = S.add id t.members }
+
+  let remove t id = { t with members = S.remove id t.members }
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    { t with counter }, carry
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
+
+  let pp ppf x =
+    Format.fprintf ppf "team %a %s (created %s)@ %a"
+      pp_id x.name
+      (Header.counter x.counter x.wraps)
+      (Header.timestamp x.created)
+      pp_mems x.members
+   (*BISECT-IGNORE-END*)
+end
+
+module Authorisation = struct
+  let version = Uint.zero
+  type t = {
+    created : Uint.t ;
+    counter : Uint.t ;
+    wraps : Uint.t ;
+    name : name ;
+    authorised : S.t ;
+  }
+
+  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(authorised = S.empty) created name =
+    { created ; counter ; wraps ; name ; authorised }
+
+  let of_wire data =
+    let open Wire in
+    Header.keys ["authorised"] data >>= fun () ->
+    Header.of_wire data >>= fun h ->
+    Header.check `Authorisation version h >>= fun () ->
+    opt_string_set (search data "authorised") >>= fun authorised ->
+    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps ~authorised h.Header.created h.Header.name)
+
+  let wire d =
+    let open Wire in
+    let created = d.created
+    and counter = d.counter
+    and wraps = d.wraps
+    and name = d.name
+    and typ = `Authorisation
+    in
+    let header = { Header.version ;created ; counter ; wraps ; name ; typ } in
+    M.add "authorised" (wire_string_set d.authorised) (Header.wire header)
+
+  let equal a b =
+    name_equal a.name b.name && S.equal a.authorised b.authorised
+
+  let add t id = { t with authorised = S.add id t.authorised }
+
+  let remove t id = { t with authorised = S.remove id t.authorised }
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    { t with counter }, carry
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
+
+  let pp ppf d =
+    Format.fprintf ppf "authorisation %a %s (created %s)@ %a"
+      pp_name d.name
+      (Header.counter d.counter d.wraps)
+      (Header.timestamp d.created)
+      pp_authorised d.authorised
+  (*BISECT-IGNORE-END*)
+end
+
+module Package = struct
+  let version = Uint.zero
+  type t = {
+    created : Uint.t ;
+    counter : Uint.t ;
+    wraps : Uint.t ;
+    name : name ;
+    releases : S.t ;
+  }
+
+  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(releases = S.empty) created name =
+    { created ; counter ; wraps ; name ; releases }
+
+  let of_wire data =
+    let open Wire in
+    Header.keys ["releases"] data >>= fun () ->
+    Header.of_wire data >>= fun h ->
+    Header.check `Package version h >>= fun () ->
+    opt_string_set (search data "releases") >>= fun rels ->
+    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps ~releases:rels h.Header.created h.Header.name)
+
+  let wire r =
+    let open Wire in
+    let counter = r.counter
+    and wraps = r.wraps
+    and created = r.created
+    and typ = `Package
+    and name = r.name
+    in
+    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    M.add "releases" (wire_string_set r.releases) (Header.wire header)
+
+  let equal a b =
+    name_equal a.name b.name && S.equal a.releases b.releases
+
+  let add t i = { t with releases = S.add i t.releases }
+
+  let remove t i = { t with releases = S.remove i t.releases }
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    { t with counter }, carry
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf r =
+    Format.fprintf ppf "package %a %s (created %s)@ %a"
+      pp_name r.name
+      (Header.counter r.counter r.wraps)
+      (Header.timestamp r.created)
+      (pp_list pp_name) (S.elements r.releases)
+  (*BISECT-IGNORE-END*)
+end
+
+module Release = struct
+  type c = {
+    filename : name ;
+    size     : Uint.t ;
+    digest   : Digest.t ;
+  }
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_checksum ppf c =
+    Format.fprintf ppf "%a (0x%s bytes) %a"
+      pp_name c.filename (Uint.to_string c.size) Digest.pp c.digest
+  (*BISECT-IGNORE-END*)
+
+  let checksum_equal a b =
+    name_equal a.filename b.filename && a.size = b.size && Digest.equal a.digest b.digest
+
+  let checksum_of_wire data =
+    let open Wire in
+    map data >>= fun map ->
+    Header.keys ~header:false ["filename" ; "size" ; "digest"] map >>= fun () ->
+    opt_err (search map "filename") >>= string >>= fun filename ->
+    opt_err (search map "size") >>= int >>= fun size ->
+    opt_err (search map "digest") >>= Digest.of_wire >>= function digest ->
+    Ok ({ filename ; size ; digest })
+
+  let wire_checksum c =
+    let open Wire in
+    M.add "filename" (String c.filename)
+      (M.add "size" (Int c.size)
+         (M.add "digest" (Digest.wire_raw c.digest)
+            M.empty))
+
+  type checksum_map = c M.t
+
+  let fold f m acc = M.fold (fun _ c acc -> f c acc) m acc
+  let find m id = M.find id m
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_checksum_map ppf cs =
+    pp_list pp_checksum ppf
+      (List.sort (fun a b -> String.compare a.filename b.filename)
+         (snd (List.split (M.bindings cs))))
+  (*BISECT-IGNORE-END*)
+
+  let version = Uint.zero
+  type t = {
+    created : Uint.t ;
+    counter : Uint.t ;
+    wraps : Uint.t ;
+    name : name ;
+    files : checksum_map ;
+  }
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf c =
+    Format.fprintf ppf "release %a %s (created %s)@ %a"
+      pp_name c.name
+      (Header.counter c.counter c.wraps)
+      (Header.timestamp c.created)
+      pp_checksum_map c.files
+  (*BISECT-IGNORE-END*)
+
+  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) created name files =
+    let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
+    { created ; counter ; wraps ; name ; files }
+
+  let of_wire data =
+    let open Wire in
+    Header.keys ["files"] data >>= fun () ->
+    Header.of_wire data >>= fun h ->
+    Header.check `Release version h >>= fun () ->
+    opt_list (search data "files") >>= fun sums ->
+    foldM (fun acc v -> checksum_of_wire v >>= fun cs -> Ok (cs :: acc)) [] sums >>= fun files ->
+    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps h.Header.created h.Header.name files)
+
+  let wire cs =
+    let open Wire in
+    let counter = cs.counter
+    and wraps = cs.wraps
+    and created = cs.created
+    and name = cs.name
+    and typ = `Release
+    in
+    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    let csums = fold (fun c acc -> Map (wire_checksum c) :: acc) cs.files [] in
+    M.add "files" (List csums) (Header.wire header)
+
+  let set_counter cs counter = { cs with counter }
+
+  let compare_checksums a b =
+    guard (name_equal a.name b.name) (`InvalidName (a.name, b.name)) >>= fun () ->
+    if M.equal checksum_equal a.files b.files then
+      Ok ()
+    else
+      let invalid, missing =
+        M.fold (fun k v (inv, miss) ->
+            if M.mem k b.files then
+              let c = M.find k b.files in
+              if checksum_equal c v then (inv, miss)
+              else ((c, v) :: inv, miss)
+            else (inv, k :: miss))
+          a.files ([], [])
+      and toomany =
+        M.fold (fun k _ acc ->
+            if M.mem k a.files then acc
+            else k :: acc)
+          b.files []
+      in
+      Error (`ChecksumsDiff (a.name, missing, toomany, invalid))
+
+  let equal a b =
+    match compare_checksums a b with
+    | Ok () -> true
+    | _ -> false
+
+  let prep t =
+    let carry, counter = Uint.succ t.counter in
+    { t with counter }, carry
 end

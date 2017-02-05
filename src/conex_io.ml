@@ -32,12 +32,12 @@ let checksum_files t pv =
   | Ok data ->
     Ok (List.fold_left (fun acc x -> collect1 [] [] x @ acc) [] data)
 
-let compute_checksum t name =
+let compute_release t now name =
   let checksum filename data =
     let size = Uint.of_int_exn (String.length data)
     and digest = Conex_nocrypto.digest data
     in
-    { Checksum.filename ; size ; digest }
+    { Release.filename ; size ; digest }
   in
   match t.file_type (checksum_dir name) with
   | Error _ -> Error (`FileNotFound name)
@@ -50,7 +50,7 @@ let compute_checksum t name =
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
         | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
     let r = List.(map2 checksum (map path_to_string fs) (rev ds)) in
-    Ok (Checksum.checksums name r)
+    Ok (Release.t now name r)
 
 let read_dir f t path =
   t.read_dir path >>= fun data ->
@@ -63,104 +63,103 @@ let dirs = (function `Dir d -> Some d | _ -> None)
 let items t = read_dir dirs t data_path
 let subitems t name = read_dir dirs t (data_path@[name])
 
-let compute_releases t name =
+let compute_package t now name =
   subitems t name >>= fun releases ->
-  Ok (Releases.releases ~releases name)
+  Ok (Package.t ~releases now name)
 
 
-type r_err = [ `NotFound of string * string | `ParseError of name * string | `NameMismatch of string * string ]
+type r_err = [ `NotFound of typ * name | `ParseError of typ * name * string | `NameMismatch of typ * name * name ]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_r_err ppf = function
-  | `NotFound (x, y) -> Format.fprintf ppf "%s %s was not found in repository" x y
-  | `ParseError (n, e) -> Format.fprintf ppf "parse error while parsing %a: %s" pp_name n e
-  | `NameMismatch (should, is) -> Format.fprintf ppf "%s is named %s" should is
+  | `NotFound (res, nam) -> Format.fprintf ppf "%a %a was not found in repository" pp_typ res pp_name nam
+  | `ParseError (res, n, e) -> Format.fprintf ppf "parse error while parsing %a %a: %s" pp_typ res pp_name n e
+  | `NameMismatch (res, should, is) -> Format.fprintf ppf "%a %a is named %a" pp_typ res pp_name should pp_name is
 (*BISECT-IGNORE-END*)
 
 let read_team t name =
   match t.read (id_file name) with
-  | Error _ -> Error (`NotFound ("team", name))
+  | Error _ -> Error (`NotFound (`Team, name))
   | Ok data ->
     match decode data >>= Team.of_wire with
-    | Error p -> Error (`ParseError (name, p))
+    | Error p -> Error (`ParseError (`Team, name, p))
     | Ok team ->
       if id_equal team.Team.name name then
         Ok team
       else
-        Error (`NameMismatch (name, team.Team.name))
+        Error (`NameMismatch (`Team, name, team.Team.name))
 
 let write_team t team =
   let id = team.Team.name in
   t.write (id_file id) (encode (Team.wire team))
 
-let read_index t name =
+let read_author t name =
   match t.read (id_file name) with
-  | Error _ -> Error (`NotFound ("index", name))
+  | Error _ -> Error (`NotFound (`Author, name))
   | Ok data ->
-    match decode data >>= Index.of_wire with
-    | Error p -> Error (`ParseError (name, p))
+    match decode data >>= Author.of_wire with
+    | Error p -> Error (`ParseError (`Author, name, p))
     | Ok i ->
-      if id_equal i.Index.name name then
+      if id_equal i.Author.name name then
         Ok i
       else
-        Error (`NameMismatch (name, i.Index.name))
+        Error (`NameMismatch (`Author, name, i.Author.name))
 
-let write_index t i =
-  let name = id_file i.Index.name in
-  t.write name (encode (Index.wire i))
+let write_author t i =
+  let name = id_file i.Author.name in
+  t.write name (encode (Author.wire i))
 
 let read_id t id =
   match read_team t id with
   | Ok team -> Ok (`Team team)
-  | Error (`NameMismatch (a, b)) -> Error (`NameMismatch (a, b))
-  | Error _ -> match read_index t id with
-    | Ok idx -> Ok (`Id idx)
+  | Error _ -> match read_author t id with
+    | Ok idx -> Ok (`Author idx)
     | Error e -> Error e
 
 let read_authorisation t name =
   match t.read (authorisation_path name) with
-  | Error _ -> Error (`NotFound ("authorisation", name))
+  | Error _ -> Error (`NotFound (`Authorisation, name))
   | Ok data ->
     match decode data >>= Authorisation.of_wire with
-    | Error p -> Error (`ParseError (name, p))
+    | Error p -> Error (`ParseError (`Authorisation, name, p))
     | Ok auth ->
       if name_equal auth.Authorisation.name name then
         Ok auth
       else
-        Error (`NameMismatch (name, auth.Authorisation.name))
+        Error (`NameMismatch (`Authorisation, name, auth.Authorisation.name))
 
 let write_authorisation t a =
   t.write (authorisation_path a.Authorisation.name)
     (encode (Authorisation.wire a))
 
-let read_releases t name =
+let read_package t name =
   match t.read (releases_path name) with
-  | Error _ -> Error (`NotFound ("releases", name))
+  | Error _ -> Error (`NotFound (`Package, name))
   | Ok data ->
-    match decode data >>= Releases.of_wire with
-    | Error p -> Error (`ParseError (name, p))
+    match decode data >>= Package.of_wire with
+    | Error p -> Error (`ParseError (`Package, name, p))
     | Ok r ->
-      if name_equal r.Releases.name name then
+      if name_equal r.Package.name name then
         Ok r
       else
-        Error (`NameMismatch (name, r.Releases.name))
+        Error (`NameMismatch (`Package, name, r.Package.name))
 
-let write_releases t r =
-  let name = releases_path r.Releases.name in
-  t.write name (encode (Releases.wire r))
+let write_package t r =
+  let name = releases_path r.Package.name in
+  t.write name (encode (Package.wire r))
 
-let read_checksum t name =
+let read_release t name =
   match t.read (checksum_path name) with
-  | Error _ -> Error (`NotFound ("checksum", name))
+  | Error _ -> Error (`NotFound (`Release, name))
   | Ok data ->
-    match decode data >>= Checksum.of_wire with
-    | Error p -> Error (`ParseError (name, p))
+    match decode data >>= Release.of_wire with
+    | Error p -> Error (`ParseError (`Release, name, p))
     | Ok csum ->
-      if name_equal csum.Checksum.name name then
+      if name_equal csum.Release.name name then
         Ok csum
       else
-        Error (`NameMismatch (name, csum.Checksum.name))
+        Error (`NameMismatch (`Release, name, csum.Release.name))
 
-let write_checksum t csum =
-  let name = checksum_path csum.Checksum.name in
-  t.write name (encode (Checksum.wire csum))
+let write_release t csum =
+  let name = checksum_path csum.Release.name in
+  t.write name (encode (Release.wire csum))

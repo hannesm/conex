@@ -1,4 +1,5 @@
 open Conex_result
+open Conex_utils
 open Conex_core
 open Conex_resource
 
@@ -29,9 +30,8 @@ let encode t =
 
 let rec decode_s = function
   | OpamParserTypes.Ident (_, data) ->
-    let l = String.length data in
-    if l > 4 && String.sub data 0 4 = "UINT" then
-      match Uint.of_string (String.sub data 4 (l - 4)) with
+    if String.is_prefix ~prefix:"UINT" data then
+      match Uint.of_string (String.slice ~start:4 data) with
       | None -> Error "cannot parse unsigned integer"
       | Some x -> Ok (Wire.Int x)
     else if data = "emptymap" then

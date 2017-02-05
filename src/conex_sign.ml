@@ -30,19 +30,20 @@ let private_key_path path id =
   in
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
-let sign_index idx priv =
-  let idx, _overflow = Index.prep_sig idx in
-  let data = Conex_opam_encoding.encode (Index.wire_resources idx)
+(* TODO: should get created as input *)
+let sign idx priv =
+  let idx, _overflow = Author.prep_sig idx in
+  let data = Conex_opam_encoding.encode (Author.wire_raw idx)
   and created = Uint.of_float (Unix.time ())
-  and signame = idx.Index.name
+  and id = idx.Author.name
   in
   match created with
   | None -> Error "couldn't convert timestamp to uint"
   | Some created ->
-    let hdr = { created ; sigalg = `RSA_PSS_SHA256 ; signame } in
-    let data = extend_sig hdr data in
+    let hdr = `RSA_PSS_SHA256, created in
+    let data = Conex_opam_encoding.encode (Signature.wire id hdr data) in
     Conex_nocrypto.sign priv data >>= fun signature ->
-    Ok (Index.add_sig idx (hdr, signature))
+    Ok (Author.add_sig idx (hdr, signature))
 
 let write_private_key prov id key =
   let base = prov.Conex_provider.name in
@@ -68,7 +69,9 @@ let write_private_key prov id key =
    else Ok ()) >>= fun () ->
   match Conex_persistency.file_type private_dir with
   | Ok Directory ->
-    let data = match key with `RSA, k -> k in
+    let data = match key with `Priv (alg, data, created) ->
+      String.concat ";" [ (Key.alg_to_string alg) ; data ; (Uint.to_string created) ]
+    in
     Conex_persistency.write_file ~mode:0o400 filename data
   | _ -> Error (private_dir ^ " is not a directory!")
 
@@ -89,7 +92,13 @@ let read_private_key ?id prov =
     if Conex_persistency.exists fn then
       match Conex_persistency.read_file fn with
       | Error e -> Error (`Msg e)
-      | Ok key -> Ok (id, (`RSA, key))
+      | Ok key ->
+        match String.cuts ';' key with
+        | [ alg ; data ; created ] ->
+          (match Key.string_to_alg alg, Uint.of_string created with
+           | Some alg, Some ts -> Ok (id, `Priv (alg, data, ts))
+           | _ -> Error (`Msg "couldn't parse private key type and created"))
+        | _ -> Error (`Msg "couldn't parse private key")
     else
       Error (`NotFound id)
   in
