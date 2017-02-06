@@ -19,7 +19,9 @@ let private_keys p =
   List.fold_left
     (fun acc s ->
        acc >>= fun acc ->
-       Ok (option acc (fun s -> s :: acc) (is_private s)))
+       match is_private s with
+       | None -> Ok acc
+       | Some s -> Ok (s :: acc))
     (Ok [])
     files
 

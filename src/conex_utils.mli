@@ -1,9 +1,6 @@
 
 (** {1 Utility functions for Conex} *)
 
-(** [option none f r] is [none] if [r] is [None], [f r] otherwise. *)
-val option : 'a -> ('b -> 'a) -> 'b option -> 'a
-
 (** [filter_map f xs] is [xs'], a list which contains all elements where [f]
     resulted in [Some _]. *)
 val filter_map : f:('a -> 'b option) -> 'a list -> 'b list
