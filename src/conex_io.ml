@@ -18,9 +18,9 @@ let checksum_files t pv =
    | Some de -> Ok (data_path@[ de ; pv ])
    | None -> Error (`FileNotFound pv )) >>= fun st ->
   let rec collect1 acc d = function
-    | `File f when d = [] && f = release_filename -> acc
-    | `File f -> (d@[f]) :: acc
-    | `Dir dir ->
+    | File, f when d = [] && f = release_filename -> acc
+    | File, f -> (d@[f]) :: acc
+    | Directory, dir ->
       let sub = d @ [ dir ] in
       match t.read_dir (st@sub) with
       | Error _ -> []
@@ -55,9 +55,9 @@ let read_dir f t path =
   t.read_dir path >>= fun data ->
   Ok (S.of_list (filter_map ~f data))
 
-let ids t = read_dir (function `File f -> Some f | _ -> None) t id_path
+let ids t = read_dir (function File, f -> Some f | _ -> None) t id_path
 
-let dirs = (function `Dir d -> Some d | _ -> None)
+let dirs = (function Directory, d -> Some d | _ -> None)
 
 let items t = read_dir dirs t data_path
 let subitems t name = read_dir dirs t (data_path@[name])

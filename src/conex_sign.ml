@@ -9,7 +9,7 @@ let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 let private_keys p =
   let is_private s =
     if String.is_suffix ~suffix:".private" s then
-      let p = string_to_path (p.Conex_provider.name) in
+      let p = string_to_path (p.Conex_provider.basedir) in
       match List.rev (String.cuts '.' s) with
       | _::id::path when p = List.rev path -> Some id
       | _ -> None
@@ -34,7 +34,7 @@ let private_key_path path id =
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
 let write_private_key prov id key =
-  let base = prov.Conex_provider.name in
+  let base = prov.Conex_provider.basedir in
   let filename = private_key_path base id in
   (if Conex_persistency.exists filename then begin
       let ts =
@@ -73,7 +73,7 @@ let pp_err ppf = function
 
 let read_private_key ?id prov =
   let read id =
-    let base = prov.Conex_provider.name in
+    let base = prov.Conex_provider.basedir in
     let fn = private_key_path base id in
     if Conex_persistency.exists fn then
       match Conex_persistency.read_file fn with

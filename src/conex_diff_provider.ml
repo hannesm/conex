@@ -26,7 +26,7 @@ let apply provider diff =
     in
     (* XXX: unlikely to be correct... *)
     let data = match name with
-      | fn::xs when xs = path -> Some (`File fn)
+      | fn::xs when xs = path -> Some (File, fn)
       | _ -> None
     in
     match provider.read_dir path, data with
@@ -43,7 +43,7 @@ let apply provider diff =
       true
     else
       provider.exists path
-  and name = provider.name
+  and basedir = provider.basedir
   and description = "Patch provider"
   in
-  { name ; description ; file_type ; read ; write ; read_dir ; exists }
+  { basedir ; description ; file_type ; read ; write ; read_dir ; exists }

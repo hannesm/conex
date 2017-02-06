@@ -18,13 +18,10 @@ let path_to_string path =
 
 let string_to_path str = String.cuts '/' str
 
-type item = [
-  | `File of string
-  | `Dir of string
-]
+type item = file_type * string
 
 type t = {
-  name : string ;
+  basedir : string ;
   description : string ;
   file_type : path -> (file_type, string) result ;
   read : path -> (string, string) result ;
@@ -34,6 +31,6 @@ type t = {
 }
 
 (*BISECT-IGNORE-BEGIN*)
-let pp_provider ppf t =
-  Format.fprintf ppf "repository %s: %s" t.name t.description
+let pp ppf t =
+  Format.fprintf ppf "repository %s: %s" t.basedir t.description
 (*BISECT-IGNORE-END*)

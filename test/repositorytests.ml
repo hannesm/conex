@@ -72,12 +72,12 @@ module Mem = struct
       Ok ()
     and read_dir path =
       find_f !root path >>= function
-      | Node (_, ch) -> Ok (List.map (function Node (x, _) -> `Dir x | Leaf (x, _) -> `File x) ch)
+      | Node (_, ch) -> Ok (List.map (function Node (x, _) -> Directory, x | Leaf (x, _) -> File, x) ch)
       | Leaf _ -> Error "reading a directory, but found files"
     and exists path =
       match find_f !root path with Ok _ -> true | Error _ -> false
     in
-    { name = "mem" ; description = "Memory provider" ; file_type ; read ; write ;read_dir ; exists }
+    { basedir = "mem" ; description = "Memory provider" ; file_type ; read ; write ;read_dir ; exists }
 end
 
 let str_err =
@@ -105,11 +105,11 @@ let it =
   let module M = struct
     type t = Conex_provider.item
     let pp ppf = function
-      | `File f -> Format.fprintf ppf "file %s" f
-      | `Dir d -> Format.fprintf ppf "directory %s" d
+      | File, f -> Format.fprintf ppf "file %s" f
+      | Directory, d -> Format.fprintf ppf "directory %s" d
     let equal a b = match a, b with
-      | `File f, `File g -> f = g
-      | `Dir a, `Dir b -> a = b
+      | (File, f), (File, g) -> f = g
+      | (Directory, a), (Directory, b) -> a = b
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -147,13 +147,13 @@ let more_p () =
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar2' to 'packages/foo2'"
     (Ok ()) (p.write ["packages"; "foo2"] "bar2") ;
   Alcotest.check (result (Alcotest.list it) str_err) "read_dir of 'packages' in more mem store"
-    (Ok [ `File "foo2" ; `File "foo" ]) (p.read_dir ["packages"]) ;
+    (Ok [ File, "foo2" ; File, "foo" ]) (p.read_dir ["packages"]) ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar3' to 'packages/foo3'"
     (Ok ()) (p.write ["packages"; "foo3"] "bar3") ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'bar4' to 'packages/foo4'"
     (Ok ()) (p.write ["packages"; "foo4"] "bar4") ;
   Alcotest.check (result (Alcotest.list it) str_err) "read_dir of 'packages' in even more mem store"
-    (Ok [ `File "foo4" ; `File "foo3" ; `File "foo2" ; `File "foo" ]) (p.read_dir ["packages"]) ;
+    (Ok [ File, "foo4" ; File, "foo3" ; File, "foo2" ; File, "foo" ]) (p.read_dir ["packages"]) ;
   Alcotest.check (result (Alcotest.list it) str_err) "read_dir of 'packages2' in even more mem store"
     (Error "") (p.read_dir ["packages2"]) ;
   Alcotest.check (result Alcotest.string str_err) "foo contains bar in more store"

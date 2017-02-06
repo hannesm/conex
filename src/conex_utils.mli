@@ -1,13 +1,9 @@
 
 (** {1 Utility functions for Conex} *)
 
-(** [filter_map f xs] is [xs'], a list which contains all elements where [f]
-    resulted in [Some _]. *)
-val filter_map : f:('a -> 'b option) -> 'a list -> 'b list
+(** {1 String} *)
 
-(** {1 String module} *)
-
-(** Some useful [String] utilities implemented here to avoid external
+(** Some [String] utilities implemented here to avoid external
     dependencies.  This is a subset of
     {{:http://erratique.ch/software/astring}Astring}. *)
 module String : sig
@@ -105,7 +101,7 @@ module Uint : sig
 end
 
 
-(** {1 Sets, Maps, Format utils} *)
+(** {1 Sets, Maps, List utils} *)
 
 (** [S] is a string set. *)
 module S : (Set.S with type elt = string)
@@ -115,6 +111,14 @@ val s_of_list : string list -> S.t
 
 (** [M] is a [Map] which keys are strings. *)
 module M : (Map.S with type key = string)
+
+(** [filter_map f xs] is [xs'], a list which contains all elements where [f]
+    resulted in [Some _]. *)
+val filter_map : f:('a -> 'b option) -> 'a list -> 'b list
+
+
+
+(** {1 Format} *)
 
 (** ['a fmt] is the signature for pretty printers. *)
 type 'a fmt = Format.formatter -> 'a -> unit

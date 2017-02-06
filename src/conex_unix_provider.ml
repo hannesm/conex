@@ -39,13 +39,13 @@ let fs_provider basedir =
     foldM (fun acc fn ->
         let fullfn = Filename.concat abs fn in
         Conex_persistency.file_type fullfn >>= function
-        | File -> Ok (`File fn :: acc)
-        | Directory -> Ok (`Dir fn :: acc))
+        | File -> Ok ((File, fn) :: acc)
+        | Directory -> Ok ((Directory, fn) :: acc))
       [] files
   and exists path =
     Conex_persistency.exists (get path)
   in
-  Ok { name = basedir ; description = "File system provider" ; file_type ; read ; write ; read_dir ; exists }
+  Ok { basedir ; description = "File system provider" ; file_type ; read ; write ; read_dir ; exists }
 
 let fs_ro_provider basedir =
   fs_provider basedir >>= fun fs ->
