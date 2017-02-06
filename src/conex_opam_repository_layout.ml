@@ -1,16 +1,6 @@
 open Conex_result
 open Conex_utils
 
-let lowercase_equal names name =
-  let name = String.to_lower name in
-  (* check that name is good, here a case-insensitive comparison *)
-  not (S.exists
-         (fun n -> compare (String.to_lower n) name = 0)
-         names)
-
-let unique_id = lowercase_equal
-and unique_data = lowercase_equal
-
 let valid_id id = String.is_ascii id
 
 let valid_name package =

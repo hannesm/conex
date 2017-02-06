@@ -4,11 +4,11 @@ Conex_opam_repository_layout
 Conex_diff
 Conex_crypto
 Conex_provider
+Conex_sign
 
 Conex_opam_encoding
 
 Conex_repository
-Conex_sign
 
 Conex_persistency
 Conex_unix_provider
