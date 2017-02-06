@@ -134,13 +134,13 @@ let patch filedata diff =
   String.concat "\n" lines
 
 let diffs_to_components diffs =
-  List.fold_left (fun (ids, auths, rels, pkgs) diff ->
+  List.fold_left (fun (ids, auths, pkgs, rels) diff ->
       match Conex_opam_repository_layout.categorise (string_to_path (file diff)) with
-      | `Id id -> S.add id ids, auths, rels, pkgs
-      | `Authorisation id -> ids, S.add id auths, rels, pkgs
-      | `Releases id -> ids, auths, S.add id rels, pkgs
-      | `Package (name, version) ->
-        let s = try M.find name pkgs with Not_found -> S.empty in
-        ids, auths, rels, M.add name (S.add version s) pkgs
-      | _ -> ids, auths, rels, pkgs)
+      | `Id id -> S.add id ids, auths, pkgs, rels
+      | `Authorisation id -> ids, S.add id auths, pkgs, rels
+      | `Package id -> ids, auths, S.add id pkgs, rels
+      | `Release (name, version) ->
+        let s = try M.find name rels with Not_found -> S.empty in
+        ids, auths, pkgs, M.add name (S.add version s) rels
+      | _ -> ids, auths, pkgs, rels)
     (S.empty, S.empty, S.empty, M.empty) diffs

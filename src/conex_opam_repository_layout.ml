@@ -1,5 +1,4 @@
 open Conex_result
-open Conex_core
 open Conex_utils
 
 let lowercase_equal names name =
@@ -34,31 +33,31 @@ let authorisation_filename = "authorisation"
 
 let authorisation_path id = [ data_dir ; id ; authorisation_filename ]
 
-let releases_filename = "releases"
-let releases_path id = [ data_dir ; id ; releases_filename ]
+let package_filename = "package"
+let package_path id = [ data_dir ; id ; package_filename ]
 
-let checksum_filename = "checksum"
+let release_filename = "release"
 
-let checksum_dir p =
+let release_dir p =
   match authorisation_of_item p with
   | Some d -> [ data_dir ; d ; p ]
   | None -> [ data_dir ; p ; p ]
 
-let checksum_path p =
-  checksum_dir p @ [checksum_filename]
+let release_path p =
+  release_dir p @ [release_filename]
 
 let categorise = function
   | idx ::id :: [] when idx = id_dir -> `Id id
   | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename -> `Authorisation id
-  | dd :: id :: dfn :: [] when dd = data_dir && dfn = releases_filename -> `Releases id
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = package_filename -> `Package id
   | dd :: id :: dfn :: _ when dd = data_dir ->
     (* current: packages/foo/foo.0.0.1 *)
     (match authorisation_of_item dfn with
-     | Some x when String.compare_insensitive x id -> `Package (id, dfn)
+     | Some x when String.compare_insensitive x id -> `Release (id, dfn)
      | _ ->
        (* earlier: packages/foo.0.0.1 *)
        match authorisation_of_item id with
-       | Some x -> `Package (x, id)
+       | Some x -> `Release (x, id)
        | _ -> `Unknown)
   | cc :: v :: vm :: _ when cc = "compilers" -> `Compiler (v, vm)
   | _ -> `Unknown

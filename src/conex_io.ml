@@ -19,7 +19,7 @@ let checksum_files t pv =
    | Some de -> Ok (data_path@[ de ; pv ])
    | None -> Error (`FileNotFound pv )) >>= fun st ->
   let rec collect1 acc d = function
-    | `File f when d = [] && f = checksum_filename -> acc
+    | `File f when d = [] && f = release_filename -> acc
     | `File f -> (d@[f]) :: acc
     | `Dir dir ->
       let sub = d @ [ dir ] in
@@ -39,12 +39,12 @@ let compute_release t now name =
     in
     { Release.filename ; size ; digest }
   in
-  match t.file_type (checksum_dir name) with
+  match t.file_type (release_dir name) with
   | Error _ -> Error (`FileNotFound name)
   | Ok File -> Error (`NotADirectory name)
   | Ok Directory ->
     checksum_files t name >>= fun fs ->
-    let d = checksum_dir name in
+    let d = release_dir name in
     foldM (fun acc f ->
         match t.read (d@f) with
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
@@ -133,7 +133,7 @@ let write_authorisation t a =
     (encode (Authorisation.wire a))
 
 let read_package t name =
-  match t.read (releases_path name) with
+  match t.read (package_path name) with
   | Error _ -> Error (`NotFound (`Package, name))
   | Ok data ->
     match decode data >>= Package.of_wire with
@@ -145,11 +145,11 @@ let read_package t name =
         Error (`NameMismatch (`Package, name, r.Package.name))
 
 let write_package t r =
-  let name = releases_path r.Package.name in
+  let name = package_path r.Package.name in
   t.write name (encode (Package.wire r))
 
 let read_release t name =
-  match t.read (checksum_path name) with
+  match t.read (release_path name) with
   | Error _ -> Error (`NotFound (`Release, name))
   | Ok data ->
     match decode data >>= Release.of_wire with
@@ -161,5 +161,5 @@ let read_release t name =
         Error (`NameMismatch (`Release, name, csum.Release.name))
 
 let write_release t csum =
-  let name = checksum_path csum.Release.name in
+  let name = release_path csum.Release.name in
   t.write name (encode (Release.wire csum))

@@ -499,8 +499,8 @@ let bad_rel_r () =
   let io = Mem.mem_provider () in
   Alcotest.check (result package re) "package foo not found"
     (Error (`NotFound (`Package, "foo"))) (Conex_io.read_package io "foo") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/releases'"
-    (Ok ()) (io.write ["packages"; "foo"; "releases"] "foobar") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/package'"
+    (Ok ()) (io.write ["packages"; "foo"; "package"] "foobar") ;
   Alcotest.check (result package re) "parse error on package foo"
     (Error (`ParseError (`Package, "foo", ""))) (Conex_io.read_package io "foo") ;
   let rel = Package.t Uint.zero "foo" in
@@ -508,18 +508,18 @@ let bad_rel_r () =
     (Ok ()) (Conex_io.write_package io rel) ;
   Alcotest.check (result package re) "package foo good"
     (Ok rel) (Conex_io.read_package io "foo") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foobar/releases'"
-    (Ok ()) (io.write ["packages"; "foobar"; "releases"] (Conex_opam_encoding.encode (Package.wire rel))) ;
-  Alcotest.check (result package re) "name mismatch on releases foobar"
+  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foobar/package'"
+    (Ok ()) (io.write ["packages"; "foobar"; "package"] (Conex_opam_encoding.encode (Package.wire rel))) ;
+  Alcotest.check (result package re) "name mismatch on pacakge foobar"
     (Error (`NameMismatch (`Package, "foobar", "foo"))) (Conex_io.read_package io "foobar")
 
 let bad_cs_r () =
   let open Conex_provider in
   let io = Mem.mem_provider () in
-  Alcotest.check (result rel re) "release foo not found"
+  Alcotest.check (result rel re) "package foo not found"
     (Error (`NotFound (`Release, "foo"))) (Conex_io.read_release io "foo") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/foo.0/checksum'"
-    (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "checksum"] "foobar") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/foo.0/release'"
+    (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "release"] "foobar") ;
   Alcotest.check (result rel re) "parse error on release foo.0"
     (Error (`ParseError (`Release, "foo.0", ""))) (Conex_io.read_release io "foo.0") ;
   let c = Release.t Uint.zero "foo.0" [] in
@@ -527,13 +527,13 @@ let bad_cs_r () =
     (Ok ()) (Conex_io.write_release io c) ;
   Alcotest.check (result rel re) "release foo.0 good"
     (Ok c) (Conex_io.read_release io "foo.0") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foo/foo.1/checksum'"
-    (Ok ()) (io.write ["packages"; "foo"; "foo.1"; "checksum"] (Conex_opam_encoding.encode (Release.wire c))) ;
-  Alcotest.check (result rel re) "name mismatch on checksum foo.1"
+  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foo/foo.1/release'"
+    (Ok ()) (io.write ["packages"; "foo"; "foo.1"; "release"] (Conex_opam_encoding.encode (Release.wire c))) ;
+  Alcotest.check (result rel re) "name mismatch on release foo.1"
     (Error (`NameMismatch (`Release, "foo.1", "foo.0"))) (Conex_io.read_release io "foo.1") ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'blubb' to 'packages/foo/foo.2'"
     (Ok ()) (io.write ["packages"; "foo"; "foo.2"] "blubb") ;
-  Alcotest.check (result rel ch_err) "checksum is a file, should be a directory"
+  Alcotest.check (result rel ch_err) "release is a file, should be a directory"
     (Error (`NotADirectory "foo.2")) (Conex_io.compute_release io Uint.zero "foo.2")
 
 let basic_repo_tests = [
@@ -1364,7 +1364,7 @@ let cs_base () =
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
   let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
   let cs = Release.t Uint.zero v [] in
-  Alcotest.check (result r_ok c_err) "checksum not signed"
+  Alcotest.check (result r_ok c_err) "release not signed"
     (Error (`NotSigned (v, `Release, S.empty)))
     (Conex_repository.verify_release r auth rel cs) ;
   let resources =
@@ -1374,18 +1374,18 @@ let cs_base () =
     [ Author.r Uint.zero pname s `Package d ; Author.r (Uint.of_int_exn 1) v s' `Release d' ]
   in
   let r = add_rs r id resources in
-  Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
-    (Ok ()) (io.Conex_provider.write ["packages"; pname; v; "checksum"] "") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/release'"
+    (Ok ()) (io.Conex_provider.write ["packages"; pname; v; "release"] "") ;
   match Conex_io.compute_release io Uint.zero v with
-  | Error _ -> Alcotest.fail "should be able to compute checksum"
+  | Error _ -> Alcotest.fail "should be able to compute release"
   | Ok on_disk ->
-    Alcotest.check (result r_ok c_err) "good checksum"
+    Alcotest.check (result r_ok c_err) "good release"
       (Ok (`Signed id))
       (Conex_repository.verify_release r ~on_disk auth rel cs) ;
     let jid = "janitor" in
     let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
     let r = add_rs r jid resources in
-    Alcotest.check (result r_ok c_err) "good checksum (both)"
+    Alcotest.check (result r_ok c_err) "good release (both)"
       (Ok (`Both (id, S.singleton jid)))
       (Conex_repository.verify_release r auth rel cs)
 
@@ -1408,12 +1408,12 @@ let cs_quorum () =
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
-  Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
-    (Ok ()) (io.Conex_provider.write ["packages"; pname; v; "checksum"] "") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/release'"
+    (Ok ()) (io.Conex_provider.write ["packages"; pname; v; "release"] "") ;
   match Conex_io.compute_release io Uint.zero v with
-  | Error _ -> Alcotest.fail "should be able to compute checksum"
+  | Error _ -> Alcotest.fail "should be able to compute release"
   | Ok on_disk ->
-    Alcotest.check (result r_ok c_err) "good checksum (quorum)"
+    Alcotest.check (result r_ok c_err) "good release (quorum)"
       (Ok (`Quorum (S.singleton jid)))
       (Conex_repository.verify_release r ~on_disk auth rel cs)
 
@@ -1440,7 +1440,7 @@ let cs_bad () =
   ]
   in
   let css = Release.t Uint.zero v csums in
-  Alcotest.check (result rel ch_err) "checksum computation works"
+  Alcotest.check (result rel ch_err) "release computation works"
     (Ok css) (Conex_io.compute_release io Uint.zero "foo.0") ;
   let css' = Release.t Uint.zero v (List.tl csums) in
   let css'' = Release.t Uint.zero v ({ Release.filename = "foobar" ; size = Uint.of_int_exn 3 ; digest = (`SHA256, "") } :: csums) in
@@ -1466,18 +1466,18 @@ let cs_bad () =
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   match Conex_io.compute_release io Uint.zero v with
-  | Error _ -> Alcotest.fail "should be able to compute checksum"
+  | Error _ -> Alcotest.fail "should be able to compute release"
   | Ok on_disk ->
-    Alcotest.check (result r_ok c_err) "good checksum (quorum)"
+    Alcotest.check (result r_ok c_err) "good release (quorum)"
       (Ok (`Quorum (S.singleton jid)))
       (Conex_repository.verify_release r ~on_disk auth rel css) ;
-    Alcotest.check (result r_ok c_err) "bad checksum (missing in cs file)"
+    Alcotest.check (result r_ok c_err) "bad release (missing in cs file)"
       (Error (`ChecksumsDiff (v, [], ["bar"], [])))
       (Conex_repository.verify_release r ~on_disk auth rel css') ;
-    Alcotest.check (result r_ok c_err) "bad checksum (missing on disk)"
+    Alcotest.check (result r_ok c_err) "bad release (missing on disk)"
       (Error (`ChecksumsDiff (v, ["foobar"], [], [])))
       (Conex_repository.verify_release r ~on_disk auth rel css'') ;
-    Alcotest.check (result r_ok c_err) "bad checksum (differ)"
+    Alcotest.check (result r_ok c_err) "bad release (differ)"
       (Error (`ChecksumsDiff (v, [], [], [(List.hd csums, other)])))
       (Conex_repository.verify_release r ~on_disk auth rel css''')
 
