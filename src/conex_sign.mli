@@ -9,10 +9,12 @@ type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of strin
 val pp_err : err fmt
 val read_private_key : ?id:string -> Conex_provider.t -> ((string * Key.priv), err) result
 
-module Make (C : SIGN) : sig
+module type S = sig
   val generate : ?bits:int -> Uint.t -> unit -> Key.priv
 
   val pub_of_priv : Key.priv -> (Key.t, string) result
 
   val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
 end
+
+module Make (C : SIGN) : S

@@ -3,8 +3,11 @@ S src/
 S test/
 
 B _build/src
-B _build/app
-B _build/test
+B _build/**
+
+S src/**
+S app/**
+S test/**
 
 PKG cstruct nocrypto x509
 
@@ -12,5 +15,6 @@ PKG opam-file-format opam-format
 PKG logs fmt rresult
 PKG cmdliner
 PKG alcotest
+PKG topkg
 
 FLG -safe-string -warn_error -w +A-4-6-44-48

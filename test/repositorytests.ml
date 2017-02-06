@@ -5,6 +5,9 @@ open Conex_resource
 
 open Common
 
+module R = Conex_nocrypto.NC_R
+module CS = Conex_nocrypto.NC_S
+
 let res d =
   let data = Wire.to_string d in
   (Uint.of_int_exn (String.length data), R.digest data)

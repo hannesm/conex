@@ -4,9 +4,9 @@ open Conex_resource
 open Rresult
 
 (* this should likely be elsewhere (conex-bells&whistles) *)
-module C = Conex_api.Make(Logs)(Conex_nocrypto)
-module CR = Conex_repository.Make(Conex_nocrypto)
-module CS = Conex_sign.Make(Conex_nocrypto)
+module C = Conex_api.Make(Logs)(Conex_nocrypto.V)
+module CR = Conex_nocrypto.NC_R
+module CS = Conex_nocrypto.NC_S
 
 let str_to_msg = function
   | Ok x -> Ok x

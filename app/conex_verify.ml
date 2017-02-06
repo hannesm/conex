@@ -68,7 +68,7 @@ module Log : EXTLOGS = struct
   let warn ?src:_ msgf = kmsg kunit `Warn msgf
 end
 
-module C = Conex_api.Make(Log)(Conex_nocrypto)
+module C = Conex_api.Make(Log)(Conex_nocrypto.V)
 
 (* to be called by opam (see http://opam.ocaml.org/doc/2.0/Manual.html#configfield-repository-validation-command, https://github.com/ocaml/opam/pull/2754/files#diff-5f9ccd1bb288197c5cf2b18366a73363R312):
 

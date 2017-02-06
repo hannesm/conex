@@ -18,8 +18,6 @@ module type VERIFY = sig
 end
 
 module type SIGN = sig
-  include VERIFY
-
   val pub_of_priv_rsa : string -> (string, string) result
 
   val generate_rsa : ?bits:int -> unit -> string

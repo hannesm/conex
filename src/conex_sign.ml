@@ -98,6 +98,14 @@ let read_private_key ?id prov =
     | Ok xs -> Error (`MultiplePrivateKeys xs)
     | Error m -> Error (`Msg m)
 
+module type S = sig
+  val generate : ?bits:int -> Uint.t -> unit -> Key.priv
+
+  val pub_of_priv : Key.priv -> (Key.t, string) result
+
+  val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
+end
+
 module Make (C : SIGN) = struct
   let generate ?bits time () =
     let key = C.generate_rsa ?bits () in

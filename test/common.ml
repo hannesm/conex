@@ -2,9 +2,6 @@ open Conex_result
 open Conex_utils
 open Conex_resource
 
-module R = Conex_repository.Make(Conex_nocrypto)
-module CS = Conex_sign.Make(Conex_nocrypto)
-
 let sset =
   let module M = struct
     type t = S.t
@@ -19,11 +16,11 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      let p = CS.generate ~bits:2048 Uint.zero () in
+      let p = Conex_nocrypto.NC_S.generate ~bits:2048 Uint.zero () in
       privkey := Some p ;
       p
   in
-  match CS.pub_of_priv priv with
+  match Conex_nocrypto.NC_S.pub_of_priv priv with
   | Ok pub -> (pub, priv)
   | Error e -> Alcotest.fail e
 
@@ -122,6 +119,6 @@ let verr =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
-  match CS.sign Uint.zero idx p with
+  match Conex_nocrypto.NC_S.sign Uint.zero idx p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

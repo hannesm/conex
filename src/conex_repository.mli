@@ -22,7 +22,7 @@ val add_index : t -> Author.t -> t * string list
 (* Unsafe operation, think before usage! *)
 val add_team : t -> Team.t -> t
 
-module Make (C : VERIFY) : sig
+module type S = sig
 
   val digest : string -> Digest.t
   val id : Key.t -> string
@@ -91,3 +91,4 @@ module Make (C : VERIFY) : sig
   val monoton_release : ?old:Release.t -> ?now:Release.t -> t -> (unit, m_err) result
 end
 
+module Make (C : VERIFY) : S

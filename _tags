@@ -2,9 +2,10 @@ true : color(always), bin_annot, safe_string, principal
 true : warn(+A-4-33-44-48-58)
 "src" : include
 
-<src/conex_nocrypto.{ml,mli}>: package(x509 nocrypto cstruct)
+<src/nocrypto/conex_nocrypto.{ml,mli}>: package(x509 nocrypto cstruct)
 <src/conex_opam_encoding.{ml,mli}>: package(opam-file-format)
 
+"src/nocrypto" : include
 <app/*.{ml,native}>: package(cmdliner opam-file-format)
 <app/conex_verify.{ml,native}>: package(cstruct nocrypto x509)
 <app/conex_author.{ml,native}>: package(cstruct nocrypto nocrypto.unix x509 logs fmt.tty logs.fmt logs.cli fmt.cli rresult)
