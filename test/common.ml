@@ -1,7 +1,9 @@
 open Conex_result
 open Conex_utils
-open Conex_core
 open Conex_resource
+
+module R = Conex_repository.Make(Conex_nocrypto)
+module CS = Conex_sign.Make(Conex_nocrypto)
 
 let sset =
   let module M = struct
@@ -17,11 +19,11 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      let p = Conex_sign.generate ~bits:2048 Uint.zero () in
+      let p = CS.generate ~bits:2048 Uint.zero () in
       privkey := Some p ;
       p
   in
-  match Conex_sign.pub_of_priv priv with
+  match CS.pub_of_priv priv with
   | Ok pub -> (pub, priv)
   | Error e -> Alcotest.fail e
 
@@ -108,8 +110,8 @@ let rel =
 
 let verr =
   let module M = struct
-    type t = verification_error
-    let pp = pp_verification_error
+    type t = Conex_crypto.verification_error
+    let pp = Conex_crypto.pp_verification_error
     let equal a b = match a, b with
       | `InvalidBase64Encoding, `InvalidBase64Encoding
       | `InvalidSignature, `InvalidSignature
@@ -120,6 +122,6 @@ let verr =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
-  match Conex_sign.sign Uint.zero idx p with
+  match CS.sign Uint.zero idx p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

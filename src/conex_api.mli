@@ -1,7 +1,7 @@
 open Conex_result
 open Conex_utils
 open Conex_resource
-open Conex_repository
+open Conex_crypto
 
 (* this is stripped down from Logs library *)
 module type LOGS = sig
@@ -21,16 +21,16 @@ module type LOGS = sig
   val warn : ?src:src -> 'a log
 end
 
-module Make (L : LOGS) : sig
-  val load_id : Conex_provider.t -> t -> identifier -> (t, string) result
+module Make (L : LOGS) (C : VERIFY): sig
+  val load_id : Conex_provider.t -> Conex_repository.t -> identifier -> (Conex_repository.t, string) result
 
-  val load_ids : ?ids:S.t -> Conex_provider.t -> t -> (t, string) result
+  val load_ids : ?ids:S.t -> Conex_provider.t -> Conex_repository.t -> (Conex_repository.t, string) result
 
-  val load_janitors : ?valid:(identifier -> string -> bool) -> Conex_provider.t -> t -> (t, string) result
+  val load_janitors : ?valid:(identifier -> string -> bool) -> Conex_provider.t -> Conex_repository.t -> (Conex_repository.t, string) result
 
   val verify_item :
-    ?authorised:(S.t -> bool) -> ?release:(name -> bool) -> Conex_provider.t -> t -> name ->
-    (t, string) result
+    ?authorised:(S.t -> bool) -> ?release:(name -> bool) -> Conex_provider.t -> Conex_repository.t -> name ->
+    (Conex_repository.t, string) result
 
-  val verify_diff : Conex_provider.t -> t -> string -> (t, string) result
+  val verify_diff : Conex_provider.t -> Conex_repository.t -> string -> (Conex_repository.t, string) result
 end

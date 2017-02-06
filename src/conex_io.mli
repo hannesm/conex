@@ -4,7 +4,7 @@ open Conex_resource
 open Conex_provider
 
 type cc_err = [ `FileNotFound of name | `NotADirectory of name ]
-val compute_release : t -> Uint.t -> name -> (Release.t, cc_err) result
+val compute_release : (string -> Digest.t) -> t -> Uint.t -> name -> (Release.t, cc_err) result
 
 val pp_cc_err : Format.formatter -> cc_err -> unit
 

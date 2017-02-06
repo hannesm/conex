@@ -1,4 +1,5 @@
 open Conex_result
+open Conex_utils
 open Conex_core
 
 let exists = Sys.file_exists

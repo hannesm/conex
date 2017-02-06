@@ -198,21 +198,21 @@ let verify_fail () =
   in
   let raw = Wire.to_string (Author.wire_raw signed) in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies" (Ok ())
-    (Conex_repository.verify "a" k raw single_sig) ;
+    (R.verify "a" k raw single_sig) ;
   let (hdr, _) = single_sig in
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
-    (Conex_repository.verify "foo" k raw single_sig) ;
-  let pub = match Conex_sign.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
+    (R.verify "foo" k raw single_sig) ;
+  let pub = match CS.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
     | Ok p -> p
     | Error _ -> Alcotest.fail "couldn't pub_of_priv"
   in
   Alcotest.check (result Alcotest.unit verr) "too small key"
     (Error `InvalidPublicKey)
-    (Conex_repository.verify "a" pub raw single_sig) ;
+    (R.verify "a" pub raw single_sig) ;
   Alcotest.check (result Alcotest.unit verr) "invalid b64 sig"
     (Error `InvalidBase64Encoding)
-    (Conex_repository.verify "a" k
+    (R.verify "a" k
        (Wire.to_string (Author.wire_raw signed))
        (hdr, "bad"))
 
@@ -234,19 +234,19 @@ let idx_sign () =
   in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ())
-    (Conex_repository.verify "a" k
+    (R.verify "a" k
        (Wire.to_string (Author.wire_raw signed))
        single_sig) ;
   let r = Author.r (Author.next_id idx) "foo" (Uint.of_int_exn 4) `Key (`SHA256, "2342") in
   let idx' = Author.add_resource signed r in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Ok ())
-    (Conex_repository.verify "a" k
+    (R.verify "a" k
        (Wire.to_string (Author.wire_raw idx')) single_sig) ;
   let idx', _ = Author.prep_sig idx' in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Error `InvalidSignature)
-    (Conex_repository.verify "a" k
+    (R.verify "a" k
        (Wire.to_string (Author.wire_raw idx')) single_sig)
 
 let idx_sign_other () =
@@ -262,7 +262,7 @@ let idx_sign_other () =
   in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ())
-    (Conex_repository.verify "b" k
+    (R.verify "b" k
        (Wire.to_string (Author.wire_raw signed))
        signature)
 
@@ -278,7 +278,7 @@ let idx_sign_bad () =
   let raw = Wire.to_string (Author.wire_raw idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong id)"
     (Error `InvalidSignature)
-    (Conex_repository.verify "c" k raw single_sig)
+    (R.verify "c" k raw single_sig)
 
 let idx_sign_bad2 () =
   let k, p = gen_pub () in
@@ -292,7 +292,7 @@ let idx_sign_bad2 () =
   let raw = Wire.to_string (Author.wire_raw idx') in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong data)"
     (Error `InvalidSignature)
-    (Conex_repository.verify "b" k raw single_sig)
+    (R.verify "b" k raw single_sig)
 
 let idx_tests = [
   "good index", `Quick, idx_sign ;

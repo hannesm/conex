@@ -32,10 +32,10 @@ let checksum_files t pv =
   | Ok data ->
     Ok (List.fold_left (fun acc x -> collect1 [] [] x @ acc) [] data)
 
-let compute_release t now name =
+let compute_release digest t now name =
   let checksum filename data =
     let size = Uint.of_int_exn (String.length data)
-    and digest = Conex_repository.digest data
+    and digest = digest data
     in
     { Release.filename ; size ; digest }
   in

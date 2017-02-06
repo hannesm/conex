@@ -2,6 +2,7 @@ open Conex_result
 open Conex_core
 open Conex_utils
 open Conex_resource
+open Conex_crypto
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
@@ -31,26 +32,6 @@ let private_key_path path id =
     String.concat "." els
   in
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
-
-let generate ?bits time () =
-  let key = Conex_nocrypto.generate_rsa ?bits () in
-  `Priv (`RSA, key, time)
-
-let pub_of_priv key = match key with
-  | `Priv (`RSA, key, created) ->
-    Conex_nocrypto.pub_of_priv_rsa key >>= fun pub ->
-    Ok (`RSA, pub, created)
-
-let sign now idx priv =
-  let idx, _overflow = Author.prep_sig idx in
-  let data = Wire.to_string (Author.wire_raw idx)
-  and id = idx.Author.name
-  in
-  let hdr = `RSA_PSS_SHA256, now in
-  let data = Wire.to_string (Signature.wire id hdr data) in
-  (match priv with
-  | `Priv (`RSA, key, _) -> Conex_nocrypto.sign_rsa_pss ~key data) >>= fun signature ->
-  Ok (Author.add_sig idx (hdr, signature))
 
 let write_private_key prov id key =
   let base = prov.Conex_provider.name in
@@ -116,3 +97,25 @@ let read_private_key ?id prov =
     | Ok [] -> Error `NoPrivateKey
     | Ok xs -> Error (`MultiplePrivateKeys xs)
     | Error m -> Error (`Msg m)
+
+module Make (C : SIGN) = struct
+  let generate ?bits time () =
+    let key = C.generate_rsa ?bits () in
+    `Priv (`RSA, key, time)
+
+  let pub_of_priv key = match key with
+    | `Priv (`RSA, key, created) ->
+      C.pub_of_priv_rsa key >>= fun pub ->
+      Ok (`RSA, pub, created)
+
+  let sign now idx priv =
+    let idx, _overflow = Author.prep_sig idx in
+    let data = Wire.to_string (Author.wire_raw idx)
+    and id = idx.Author.name
+    in
+    let hdr = `RSA_PSS_SHA256, now in
+    let data = Wire.to_string (Signature.wire id hdr data) in
+    (match priv with
+     | `Priv (`RSA, key, _) -> C.sign_rsa_pss ~key data) >>= fun signature ->
+    Ok (Author.add_sig idx (hdr, signature))
+end

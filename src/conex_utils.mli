@@ -123,3 +123,20 @@ type 'a fmt = Format.formatter -> 'a -> unit
     elements are separated by semicolon).  The [pp] is be a pretty printer for
     list elements. *)
 val pp_list : 'a fmt -> 'a list fmt
+
+
+(** {1 Result combinators} *)
+
+(** [r >>= f] is [f a] unless [r] is an [Error], which is propagated.  Monadic bind. *)
+val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
+
+(** [guard pred err] is either [Ok ()] (if [pred] holds), [Error err] otherwise. *)
+val guard : bool -> 'a -> (unit, 'a) result
+
+(** [foldM f a xs] applies [f] to each element of [xs], returns either [Ok] and
+    the produced value, or [Error]. *)
+val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
+
+(** [foldS f a s] applies [f] to each element of the set [s], returns either
+    [Ok] and the produced value, or [Error]. *)
+val foldS : ('a -> string -> ('a, 'c) result) -> 'a -> S.t -> ('a, 'c) result

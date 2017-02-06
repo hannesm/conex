@@ -1,8 +1,8 @@
 open Conex_result
 open Conex_utils
-open Conex_core
 open Conex_resource
 open Conex_repository
+open Conex_crypto
 
 (* this is stripped down from Logs library *)
 module type LOGS = sig
@@ -28,7 +28,9 @@ let str pp e =
 
 module IO = Conex_io
 
-module Make (L : LOGS) = struct
+module Make (L : LOGS) (C : VERIFY) = struct
+
+  module R = Make (C)
 
   let maybe repo pp res = function
     | Ok a -> Ok a
@@ -41,8 +43,8 @@ module Make (L : LOGS) = struct
       match IO.read_author io id with
       | Ok idx ->
         (L.debug (fun m -> m "%a" Author.pp idx) ;
-         maybe repo pp_verification_error repo
-           (verify_author repo idx >>= fun (repo, msgs, _) ->
+         maybe repo Conex_crypto.pp_verification_error repo
+           (R.verify_author repo idx >>= fun (repo, msgs, _) ->
             List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
             Ok repo))
       | Error e ->
@@ -63,16 +65,16 @@ module Make (L : LOGS) = struct
         ([], []) ids
     in
     foldM (fun repo id ->
-        maybe repo pp_verification_error repo
-          (verify_author repo id >>= fun (repo, warn, _) ->
+        maybe repo Conex_crypto.pp_verification_error repo
+          (R.verify_author repo id >>= fun (repo, warn, _) ->
            List.iter (fun msg -> L.warn (fun m  -> m "%s" msg)) warn ;
            Ok repo))
       repo users >>= fun repo ->
     foldM (fun repo t ->
         foldS (load_id io) repo t.Team.members >>= fun repo ->
-        maybe repo pp_error repo
-          (verify_team repo t >>= fun (r, ok) ->
-           L.debug (fun m -> m "%a" pp_ok ok) ;
+        maybe repo R.pp_error repo
+          (R.verify_team repo t >>= fun (r, ok) ->
+           L.debug (fun m -> m "%a" R.pp_ok ok) ;
            Ok r))
       repo teams
 
@@ -93,9 +95,9 @@ module Make (L : LOGS) = struct
       let valid_idxs =
         List.fold_left (fun acc idx ->
             let id = idx.Author.name in
-            let good, warnings = verify_signatures idx in
-            List.iter (fun (_, e) -> L.warn (fun m -> m "%a" pp_verification_error e)) warnings ;
-            let f k = contains idx id `Key (Key.wire id k) in
+            let good, warnings = R.verify_signatures idx in
+            List.iter (fun (_, e) -> L.warn (fun m -> m "%a" Conex_crypto.pp_verification_error e)) warnings ;
+            let f k = R.contains idx id `Key (Key.wire id k) in
             match List.filter f good with
             | [] -> L.warn (fun m -> m "ignoring janitor %s due to missing self-signature" id) ; acc
             | xs -> L.debug (fun m -> m "janitor %s is self-signed" id) ; (xs, idx) :: acc)
@@ -105,7 +107,7 @@ module Make (L : LOGS) = struct
       let approved, notyet =
         List.fold_left (fun (good, bad) (keys, idx) ->
             let id = idx.Author.name in
-            let approved = List.filter (fun k -> valid id (Conex_repository.id k)) keys in
+            let approved = List.filter (fun k -> valid id (R.id k)) keys in
             if List.length approved > 0 then begin
               L.debug (fun m -> m "fingerprint valid for janitor %s" id) ;
               ((approved, idx) :: good, bad)
@@ -128,7 +130,7 @@ module Make (L : LOGS) = struct
         List.fold_left (fun (good, bad) (keys, idx) ->
             match
               List.fold_left (fun r k ->
-                  match r, verify_key jrepo idx.Author.name k with
+                  match r, R.verify_key jrepo idx.Author.name k with
                   | Ok x, _ -> Ok x
                   | Error _, x -> x)
                 (Error (`NotSigned (idx.Author.name, `Key, S.empty)))
@@ -144,9 +146,9 @@ module Make (L : LOGS) = struct
       in
       (* verify the team janitor *)
       let good_j_repo = List.fold_left add_warn repo good_idxs in
-      (maybe good_j_repo pp_error (add_team good_j_repo team)
-         (verify_team good_j_repo team >>= fun (repo, ok) ->
-          L.debug (fun m -> m "team janitors verified %a" pp_ok ok) ;
+      (maybe good_j_repo R.pp_error (add_team good_j_repo team)
+         (R.verify_team good_j_repo team >>= fun (repo, ok) ->
+          L.debug (fun m -> m "team janitors verified %a" R.pp_ok ok) ;
           Ok repo)) >>= fun repo ->
       (* team is good, there may be more janitors: esp notyet and others *)
       (* load in a similar style:
@@ -155,14 +157,14 @@ module Make (L : LOGS) = struct
          - insert all verified idx *)
       let jrepo' = List.fold_left add_warn repo (List.map snd (notyet@others)) in
       foldM (fun acc (keys, idx) ->
-          maybe repo pp_error acc
+          maybe repo R.pp_error acc
             (List.fold_left (fun r k ->
-                match r, verify_key jrepo' idx.Author.name k with
+                match r, R.verify_key jrepo' idx.Author.name k with
                 | Ok x, _ -> Ok x
                 | Error _, x -> x)
                 (Error (`NotSigned (idx.Author.name, `Key, S.empty)))
                 keys >>= fun ok ->
-             L.debug (fun m -> m "janitor key %s approved by %a" idx.Author.name pp_ok ok) ;
+             L.debug (fun m -> m "janitor key %s approved by %a" idx.Author.name R.pp_ok ok) ;
              Ok (idx :: acc)))
         [] (notyet@others) >>= fun good_idx ->
       Ok (List.fold_left add_warn repo good_idx)
@@ -174,11 +176,11 @@ module Make (L : LOGS) = struct
     | Ok cs ->
       L.debug (fun m -> m "%a" Release.pp cs) ;
       maybe repo Conex_io.pp_cc_err None
-        (IO.compute_release io Uint.zero version >>= fun cs ->
+        (IO.compute_release R.digest io Uint.zero version >>= fun cs ->
          Ok (Some cs)) >>= fun on_disk ->
-      maybe repo pp_error ()
-        (verify_release repo ?on_disk auth rel cs >>= fun ok ->
-         L.debug (fun m -> m "%a" pp_ok ok) ;
+      maybe repo R.pp_error ()
+        (R.verify_release repo ?on_disk auth rel cs >>= fun ok ->
+         L.debug (fun m -> m "%a" R.pp_ok ok) ;
          Ok ())
 
   let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
@@ -190,9 +192,9 @@ module Make (L : LOGS) = struct
        L.debug (fun m ->m "%a" Authorisation.pp auth) ;
        (* need to load indexes before verifying! *)
        load_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
-       maybe repo pp_error ()
-         (verify_authorisation repo auth >>= fun ok ->
-          L.debug (fun m -> m "%a" pp_ok ok) ; Ok ()) >>= fun () ->
+       maybe repo R.pp_error ()
+         (R.verify_authorisation repo auth >>= fun ok ->
+          L.debug (fun m -> m "%a" R.pp_ok ok) ; Ok ()) >>= fun () ->
        Ok (auth, repo)) >>= fun (auth, repo) ->
     (if authorised auth.Authorisation.authorised then
        (match IO.read_package io name with
@@ -207,9 +209,9 @@ module Make (L : LOGS) = struct
                (L.warn (fun m -> m "couldn't compute releases %s: %s" name e) ;
                 Ok None)
            | Ok on_disk -> Ok (Some on_disk)) >>= fun on_disk ->
-          maybe repo pp_error rel
-            (verify_package repo ?on_disk auth rel >>= fun ok ->
-             L.debug (fun m -> m "%a" pp_ok ok) ;
+          maybe repo R.pp_error rel
+            (R.verify_package repo ?on_disk auth rel >>= fun ok ->
+             L.debug (fun m -> m "%a" R.pp_ok ok) ;
              Ok rel)) >>= fun rel ->
        foldM (fun () n ->
            if release n then
@@ -258,7 +260,7 @@ module Make (L : LOGS) = struct
     let janitor_keys =
       S.fold (fun id acc ->
           match IO.read_author io id with
-          | Ok idx -> S.union acc (s_of_list (List.map Conex_repository.id idx.Author.keys))
+          | Ok idx -> S.union acc (s_of_list (List.map R.id idx.Author.keys))
           | Error _ -> acc)
         (match find_team repo "janitors" with None -> S.empty | Some x -> x)
         S.empty
@@ -273,39 +275,39 @@ module Make (L : LOGS) = struct
     foldS (verify_item newio) newrepo items >>= fun newrepo ->
 
     (* foreach changed item, we need to ensure monotonicity (counter incremented) *)
-    let maybe_m = maybe repo pp_m_err () in
+    let maybe_m = maybe repo R.pp_m_err () in
     foldS (fun () id ->
         match IO.read_id io id, IO.read_id newio id with
-        | Ok (`Author old), Ok (`Author now) -> maybe_m (monoton_author ~old ~now repo)
-        | Ok (`Team old), Ok (`Team now) -> maybe_m (monoton_team ~old ~now repo)
-        | Ok (`Author old), Error _ -> maybe_m (monoton_author ~old repo)
-        | Ok (`Team old), Error _ -> maybe_m (monoton_team ~old repo)
+        | Ok (`Author old), Ok (`Author now) -> maybe_m (R.monoton_author ~old ~now repo)
+        | Ok (`Team old), Ok (`Team now) -> maybe_m (R.monoton_team ~old ~now repo)
+        | Ok (`Author old), Error _ -> maybe_m (R.monoton_author ~old repo)
+        | Ok (`Team old), Error _ -> maybe_m (R.monoton_team ~old repo)
         | Ok (`Team _), Ok (`Author _)
         | Ok (`Author _), Ok (`Team _) -> Error "team/author changes unsupported"
-        | Error _, Ok (`Author now) -> maybe_m (monoton_author ~now repo)
-        | Error _, Ok (`Team now) -> maybe_m (monoton_team ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_author repo))
+        | Error _, Ok (`Author now) -> maybe_m (R.monoton_author ~now repo)
+        | Error _, Ok (`Team now) -> maybe_m (R.monoton_team ~now repo)
+        | Error _, Error _ -> maybe_m (R.monoton_author repo))
       () ids >>= fun () ->
     foldS (fun () id ->
         match IO.read_authorisation io id, IO.read_authorisation newio id with
-        | Ok old, Ok now -> maybe_m (monoton_authorisation ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_authorisation ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_authorisation ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_authorisation repo))
+        | Ok old, Ok now -> maybe_m (R.monoton_authorisation ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (R.monoton_authorisation ~old repo)
+        | Error _, Ok now -> maybe_m (R.monoton_authorisation ~now repo)
+        | Error _, Error _ -> maybe_m (R.monoton_authorisation repo))
       () auths >>= fun () ->
     foldS (fun () id ->
         match IO.read_package io id, IO.read_package newio id with
-        | Ok old, Ok now -> maybe_m (monoton_package ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_package ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_package ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_package repo))
+        | Ok old, Ok now -> maybe_m (R.monoton_package ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (R.monoton_package ~old repo)
+        | Error _, Ok now -> maybe_m (R.monoton_package ~now repo)
+        | Error _, Error _ -> maybe_m (R.monoton_package repo))
       () pkgs >>= fun () ->
     foldS (fun () id ->
         match IO.read_release io id, IO.read_release newio id with
-        | Ok old, Ok now -> maybe_m (monoton_release ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_release ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_release ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_release repo))
+        | Ok old, Ok now -> maybe_m (R.monoton_release ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (R.monoton_release ~old repo)
+        | Error _, Ok now -> maybe_m (R.monoton_release ~now repo)
+        | Error _, Error _ -> maybe_m (R.monoton_release repo))
       () releases >>= fun () ->
     Ok newrepo
 

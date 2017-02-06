@@ -1,11 +1,12 @@
 open Conex_utils
-open Conex_core
 open Conex_resource
 
 open Rresult
 
 (* this should likely be elsewhere (conex-bells&whistles) *)
-module C = Conex_api.Make(Logs)
+module C = Conex_api.Make(Logs)(Conex_nocrypto)
+module CR = Conex_repository.Make(Conex_nocrypto)
+module CS = Conex_sign.Make(Conex_nocrypto)
 
 let str_to_msg = function
   | Ok x -> Ok x
@@ -147,7 +148,7 @@ let add_r idx name typ data =
   let counter = Author.next_id idx in
   let encoded = Wire.to_string data in
   let size = Uint.of_int_exn (String.length encoded) in
-  let digest = Conex_repository.digest encoded in
+  let digest = CR.digest encoded in
   let res = Author.r counter name size typ digest in
   Logs.info (fun m -> m "added %a to change queue" Author.pp_resource res) ;
   Author.add_resource idx res
@@ -177,11 +178,11 @@ let init _ dry path id email =
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
         | Error _ ->
-          let p = Conex_sign.generate now () in
+          let p = CS.generate now () in
           str_to_msg (Conex_sign.write_private_key io id p) >>| fun () ->
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
-       str_to_msg (Conex_sign.pub_of_priv priv) >>= fun public ->
+       str_to_msg (CS.pub_of_priv priv) >>= fun public ->
        let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts
        and counter = idx.Author.counter
        and wraps = idx.Author.wraps
@@ -193,11 +194,11 @@ let init _ dry path id email =
        in
        let idx = Author.t ~accounts ~keys ~counter ~wraps ~resources ~signatures ~queued created id in
        let idx = add_r idx id `Key (Key.wire id public) in
-       str_to_msg (Conex_sign.sign now idx priv) >>= fun idx ->
+       str_to_msg (CS.sign now idx priv) >>= fun idx ->
        str_to_msg (IO.write_author io idx) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;
-       R.error_to_msg ~pp_error:pp_verification_error
-         (Conex_repository.verify_author r idx >>| fun (_, _, id) ->
+       R.error_to_msg ~pp_error:Conex_crypto.pp_verification_error
+         (CR.verify_author r idx >>| fun (_, _, id) ->
           Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
        Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id))
 
@@ -228,7 +229,7 @@ let sign _ dry path id =
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (Conex_sign.sign now idx priv) >>= fun idx ->
+       str_to_msg (CS.sign now idx priv) >>= fun idx ->
        Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "wrote %s to disk" id))
@@ -275,7 +276,7 @@ let auth _ dry path id remove members p =
        let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "modified authorisation and added resource to your list.")
-     end else if not (Conex_repository.contains ~queued:true idx p `Authorisation (Authorisation.wire auth)) then begin
+     end else if not (CR.contains ~queued:true idx p `Authorisation (Authorisation.wire auth)) then begin
        let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your list.")
@@ -316,7 +317,7 @@ let release _ dry path id remove p =
         str_to_msg (IO.write_package io rel) >>| fun () ->
         Logs.info (fun m -> m "wrote %a" Package.pp rel) ;
         add_r idx pn `Package (Package.wire rel)
-       end else if not (Conex_repository.contains ~queued:true idx pn `Package (Package.wire rel')) then begin
+       end else if not (CR.contains ~queued:true idx pn `Package (Package.wire rel')) then begin
         Ok (add_r idx pn `Package (Package.wire rel))
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
@@ -334,7 +335,7 @@ let release _ dry path id remove p =
             cs)
        in
        R.error_to_msg ~pp_error:IO.pp_cc_err
-         (IO.compute_release io now name) >>= fun cs' ->
+         (IO.compute_release CR.digest io now name) >>= fun cs' ->
        if not (Release.equal cs cs') then
          let cs' = Release.set_counter cs' cs'.Release.counter in
          let cs', overflow = Release.prep cs' in
@@ -342,7 +343,7 @@ let release _ dry path id remove p =
          str_to_msg (IO.write_release io cs') >>| fun () ->
          Logs.info (fun m -> m "wrote %a" Release.pp cs') ;
          add_r idx name `Release (Release.wire cs')
-       else if not (Conex_repository.contains ~queued:true idx name `Release (Release.wire cs)) then
+       else if not (CR.contains ~queued:true idx name `Release (Release.wire cs)) then
          Ok (add_r idx name `Release (Release.wire cs))
        else
          Ok idx
@@ -384,7 +385,7 @@ let team _ dry repo id remove members tid =
        let idx = add_r idx tid `Team (Team.wire team) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "modified team and added resource to your resource list.")
-     end else if not (Conex_repository.contains ~queued:true idx tid `Team (Team.wire team)) then begin
+     end else if not (CR.contains ~queued:true idx tid `Team (Team.wire team)) then begin
        let idx = add_r idx tid `Team (Team.wire team) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your resource list.")
