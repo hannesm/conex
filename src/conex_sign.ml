@@ -57,10 +57,8 @@ let write_private_key prov id key =
    else Ok ()) >>= fun () ->
   match Conex_persistency.file_type private_dir with
   | Ok Directory ->
-    let data = match key with `Priv (alg, data, created) ->
-      String.concat ";" [ (Key.alg_to_string alg) ; data ; (Uint.to_string created) ]
-    in
-    Conex_persistency.write_file ~mode:0o400 filename data
+    let key = match key with `Priv (_alg, data, _created) -> data in
+    Conex_persistency.write_file ~mode:0o400 filename key
   | _ -> Error (private_dir ^ " is not a directory!")
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list | `Msg of string]
@@ -81,12 +79,10 @@ let read_private_key ?id prov =
       match Conex_persistency.read_file fn with
       | Error e -> Error (`Msg e)
       | Ok key ->
-        match String.cuts ';' key with
-        | [ alg ; data ; created ] ->
-          (match Key.string_to_alg alg, Uint.of_string created with
-           | Some alg, Some ts -> Ok (id, `Priv (alg, data, ts))
-           | _ -> Error (`Msg "couldn't parse private key type and created"))
-        | _ -> Error (`Msg "couldn't parse private key")
+        let stat = Unix.stat fn in
+        (match Uint.of_float stat.Unix.st_mtime with
+         | None -> Error (`Msg "couldn't convert modification time to Uint")
+         | Some created -> Ok (id, `Priv (`RSA, key, created)))
     else
       Error (`NotFound id)
   in

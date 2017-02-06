@@ -39,12 +39,15 @@ module Make (L : LOGS) (C : VERIFY) = struct
         (L.warn (fun m -> m "%a" pp err) ; Ok res)
 
   let load_id io repo id =
-    if id_loaded repo id then Ok repo else
+    if id_loaded repo id then begin
+      L.debug (fun m -> m "%a already loaded" pp_id id) ;
+      Ok repo end else
       match IO.read_author io id with
       | Ok idx ->
         (L.debug (fun m -> m "%a" Author.pp idx) ;
          maybe repo Conex_crypto.pp_verification_error repo
            (R.verify_author repo idx >>= fun (repo, msgs, _) ->
+            L.info (fun m -> m "%a verified" pp_id id) ;
             List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
             Ok repo))
       | Error e ->

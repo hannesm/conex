@@ -1,9 +1,6 @@
 open Conex_result
 open Conex_crypto
 
-open Conex_result
-open Conex_crypto
-
 module C : sig
   include SIGN
 end
