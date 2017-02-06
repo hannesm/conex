@@ -1,7 +1,7 @@
 open Conex_result
-open Conex_core
 open Conex_utils
 open Conex_resource
+open Conex_provider
 open Conex_crypto
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"

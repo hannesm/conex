@@ -1,5 +1,5 @@
-open Conex_core
 open Conex_utils
+open Conex_provider
 open Conex_resource
 
 val unique_id : S.t -> identifier -> bool

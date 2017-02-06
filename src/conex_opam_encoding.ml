@@ -1,6 +1,5 @@
 open Conex_result
 open Conex_utils
-open Conex_core
 open Conex_resource
 
 let np = ("", 0, 0)

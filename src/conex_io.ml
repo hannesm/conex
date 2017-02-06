@@ -1,6 +1,5 @@
 open Conex_result
 open Conex_utils
-open Conex_core
 open Conex_resource
 open Conex_provider
 open Conex_opam_repository_layout

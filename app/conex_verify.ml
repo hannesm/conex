@@ -135,8 +135,8 @@ let verify_it repodir quorum anchors incremental dir patch verbose quiet strict 
   err_to_cmdliner
     (let repo = Conex_repository.repository ~strict ?quorum () in
      match incremental, patch, dir with
-     | true, Some p, None -> Conex_provider.fs_ro_provider repodir >>= fun io -> verify_patch io repo p
-     | false, None, Some d -> Conex_provider.fs_ro_provider d >>= fun io -> verify_full io repo ta
+     | true, Some p, None -> Conex_unix_provider.fs_ro_provider repodir >>= fun io -> verify_patch io repo p
+     | false, None, Some d -> Conex_unix_provider.fs_ro_provider d >>= fun io -> verify_full io repo ta
      | _ -> Error "invalid combination of incremental, patch and dir")
 
 

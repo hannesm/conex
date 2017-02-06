@@ -1,6 +1,5 @@
 open Conex_result
 open Conex_utils
-open Conex_core
 open Conex_resource
 
 let ignore_pr = [
@@ -86,7 +85,7 @@ let handle_one io base commit pr github mail maps =
 (* what do I want in the end? *)
 (* map GitHub ID -> (email, package list) [of invalid pushes] *)
 let handle_prs dir =
-  Conex_provider.fs_ro_provider dir >>= fun io ->
+  Conex_unix_provider.fs_ro_provider dir >>= fun io ->
   let base = Filename.concat dir "prs" in
   Conex_persistency.collect_dir base >>= fun prs ->
   let total = List.length prs in

@@ -1,5 +1,5 @@
 open Conex_result
-open Conex_core
+open Conex_provider
 
 val exists : string -> bool
 val mkdir : ?mode:int -> string -> (unit, string) result

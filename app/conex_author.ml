@@ -62,7 +62,7 @@ let setup_log style_renderer level =
   Logs.set_reporter (Logs_fmt.reporter ~dst:Format.std_formatter ())
 
 let init_repo ?quorum ?strict dry path =
-  str_to_msg (Conex_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
+  str_to_msg (Conex_unix_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
   Ok (Conex_repository.repository ?quorum ?strict (), prov)
 
 let help _ _ _ _ _ _ man_format cmds = function

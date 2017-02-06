@@ -1,5 +1,4 @@
 open Conex_utils
-open Conex_core
 
 type hunk = {
   mine_start : int ;
@@ -135,7 +134,7 @@ let patch filedata diff =
 
 let diffs_to_components diffs =
   List.fold_left (fun (ids, auths, pkgs, rels) diff ->
-      match Conex_opam_repository_layout.categorise (string_to_path (file diff)) with
+      match Conex_opam_repository_layout.categorise (Conex_provider.string_to_path (file diff)) with
       | `Id id -> S.add id ids, auths, pkgs, rels
       | `Authorisation id -> ids, S.add id auths, pkgs, rels
       | `Package id -> ids, auths, S.add id pkgs, rels

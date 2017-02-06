@@ -1,7 +1,7 @@
 open Conex_result
 open Conex_utils
-open Conex_core
 open Conex_resource
+open Conex_provider
 
 open Common
 
@@ -13,7 +13,6 @@ let res d =
   (Uint.of_int_exn (String.length data), R.digest data)
 
 module Mem = struct
-  open Conex_provider
   type tree = Leaf of string * string | Node of string * tree list
 
   let name = function Leaf (x, _) -> x | Node (x, _) -> x
