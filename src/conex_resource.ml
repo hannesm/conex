@@ -129,7 +129,7 @@ let typ_to_string = function
   | `Release -> "release"
 
 let string_to_typ = function
-  | "signature" -> Some `Signature
+  (*  | "signature" -> Some `Signature -- as mentioned earlier, we'll never read a signature *)
   | "key" -> Some `Key
   | "account" -> Some `Account
   | "author" -> Some `Author

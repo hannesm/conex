@@ -124,6 +124,8 @@ val pp_typ : typ fmt
 (** [resource_equal a b] is [true] if they are the same, otherwise [false]. *)
 val typ_equal : typ -> typ -> bool
 
+val typ_of_wire : Wire.s -> (typ, string) result
+
 module Header : sig
   type t = {
     version : Uint.t ;

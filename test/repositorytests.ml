@@ -238,12 +238,15 @@ let key_r () =
     (Ok ()) (Conex_io.write_author io k2) ;
   Alcotest.check sset "key repo has two keys"
     (S.add "foobar" (S.singleton "foo")) (io_ex (Conex_io.ids io)) ;
-  let jk = Author.t Uint.zero "janitor" in
+  let pub, _ = gen_pub () in
+  let jk = Author.t ~keys:[pub] Uint.zero "janitor" in
   Alcotest.check (result Alcotest.unit str_err) "writing index 'janitor'"
     (Ok ()) (Conex_io.write_author io jk) ;
   Alcotest.check sset "key repo has three keys"
     (S.add "janitor" (S.add "foobar" (S.singleton "foo")))
-    (io_ex (Conex_io.ids io))
+    (io_ex (Conex_io.ids io)) ;
+  Alcotest.check (result ji re) "reading author 'janitor'"
+    (Ok jk) (Conex_io.read_author io "janitor")
 
 
 let team_r () =
@@ -278,10 +281,69 @@ let checks_r () =
   Alcotest.check (result rel ch_err) "checksum computation works"
     (Ok css) (Conex_io.compute_release io Uint.zero "foo.0")
 
+let key =
+  let module M = struct
+    type t = Key.t
+    let pp = Key.pp
+    let equal = Key.equal
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let typ =
+  let module M = struct
+    type t = typ
+    let pp = pp_typ
+    let equal = typ_equal
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let signature =
+  let module M = struct
+    type t = Signature.t
+    let pp = Signature.pp
+    let equal ((alg, c), data) ((alg', c'), data') = alg = alg' && String.compare data data' = 0 && Uint.compare c c' = 0
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
+let digest =
+  let module M = struct
+    type t = Digest.t
+    let pp = Digest.pp
+    let equal = Digest.equal
+  end in
+  (module M : Alcotest.TESTABLE with type t = M.t)
+
 let basic_persistency () =
   let open Wire in
   Alcotest.check (result team str_err) "couldn't parse team"
     (Error "") (Team.of_wire M.empty) ;
+  Alcotest.check (result typ str_err) "couldn't parse typ"
+    (Error "") (typ_of_wire (String "frabs")) ;
+  Alcotest.check (result typ str_err) "couldn't parse typ"
+    (Error "") (typ_of_wire (Int Uint.zero)) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; String "foo" ; String "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ String "foo" ; String "foo" ; Int Uint.zero ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Int Uint.zero ; Int Uint.zero ])) ;
+  Alcotest.check (result signature str_err) "could parse signature"
+    (Ok ((`RSA_PSS_SHA256, Uint.zero), "frab"))
+    (Signature.of_wire (List [ Int Uint.zero ; String "RSA-PSS-SHA256" ; String "frab" ])) ;
+  Alcotest.check (result digest str_err) "couldn't parse digest"
+    (Error "") (Digest.of_wire (List [ Int Uint.zero ; String "foobar" ])) ;
+  Alcotest.check (result digest str_err) "couldn't parse digest"
+    (Error "") (Digest.of_wire (List [ String "bar" ; String "foobar" ])) ;
+  Alcotest.check (result digest str_err) "couldn't parse digest"
+    (Error "") (Digest.of_wire (List [ String "bar" ; Int Uint.zero ])) ;
+  Alcotest.check (result digest str_err) "could parse digest"
+    (Ok (`SHA256, "1234")) (Digest.of_wire (List [ String "SHA256" ; String "1234" ])) ;
+  let bad_key = List [Int Uint.zero ; String "foo" ; String "bar"] in
+  Alcotest.check (result key str_err) "couldn't parse key"
+    (Error "") (Key.of_wire bad_key) ;
+  let bad_key = List [String "foobar" ; String "foo" ; Int Uint.zero] in
+  Alcotest.check (result key str_err) "couldn't parse key (bad typ)"
+    (Error "") (Key.of_wire bad_key) ;
   let bad_c = M.add "counter" (String "foo") M.empty in
   Alcotest.check (result team str_err) "couldn't parse team counter"
     (Error "") (Team.of_wire bad_c) ;
@@ -314,6 +376,12 @@ let basic_persistency () =
   let t = Team.t Uint.zero "foo" in
   Alcotest.check (result team str_err) "could parse team"
     (Ok t) (Team.of_wire good_n) ;
+  let bad_n = M.add "typ" (String "author") good_n in
+  Alcotest.check (result team str_err) "couldn't parse team (wrong typ)"
+    (Error "") (Team.of_wire bad_n) ;
+  let bad_n = M.add "version" (Int Uint.(of_int_exn 23)) good_n in
+  Alcotest.check (result team str_err) "couldn't parse team (wrong version)"
+    (Error "") (Team.of_wire bad_n) ;
   let bad_m =
     M.add "members" (String "bl") good_n
   in
