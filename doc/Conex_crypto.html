@@ -1,0 +1,62 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_opam_repository_layout.html">
+<link rel="next" href="Conex_opam_encoding.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><link title="Verification" rel="Section" href="#1_Verification">
+<link title="Signing" rel="Section" href="#1_Signing">
+<title>Conex_crypto</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_opam_repository_layout.html" title="Conex_opam_repository_layout">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_opam_encoding.html" title="Conex_opam_encoding">Next</a>
+</div>
+<h1>Module <a href="type_Conex_crypto.html">Conex_crypto</a></h1>
+
+<pre><span class="keyword">module</span> Conex_crypto: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Interface to crypto backend
+<p>
+
+    Implementations are provided in <a href="Conex_nocrypto.html"><code class="code"><span class="constructor">Conex_nocrypto</span></code></a> and <code class="code"><span class="constructor">Conex_openssl</span></code>.<br>
+</div>
+<hr width="100%">
+<br>
+<h1 id="1_Verification">Verification</h1><br>
+
+<pre><span id="TYPEverification_error"><span class="keyword">type</span> <code class="type"></code>verification_error</span> = <code class="type">[ `InvalidBase64Encoding<br>       | `InvalidPublicKey<br>       | `InvalidSignature<br>       | `NoSignature ]</code> </pre>
+<div class="info ">
+Potential error case when verifying a signature<br>
+</div>
+
+
+<pre><span id="VALpp_verification_error"><span class="keyword">val</span> pp_verification_error</span> : <code class="type">Format.formatter -> <a href="Conex_crypto.html#TYPEverification_error">verification_error</a> -> unit</code></pre><div class="info ">
+<code class="code">pp_verification_error&nbsp;pp</code> is a pretty printer for <code class="code">verification_error</code>.<br>
+</div>
+
+<pre><span class="keyword">module type</span> <a href="Conex_crypto.VERIFY.html">VERIFY</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<h1 id="1_Signing">Signing</h1><br>
+
+<pre><span class="keyword">module type</span> <a href="Conex_crypto.SIGN.html">SIGN</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN.html">..</a> <code class="code"><span class="keyword">end</span></code></pre></body></html>

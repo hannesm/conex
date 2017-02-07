@@ -1,0 +1,858 @@
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Index of values</title>
+</head>
+<body>
+<div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;</div>
+<h1>Index of values</h1>
+<table>
+<tr><td align="left"><br></td></tr>
+<tr><td><a href="Conex_utils.html#VAL(>>=)">(&gt;&gt;=)</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">r&nbsp;&gt;&gt;=&nbsp;f</code> is <code class="code">f&nbsp;a</code> unless <code class="code">r</code> is an <code class="code"><span class="constructor">Error</span></code>, which is propagated.
+</div>
+</td></tr>
+<tr><td align="left"><br>A</td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALadd">add</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALadd">add</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALadd">add</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALadd_index">add_index</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">add_index&nbsp;repo&nbsp;author</code> applies <a href="Conex_repository.html#VALadd_valid_resource"><code class="code"><span class="constructor">Conex_repository</span>.add_valid_resource</code></a> to each member of
+    the resource list from <code class="code">author</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALadd_resource">add_resource</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALadd_sig">add_sig</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALadd_team">add_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">add_team&nbsp;repo&nbsp;team</code> adds the team to the repo.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.html#VALadd_valid_resource">add_valid_resource</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">add_valid_resource&nbsp;repo&nbsp;id&nbsp;r</code> marks resource <code class="code">r</code> valid under <code class="code">id</code> in
+    <code class="code">repo</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALalg_to_string">alg_to_string</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td><div class="info">
+<code class="code">alg_to_string&nbsp;alg</code> is a string representing the digest algorithm.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Signature.html#VALalg_to_string">alg_to_string</a> [<a href="Conex_resource.Signature.html">Conex_resource.Signature</a>]</td>
+<td><div class="info">
+<code class="code">alg_to_string&nbsp;<span class="keyword">sig</span></code> is a string representing the signature algorithm.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALalg_to_string">alg_to_string</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td><div class="info">
+<code class="code">alg_to_string&nbsp;pub</code> is a string representing the key algorithm.
+</div>
+</td></tr>
+<tr><td><a href="Conex_diff_provider.html#VALapply">apply</a> [<a href="Conex_diff_provider.html">Conex_diff_provider</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALauthorisation_of_item">authorisation_of_item</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">authorisation_of_item&nbsp;n</code> returns either <code class="code"><span class="constructor">Some</span>&nbsp;n'</code>, where <code class="code">n'</code> is the prefix
+    of <code class="code">n</code> up until the first '.' (which separates package name from version
+    suffix), or <code class="code"><span class="constructor">None</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALauthorisation_path">authorisation_path</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">authorisation_path&nbsp;name</code> is the full path where the "authorisation" file
+    for <code class="code">name</code> is stored.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.html#VALauthorised">authorised</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">authorised&nbsp;repo&nbsp;auth&nbsp;id</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> is a member of <code class="code">auth</code> or member
+    of a team which is authorised.
+</div>
+</td></tr>
+<tr><td align="left"><br>B</td></tr>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALb64sha256">b64sha256</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<td><div class="info">
+<code class="code">b64sha356&nbsp;str</code> computes the SHA256 digest of <code class="code">str</code> and converts its
+      binary output to base64.
+</div>
+</td></tr>
+<tr><td align="left"><br>C</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALcategorise">categorise</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">categorise&nbsp;path</code> identifies which resource owns the given <code class="code">path</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALchecksum_equal">checksum_equal</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_persistency.html#VALcollect_dir">collect_dir</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALcompare">compare</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">compare&nbsp;a&nbsp;b</code> is <code class="code">res</code>: 0 if <code class="code">a&nbsp;=&nbsp;b</code>, -1 if <code class="code">a&nbsp;&lt;&nbsp;b</code>, 1 if <code class="code">a&nbsp;&gt;&nbsp;b</code>
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALcompare">compare</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">compare&nbsp;a&nbsp;b</code> compares <code class="code">a</code> with <code class="code">b</code> using <code class="code"><span class="constructor">String</span>.compare</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALcompare_checksums">compare_checksums</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.String.html#VALcompare_insensitive">compare_insensitive</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">compare_insensitive&nbsp;a&nbsp;b</code> first converts <code class="code">a</code> and <code class="code">b</code> to lowercase strings,
+      then uses <code class="code">compare</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALcompute_package">compute_package</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALcompute_release">compute_release</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.String.html#VALconcat">concat</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">concat&nbsp;sep&nbsp;xs</code> concatenates all <code class="code">xs</code>, using <code class="code">sep</code> as separator.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALcontains">contains</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">contains&nbsp;~queued&nbsp;author&nbsp;name&nbsp;typ&nbsp;data</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">data</code> named <code class="code">name</code>
+      of <code class="code">typ</code> is a member in the list of resources of <code class="code">author</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Header.html#VALcounter">counter</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.String.html#VALcut">cut</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">cut&nbsp;sep&nbsp;str</code> cuts the string <code class="code">str</code> at the first occurence of <code class="code">sep</code> into
+      its left and right parts.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALcuts">cuts</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">cuts&nbsp;sep&nbsp;str</code> separates <code class="code">str</code> into multiple substrings, stripping out the
+      separating character <code class="code">sep</code>.
+</div>
+</td></tr>
+<tr><td align="left"><br>D</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALdata_path">data_path</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">data_path</code> is the path from repository root to packages, "packages".
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.LOGS.html#VALdebug">debug</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
+<td><div class="info">
+<code class="code">debug&nbsp;k</code> logs <code class="code">k</code>, a to the debug stream
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALdecimal">decimal</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">decimal&nbsp;t</code> is <code class="code">t</code> converted to a string in decimal (<code class="code">%<span class="constructor">Lu</span></code>).
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_encoding.html#VALdecode">decode</a> [<a href="Conex_opam_encoding.html">Conex_opam_encoding</a>]</td>
+<td><div class="info">
+<code class="code">decode&nbsp;str</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;t</code> or <code class="code"><span class="constructor">Error</span>&nbsp;str</code>, the input is a string in opam
+    format.
+</div>
+</td></tr>
+<tr><td><a href="Conex_diff.html#VALdiffs_to_components">diffs_to_components</a> [<a href="Conex_diff.html">Conex_diff</a>]</td>
+<td><div class="info">
+<code class="code">diffs_to_components&nbsp;diffs</code>
+    <a href="Conex_opam_repository_layout.html#VALcategorise">categorises</a> the diffs into sets
+    of modified <code class="code">ids</code>, <code class="code">authorisations</code>, <code class="code">package</code> resources, and a map of
+    <code class="code">releases</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALdigest">digest</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">digest&nbsp;str</code> computes a digest from the given string.
+</div>
+</td></tr>
+<tr><td align="left"><br>E</td></tr>
+<tr><td><a href="Conex_opam_encoding.html#VALencode">encode</a> [<a href="Conex_opam_encoding.html">Conex_opam_encoding</a>]</td>
+<td><div class="info">
+<code class="code">encode&nbsp;t</code> encodes <code class="code">t</code> into a string in opam format.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALequal">equal</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALequal">equal</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALequal">equal</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALequal">equal</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALequal">equal</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALequal">equal</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td><div class="info">
+<code class="code">equal&nbsp;a&nbsp;b</code> is <code class="code"><span class="keyword">true</span></code> when <code class="code">a</code> and <code class="code">b</code> use the same algorithm type, and
+      have the same value.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALequal">equal</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td><div class="info">
+<code class="code">equal&nbsp;a&nbsp;b</code> is <code class="code"><span class="keyword">true</span></code> if both public keys are the same.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.LOGS.html#VALerr">err</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
+<td><div class="info">
+<code class="code">err&nbsp;k</code> logs <code class="code">k</code>, a to the error stream
+</div>
+</td></tr>
+<tr><td><a href="Conex_persistency.html#VALexists">exists</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>F</td></tr>
+<tr><td><a href="Conex_diff.html#VALfile">file</a> [<a href="Conex_diff.html">Conex_diff</a>]</td>
+<td><div class="info">
+<code class="code">file&nbsp;diff</code> is <code class="code">mine_name</code> unless this is "/dev/null", in which case
+    <code class="code">their_name</code> is used.
+</div>
+</td></tr>
+<tr><td><a href="Conex_persistency.html#VALfile_type">file_type</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.html#VALfilter_map">filter_map</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">filter_map&nbsp;f&nbsp;xs</code> is <code class="code">xs'</code>, a list which contains all elements where <code class="code">f</code>
+    resulted in <code class="code"><span class="constructor">Some</span>&nbsp;_</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALfind">find</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALfind_team">find_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">find_team&nbsp;repo&nbsp;id</code> returns the members of the team <code class="code">id</code> or <code class="code"><span class="constructor">None</span></code> if there
+    is no such team.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALfold">fold</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.html#VALfoldM">foldM</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">foldM&nbsp;f&nbsp;a&nbsp;xs</code> applies <code class="code">f</code> to each element of <code class="code">xs</code>, returns either <code class="code"><span class="constructor">Ok</span></code> and
+    the produced value, or <code class="code"><span class="constructor">Error</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.html#VALfoldS">foldS</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">foldS&nbsp;f&nbsp;a&nbsp;s</code> applies <code class="code">f</code> to each element of the set <code class="code">s</code>, returns either
+    <code class="code"><span class="constructor">Ok</span></code> and the produced value, or <code class="code"><span class="constructor">Error</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_unix_provider.html#VALfs_provider">fs_provider</a> [<a href="Conex_unix_provider.html">Conex_unix_provider</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_unix_provider.html#VALfs_ro_provider">fs_ro_provider</a> [<a href="Conex_unix_provider.html">Conex_unix_provider</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>G</td></tr>
+<tr><td><a href="Conex_sign.S.html#VALgenerate">generate</a> [<a href="Conex_sign.S.html">Conex_sign.S</a>]</td>
+<td><div class="info">
+<code class="code">generate&nbsp;?bits&nbsp;created&nbsp;()</code> generates a <code class="code">bits</code> sized private key.
+</div>
+</td></tr>
+<tr><td><a href="Conex_crypto.SIGN.html#VALgenerate_rsa">generate_rsa</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<td><div class="info">
+<code class="code">generate_rsa&nbsp;~bits&nbsp;()</code> generates an RSA private key with <code class="code">bits</code> size.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALget">get</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">get&nbsp;str&nbsp;offset</code> retrieves the character at <code class="code">offset</code> in <code class="code">str</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.html#VALguard">guard</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">guard&nbsp;pred&nbsp;err</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;()</code> (if <code class="code">pred</code> holds), <code class="code"><span class="constructor">Error</span>&nbsp;err</code> otherwise.
+</div>
+</td></tr>
+<tr><td align="left"><br>I</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALid">id</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">id&nbsp;key</code> is the public key identifier.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.html#VALid_equal">id_equal</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">id_equal&nbsp;a&nbsp;b</code> is the result of a case insensitive comparison of <code class="code">a</code> and <code class="code">b</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALid_file">id_file</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">id_file&nbsp;id</code> is the path to the specific id (thus "id/foo" for identifier
+    foo.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.html#VALid_loaded">id_loaded</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">id_loaded&nbsp;repo&nbsp;id</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> has been loaded.
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALid_path">id_path</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">id_path</code> is the path where identities are stored, at the moment "id".
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALids">ids</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.LOGS.html#VALinfo">info</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
+<td><div class="info">
+<code class="code">info&nbsp;k</code> logs <code class="code">k</code>, a to the information stream
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALis_ascii">is_ascii</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">is_ascii&nbsp;~p&nbsp;str</code> is <code class="code"><span class="keyword">true</span></code> if all characters in <code class="code">str</code> are ASCII
+      characters: 0-9, a-z, A-Z OR satisfy <code class="code">p</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALis_prefix">is_prefix</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">is_prefix&nbsp;~prefix&nbsp;str</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">str</code> begins with <code class="code">prefix</code>, <code class="code"><span class="keyword">false</span></code>
+      otherwise.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALis_suffix">is_suffix</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">is_suffix&nbsp;~suffix&nbsp;str</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">str</code> ends with <code class="code">suffix</code>, <code class="code"><span class="keyword">false</span></code>
+      otherwise.
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALitems">items</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>L</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALlength">length</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">length&nbsp;str</code> is the byte length of <code class="code">str</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex.Make.html#VALload_id">load_id</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
+<td><div class="info">
+<code class="code">load_id&nbsp;io&nbsp;repo&nbsp;id</code> reads <code class="code">id</code>, either a team or an individual author,
+      in <code class="code">repo</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex.Make.html#VALload_ids">load_ids</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
+<td><div class="info">
+<code class="code">load_ids&nbsp;~ids&nbsp;io&nbsp;repo</code> folds over <code class="code">ids</code> (default: all
+      ids present in <code class="code">io</code>), applying <code class="code">load_id</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex.Make.html#VALload_janitors">load_janitors</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
+<td><div class="info">
+<code class="code">load_janitors&nbsp;~valid&nbsp;io&nbsp;repo</code> reads the team janitors from <code class="code">io</code>, and all
+      team members.
+</div>
+</td></tr>
+<tr><td align="left"><br>M</td></tr>
+<tr><td><a href="Conex_persistency.html#VALmkdir">mkdir</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.S.html#VALmonoton_author">monoton_author</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.S.html#VALmonoton_authorisation">monoton_authorisation</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.S.html#VALmonoton_package">monoton_package</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.S.html#VALmonoton_release">monoton_release</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.S.html#VALmonoton_team">monoton_team</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>N</td></tr>
+<tr><td><a href="Conex_resource.html#VALname_equal">name_equal</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">name_equal&nbsp;a&nbsp;b</code> is the result of a case insensitive comparison of <code class="code">a</code> and <code class="code">b</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALnext_id">next_id</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>O</td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALof_float">of_float</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">of_float&nbsp;f</code> is <code class="code"><span class="constructor">Int64</span>.of_float&nbsp;f</code> if <code class="code">f&nbsp;&gt;=&nbsp;0.0</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALof_int">of_int</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">of_int&nbsp;i</code> is <code class="code"><span class="constructor">Int64</span>.of_int&nbsp;i</code> if <code class="code">i&nbsp;&gt;=&nbsp;0</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALof_int_exn">of_int_exn</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">of_int_exn&nbsp;i</code> is <code class="code"><span class="constructor">Int64</span>.of_int&nbsp;i</code> if <code class="code">i&nbsp;&gt;=&nbsp;0</code>, raises an exception on
+      failure.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALof_string">of_string</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">of_string&nbsp;s</code> attempts to parse the string <code class="code">s</code> as hexadecimal encoded
+      number using <code class="code"><span class="constructor">Int64</span>.of_string&nbsp;<span class="string">"0x"</span>&nbsp;^&nbsp;s</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Signature.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Signature.html">Conex_resource.Signature</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Header.html#VALof_wire">of_wire</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>P</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALpackage_path">package_path</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">package_path&nbsp;name</code> is the full path where the "package" file for <code class="code">name</code> is
+    stored.
+</div>
+</td></tr>
+<tr><td><a href="Conex_diff.html#VALpatch">patch</a> [<a href="Conex_diff.html">Conex_diff</a>]</td>
+<td><div class="info">
+<code class="code">patch&nbsp;data&nbsp;diff</code> is <code class="code">data'</code>, which is the result of applying <code class="code">diff</code> to
+    <code class="code">data</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.html#VALpath_to_string">path_to_string</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">path_to_string&nbsp;path</code> is <a href="Conex_utils.String.html#VALconcat">String.concat</a> <code class="code"><span class="string">"/"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;path</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALpp">pp</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td><div class="info">
+<code class="code">pp&nbsp;t</code> is a pretty printer for <code class="code">t</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALpp">pp</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALpp">pp</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALpp">pp</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALpp">pp</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALpp">pp</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALpp">pp</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td><div class="info">
+<code class="code">pp&nbsp;digest</code> is a pretty printer for <code class="code">digest</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Signature.html#VALpp">pp</a> [<a href="Conex_resource.Signature.html">Conex_resource.Signature</a>]</td>
+<td><div class="info">
+<code class="code">pp&nbsp;<span class="keyword">sig</span></code> is a pretty printer for a signature.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALpp">pp</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td><div class="info">
+<code class="code">pp</code> is a pretty printer for public keys
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Header.html#VALpp">pp</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALpp_cc_err">pp_cc_err</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALpp_checksum">pp_checksum</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_sign.html#VALpp_err">pp_err</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
+<td><div class="info">
+<code class="code">pp_err&nbsp;err</code> pretty prints <code class="code">err</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALpp_error">pp_error</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">pp_error</code> prints verification errors.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.html#VALpp_id">pp_id</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">pp_id&nbsp;id</code> is a pretty printer for <code class="code">identifier</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.html#VALpp_list">pp_list</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">pp_list&nbsp;pp</code> is a pretty printer for a list (surrounded by square brackets,
+    elements are separated by semicolon).
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALpp_m_err">pp_m_err</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.html#VALpp_name">pp_name</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">pp_name&nbsp;name</code> is a pretty printer for <code class="code">name</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALpp_ok">pp_ok</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">pp_ok</code> pretty prints verification success
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALpp_r_err">pp_r_err</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALpp_resource">pp_resource</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.html#VALpp_typ">pp_typ</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">pp_resource&nbsp;pp</code> is a pretty printer for <code class="code">resource</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_crypto.html#VALpp_verification_error">pp_verification_error</a> [<a href="Conex_crypto.html">Conex_crypto</a>]</td>
+<td><div class="info">
+<code class="code">pp_verification_error&nbsp;pp</code> is a pretty printer for <code class="code">verification_error</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALprep">prep</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALprep">prep</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALprep">prep</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALprep">prep</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALprep_sig">prep_sig</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_sign.S.html#VALpub_of_priv">pub_of_priv</a> [<a href="Conex_sign.S.html">Conex_sign.S</a>]</td>
+<td><div class="info">
+<code class="code">pub_of_priv&nbsp;priv</code> extracts the public key from the private.
+</div>
+</td></tr>
+<tr><td><a href="Conex_crypto.SIGN.html#VALpub_of_priv_rsa">pub_of_priv_rsa</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<td><div class="info">
+<code class="code">pub_of_priv_rsa&nbsp;priv</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;pub</code> or <code class="code"><span class="constructor">Error</span>&nbsp;str</code>.
+</div>
+</td></tr>
+<tr><td align="left"><br>Q</td></tr>
+<tr><td><a href="Conex_repository.html#VALquorum">quorum</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">quorum&nbsp;repo</code> is the configured quorum.
+</div>
+</td></tr>
+<tr><td align="left"><br>R</td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALr">r</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALr_equal">r_equal</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALread_author">read_author</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALread_authorisation">read_authorisation</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_persistency.html#VALread_file">read_file</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALread_id">read_id</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALread_package">read_package</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_sign.html#VALread_private_key">read_private_key</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
+<td><div class="info">
+<code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALread_release">read_release</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALread_team">read_team</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALrelease_dir">release_dir</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">release_dir&nbsp;name</code> is <code class="code">data_dir;</code> <a href="Conex_opam_repository_layout.html#VALauthorisation_of_item"><code class="code"><span class="constructor">Conex_opam_repository_layout</span>.authorisation_of_item</code></a> (if <code class="code"><span class="constructor">None</span></code>,
+    <code class="code">name</code>), followed by <code class="code">name</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALrelease_filename">release_filename</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">release_filename</code> is "release".
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALrelease_path">release_path</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">release_path&nbsp;name</code> is <code class="code">release_dir&nbsp;@&nbsp;release_filename</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_persistency.html#VALremove">remove</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALremove">remove</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALremove">remove</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALremove">remove</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_persistency.html#VALrename">rename</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALrepository">repository</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">repository&nbsp;~quorum&nbsp;~strict&nbsp;()</code> is a fresh empty repository.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALreset">reset</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>S</td></tr>
+<tr><td><a href="Conex_utils.html#VALs_of_list">s_of_list</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">s_of_list&nbsp;xs</code> transforms the string list <code class="code">xs</code> to a set.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALset_counter">set_counter</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_sign.S.html#VALsign">sign</a> [<a href="Conex_sign.S.html">Conex_sign.S</a>]</td>
+<td><div class="info">
+<code class="code">sign&nbsp;created&nbsp;author&nbsp;priv</code> uses <a href="Conex_resource.Author.html#VALprep_sig"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.prep_sig</code></a> to
+      prepare <code class="code">author</code> (incrementing counter, moving queued resource to signed).
+</div>
+</td></tr>
+<tr><td><a href="Conex_crypto.SIGN.html#VALsign_rsa_pss">sign_rsa_pss</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<td><div class="info">
+<code class="code">sign_rsa_pss&nbsp;~key&nbsp;data</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;signature</code> or <code class="code"><span class="constructor">Error</span>&nbsp;str</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALslice">slice</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">slice&nbsp;~start&nbsp;~stop&nbsp;str</code> slices <code class="code">str</code> into a smaller piece, starting at
+      offset <code class="code">start</code> (default 0), ending at <code class="code">stop</code> (default <code class="code"><span class="constructor">String</span>.length</code>).
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.html#VALstrict">strict</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td><div class="info">
+<code class="code">strict&nbsp;repo</code> is the configured strictness
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALstring_to_alg">string_to_alg</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td><div class="info">
+<code class="code">string_to_alg&nbsp;str</code> is either <code class="code"><span class="constructor">Some</span>&nbsp;alg</code> or <code class="code"><span class="constructor">None</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Signature.html#VALstring_to_alg">string_to_alg</a> [<a href="Conex_resource.Signature.html">Conex_resource.Signature</a>]</td>
+<td><div class="info">
+<code class="code">string_to_alg&nbsp;str</code> is either <code class="code"><span class="constructor">Some</span>&nbsp;alg</code> or <code class="code"><span class="constructor">None</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALstring_to_alg">string_to_alg</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td><div class="info">
+<code class="code">string_to_alg&nbsp;str</code> is either <code class="code"><span class="constructor">Some</span>&nbsp;alg</code>, or <code class="code"><span class="constructor">None</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.html#VALstring_to_path">string_to_path</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
+<td><div class="info">
+<code class="code">string_to_path&nbsp;str</code> is <a href="Conex_utils.String.html#VALcuts">String.cuts</a> <code class="code"><span class="string">"/"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;str</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.html#VALstring_to_typ">string_to_typ</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">string_to_resource&nbsp;str</code> is either <code class="code"><span class="constructor">Some</span>&nbsp;resource</code> or <code class="code"><span class="constructor">None</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALsubitems">subitems</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALsucc">succ</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">succ&nbsp;t</code> is <code class="code">carry,&nbsp;next</code>: if <code class="code">carry</code> is true, an overflow happened.
+</div>
+</td></tr>
+<tr><td align="left"><br>T</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALt">t</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALt">t</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALt">t</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALt">t</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALt">t</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Header.html#VALtimestamp">timestamp</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_diff.html#VALto_diffs">to_diffs</a> [<a href="Conex_diff.html">Conex_diff</a>]</td>
+<td><div class="info">
+<code class="code">to_diffs&nbsp;str</code> decodes the given patch into a list of <code class="code">diff</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALto_lower">to_lower</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">to_lower&nbsp;str</code> converts all printable ASCII characters to lowercase.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALto_string">to_string</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td><div class="info">
+<code class="code">to_string&nbsp;digest</code> is a string representation of <code class="code">digest</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Wire.html#VALto_string">to_string</a> [<a href="Conex_resource.Wire.html">Conex_resource.Wire</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALto_string">to_string</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">to_string&nbsp;t</code> is <code class="code">t</code> converted to a string in hexadecimal (<code class="code">%<span class="constructor">LX</span></code>).
+</div>
+</td></tr>
+<tr><td><a href="Conex_utils.String.html#VALtrim">trim</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
+<td><div class="info">
+<code class="code">trim&nbsp;str</code> removes leading and trailing whitespaces of <code class="code">str</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.html#VALtyp_equal">typ_equal</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">resource_equal&nbsp;a&nbsp;b</code> is <code class="code"><span class="keyword">true</span></code> if they are the same, otherwise <code class="code"><span class="keyword">false</span></code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.html#VALtyp_of_wire">typ_of_wire</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.html#VALtyp_to_string">typ_to_string</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
+<td><div class="info">
+<code class="code">resource_to_string&nbsp;res</code> is the string representation of <code class="code">res</code>.
+</div>
+</td></tr>
+<tr><td align="left"><br>V</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALvalid_id">valid_id</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">valid_id&nbsp;id</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> is valid: this calls
+    <a href="Conex_utils.String.html#VALis_ascii">String.is_ascii</a> <code class="code">id</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_opam_repository_layout.html#VALvalid_name">valid_name</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
+<td><div class="info">
+<code class="code">valid_name&nbsp;name</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">name</code> is valid: either it is '-' or '_'
+    or <a href="Conex_utils.String.html#VALis_ascii">String.is_ascii</a> <code class="code">name</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify">verify</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">verify&nbsp;id&nbsp;key&nbsp;data&nbsp;signature</code> succeeds when the <code class="code">signature</code> was done
+      using the private part of the <code class="code">key</code>, and the <code class="code">id</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_author">verify_author</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">verify_author&nbsp;repo&nbsp;author</code> verifies the author resource: at least one
+      public keys must be signed off by janitors.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_authorisation">verify_authorisation</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex.Make.html#VALverify_diff">verify_diff</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
+<td><div class="info">
+<code class="code">verify_diff&nbsp;io&nbsp;repository&nbsp;patch</code> first parses the <code class="code">patch</code> and applies it.
+</div>
+</td></tr>
+<tr><td><a href="Conex.Make.html#VALverify_item">verify_item</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
+<td><div class="info">
+<code class="code">verify_item&nbsp;~authorised&nbsp;~release&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the
+      authorisation of the package <code class="code">name</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_key">verify_key</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">verify_key&nbsp;repo&nbsp;id&nbsp;key</code>
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_package">verify_package</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_release">verify_release</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALverify_rsa_pss">verify_rsa_pss</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<td><div class="info">
+<code class="code">verify_rsa_pss&nbsp;~key&nbsp;~data&nbsp;~signature</code> returns <code class="code"><span class="constructor">Ok</span>&nbsp;()</code> on success,
+      otherwise a <code class="code">verification_error</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_signatures">verify_signatures</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td><div class="info">
+<code class="code">verify_signatures&nbsp;author</code> splits the keys into two partitions: those
+      with a proper signatures and those without.
+</div>
+</td></tr>
+<tr><td><a href="Conex_repository.S.html#VALverify_team">verify_team</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>W</td></tr>
+<tr><td><a href="Conex_utils.LOGS.html#VALwarn">warn</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
+<td><div class="info">
+<code class="code">warn&nbsp;k</code> logs <code class="code">k</code>, a to the warning stream
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Release.html#VALwire">wire</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Package.html#VALwire">wire</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Authorisation.html#VALwire">wire</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Team.html#VALwire">wire</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALwire">wire</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Signature.html#VALwire">wire</a> [<a href="Conex_resource.Signature.html">Conex_resource.Signature</a>]</td>
+<td><div class="info">
+<code class="code">wire&nbsp;id&nbsp;hdr&nbsp;data</code> extends the given data with the header and id to a string which is then signed.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALwire">wire</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Header.html#VALwire">wire</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Digest.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Signature.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Signature.html">Conex_resource.Signature</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_resource.Key.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALwrite_author">write_author</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALwrite_authorisation">write_authorisation</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_persistency.html#VALwrite_file">write_file</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALwrite_package">write_package</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_sign.html#VALwrite_private_key">write_private_key</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
+<td><div class="info">
+<code class="code">write_private_key&nbsp;prov&nbsp;id&nbsp;key</code> writes the given key to disk (in
+    "~/.conex/", using the <code class="code">basedir</code> of <code class="code">prov</code> as file prefix.
+</div>
+</td></tr>
+<tr><td><a href="Conex_io.html#VALwrite_release">write_release</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_persistency.html#VALwrite_replace">write_replace</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_io.html#VALwrite_team">write_team</a> [<a href="Conex_io.html">Conex_io</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>Z</td></tr>
+<tr><td><a href="Conex_utils.Uint.html#VALzero">zero</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
+<td><div class="info">
+<code class="code">zero</code> is the smallest member.
+</div>
+</td></tr>
+</table>
+</body>
+</html>

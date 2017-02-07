@@ -1,0 +1,110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_utils.M.html">
+<link rel="next" href="Conex_utils.Uint.html">
+<link rel="Up" href="Conex_utils.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_utils.String</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_utils.M.html" title="Conex_utils.M">Previous</a>
+&nbsp;<a class="up" href="Conex_utils.html" title="Conex_utils">Up</a>
+&nbsp;<a class="post" href="Conex_utils.Uint.html" title="Conex_utils.Uint">Next</a>
+</div>
+<h1>Module <a href="type_Conex_utils.String.html">Conex_utils.String</a></h1>
+
+<pre><span class="keyword">module</span> String: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_utils.String.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Some <code class="code"><span class="constructor">String</span></code> utilities implemented here to avoid external
+    dependencies.  This is a subset of
+    <a href="http://erratique.ch/software/astring">Astring</a>.<br>
+</div>
+<hr width="100%">
+
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = <code class="type">string</code> </pre>
+<div class="info ">
+Our string type is an OCaml <code class="code">string</code><br>
+</div>
+
+
+<pre><span id="VALcuts"><span class="keyword">val</span> cuts</span> : <code class="type">char -> <a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a> list</code></pre><div class="info ">
+<code class="code">cuts&nbsp;sep&nbsp;str</code> separates <code class="code">str</code> into multiple substrings, stripping out the
+      separating character <code class="code">sep</code>.  <code class="code"><span class="constructor">String</span>.concat&nbsp;<span class="string">"/"</span>&nbsp;(<span class="constructor">String</span>.cuts&nbsp;<span class="string">'/'</span>&nbsp;xs)</code> is
+      not the identity since empty substrings are stripped.<br>
+</div>
+
+<pre><span id="VALcut"><span class="keyword">val</span> cut</span> : <code class="type">char -><br>       <a href="Conex_utils.String.html#TYPEt">t</a> -> (<a href="Conex_utils.String.html#TYPEt">t</a> * <a href="Conex_utils.String.html#TYPEt">t</a>) option</code></pre><div class="info ">
+<code class="code">cut&nbsp;sep&nbsp;str</code> cuts the string <code class="code">str</code> at the first occurence of <code class="code">sep</code> into
+      its left and right parts.  If <code class="code">sep</code> is not found, <code class="code"><span class="constructor">None</span></code> is returned.
+      If <code class="code"><span class="constructor">Some</span>&nbsp;(a,&nbsp;b)</code> is returned, <code class="code">a&nbsp;^&nbsp;sep&nbsp;^&nbsp;b</code> is equal to <code class="code">str</code>.<br>
+</div>
+
+<pre><span id="VALis_prefix"><span class="keyword">val</span> is_prefix</span> : <code class="type">prefix:<a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">is_prefix&nbsp;~prefix&nbsp;str</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">str</code> begins with <code class="code">prefix</code>, <code class="code"><span class="keyword">false</span></code>
+      otherwise.<br>
+</div>
+
+<pre><span id="VALis_suffix"><span class="keyword">val</span> is_suffix</span> : <code class="type">suffix:<a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">is_suffix&nbsp;~suffix&nbsp;str</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">str</code> ends with <code class="code">suffix</code>, <code class="code"><span class="keyword">false</span></code>
+      otherwise.<br>
+</div>
+
+<pre><span id="VALslice"><span class="keyword">val</span> slice</span> : <code class="type">?start:int -> ?stop:int -> <a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">slice&nbsp;~start&nbsp;~stop&nbsp;str</code> slices <code class="code">str</code> into a smaller piece, starting at
+      offset <code class="code">start</code> (default 0), ending at <code class="code">stop</code> (default <code class="code"><span class="constructor">String</span>.length</code>).<br>
+</div>
+
+<pre><span id="VALto_lower"><span class="keyword">val</span> to_lower</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">to_lower&nbsp;str</code> converts all printable ASCII characters to lowercase.<br>
+</div>
+
+<pre><span id="VALis_ascii"><span class="keyword">val</span> is_ascii</span> : <code class="type">?p:(char -> bool) -> <a href="Conex_utils.String.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">is_ascii&nbsp;~p&nbsp;str</code> is <code class="code"><span class="keyword">true</span></code> if all characters in <code class="code">str</code> are ASCII
+      characters: 0-9, a-z, A-Z OR satisfy <code class="code">p</code>.  Otherwise <code class="code"><span class="keyword">false</span></code>.<br>
+</div>
+
+<pre><span id="VALtrim"><span class="keyword">val</span> trim</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">trim&nbsp;str</code> removes leading and trailing whitespaces of <code class="code">str</code>.<br>
+</div>
+
+<pre><span id="VALget"><span class="keyword">val</span> get</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> int -> char</code></pre><div class="info ">
+<code class="code">get&nbsp;str&nbsp;offset</code> retrieves the character at <code class="code">offset</code> in <code class="code">str</code>.<br>
+</div>
+
+<pre><span id="VALconcat"><span class="keyword">val</span> concat</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a> list -> <a href="Conex_utils.String.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">concat&nbsp;sep&nbsp;xs</code> concatenates all <code class="code">xs</code>, using <code class="code">sep</code> as separator.<br>
+</div>
+
+<pre><span id="VALcompare"><span class="keyword">val</span> compare</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a> -> int</code></pre><div class="info ">
+<code class="code">compare&nbsp;a&nbsp;b</code> compares <code class="code">a</code> with <code class="code">b</code> using <code class="code"><span class="constructor">String</span>.compare</code>.<br>
+</div>
+
+<pre><span id="VALlength"><span class="keyword">val</span> length</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> int</code></pre><div class="info ">
+<code class="code">length&nbsp;str</code> is the byte length of <code class="code">str</code>.<br>
+</div>
+
+<pre><span id="VALcompare_insensitive"><span class="keyword">val</span> compare_insensitive</span> : <code class="type"><a href="Conex_utils.String.html#TYPEt">t</a> -> <a href="Conex_utils.String.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">compare_insensitive&nbsp;a&nbsp;b</code> first converts <code class="code">a</code> and <code class="code">b</code> to lowercase strings,
+      then uses <code class="code">compare</code>.<br>
+</div>
+</body></html>

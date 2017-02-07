@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_resource.Team.html">
+<link rel="next" href="Conex_resource.Package.html">
+<link rel="Up" href="Conex_resource.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_resource.Authorisation</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_resource.Team.html" title="Conex_resource.Team">Previous</a>
+&nbsp;<a class="up" href="Conex_resource.html" title="Conex_resource">Up</a>
+&nbsp;<a class="post" href="Conex_resource.Package.html" title="Conex_resource.Package">Next</a>
+</div>
+<h1>Module <a href="type_Conex_resource.Authorisation.html">Conex_resource.Authorisation</a></h1>
+
+<pre><span class="keyword">module</span> Authorisation: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Authorisation.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+
+<pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = private {</code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTt.created">created</span>&nbsp;: <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a></code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTt.counter">counter</span>&nbsp;: <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a></code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTt.wraps">wraps</span>&nbsp;: <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a></code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTt.name">name</span>&nbsp;: <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a></code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTt.authorised">authorised</span>&nbsp;: <code class="type">Conex_utils.S.t</code>;</code></td>
+
+</tr></table>
+}
+
+
+
+<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?authorised:Conex_utils.S.t -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Authorisation.html#TYPEt">t</a></code></pre>
+<pre><span id="VALadd"><span class="keyword">val</span> add</span> : <code class="type"><a href="Conex_resource.Authorisation.html#TYPEt">t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Authorisation.html#TYPEt">t</a></code></pre>
+<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type"><a href="Conex_resource.Authorisation.html#TYPEt">t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Authorisation.html#TYPEt">t</a></code></pre>
+<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Authorisation.html#TYPEt">t</a> -> <a href="Conex_resource.Authorisation.html#TYPEt">t</a> * bool</code></pre>
+<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Authorisation.html#TYPEt">t</a> -> <a href="Conex_resource.Authorisation.html#TYPEt">t</a> -> bool</code></pre>
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -><br>       (<a href="Conex_resource.Authorisation.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
+<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Authorisation.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type">Format.formatter -> <a href="Conex_resource.Authorisation.html#TYPEt">t</a> -> unit</code></pre></body></html>

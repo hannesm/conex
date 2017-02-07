@@ -1,0 +1,168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex.html">
+<link rel="next" href="Conex_repository.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><link title="Sets, Maps, List utils" rel="Section" href="#1_SetsMapsListutils">
+<link title="Result combinators" rel="Section" href="#1_Resultcombinators">
+<link title="String" rel="Section" href="#1_String">
+<link title="Unsigned integers" rel="Section" href="#1_Unsignedintegers">
+<link title="Logging" rel="Section" href="#1_Logging">
+<link title="Format" rel="Section" href="#1_Format">
+<link title="File system types" rel="Section" href="#1_Filesystemtypes">
+<title>Conex_utils</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex.html" title="Conex">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_repository.html" title="Conex_repository">Next</a>
+</div>
+<h1>Module <a href="type_Conex_utils.html">Conex_utils</a></h1>
+
+<pre><span class="keyword">module</span> Conex_utils: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_utils.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+String, unsigned integers, logging, collections, and more<br>
+</div>
+<hr width="100%">
+<br>
+<h1 id="1_SetsMapsListutils">Sets, Maps, List utils</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_utils.S.html">S</a>: <code class="type">Set.S</code><code class="type">  with type elt = string</code></pre><div class="info">
+<code class="code"><span class="constructor">S</span></code> is a string set.
+</div>
+
+<pre><span id="VALs_of_list"><span class="keyword">val</span> s_of_list</span> : <code class="type">string list -> S.t</code></pre><div class="info ">
+<code class="code">s_of_list&nbsp;xs</code> transforms the string list <code class="code">xs</code> to a set.<br>
+</div>
+
+<pre><span class="keyword">module</span> <a href="Conex_utils.M.html">M</a>: <code class="type">Map.S</code><code class="type">  with type key = string</code></pre><div class="info">
+<code class="code"><span class="constructor">M</span></code> is a <code class="code"><span class="constructor">Map</span></code> which keys are strings.
+</div>
+
+<pre><span id="VALfilter_map"><span class="keyword">val</span> filter_map</span> : <code class="type">f:('a -> 'b option) -> 'a list -> 'b list</code></pre><div class="info ">
+<code class="code">filter_map&nbsp;f&nbsp;xs</code> is <code class="code">xs'</code>, a list which contains all elements where <code class="code">f</code>
+    resulted in <code class="code"><span class="constructor">Some</span>&nbsp;_</code>.<br>
+</div>
+<br>
+<h1 id="1_Resultcombinators">Result combinators</h1><br>
+
+<pre><span id="VAL(>>=)"><span class="keyword">val</span> (&gt;&gt;=)</span> : <code class="type">('a, 'b) Pervasives.result -><br>       ('a -> ('c, 'b) Pervasives.result) -> ('c, 'b) Pervasives.result</code></pre><div class="info ">
+<code class="code">r&nbsp;&gt;&gt;=&nbsp;f</code> is <code class="code">f&nbsp;a</code> unless <code class="code">r</code> is an <code class="code"><span class="constructor">Error</span></code>, which is propagated.  Monadic bind.<br>
+</div>
+
+<pre><span id="VALguard"><span class="keyword">val</span> guard</span> : <code class="type">bool -> 'a -> (unit, 'a) Pervasives.result</code></pre><div class="info ">
+<code class="code">guard&nbsp;pred&nbsp;err</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;()</code> (if <code class="code">pred</code> holds), <code class="code"><span class="constructor">Error</span>&nbsp;err</code> otherwise.<br>
+</div>
+
+<pre><span id="VALfoldM"><span class="keyword">val</span> foldM</span> : <code class="type">('a -> 'b -> ('a, 'c) Pervasives.result) -><br>       'a -> 'b list -> ('a, 'c) Pervasives.result</code></pre><div class="info ">
+<code class="code">foldM&nbsp;f&nbsp;a&nbsp;xs</code> applies <code class="code">f</code> to each element of <code class="code">xs</code>, returns either <code class="code"><span class="constructor">Ok</span></code> and
+    the produced value, or <code class="code"><span class="constructor">Error</span></code>.<br>
+</div>
+
+<pre><span id="VALfoldS"><span class="keyword">val</span> foldS</span> : <code class="type">('a -> string -> ('a, 'c) Pervasives.result) -><br>       'a -> S.t -> ('a, 'c) Pervasives.result</code></pre><div class="info ">
+<code class="code">foldS&nbsp;f&nbsp;a&nbsp;s</code> applies <code class="code">f</code> to each element of the set <code class="code">s</code>, returns either
+    <code class="code"><span class="constructor">Ok</span></code> and the produced value, or <code class="code"><span class="constructor">Error</span></code>.<br>
+</div>
+<br>
+<h1 id="1_String">String</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_utils.String.html">String</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_utils.String.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+Some <code class="code"><span class="constructor">String</span></code> utilities implemented here to avoid external
+    dependencies.
+</div>
+<br>
+<h1 id="1_Unsignedintegers">Unsigned integers</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_utils.Uint.html">Uint</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_utils.Uint.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+64 bit unsigned integer with explicit overflow behaviour (see
+    <a href="Conex_utils.Uint.html#VALsucc"><code class="code"><span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.succ</code></a>).
+</div>
+<br>
+<h1 id="1_Logging">Logging</h1><br>
+
+<pre><span class="keyword">module type</span> <a href="Conex_utils.LOGS.html">LOGS</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_utils.LOGS.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+<code class="code"><span class="constructor">LOGS</span></code> is a subset of the <a href="http://erratique.ch/software/logs">Logs</a>
+    library, providing four log streams.
+</div>
+<br>
+<h1 id="1_Format">Format</h1><br>
+
+<pre><span id="TYPEfmt"><span class="keyword">type</span> <code class="type">'a</code> fmt</span> = <code class="type">Format.formatter -> 'a -> unit</code> </pre>
+<div class="info ">
+<code class="code"><span class="keywordsign">'</span>a&nbsp;fmt</code> is the signature for pretty printers.<br>
+</div>
+
+
+<pre><span id="VALpp_list"><span class="keyword">val</span> pp_list</span> : <code class="type">'a <a href="Conex_utils.html#TYPEfmt">fmt</a> -> 'a list <a href="Conex_utils.html#TYPEfmt">fmt</a></code></pre><div class="info ">
+<code class="code">pp_list&nbsp;pp</code> is a pretty printer for a list (surrounded by square brackets,
+    elements are separated by semicolon).  The <code class="code">pp</code> is be a pretty printer for
+    list elements.<br>
+</div>
+<br>
+<h1 id="1_Filesystemtypes">File system types</h1><br>
+
+<pre><code><span id="TYPEfile_type"><span class="keyword">type</span> <code class="type"></code>file_type</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTfile_type.File"><span class="constructor">File</span></span></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTfile_type.Directory"><span class="constructor">Directory</span></span></code></td>
+
+</tr></table>
+
+<div class="info ">
+The sum type of possible file types we expect<br>
+</div>
+
+
+<pre><span id="TYPEpath"><span class="keyword">type</span> <code class="type"></code>path</span> = <code class="type">string list</code> </pre>
+<div class="info ">
+A <code class="code">path</code> is a list of strings<br>
+</div>
+
+
+<pre><span id="VALpath_to_string"><span class="keyword">val</span> path_to_string</span> : <code class="type"><a href="Conex_utils.html#TYPEpath">path</a> -> string</code></pre><div class="info ">
+<code class="code">path_to_string&nbsp;path</code> is <a href="Conex_utils.String.html#VALconcat">String.concat</a> <code class="code"><span class="string">"/"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;path</code>.<br>
+<b>Raises</b> <code>Invalid_argument</code> if <code class="code">path</code> includes either "." or ".."<br>
+</div>
+
+<pre><span id="VALstring_to_path"><span class="keyword">val</span> string_to_path</span> : <code class="type">string -> <a href="Conex_utils.html#TYPEpath">path</a></code></pre><div class="info ">
+<code class="code">string_to_path&nbsp;str</code> is <a href="Conex_utils.String.html#VALcuts">String.cuts</a> <code class="code"><span class="string">"/"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;str</code>.<br>
+</div>
+
+<pre><span id="TYPEitem"><span class="keyword">type</span> <code class="type"></code>item</span> = <code class="type"><a href="Conex_utils.html#TYPEfile_type">file_type</a> * string</code> </pre>
+<div class="info ">
+An <code class="code">item</code> is a type and its payload<br>
+</div>
+
+</body></html>

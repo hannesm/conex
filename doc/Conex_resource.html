@@ -1,0 +1,187 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_repository.html">
+<link rel="next" href="Conex_io.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><link title="Names and identifiers" rel="Section" href="#1_Namesandidentifiers">
+<link title="Wire format" rel="Section" href="#1_Wireformat">
+<link title="Resource types" rel="Section" href="#1_Resourcetypes">
+<link title="Asymmetric key types" rel="Section" href="#1_Asymmetrickeytypes">
+<link title="Cryptographic signatures" rel="Section" href="#1_Cryptographicsignatures">
+<link title="Digests" rel="Section" href="#1_Digests">
+<link title="Team" rel="Section" href="#1_Team">
+<title>Conex_resource</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_repository.html" title="Conex_repository">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_io.html" title="Conex_io">Next</a>
+</div>
+<h1>Module <a href="type_Conex_resource.html">Conex_resource</a></h1>
+
+<pre><span class="keyword">module</span> Conex_resource: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Persistent data: on wire and record types
+<p>
+
+    Every resource in conex is a piece of data (or metadata), and has its own
+    purpose.  Resources are persistent objects stored in the repository.  Conex'
+    view on repository updates are resource modifications over time: addition of
+    a package release, introduction of a new team, modification of dependency
+    constraints of a certain package, key renewal by its author, authorising a
+    team instead of an individual for a package, provisioning of a new
+    timestamping service by a quorum of janitors, ...
+<p>
+
+    Initially, conex verifies the authenticity and freshness of a cloned
+    repository (authenticity by using public key fingerprints verified over a
+    trusted channel, and freshness by looking at the last signature of the
+    timestamping service).
+<p>
+
+    Afterwards, it trusts the local repository and verifies resource updates.
+    Not every update has to be verified individually (if a client is updating
+    rarely, they don't verify intermediate states).  Both authenticity and
+    monotonicity are preserved.  To minimise the amount of public key
+    operations, instead of signing each resource with their private key, each
+    author digitally signs their individual list of approved resources: their
+    name, their type, and their digest.  Each author can approve multiple
+    versions of a single resource (e.g. a team red with members Joseph and
+    Vladimir in version 41, and also the same team red with Joseph, Vladimir,
+    and in version 42).  The resource list is just a resource, which is modified
+    only by the author who owns it (thus no merge conflicts from simultaneous
+    edits by multiple people).
+<p>
+
+    Resources are stored in the same repository they should protect from
+    malicious updates or downgrades.  Additionally, they have to protect
+    themselves from attackers.
+<p>
+
+    Some resource updates need approval by a quorum of janitors, this is to
+    avoid a centralised trust authority which is a single point of failure.  As
+    long as fewer than a quorum of janitor private keys are compromised, the
+    guarantees provided by conex are preserved.  Janitors themselves are a team,
+    and part of the repository.  This allows dynamic updates of the trusted
+    group.
+<p>
+
+    The possibility to have multiple versions of a resource approved is crucial
+    for the update workflow: only after a quorum of janitors approved the update
+    (each by adding it to their resource list), this resource update can be
+    verified by conex (the merge of the resource update needs to wait until
+    sufficient janitors approved it).
+<p>
+
+    Resources stored on disk consists of a common header: a name, a type, a
+    counter, a wraparound counter, and a creation timestamp.  There are
+    broadly three kinds of resources: those containing identities (<a href="Conex_resource.Team.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Team</span></code></a> and
+    <a href="Conex_resource.Author.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span></code></a>), those regulating access to packages (<a href="Conex_resource.Authorisation.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span></code></a>), and those
+    with the digests of the opam repository data (<a href="Conex_resource.Package.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Package</span></code></a> and <a href="Conex_resource.Release.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Release</span></code></a>).<br>
+</div>
+<hr width="100%">
+<br>
+<h1 id="1_Namesandidentifiers">Names and identifiers</h1><br>
+
+<pre><span id="TYPEname"><span class="keyword">type</span> <code class="type"></code>name</span> = <code class="type">string</code> </pre>
+<div class="info ">
+The name of resources, used e.g. for package names.<br>
+</div>
+
+
+<pre><span id="VALpp_name"><span class="keyword">val</span> pp_name</span> : <code class="type"><a href="Conex_resource.html#TYPEname">name</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_name&nbsp;name</code> is a pretty printer for <code class="code">name</code>.<br>
+</div>
+
+<pre><span id="VALname_equal"><span class="keyword">val</span> name_equal</span> : <code class="type"><a href="Conex_resource.html#TYPEname">name</a> -> <a href="Conex_resource.html#TYPEname">name</a> -> bool</code></pre><div class="info ">
+<code class="code">name_equal&nbsp;a&nbsp;b</code> is the result of a case insensitive comparison of <code class="code">a</code> and <code class="code">b</code>.<br>
+</div>
+
+<pre><span id="TYPEidentifier"><span class="keyword">type</span> <code class="type"></code>identifier</span> = <code class="type">string</code> </pre>
+<div class="info ">
+The type of identifiers.<br>
+</div>
+
+
+<pre><span id="VALpp_id"><span class="keyword">val</span> pp_id</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">identifier</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_id&nbsp;id</code> is a pretty printer for <code class="code">identifier</code>.<br>
+</div>
+
+<pre><span id="VALid_equal"><span class="keyword">val</span> id_equal</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">identifier</a> -> <a href="Conex_resource.html#TYPEidentifier">identifier</a> -> bool</code></pre><div class="info ">
+<code class="code">id_equal&nbsp;a&nbsp;b</code> is the result of a case insensitive comparison of <code class="code">a</code> and <code class="code">b</code>.<br>
+</div>
+<br>
+<h1 id="1_Wireformat">Wire format</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Wire.html">Wire</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Wire.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+The wire encoding is abstract here, one suitable decoding and encoding
+    engine is <a href="Conex_opam_encoding.html"><code class="code"><span class="constructor">Conex_opam_encoding</span></code></a>.
+</div>
+<br>
+<h1 id="1_Resourcetypes">Resource types</h1><br>
+
+<pre><span id="TYPEtyp"><span class="keyword">type</span> <code class="type"></code>typ</span> = <code class="type">[ `Account<br>       | `Author<br>       | `Authorisation<br>       | `Key<br>       | `Package<br>       | `Release<br>       | `Signature<br>       | `Team<br>       | `Wrap ]</code> </pre>
+<div class="info ">
+The sum type of all possible resources.<br>
+</div>
+
+
+<pre><span id="VALtyp_to_string"><span class="keyword">val</span> typ_to_string</span> : <code class="type"><a href="Conex_resource.html#TYPEtyp">typ</a> -> string</code></pre><div class="info ">
+<code class="code">resource_to_string&nbsp;res</code> is the string representation of <code class="code">res</code>.<br>
+</div>
+
+<pre><span id="VALstring_to_typ"><span class="keyword">val</span> string_to_typ</span> : <code class="type">string -> <a href="Conex_resource.html#TYPEtyp">typ</a> option</code></pre><div class="info ">
+<code class="code">string_to_resource&nbsp;str</code> is either <code class="code"><span class="constructor">Some</span>&nbsp;resource</code> or <code class="code"><span class="constructor">None</span></code>.<br>
+</div>
+
+<pre><span id="VALpp_typ"><span class="keyword">val</span> pp_typ</span> : <code class="type"><a href="Conex_resource.html#TYPEtyp">typ</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_resource&nbsp;pp</code> is a pretty printer for <code class="code">resource</code>.<br>
+</div>
+
+<pre><span id="VALtyp_equal"><span class="keyword">val</span> typ_equal</span> : <code class="type"><a href="Conex_resource.html#TYPEtyp">typ</a> -> <a href="Conex_resource.html#TYPEtyp">typ</a> -> bool</code></pre><div class="info ">
+<code class="code">resource_equal&nbsp;a&nbsp;b</code> is <code class="code"><span class="keyword">true</span></code> if they are the same, otherwise <code class="code"><span class="keyword">false</span></code>.<br>
+</div>
+
+<pre><span id="VALtyp_of_wire"><span class="keyword">val</span> typ_of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEs">Wire.s</a> -> (<a href="Conex_resource.html#TYPEtyp">typ</a>, string) Pervasives.result</code></pre>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Header.html">Header</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Header.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<h1 id="1_Asymmetrickeytypes">Asymmetric key types</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Key.html">Key</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Key.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<h1 id="1_Cryptographicsignatures">Cryptographic signatures</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Signature.html">Signature</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Signature.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<h1 id="1_Digests">Digests</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Digest.html">Digest</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Digest.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Author.html">Author</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Author.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<h1 id="1_Team">Team</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Team.html">Team</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Team.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+A team consists of a group of authors, and teams can be authorised for
+     packages.
+</div>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Authorisation.html">Authorisation</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Authorisation.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Package.html">Package</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Package.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Release.html">Release</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Release.html">..</a> <code class="code"><span class="keyword">end</span></code></pre></body></html>

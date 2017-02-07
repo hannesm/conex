@@ -1,0 +1,47 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_opam_encoding.html">
+<link rel="next" href="Conex_unix_provider.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_persistency</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_opam_encoding.html" title="Conex_opam_encoding">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_unix_provider.html" title="Conex_unix_provider">Next</a>
+</div>
+<h1>Module <a href="type_Conex_persistency.html">Conex_persistency</a></h1>
+
+<pre><span class="keyword">module</span> Conex_persistency: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_persistency.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+
+<pre><span id="VALexists"><span class="keyword">val</span> exists</span> : <code class="type">string -> bool</code></pre>
+<pre><span id="VALmkdir"><span class="keyword">val</span> mkdir</span> : <code class="type">?mode:int -> string -> (unit, string) Pervasives.result</code></pre>
+<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type">string -> (unit, string) Pervasives.result</code></pre>
+<pre><span id="VALrename"><span class="keyword">val</span> rename</span> : <code class="type">string -> string -> (unit, string) Pervasives.result</code></pre>
+<pre><span id="VALfile_type"><span class="keyword">val</span> file_type</span> : <code class="type">string -> (<a href="Conex_utils.html#TYPEfile_type">Conex_utils.file_type</a>, string) Pervasives.result</code></pre>
+<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">string -> (string, string) Pervasives.result</code></pre>
+<pre><span id="VALwrite_file"><span class="keyword">val</span> write_file</span> : <code class="type">?mode:int -> string -> string -> (unit, string) Pervasives.result</code></pre>
+<pre><span id="VALwrite_replace"><span class="keyword">val</span> write_replace</span> : <code class="type">?mode:int -> string -> string -> (unit, string) Pervasives.result</code></pre>
+<pre><span id="VALcollect_dir"><span class="keyword">val</span> collect_dir</span> : <code class="type">string -> (string list, string) Pervasives.result</code></pre></body></html>

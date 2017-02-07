@@ -1,0 +1,85 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_utils.String.html">
+<link rel="Up" href="Conex_utils.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_utils.Uint</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_utils.String.html" title="Conex_utils.String">Previous</a>
+&nbsp;<a class="up" href="Conex_utils.html" title="Conex_utils">Up</a>
+&nbsp;</div>
+<h1>Module <a href="type_Conex_utils.Uint.html">Conex_utils.Uint</a></h1>
+
+<pre><span class="keyword">module</span> Uint: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_utils.Uint.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+64 bit unsigned integer with explicit overflow behaviour (see
+    <a href="Conex_utils.Uint.html#VALsucc"><code class="code"><span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.succ</code></a>).<br>
+</div>
+<hr width="100%">
+
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> </pre>
+<div class="info ">
+A 64 bit unsigned integer (using a <code class="code">int64</code>).<br>
+</div>
+
+
+<pre><span id="VALzero"><span class="keyword">val</span> zero</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">zero</code> is the smallest member.<br>
+</div>
+
+<pre><span id="VALcompare"><span class="keyword">val</span> compare</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">t</a> -> <a href="Conex_utils.Uint.html#TYPEt">t</a> -> int</code></pre><div class="info ">
+<code class="code">compare&nbsp;a&nbsp;b</code> is <code class="code">res</code>: 0 if <code class="code">a&nbsp;=&nbsp;b</code>, -1 if <code class="code">a&nbsp;&lt;&nbsp;b</code>, 1 if <code class="code">a&nbsp;&gt;&nbsp;b</code><br>
+</div>
+
+<pre><span id="VALsucc"><span class="keyword">val</span> succ</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">t</a> -> bool * <a href="Conex_utils.Uint.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">succ&nbsp;t</code> is <code class="code">carry,&nbsp;next</code>: if <code class="code">carry</code> is true, an overflow happened.
+      <code class="code">next</code> is always the next integer in the <code class="code"><span class="constructor">Z</span>/2^64-1<span class="constructor">Z</span></code> group.<br>
+</div>
+
+<pre><span id="VALto_string"><span class="keyword">val</span> to_string</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">t</a> -> string</code></pre><div class="info ">
+<code class="code">to_string&nbsp;t</code> is <code class="code">t</code> converted to a string in hexadecimal (<code class="code">%<span class="constructor">LX</span></code>).<br>
+</div>
+
+<pre><span id="VALdecimal"><span class="keyword">val</span> decimal</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">t</a> -> string</code></pre><div class="info ">
+<code class="code">decimal&nbsp;t</code> is <code class="code">t</code> converted to a string in decimal (<code class="code">%<span class="constructor">Lu</span></code>).<br>
+</div>
+
+<pre><span id="VALof_string"><span class="keyword">val</span> of_string</span> : <code class="type">string -> <a href="Conex_utils.Uint.html#TYPEt">t</a> option</code></pre><div class="info ">
+<code class="code">of_string&nbsp;s</code> attempts to parse the string <code class="code">s</code> as hexadecimal encoded
+      number using <code class="code"><span class="constructor">Int64</span>.of_string&nbsp;<span class="string">"0x"</span>&nbsp;^&nbsp;s</code>.<br>
+</div>
+
+<pre><span id="VALof_float"><span class="keyword">val</span> of_float</span> : <code class="type">float -> <a href="Conex_utils.Uint.html#TYPEt">t</a> option</code></pre><div class="info ">
+<code class="code">of_float&nbsp;f</code> is <code class="code"><span class="constructor">Int64</span>.of_float&nbsp;f</code> if <code class="code">f&nbsp;&gt;=&nbsp;0.0</code>.<br>
+</div>
+
+<pre><span id="VALof_int"><span class="keyword">val</span> of_int</span> : <code class="type">int -> <a href="Conex_utils.Uint.html#TYPEt">t</a> option</code></pre><div class="info ">
+<code class="code">of_int&nbsp;i</code> is <code class="code"><span class="constructor">Int64</span>.of_int&nbsp;i</code> if <code class="code">i&nbsp;&gt;=&nbsp;0</code>.<br>
+</div>
+
+<pre><span id="VALof_int_exn"><span class="keyword">val</span> of_int_exn</span> : <code class="type">int -> <a href="Conex_utils.Uint.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">of_int_exn&nbsp;i</code> is <code class="code"><span class="constructor">Int64</span>.of_int&nbsp;i</code> if <code class="code">i&nbsp;&gt;=&nbsp;0</code>, raises an exception on
+      failure.<br>
+</div>
+</body></html>

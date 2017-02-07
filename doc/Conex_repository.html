@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_utils.html">
+<link rel="next" href="Conex_resource.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><link title="Repository type, constructor, predicates" rel="Section" href="#1_Repositorytypeconstructorpredicates">
+<link title="Unsafe operations" rel="Subsection" href="#2_Unsafeoperations">
+<title>Conex_repository</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_utils.html" title="Conex_utils">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_resource.html" title="Conex_resource">Next</a>
+</div>
+<h1>Module <a href="type_Conex_repository.html">Conex_repository</a></h1>
+
+<pre><span class="keyword">module</span> Conex_repository: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_repository.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Repository state and verification logic
+<p>
+
+    The repository keeps track of valid resources, which are added after
+    successful verification of author resources.  The only configuration element
+    is the <code class="code">quorum</code>: how many janitors have to sign off a change.
+<p>
+
+    The single resource which is signed with an asymmetric crypto operation is
+    the author, which contains a list of resources the author signed off.  To
+    verify a resource, first the authorised authors have to be verified.  Once
+    they are verified, resource verification is a lookup of a computed hash in a
+    map which is part of the repository.
+<p>
+
+    This module contains the program logic to verify the different resources,
+    which have different rules:
+    <ul>
+<li><a href="Conex_repository.S.html#VALverify_author"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.verify_author</code></a> requires a self-signature with a verified key OR has
+       an empty list of resources and approved by a quorum of janitors</li>
+<li><a href="Conex_repository.S.html#VALverify_key"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.verify_key</code></a> is successful if the key is in the authors resource list,
+       and approved by a quorum of janitors</li>
+<li><a href="Conex_repository.S.html#VALverify_team"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.verify_team</code></a> is successful if approved by a quorum of janitors</li>
+<li><a href="Conex_repository.S.html#VALverify_authorisation"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.verify_authorisation</code></a> is successful if approved by a quorum of
+       janitors</li>
+<li><a href="Conex_repository.S.html#VALverify_package"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.verify_package</code></a> is successful if approved by an authorised author OR
+       a quorum of janitors</li>
+<li><code class="code"><span class="constructor">S</span>.verfy_release</code> is successful if approved by an authorised author OR a
+       quorum of janitors</li>
+</ul>
+
+<p>
+
+    Monotonicity requirements are as follows:
+    <ul>
+<li><a href="Conex_repository.S.html#VALmonoton_author"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.monoton_author</code></a> requires the counter to increase, deletion is not
+       supported (they can have an empty resource list and no public key).</li>
+<li><a href="Conex_repository.S.html#VALmonoton_team"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.monoton_team</code></a> requires the counter to increase, deletion is not
+       supported (a team may have no members)</li>
+<li><a href="Conex_repository.S.html#VALmonoton_authorisation"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.monoton_authorisation</code></a> requires the counter to increase, deletion is
+       not supported</li>
+<li><a href="Conex_repository.S.html#VALmonoton_package"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.monoton_package</code></a> requires the counter to increase, deletion is not
+       supported (the list of releases can be empty)</li>
+<li><a href="Conex_repository.S.html#VALmonoton_release"><code class="code"><span class="constructor">Conex_repository</span>.<span class="constructor">S</span>.monoton_release</code></a> requires the counter to increase</li>
+</ul>
+<br>
+</div>
+<hr width="100%">
+<br>
+<h1 id="1_Repositorytypeconstructorpredicates">Repository type, constructor, predicates</h1><br>
+
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> </pre>
+<div class="info ">
+The repository type<br>
+</div>
+
+
+<pre><span id="VALrepository"><span class="keyword">val</span> repository</span> : <code class="type">?quorum:int -> ?strict:bool -> unit -> <a href="Conex_repository.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">repository&nbsp;~quorum&nbsp;~strict&nbsp;()</code> is a fresh empty repository.<br>
+</div>
+
+<pre><span id="VALquorum"><span class="keyword">val</span> quorum</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> int</code></pre><div class="info ">
+<code class="code">quorum&nbsp;repo</code> is the configured quorum.<br>
+</div>
+
+<pre><span id="VALstrict"><span class="keyword">val</span> strict</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">strict&nbsp;repo</code> is the configured strictness<br>
+</div>
+
+<pre><span id="VALfind_team"><span class="keyword">val</span> find_team</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> Conex_utils.S.t option</code></pre><div class="info ">
+<code class="code">find_team&nbsp;repo&nbsp;id</code> returns the members of the team <code class="code">id</code> or <code class="code"><span class="constructor">None</span></code> if there
+    is no such team.<br>
+</div>
+
+<pre><span id="VALid_loaded"><span class="keyword">val</span> id_loaded</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> bool</code></pre><div class="info ">
+<code class="code">id_loaded&nbsp;repo&nbsp;id</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> has been loaded.<br>
+</div>
+
+<pre><span id="VALauthorised"><span class="keyword">val</span> authorised</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> bool</code></pre><div class="info ">
+<code class="code">authorised&nbsp;repo&nbsp;auth&nbsp;id</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> is a member of <code class="code">auth</code> or member
+    of a team which is authorised.<br>
+</div>
+<br>
+<h2 id="2_Unsafeoperations">Unsafe operations</h2><br>
+
+<pre><span id="VALadd_valid_resource"><span class="keyword">val</span> add_valid_resource</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a> -> (<a href="Conex_repository.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">add_valid_resource&nbsp;repo&nbsp;id&nbsp;r</code> marks resource <code class="code">r</code> valid under <code class="code">id</code> in
+    <code class="code">repo</code>.  If the digest of <code class="code">r</code> is already present for a different resource,
+    an error will be returned.<br>
+</div>
+
+<pre><span id="VALadd_index"><span class="keyword">val</span> add_index</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -> <a href="Conex_repository.html#TYPEt">t</a> * string list</code></pre><div class="info ">
+<code class="code">add_index&nbsp;repo&nbsp;author</code> applies <a href="Conex_repository.html#VALadd_valid_resource"><code class="code"><span class="constructor">Conex_repository</span>.add_valid_resource</code></a> to each member of
+    the resource list from <code class="code">author</code>.<br>
+</div>
+
+<pre><span id="VALadd_team"><span class="keyword">val</span> add_team</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">Conex_resource.Team.t</a> -> <a href="Conex_repository.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">add_team&nbsp;repo&nbsp;team</code> adds the team to the repo.<br>
+</div>
+
+<pre><span class="keyword">module type</span> <a href="Conex_repository.S.html">S</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_repository.S.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module</span> <a href="Conex_repository.Make.html">Make</a>: <div class="sig_block"><code class="code"><span class="keyword">functor</span>&nbsp;(</code><code class="code"><span class="constructor">C</span></code><code class="code">&nbsp;:&nbsp;</code><code class="type"><a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a></code><code class="code">)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;</code><code class="type"><a href="Conex_repository.S.html">S</a></code><code class="type"> </code></div></pre></body></html>

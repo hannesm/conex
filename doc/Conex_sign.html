@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_nocrypto.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_sign</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_nocrypto.html" title="Conex_nocrypto">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;</div>
+<h1>Module <a href="type_Conex_sign.html">Conex_sign</a></h1>
+
+<pre><span class="keyword">module</span> Conex_sign: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_sign.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Sign: signing resources, and private key utilities.<br>
+</div>
+<hr width="100%">
+
+<pre><span id="VALwrite_private_key"><span class="keyword">val</span> write_private_key</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       string -> <a href="Conex_resource.Key.html#TYPEpriv">Conex_resource.Key.priv</a> -> (unit, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">write_private_key&nbsp;prov&nbsp;id&nbsp;key</code> writes the given key to disk (in
+    "~/.conex/", using the <code class="code">basedir</code> of <code class="code">prov</code> as file prefix.<br>
+</div>
+
+<pre><span id="TYPEerr"><span class="keyword">type</span> <code class="type"></code>err</span> = <code class="type">[ `Msg of string<br>       | `MultiplePrivateKeys of string list<br>       | `NoPrivateKey<br>       | `NotFound of string ]</code> </pre>
+<div class="info ">
+Potential read errors<br>
+</div>
+
+
+<pre><span id="VALpp_err"><span class="keyword">val</span> pp_err</span> : <code class="type"><a href="Conex_sign.html#TYPEerr">err</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_err&nbsp;err</code> pretty prints <code class="code">err</code>.<br>
+</div>
+
+<pre><span id="VALread_private_key"><span class="keyword">val</span> read_private_key</span> : <code class="type">?id:string -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       (string * <a href="Conex_resource.Key.html#TYPEpriv">Conex_resource.Key.priv</a>, <a href="Conex_sign.html#TYPEerr">err</a>) Pervasives.result</code></pre><div class="info ">
+<code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
+    If <code class="code">id</code> is provided, the private key corresponding to <code class="code">prov</code> and <code class="code">id</code> is
+    loaded.  If no <code class="code">id</code> is provided, and there is only one private key for the
+    given <code class="code">prov</code>, it is loaded and <code class="code">identifier</code> is returned.<br>
+</div>
+
+<pre><span class="keyword">module type</span> <a href="Conex_sign.S.html">S</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_sign.S.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module</span> <a href="Conex_sign.Make.html">Make</a>: <div class="sig_block"><code class="code"><span class="keyword">functor</span>&nbsp;(</code><code class="code"><span class="constructor">C</span></code><code class="code">&nbsp;:&nbsp;</code><code class="type"><a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a></code><code class="code">)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;</code><code class="type"><a href="Conex_sign.S.html">S</a></code><code class="type"> </code></div></pre><div class="info">
+Instantiating the functor.
+</div>
+</body></html>

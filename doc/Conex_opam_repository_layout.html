@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conex_io.html">
+<link rel="next" href="Conex_crypto.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_opam_repository_layout</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conex_io.html" title="Conex_io">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_crypto.html" title="Conex_crypto">Next</a>
+</div>
+<h1>Module <a href="type_Conex_opam_repository_layout.html">Conex_opam_repository_layout</a></h1>
+
+<pre><span class="keyword">module</span> Conex_opam_repository_layout: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_opam_repository_layout.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Opam repository layout
+<p>
+
+    The core of conex is agnostic towards the repository layout - it needs some
+    functions to <a href="Conex_opam_repository_layout.html#VALcategorise"><code class="code"><span class="constructor">Conex_opam_repository_layout</span>.categorise</code></a> received patches into packages, authorisations,
+    and identities.<br>
+</div>
+<hr width="100%">
+<br>
+Opam repository layout
+<p>
+
+    The core of conex is agnostic towards the repository layout - it needs some
+    functions to <a href="Conex_opam_repository_layout.html#VALcategorise"><code class="code"><span class="constructor">Conex_opam_repository_layout</span>.categorise</code></a> received patches into packages, authorisations,
+    and identities.<br>
+
+<pre><span id="VALvalid_id"><span class="keyword">val</span> valid_id</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> bool</code></pre><div class="info ">
+<code class="code">valid_id&nbsp;id</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> is valid: this calls
+    <a href="Conex_utils.String.html#VALis_ascii">String.is_ascii</a> <code class="code">id</code>.<br>
+</div>
+
+<pre><span id="VALvalid_name"><span class="keyword">val</span> valid_name</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> bool</code></pre><div class="info ">
+<code class="code">valid_name&nbsp;name</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">name</code> is valid: either it is '-' or '_'
+    or <a href="Conex_utils.String.html#VALis_ascii">String.is_ascii</a> <code class="code">name</code>.<br>
+</div>
+
+<pre><span id="VALauthorisation_of_item"><span class="keyword">val</span> authorisation_of_item</span> : <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> option</code></pre><div class="info ">
+<code class="code">authorisation_of_item&nbsp;n</code> returns either <code class="code"><span class="constructor">Some</span>&nbsp;n'</code>, where <code class="code">n'</code> is the prefix
+    of <code class="code">n</code> up until the first '.' (which separates package name from version
+    suffix), or <code class="code"><span class="constructor">None</span></code>.<br>
+</div>
+
+<pre><span id="VALdata_path"><span class="keyword">val</span> data_path</span> : <code class="type"><a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">data_path</code> is the path from repository root to packages, "packages".<br>
+</div>
+
+<pre><span id="VALid_path"><span class="keyword">val</span> id_path</span> : <code class="type"><a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">id_path</code> is the path where identities are stored, at the moment "id".<br>
+</div>
+
+<pre><span id="VALid_file"><span class="keyword">val</span> id_file</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">id_file&nbsp;id</code> is the path to the specific id (thus "id/foo" for identifier
+    foo.<br>
+</div>
+
+<pre><span id="VALauthorisation_path"><span class="keyword">val</span> authorisation_path</span> : <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">authorisation_path&nbsp;name</code> is the full path where the "authorisation" file
+    for <code class="code">name</code> is stored.  Currently <code class="code">data_dir;&nbsp;name;&nbsp;<span class="string">"authorisation"</span></code>.<br>
+</div>
+
+<pre><span id="VALpackage_path"><span class="keyword">val</span> package_path</span> : <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">package_path&nbsp;name</code> is the full path where the "package" file for <code class="code">name</code> is
+    stored.  Currently <code class="code">data_dir;&nbsp;name;&nbsp;<span class="string">"package"</span></code>.<br>
+</div>
+
+<pre><span id="VALrelease_filename"><span class="keyword">val</span> release_filename</span> : <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a></code></pre><div class="info ">
+<code class="code">release_filename</code> is "release".<br>
+</div>
+
+<pre><span id="VALrelease_dir"><span class="keyword">val</span> release_dir</span> : <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">release_dir&nbsp;name</code> is <code class="code">data_dir;</code> <a href="Conex_opam_repository_layout.html#VALauthorisation_of_item"><code class="code"><span class="constructor">Conex_opam_repository_layout</span>.authorisation_of_item</code></a> (if <code class="code"><span class="constructor">None</span></code>,
+    <code class="code">name</code>), followed by <code class="code">name</code>.<br>
+</div>
+
+<pre><span id="VALrelease_path"><span class="keyword">val</span> release_path</span> : <code class="type"><a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_utils.html#TYPEpath">Conex_utils.path</a></code></pre><div class="info ">
+<code class="code">release_path&nbsp;name</code> is <code class="code">release_dir&nbsp;@&nbsp;release_filename</code>.<br>
+</div>
+
+<pre><span id="VALcategorise"><span class="keyword">val</span> categorise</span> : <code class="type"><a href="Conex_utils.html#TYPEpath">Conex_utils.path</a> -><br>       [ `Authorisation of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `Compiler of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>       | `Id of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `Package of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>       | `Release of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>       | `Unknown ]</code></pre><div class="info ">
+<code class="code">categorise&nbsp;path</code> identifies which resource owns the given <code class="code">path</code>.<br>
+</div>
+</body></html>

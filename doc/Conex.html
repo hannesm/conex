@@ -1,0 +1,82 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="next" href="Conex_utils.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conex" rel="Chapter" href="Conex.html">
+<link title="Conex_utils" rel="Chapter" href="Conex_utils.html">
+<link title="Conex_repository" rel="Chapter" href="Conex_repository.html">
+<link title="Conex_resource" rel="Chapter" href="Conex_resource.html">
+<link title="Conex_io" rel="Chapter" href="Conex_io.html">
+<link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
+<link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
+<link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
+<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
+<link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
+<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex</title>
+</head>
+<body>
+<div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Conex_utils.html" title="Conex_utils">Next</a>
+</div>
+<h1>Module <a href="type_Conex.html">Conex</a></h1>
+
+<pre><span class="keyword">module</span> Conex: <code class="code"><span class="keyword">sig</span></code> <a href="Conex.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Establishing trust into community repositories
+<p>
+
+    A community repository is a map where a package name is the key and its
+    value are the releases of the package.  The goal of <code class="code">conex</code> is that
+    legitimate package authors can publish new releases and modify metadata.
+    This requires the information who is authorised for a package, either an
+    individual author or a team, which can change over time.  The authorisation
+    information, as well as public keys of individuals, is approved by a quorum
+    of janitors, a team whose members keep the repository clean.
+<p>
+
+    The repository itself is a directory tree, initially verified using a set of
+    janitor public key fingerprints, and afterwards updated using patches.  A
+    repository on its own can be verified, but also a repository on disk, and a
+    patch.  The latter preserves monotonicity of the repository (otherwise, an
+    attacker could present you a rolled back version of the repository).  A
+    client uses conex when updating their repository to ensure that all updates
+    were signed by the package author or a quorum of janitors.
+<p>
+
+    Together with a timestamping service, which updates its repository
+    regularly, verifies all patches, and signs the (global) repository state,
+    rollback, freeze, and mix-and-match attacks are avoided.  This timestamping
+    service is not yet finished, but will be a MirageOS unikernel (to minimise
+    the trusted computing base).
+<p>
+
+    This library was developed with bootstrapping in mind: <code class="code">conex_verify</code>, the
+    command line tool clients will use, does only depend on <code class="code">opam-file-format</code>
+    and <code class="code">cmdliner</code> - both of which is already required by opam.
+<p>
+
+    <code class="code"><span class="constructor">Conex</span></code> is functorised over <a href="Conex_utils.LOGS.html">logging</a>,
+    <a href="Conex_crypto.html">crypto</a>, and soon <a href="Conex_io.html">IO</a> to allow its usage
+    in different environments (e.g. <code class="code">openssl</code> as crypto provider, no <code class="code"><span class="constructor">Unix</span></code> file
+    system interaction at all).
+<p>
+
+    The high level API in this module is subject to change.
+<p>
+
+    <em>4981c17 - <a href="https://github.com/hannesm/conex ">homepage</a></em><br>
+</div>
+<hr width="100%">
+
+<pre><span class="keyword">module</span> <a href="Conex.Make.html">Make</a>: <div class="sig_block"><code class="code"><span class="keyword">functor</span>&nbsp;(</code><code class="code"><span class="constructor">L</span></code><code class="code">&nbsp;:&nbsp;</code><code class="type"><a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a></code><code class="code">)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;</code><div class="sig_block"><code class="code"><span class="keyword">functor</span>&nbsp;(</code><code class="code"><span class="constructor">C</span></code><code class="code">&nbsp;:&nbsp;</code><code class="type"><a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a></code><code class="code">)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;</code><code class="code"><span class="keyword">sig</span></code> <a href="Conex.Make.html">..</a> <code class="code"><span class="keyword">end</span></code></div></div></pre></body></html>
