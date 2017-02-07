@@ -1,7 +1,27 @@
-open Conex_result
+(** IO operations
+
+    Conex relies on providers to read data from and write data to.  Each access
+    consists of a {!path} used as key.  Only basic file types are supported (no
+    symbolic links).
+*)
+
 open Conex_utils
 open Conex_resource
-open Conex_provider
+
+(** A provider contains its base directory, a description, and read/write/exist
+    functionality.  TODO: define instead a module type. *)
+type t = {
+  basedir : string ;
+  description : string ;
+  file_type : path -> (file_type, string) result ;
+  read : path -> (string, string) result ;
+  write : path -> string -> (unit, string) result ;
+  read_dir : path -> (item list, string) result ;
+  exists : path -> bool ;
+}
+
+(** [pp t] is a pretty printer for [t]. *)
+val pp : t fmt
 
 type cc_err = [ `FileNotFound of name | `NotADirectory of name ]
 val compute_release : (string -> Digest.t) -> t -> Uint.t -> name -> (Release.t, cc_err) result

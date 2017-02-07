@@ -1,7 +1,4 @@
-open Conex_result
-open Conex_utils
-
-(** Resources - data we have to deal with
+(** Persistent data: on wire and record types
 
     Every resource in conex is a piece of data (or metadata), and has its own
     purpose.  Resources are persistent objects stored in the repository.  Conex'
@@ -53,6 +50,7 @@ open Conex_utils
     with the digests of the opam repository data ({!Package} and {!Release}).
 *)
 
+open Conex_utils
 
 (** {1 Names and identifiers} *)
 

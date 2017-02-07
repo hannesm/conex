@@ -1,10 +1,23 @@
 
-let rec filter_map ~f = function
-  | []    -> []
-  | x::xs ->
-      match f x with
-      | None    ->       filter_map ~f xs
-      | Some x' -> x' :: filter_map ~f xs
+module S = Set.Make(String)
+
+let s_of_list es = List.fold_left (fun s v -> S.add v s) S.empty es
+
+let (>>=) a f =
+  match a with
+  | Ok x -> f x
+  | Error e -> Error e
+
+let guard p err = if p then Ok () else Error err
+
+let rec foldM f n = function
+  | [] -> Ok n
+  | x::xs -> f n x >>= fun n' -> foldM f n' xs
+
+let foldS f a s =
+  S.fold (fun id r ->
+      r >>= fun r ->
+      f r id) s (Ok a)
 
 module String = struct
   type t = string
@@ -136,11 +149,34 @@ module Uint = struct
   let of_int i = try Some (of_int_exn i) with Failure _ -> None
 end
 
-module S = Set.Make(String)
-
-let s_of_list es = List.fold_left (fun s v -> S.add v s) S.empty es
-
 module M = Map.Make(String)
+
+let rec filter_map ~f = function
+  | []    -> []
+  | x::xs ->
+      match f x with
+      | None    ->       filter_map ~f xs
+      | Some x' -> x' :: filter_map ~f xs
+
+(* this is stripped down from Logs library *)
+module type LOGS = sig
+  module Tag : sig
+    type set
+  end
+
+  type ('a, 'b) msgf =
+    (?header:string -> ?tags:Tag.set ->
+     ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
+  type 'a log = ('a, unit) msgf -> unit
+
+  type src
+
+  val debug : ?src:src -> 'a log
+  val info : ?src:src -> 'a log
+  val warn : ?src:src -> 'a log
+  val err : ?src:src -> 'a log
+end
+
 
 type 'a fmt = Format.formatter -> 'a -> unit
 
@@ -158,21 +194,21 @@ let pp_list pe ppf xs =
     p1 xs
 (*BISECT-IGNORE-END*)
 
+type file_type = File | Directory
 
+type path = string list
 
+let path_to_string path =
+  let skip x = List.mem x [ "." ; "" ; "/" ] in
+  List.fold_left (fun d f ->
+                  match d, f with
+                  | "..", _ -> invalid_arg "there's no escape!"
+                  | _, ".." -> invalid_arg "no escape for files!"
+                  | d, f when skip d -> f
+                  | d, f when skip f -> d
+                  | d, f -> Filename.concat d f)
+                 "" path
 
-let (>>=) a f =
-  match a with
-  | Ok x -> f x
-  | Error e -> Error e
+let string_to_path str = String.cuts '/' str
 
-let guard p err = if p then Ok () else Error err
-
-let rec foldM f n = function
-  | [] -> Ok n
-  | x::xs -> f n x >>= fun n' -> foldM f n' xs
-
-let foldS f a s =
-  S.fold (fun id r ->
-      r >>= fun r ->
-      f r id) s (Ok a)
+type item = file_type * string

@@ -1,5 +1,5 @@
 open Conex_utils
-open Conex_provider
+open Conex_io
 
 let fs_provider basedir =
   (if not (Conex_persistency.exists basedir) then

@@ -1,5 +1,3 @@
-open Conex_result
-
 module V = struct
   type nc_pub =
     | RSA_pub of Nocrypto.Rsa.pub

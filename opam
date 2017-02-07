@@ -3,29 +3,30 @@ name:         "conex"
 homepage:     "https://github.com/hannesm/conex"
 dev-repo:     "https://github.com/hannesm/conex.git"
 bug-reports:  "https://github.com/hannesm/conex/issues"
+doc:          "https://hannesm.github.io/conex/doc"
 author:       ["Hannes Mehnert <hannes@mehnert.org>"]
 maintainer:   ["Hannes Mehnert <hannes@mehnert.org>"]
 license:      "BSD2"
 
 build: [
-  [ "./build" "bin" ]
-  [ "cp" "conex_verify.native" "%{bin}%/conex_verify" ]
+  [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "false" ]
 ]
 
 build-test: [
-  [ "./build" "test" ]
-  [ "./tests.native" ]
+  [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "true" ]
+  [ "ocaml" "pkg/pkg.ml" "test" ]
 ]
 
 depends: [
-  "ocamlfind" {build}
+  "ocamlfind"  {build}
   "ocamlbuild" {build}
-  "cstruct" {>= "1.6.0"}
-  "nocrypto" {>= "0.5.3"}
-  "x509" {>= "0.4.0"}
+  "topkg"      {build}
   "cmdliner"
-  "alcotest" {test}
   "opam-file-format"
+  "cstruct"    {>= "1.6.0"}
+  "nocrypto"   {>= "0.5.3"}
+  "x509"       {>= "0.4.0"}
+  "alcotest"   {test}
   "opam-format"
   "logs" "fmt" "rresult" "astring"
 ]

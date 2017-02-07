@@ -4,7 +4,7 @@ open Conex_resource
 open Rresult
 
 (* this should likely be elsewhere (conex-bells&whistles) *)
-module C = Conex_api.Make(Logs)(Conex_nocrypto.V)
+module C = Conex.Make(Logs)(Conex_nocrypto.V)
 module CR = Conex_nocrypto.NC_R
 module CS = Conex_nocrypto.NC_S
 
@@ -135,8 +135,8 @@ let status_single io r name =
 let status _ dry path quorum strict id name no_rec =
   msg_to_cmdliner
     (init_repo ?quorum ~strict dry path >>= fun (r, io) ->
-     Logs.info (fun m -> m "repository %a" Conex_provider.pp io) ;
-     str_to_msg (C.load_janitors io r) >>= fun r ->
+     Logs.info (fun m -> m "repository %a" Conex_io.pp io) ;
+     str_to_msg (C.load_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
      self io id >>= fun id ->
      let r = load_self_queued io r id in
      if name = "" then
@@ -160,7 +160,7 @@ let init _ dry path id email =
      | Some id ->
        Nocrypto_entropy_unix.initialize () ;
        init_repo ~quorum:0 dry path >>= fun (r, io) ->
-       Logs.info (fun m -> m "repository %a" Conex_provider.pp io) ;
+       Logs.info (fun m -> m "repository %a" Conex_io.pp io) ;
        (match IO.read_id io id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
         | Ok (`Author idx) when List.length idx.Author.keys > 0 ->

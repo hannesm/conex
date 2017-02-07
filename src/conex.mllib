@@ -1,9 +1,9 @@
+Conex
 Conex_utils
 Conex_resource
 Conex_opam_repository_layout
 Conex_diff
 Conex_crypto
-Conex_provider
 Conex_sign
 
 Conex_opam_encoding
@@ -14,4 +14,4 @@ Conex_persistency
 Conex_unix_provider
 Conex_diff_provider
 Conex_io
-Conex_api
+

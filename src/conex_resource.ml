@@ -1,4 +1,3 @@
-open Conex_result
 open Conex_utils
 
 
@@ -38,6 +37,7 @@ module Wire = struct
 
   type t = s M.t
 
+  (* TODO: should we sort lists somehow, and maps lexical? *)
   let to_string t = s_to_string (Map t)
 
   let search t k =

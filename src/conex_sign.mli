@@ -1,13 +1,12 @@
-open Conex_result
+(** Sign: signing resources, and private key utilities. *)
+
 open Conex_utils
 open Conex_resource
 open Conex_crypto
 
-(** Sign: signing resources, and private key utilities. *)
-
 (** [write_private_key prov id key] writes the given key to disk (in
     "~/.conex/", using the [basedir] of [prov] as file prefix. *)
-val write_private_key : Conex_provider.t -> string -> Key.priv -> (unit, string) result
+val write_private_key : Conex_io.t -> string -> Key.priv -> (unit, string) result
 
 (** Potential read errors *)
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list | `Msg of string ]
@@ -19,7 +18,7 @@ val pp_err : err fmt
     If [id] is provided, the private key corresponding to [prov] and [id] is
     loaded.  If no [id] is provided, and there is only one private key for the
     given [prov], it is loaded and [identifier] is returned. *)
-val read_private_key : ?id:string -> Conex_provider.t -> ((string * Key.priv), err) result
+val read_private_key : ?id:string -> Conex_io.t -> ((string * Key.priv), err) result
 
 module type S = sig
 

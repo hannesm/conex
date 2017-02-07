@@ -1,9 +1,22 @@
-open Conex_result
 open Conex_utils
 open Conex_resource
-open Conex_provider
 open Conex_opam_repository_layout
 open Conex_opam_encoding
+
+type t = {
+  basedir : string ;
+  description : string ;
+  file_type : path -> (file_type, string) result ;
+  read : path -> (string, string) result ;
+  write : path -> string -> (unit, string) result ;
+  read_dir : path -> (item list, string) result ;
+  exists : path -> bool ;
+}
+
+(*BISECT-IGNORE-BEGIN*)
+let pp ppf t =
+  Format.fprintf ppf "repository %s: %s" t.basedir t.description
+(*BISECT-IGNORE-END*)
 
 type cc_err = [ `FileNotFound of name | `NotADirectory of name ]
 

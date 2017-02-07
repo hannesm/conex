@@ -1,26 +1,7 @@
-open Conex_result
 open Conex_utils
 open Conex_resource
 open Conex_repository
 open Conex_crypto
-
-(* this is stripped down from Logs library *)
-module type LOGS = sig
-  module Tag : sig
-    type set
-  end
-
-  type ('a, 'b) msgf =
-    (?header:string -> ?tags:Tag.set ->
-     ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
-  type 'a log = ('a, unit) msgf -> unit
-
-  type src
-
-  val debug : ?src:src -> 'a log
-  val info : ?src:src -> 'a log
-  val warn : ?src:src -> 'a log
-end
 
 let str pp e =
   Format.(fprintf str_formatter "%a" pp e) ;
@@ -38,6 +19,8 @@ module Make (L : LOGS) (C : VERIFY) = struct
       if strict repo then Error (str pp err) else
         (L.warn (fun m -> m "%a" pp err) ; Ok res)
 
+  (* TODO: do crypto in here, not in repository
+     (which provides some mechanism to check for quorum) *)
   let load_id io repo id =
     if id_loaded repo id then begin
       L.debug (fun m -> m "%a already loaded" pp_id id) ;
@@ -46,7 +29,7 @@ module Make (L : LOGS) (C : VERIFY) = struct
       | Ok idx ->
         (L.debug (fun m -> m "%a" Author.pp idx) ;
          maybe repo Conex_crypto.pp_verification_error repo
-           (R.verify_author repo idx >>= fun (repo, msgs, _) ->
+           (R.verify_author (* TODO: digest function or digest! *) repo idx >>= fun (repo, msgs, _) ->
             L.info (fun m -> m "%a verified" pp_id id) ;
             List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) msgs ;
             Ok repo))
@@ -81,7 +64,7 @@ module Make (L : LOGS) (C : VERIFY) = struct
            Ok r))
       repo teams
 
-  let load_janitors ?(valid = fun _ _ -> true) io repo =
+  let load_janitors ?(valid = fun _ _ -> false) io repo =
     match IO.read_team io "janitors" with
     | Error e ->
       if strict repo then Error (str IO.pp_r_err e) else
@@ -186,6 +169,7 @@ module Make (L : LOGS) (C : VERIFY) = struct
          L.debug (fun m -> m "%a" R.pp_ok ok) ;
          Ok ())
 
+  (* TODO: rename "authorised"..., do digest computation inline *)
   let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
     (match IO.read_authorisation io name with
      | Error e -> if strict repo then Error (str IO.pp_r_err e) else
@@ -259,7 +243,7 @@ module Make (L : LOGS) (C : VERIFY) = struct
     L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
                 (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
     (* all public keys of janitors in repo are valid. *)
-    load_janitors io repo >>= fun repo ->
+    load_janitors ~valid:(fun _ _ -> true) io repo >>= fun repo ->
     let janitor_keys =
       S.fold (fun id acc ->
           match IO.read_author io id with

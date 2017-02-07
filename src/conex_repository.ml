@@ -1,4 +1,3 @@
-open Conex_result
 open Conex_resource
 open Conex_utils
 open Conex_crypto

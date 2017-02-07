@@ -1,4 +1,4 @@
-open Conex_diff
-open Conex_provider
+(** Data provider using an existing and a diff *)
 
-val apply : t -> diff -> t
+
+val apply : Conex_io.t -> Conex_diff.t -> Conex_io.t

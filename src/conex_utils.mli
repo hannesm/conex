@@ -1,5 +1,36 @@
 
-(** {1 Utility functions for Conex} *)
+(** String, unsigned integers, logging, collections, and more *)
+
+(** {1 Sets, Maps, List utils} *)
+
+(** [S] is a string set. *)
+module S : (Set.S with type elt = string)
+
+(** [s_of_list xs] transforms the string list [xs] to a set. *)
+val s_of_list : string list -> S.t
+
+(** [M] is a [Map] which keys are strings. *)
+module M : (Map.S with type key = string)
+
+(** [filter_map f xs] is [xs'], a list which contains all elements where [f]
+    resulted in [Some _]. *)
+val filter_map : f:('a -> 'b option) -> 'a list -> 'b list
+
+(** {1 Result combinators} *)
+
+(** [r >>= f] is [f a] unless [r] is an [Error], which is propagated.  Monadic bind. *)
+val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
+
+(** [guard pred err] is either [Ok ()] (if [pred] holds), [Error err] otherwise. *)
+val guard : bool -> 'a -> (unit, 'a) result
+
+(** [foldM f a xs] applies [f] to each element of [xs], returns either [Ok] and
+    the produced value, or [Error]. *)
+val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
+
+(** [foldS f a s] applies [f] to each element of the set [s], returns either
+    [Ok] and the produced value, or [Error]. *)
+val foldS : ('a -> string -> ('a, 'c) result) -> 'a -> S.t -> ('a, 'c) result
 
 (** {1 String} *)
 
@@ -101,22 +132,35 @@ module Uint : sig
 end
 
 
-(** {1 Sets, Maps, List utils} *)
+(** {1 Logging} *)
 
-(** [S] is a string set. *)
-module S : (Set.S with type elt = string)
+(** [LOGS] is a subset of the {{:http://erratique.ch/software/logs}Logs}
+    library, providing four log streams. *)
+module type LOGS = sig
 
-(** [s_of_list xs] transforms the string list [xs] to a set. *)
-val s_of_list : string list -> S.t
+  (** Tag, as in logs *)
+  module Tag : sig type set end
 
-(** [M] is a [Map] which keys are strings. *)
-module M : (Map.S with type key = string)
+  (** msgf *)
+  type ('a, 'b) msgf =
+    (?header:string -> ?tags:Tag.set ->
+     ('a, Format.formatter, unit, 'b) format4 -> 'a) -> 'b
+  type 'a log = ('a, unit) msgf -> unit
 
-(** [filter_map f xs] is [xs'], a list which contains all elements where [f]
-    resulted in [Some _]. *)
-val filter_map : f:('a -> 'b option) -> 'a list -> 'b list
+  type src
 
+  (** [debug k] logs [k], a to the debug stream *)
+  val debug : ?src:src -> 'a log
 
+  (** [info k] logs [k], a to the information stream *)
+  val info : ?src:src -> 'a log
+
+  (** [warn k] logs [k], a to the warning stream *)
+  val warn : ?src:src -> 'a log
+
+  (** [err k] logs [k], a to the error stream *)
+  val err : ?src:src -> 'a log
+end
 
 (** {1 Format} *)
 
@@ -129,18 +173,21 @@ type 'a fmt = Format.formatter -> 'a -> unit
 val pp_list : 'a fmt -> 'a list fmt
 
 
-(** {1 Result combinators} *)
+(** {1 File system types} *)
 
-(** [r >>= f] is [f a] unless [r] is an [Error], which is propagated.  Monadic bind. *)
-val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
+(** The sum type of possible file types we expect *)
+type file_type = File | Directory
 
-(** [guard pred err] is either [Ok ()] (if [pred] holds), [Error err] otherwise. *)
-val guard : bool -> 'a -> (unit, 'a) result
+(** A [path] is a list of strings *)
+type path = string list
 
-(** [foldM f a xs] applies [f] to each element of [xs], returns either [Ok] and
-    the produced value, or [Error]. *)
-val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
+(** [path_to_string path] is {{!Conex_utils.String.concat}String.concat} ["/"
+    path].  @raise Invalid_argument if [path] includes either "." or ".." *)
+val path_to_string : path -> string
 
-(** [foldS f a s] applies [f] to each element of the set [s], returns either
-    [Ok] and the produced value, or [Error]. *)
-val foldS : ('a -> string -> ('a, 'c) result) -> 'a -> S.t -> ('a, 'c) result
+(** [string_to_path str] is {{!Conex_utils.String.cuts}String.cuts} ["/"
+    str]. *)
+val string_to_path : string -> path
+
+(** An [item] is a type and its payload *)
+type item = file_type * string

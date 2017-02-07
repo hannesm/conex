@@ -1,6 +1,3 @@
-open Conex_result
-open Conex_resource.Wire
-
 (** Opam file encoding
 
     Persistent files of the opam repository should be kept in the same file
@@ -11,7 +8,7 @@ open Conex_resource.Wire
 
 (** [decode str] is either [Ok t] or [Error str], the input is a string in opam
     format. *)
-val decode : string -> (t, string) result
+val decode : string -> (Conex_resource.Wire.t, string) result
 
 (** [encode t] encodes [t] into a string in opam format. *)
-val encode : t -> string
+val encode : Conex_resource.Wire.t -> string

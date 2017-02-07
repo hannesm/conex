@@ -1,10 +1,8 @@
-open Conex_result
+(** Interface to crypto backend
 
-(** Crypto: signature for the external crypto providers
+    Implementations are provided in {!Conex_nocrypto} and {!Conex_openssl}. *)
 
-    Implementations are provided in {Conex_nocrypto} and {Conex_openssl}. *)
-
-(** {1 Verification errors} *)
+(** {1 Verification} *)
 
 (** Potential error case when verifying a signature *)
 type verification_error = [
@@ -17,8 +15,6 @@ type verification_error = [
 (** [pp_verification_error pp] is a pretty printer for [verification_error]. *)
 val pp_verification_error : Format.formatter -> verification_error -> unit
 
-(** {1 Verification support} *)
-
 module type VERIFY = sig
   (** [verify_rsa_pss ~key ~data ~signature] returns [Ok ()] on success,
       otherwise a [verification_error].  The digest used is SHA256 at the moment. *)
@@ -29,7 +25,7 @@ module type VERIFY = sig
   val b64sha256 : string -> string
 end
 
-(** {1 Signing support} *)
+(** {1 Signing} *)
 
 module type SIGN = sig
 

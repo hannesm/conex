@@ -1,6 +1,4 @@
-open Conex_result
 open Conex_utils
-open Conex_provider
 
 let exists = Sys.file_exists
 

@@ -1,4 +1,3 @@
-open Conex_result
 open Conex_utils
 
 (* this is the barebones verify with minimal dependencies
@@ -6,9 +5,9 @@ open Conex_utils
  *)
 
 module type EXTLOGS = sig
-  include Conex_api.LOGS
+  include LOGS
 
-  type level = [ `Debug | `Info | `Warn ]
+  type level = [ `Debug | `Info | `Warn | `Error ]
   val set_level : level -> unit
   val set_styled : bool -> unit
 end
@@ -25,13 +24,14 @@ module Log : EXTLOGS = struct
 
   type src
 
-  type level = [ `Debug | `Info | `Warn ]
-  let curr_level = ref `Info
+  type level = [ `Debug | `Info | `Warn | `Error ]
+  let curr_level = ref `Warn
   let set_level lvl = curr_level := lvl
   let level_to_string = function
     | `Debug -> "DEBUG"
     | `Info -> "INFO"
     | `Warn -> "WARN"
+    | `Error -> "ERROR"
 
   let curr_styled = ref true
   let set_styled b = curr_styled := b
@@ -41,7 +41,8 @@ module Log : EXTLOGS = struct
       match level with
       | `Debug -> "\027[32m" ^ txt ^ rst
       | `Info -> "\027[34m" ^ txt ^ rst
-      | `Warn -> "\027[31m" ^ txt ^ rst
+      | `Warn -> "\027[33m" ^ txt ^ rst
+      | `Error -> "\027[31m" ^ txt ^ rst
     else
       txt
 
@@ -56,8 +57,9 @@ module Log : EXTLOGS = struct
     fun k level msgf ->
       let doit =
         match level, !curr_level with
-        | `Info, `Debug | `Info, `Info -> true
-        | `Warn, _ -> true
+        | `Info, `Debug | `Info, `Info | `Info, `Error -> true
+        | `Warn, `Warn | `Warn, `Error -> true
+        | `Error, _ -> true
         | `Debug, `Debug -> true
         | _ -> false
       in
@@ -66,9 +68,10 @@ module Log : EXTLOGS = struct
   let debug ?src:_ msgf = kmsg kunit `Debug msgf
   let info ?src:_ msgf = kmsg kunit `Info msgf
   let warn ?src:_ msgf = kmsg kunit `Warn msgf
+  let err ?src:_ msgf = kmsg kunit `Error msgf
 end
 
-module C = Conex_api.Make(Log)(Conex_nocrypto.V)
+module C = Conex.Make(Log)(Conex_nocrypto.V)
 
 (* to be called by opam (see http://opam.ocaml.org/doc/2.0/Manual.html#configfield-repository-validation-command, https://github.com/ocaml/opam/pull/2754/files#diff-5f9ccd1bb288197c5cf2b18366a73363R312):
 
@@ -137,11 +140,11 @@ let verify_it repodir quorum anchors incremental dir patch verbose quiet strict 
      match incremental, patch, dir with
      | true, Some p, None ->
        Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
-       Log.debug (fun m -> m "repository %a" Conex_provider.pp io) ;
+       Log.debug (fun m -> m "repository %a" Conex_io.pp io) ;
        verify_patch io repo p
      | false, None, Some d ->
        Conex_unix_provider.fs_ro_provider d >>= fun io ->
-       Log.debug (fun m -> m "repository %a" Conex_provider.pp io) ;
+       Log.debug (fun m -> m "repository %a" Conex_io.pp io) ;
        verify_full io repo ta
      | _ -> Error "invalid combination of incremental, patch and dir")
 

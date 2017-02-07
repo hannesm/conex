@@ -1,4 +1,3 @@
-open Conex_result
 open Conex_utils
 
 let valid_id id = String.is_ascii id

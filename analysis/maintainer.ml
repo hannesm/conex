@@ -1,4 +1,3 @@
-open Conex_result
 open Conex_utils
 open Astring
 
@@ -47,7 +46,7 @@ module OpamMaintainer = struct
     if String.is_prefix ~affix:"xen" p then S.singleton "xapi-project" else
     if S.mem p xapi_packages then S.singleton "xapi-project" else
     if String.is_prefix ~affix:"ocp" p then S.singleton "OCamlPro" else
-    match io.Conex_provider.read ["packages" ; p ; r ; "opam" ] with
+    match io.Conex_io.read ["packages" ; p ; r ; "opam" ] with
     | Ok data ->
       let opam = OpamFile.OPAM.read_from_string data in
       let ms = S.of_list

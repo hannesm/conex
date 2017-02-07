@@ -1,5 +1,4 @@
 open Conex_utils
-open Conex_provider
 open Conex_resource
 (** Opam repository layout
 
