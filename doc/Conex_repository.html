@@ -121,6 +121,9 @@ The repository type<br>
 </div>
 <br>
 <h2 id="2_Unsafeoperations">Unsafe operations</h2><br>
+<br>
+These operations extend which resources are trusted.  Usually you should not
+    need them, but use <code class="code">verify_author</code> and <code class="code">verify_team</code> instead.<br>
 
 <pre><span id="VALadd_valid_resource"><span class="keyword">val</span> add_valid_resource</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a> -> (<a href="Conex_repository.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
 <code class="code">add_valid_resource&nbsp;repo&nbsp;id&nbsp;r</code> marks resource <code class="code">r</code> valid under <code class="code">id</code> in

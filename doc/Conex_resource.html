@@ -42,63 +42,7 @@
 <h1>Module <a href="type_Conex_resource.html">Conex_resource</a></h1>
 
 <pre><span class="keyword">module</span> Conex_resource: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
-Persistent data: on wire and record types
-<p>
-
-    Every resource in conex is a piece of data (or metadata), and has its own
-    purpose.  Resources are persistent objects stored in the repository.  Conex'
-    view on repository updates are resource modifications over time: addition of
-    a package release, introduction of a new team, modification of dependency
-    constraints of a certain package, key renewal by its author, authorising a
-    team instead of an individual for a package, provisioning of a new
-    timestamping service by a quorum of janitors, ...
-<p>
-
-    Initially, conex verifies the authenticity and freshness of a cloned
-    repository (authenticity by using public key fingerprints verified over a
-    trusted channel, and freshness by looking at the last signature of the
-    timestamping service).
-<p>
-
-    Afterwards, it trusts the local repository and verifies resource updates.
-    Not every update has to be verified individually (if a client is updating
-    rarely, they don't verify intermediate states).  Both authenticity and
-    monotonicity are preserved.  To minimise the amount of public key
-    operations, instead of signing each resource with their private key, each
-    author digitally signs their individual list of approved resources: their
-    name, their type, and their digest.  Each author can approve multiple
-    versions of a single resource (e.g. a team red with members Joseph and
-    Vladimir in version 41, and also the same team red with Joseph, Vladimir,
-    and in version 42).  The resource list is just a resource, which is modified
-    only by the author who owns it (thus no merge conflicts from simultaneous
-    edits by multiple people).
-<p>
-
-    Resources are stored in the same repository they should protect from
-    malicious updates or downgrades.  Additionally, they have to protect
-    themselves from attackers.
-<p>
-
-    Some resource updates need approval by a quorum of janitors, this is to
-    avoid a centralised trust authority which is a single point of failure.  As
-    long as fewer than a quorum of janitor private keys are compromised, the
-    guarantees provided by conex are preserved.  Janitors themselves are a team,
-    and part of the repository.  This allows dynamic updates of the trusted
-    group.
-<p>
-
-    The possibility to have multiple versions of a resource approved is crucial
-    for the update workflow: only after a quorum of janitors approved the update
-    (each by adding it to their resource list), this resource update can be
-    verified by conex (the merge of the resource update needs to wait until
-    sufficient janitors approved it).
-<p>
-
-    Resources stored on disk consists of a common header: a name, a type, a
-    counter, a wraparound counter, and a creation timestamp.  There are
-    broadly three kinds of resources: those containing identities (<a href="Conex_resource.Team.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Team</span></code></a> and
-    <a href="Conex_resource.Author.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span></code></a>), those regulating access to packages (<a href="Conex_resource.Authorisation.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span></code></a>), and those
-    with the digests of the opam repository data (<a href="Conex_resource.Package.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Package</span></code></a> and <a href="Conex_resource.Release.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Release</span></code></a>).<br>
+Persistent data: on wire and record types<br>
 </div>
 <hr width="100%">
 <br>
