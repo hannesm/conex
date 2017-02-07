@@ -1,0 +1,324 @@
+<html>
+  <head>
+    <title>Coverage report</title>
+    <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="index.html">
+          <span class="dirname">src/</span>conex_persistency.ml
+        </a>
+      </h1>
+      <h2>1.43%</h2>
+    </div>
+    <div id="navbar">
+      <span class="unvisited" style="top:7.59%"></span>
+      <span class="unvisited" style="top:8.86%"></span>
+      <span class="unvisited" style="top:10.13%"></span>
+      <span class="unvisited" style="top:11.39%"></span>
+      <span class="unvisited" style="top:12.66%"></span>
+      <span class="unvisited" style="top:15.19%"></span>
+      <span class="unvisited" style="top:18.99%"></span>
+      <span class="unvisited" style="top:20.25%"></span>
+      <span class="unvisited" style="top:21.52%"></span>
+      <span class="unvisited" style="top:24.05%"></span>
+      <span class="unvisited" style="top:26.58%"></span>
+      <span class="unvisited" style="top:30.38%"></span>
+      <span class="unvisited" style="top:31.65%"></span>
+      <span class="unvisited" style="top:32.91%"></span>
+      <span class="unvisited" style="top:34.18%"></span>
+      <span class="unvisited" style="top:35.44%"></span>
+      <span class="unvisited" style="top:39.24%"></span>
+      <span class="unvisited" style="top:40.51%"></span>
+      <span class="unvisited" style="top:41.77%"></span>
+      <span class="unvisited" style="top:43.04%"></span>
+      <span class="unvisited" style="top:44.30%"></span>
+      <span class="unvisited" style="top:45.57%"></span>
+      <span class="unvisited" style="top:46.84%"></span>
+      <span class="unvisited" style="top:48.10%"></span>
+      <span class="unvisited" style="top:49.37%"></span>
+      <span class="unvisited" style="top:51.90%"></span>
+      <span class="unvisited" style="top:54.43%"></span>
+      <span class="unvisited" style="top:55.70%"></span>
+      <span class="unvisited" style="top:58.23%"></span>
+      <span class="unvisited" style="top:59.49%"></span>
+      <span class="unvisited" style="top:60.76%"></span>
+      <span class="unvisited" style="top:62.03%"></span>
+      <span class="unvisited" style="top:63.29%"></span>
+      <span class="unvisited" style="top:64.56%"></span>
+      <span class="unvisited" style="top:65.82%"></span>
+      <span class="unvisited" style="top:67.09%"></span>
+      <span class="unvisited" style="top:68.35%"></span>
+      <span class="unvisited" style="top:73.42%"></span>
+      <span class="unvisited" style="top:74.68%"></span>
+      <span class="unvisited" style="top:75.95%"></span>
+      <span class="unvisited" style="top:77.22%"></span>
+      <span class="unvisited" style="top:78.48%"></span>
+      <span class="unvisited" style="top:81.01%"></span>
+      <span class="unvisited" style="top:84.81%"></span>
+      <span class="unvisited" style="top:86.08%"></span>
+      <span class="unvisited" style="top:87.34%"></span>
+      <span class="unvisited" style="top:88.61%"></span>
+      <span class="unvisited" style="top:89.87%"></span>
+      <span class="unvisited" style="top:91.14%"></span>
+      <span class="unvisited" style="top:92.41%"></span>
+      <span class="unvisited" style="top:93.67%"></span>
+      <span class="unvisited" style="top:96.20%"></span>
+      <span class="unvisited" style="top:97.47%"></span>
+      <span class="unvisited" style="top:98.73%"></span>
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span class="visited"> </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span > </span>
+<a id="L6"></a><span class="unvisited"> </span>
+<a id="L7"></a><span class="unvisited"> </span>
+<a id="L8"></a><span class="unvisited"> </span>
+<a id="L9"></a><span class="unvisited"> </span>
+<a id="L10"></a><span class="unvisited"> </span>
+<a id="L11"></a><span > </span>
+<a id="L12"></a><span class="unvisited"> </span>
+<a id="L13"></a><span > </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span class="unvisited"> </span>
+<a id="L16"></a><span class="unvisited"> </span>
+<a id="L17"></a><span class="unvisited"> </span>
+<a id="L18"></a><span > </span>
+<a id="L19"></a><span class="unvisited"> </span>
+<a id="L20"></a><span > </span>
+<a id="L21"></a><span class="unvisited"> </span>
+<a id="L22"></a><span > </span>
+<a id="L23"></a><span > </span>
+<a id="L24"></a><span class="unvisited"> </span>
+<a id="L25"></a><span class="unvisited"> </span>
+<a id="L26"></a><span class="unvisited"> </span>
+<a id="L27"></a><span class="unvisited"> </span>
+<a id="L28"></a><span class="unvisited"> </span>
+<a id="L29"></a><span > </span>
+<a id="L30"></a><span > </span>
+<a id="L31"></a><span class="unvisited"> </span>
+<a id="L32"></a><span class="unvisited"> </span>
+<a id="L33"></a><span class="unvisited"> </span>
+<a id="L34"></a><span class="unvisited"> </span>
+<a id="L35"></a><span class="unvisited"> </span>
+<a id="L36"></a><span class="unvisited"> </span>
+<a id="L37"></a><span class="unvisited"> </span>
+<a id="L38"></a><span class="unvisited"> </span>
+<a id="L39"></a><span class="unvisited"> </span>
+<a id="L40"></a><span > </span>
+<a id="L41"></a><span class="unvisited"> </span>
+<a id="L42"></a><span > </span>
+<a id="L43"></a><span class="unvisited"> </span>
+<a id="L44"></a><span class="unvisited"> </span>
+<a id="L45"></a><span > </span>
+<a id="L46"></a><span class="unvisited"> </span>
+<a id="L47"></a><span class="unvisited"> </span>
+<a id="L48"></a><span class="unvisited"> </span>
+<a id="L49"></a><span class="unvisited"> </span>
+<a id="L50"></a><span class="unvisited"> </span>
+<a id="L51"></a><span class="unvisited"> </span>
+<a id="L52"></a><span class="unvisited"> </span>
+<a id="L53"></a><span class="unvisited"> </span>
+<a id="L54"></a><span class="unvisited"> </span>
+<a id="L55"></a><span > </span>
+<a id="L56"></a><span > </span>
+<a id="L57"></a><span > </span>
+<a id="L58"></a><span class="unvisited"> </span>
+<a id="L59"></a><span class="unvisited"> </span>
+<a id="L60"></a><span class="unvisited"> </span>
+<a id="L61"></a><span class="unvisited"> </span>
+<a id="L62"></a><span class="unvisited"> </span>
+<a id="L63"></a><span > </span>
+<a id="L64"></a><span class="unvisited"> </span>
+<a id="L65"></a><span > </span>
+<a id="L66"></a><span > </span>
+<a id="L67"></a><span class="unvisited"> </span>
+<a id="L68"></a><span class="unvisited"> </span>
+<a id="L69"></a><span class="unvisited"> </span>
+<a id="L70"></a><span class="unvisited"> </span>
+<a id="L71"></a><span class="unvisited"> </span>
+<a id="L72"></a><span class="unvisited"> </span>
+<a id="L73"></a><span class="unvisited"> </span>
+<a id="L74"></a><span class="unvisited"> </span>
+<a id="L75"></a><span > </span>
+<a id="L76"></a><span class="unvisited"> </span>
+<a id="L77"></a><span class="unvisited"> </span>
+<a id="L78"></a><span class="unvisited"> </span>
+<a id="L79"></a><span > </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1"> 1</a>
+<a href="#L2"> 2</a>
+<a href="#L3"> 3</a>
+<a href="#L4"> 4</a>
+<a href="#L5"> 5</a>
+<a href="#L6"> 6</a>
+<a href="#L7"> 7</a>
+<a href="#L8"> 8</a>
+<a href="#L9"> 9</a>
+<a href="#L10">10</a>
+<a href="#L11">11</a>
+<a href="#L12">12</a>
+<a href="#L13">13</a>
+<a href="#L14">14</a>
+<a href="#L15">15</a>
+<a href="#L16">16</a>
+<a href="#L17">17</a>
+<a href="#L18">18</a>
+<a href="#L19">19</a>
+<a href="#L20">20</a>
+<a href="#L21">21</a>
+<a href="#L22">22</a>
+<a href="#L23">23</a>
+<a href="#L24">24</a>
+<a href="#L25">25</a>
+<a href="#L26">26</a>
+<a href="#L27">27</a>
+<a href="#L28">28</a>
+<a href="#L29">29</a>
+<a href="#L30">30</a>
+<a href="#L31">31</a>
+<a href="#L32">32</a>
+<a href="#L33">33</a>
+<a href="#L34">34</a>
+<a href="#L35">35</a>
+<a href="#L36">36</a>
+<a href="#L37">37</a>
+<a href="#L38">38</a>
+<a href="#L39">39</a>
+<a href="#L40">40</a>
+<a href="#L41">41</a>
+<a href="#L42">42</a>
+<a href="#L43">43</a>
+<a href="#L44">44</a>
+<a href="#L45">45</a>
+<a href="#L46">46</a>
+<a href="#L47">47</a>
+<a href="#L48">48</a>
+<a href="#L49">49</a>
+<a href="#L50">50</a>
+<a href="#L51">51</a>
+<a href="#L52">52</a>
+<a href="#L53">53</a>
+<a href="#L54">54</a>
+<a href="#L55">55</a>
+<a href="#L56">56</a>
+<a href="#L57">57</a>
+<a href="#L58">58</a>
+<a href="#L59">59</a>
+<a href="#L60">60</a>
+<a href="#L61">61</a>
+<a href="#L62">62</a>
+<a href="#L63">63</a>
+<a href="#L64">64</a>
+<a href="#L65">65</a>
+<a href="#L66">66</a>
+<a href="#L67">67</a>
+<a href="#L68">68</a>
+<a href="#L69">69</a>
+<a href="#L70">70</a>
+<a href="#L71">71</a>
+<a href="#L72">72</a>
+<a href="#L73">73</a>
+<a href="#L74">74</a>
+<a href="#L75">75</a>
+<a href="#L76">76</a>
+<a href="#L77">77</a>
+<a href="#L78">78</a>
+<a href="#L79">79</a>
+</pre>
+        <pre id="code">
+open Conex_utils
+
+let exists = <span data-count="1">S</span>ys.file_exists
+
+let guard_unix f x =
+  <span data-count="0">t</span>ry Ok (f x) with
+  | <span data-count="0">U</span>nix.Unix_error (e, f, arg) -&gt;
+    let msg = <span data-count="0">U</span>nix.error_message e in
+    <span data-count="0">E</span>rror (Printf.sprintf "error %s while %s (%s)" msg f arg)
+  | <span data-count="0">_</span> -&gt; Error "unknown error"
+
+let mkdir ?(mode = <span data-count="0">0</span>o755) name = <span data-count="0">g</span>uard_unix (Unix.mkdir name) mode
+
+let guard_sys f x =
+  <span data-count="0">t</span>ry Ok (f x) with
+  | <span data-count="0">S</span>ys_error msg -&gt; Error msg
+  | <span data-count="0">_</span> -&gt; Error "unknown error"
+
+let remove a = <span data-count="0">g</span>uard_sys Sys.remove a
+
+let rename a b = <span data-count="0">g</span>uard_sys (Sys.rename a) b
+
+let file_type filename =
+  <span data-count="0">g</span>uard_unix Unix.stat filename &gt;&gt;= fun stat -&gt;
+  <span data-count="0">m</span>atch stat.Unix.st_kind with
+  | <span data-count="0">U</span>nix.S_REG -&gt; Ok File
+  | <span data-count="0">U</span>nix.S_DIR -&gt; Ok Directory
+  | <span data-count="0">_</span> -&gt; Error "unsupported file type"
+
+let read_file filename =
+  <span data-count="0">g</span>uard_unix (fun file -&gt;
+      <span data-count="0">l</span>et open Unix in
+      let fd = <span data-count="0">o</span>penfile file [ O_RDONLY ] 0 in
+      <span data-count="0">l</span>et len = <span data-count="0">(</span>fstat fd).st_size in
+      <span data-count="0">l</span>et buf = <span data-count="0">B</span>ytes.create len in
+      <span data-count="0">l</span>et rec rread idx =
+        <span data-count="0">l</span>et r = <span data-count="0">r</span>ead fd buf idx (len - idx) in
+        <span data-count="0">i</span>f r + idx = len then
+          <span data-count="0">c</span>lose fd
+        else
+          <span data-count="0">r</span>read (r + idx)
+      in
+      <span data-count="0">r</span>read 0 ;
+      <span data-count="0">B</span>ytes.to_string buf) filename
+
+let write_file ?(mode = <span data-count="0">0</span>o644) filename data =
+  <span data-count="0">g</span>uard_unix (fun file -&gt;
+      <span data-count="0">l</span>et open Unix in
+      let fd = <span data-count="0">o</span>penfile file [ O_WRONLY ; O_EXCL ; O_CREAT ] mode in
+      <span data-count="0">l</span>et bytes = <span data-count="0">B</span>ytes.of_string data in
+      <span data-count="0">l</span>et length = <span data-count="0">B</span>ytes.length bytes in
+      <span data-count="0">l</span>et written = <span data-count="0">w</span>rite fd bytes 0 length in
+      <span data-count="0">a</span>ssert (length = written) ;
+      <span data-count="0">c</span>lose fd)
+    filename
+
+let write_replace ?mode filename data =
+  <span data-count="0">i</span>f exists filename then
+    <span data-count="0">l</span>et tmp = <span data-count="0">f</span>ilename ^ ".tmp" in
+    <span data-count="0">(</span>if exists tmp then <span data-count="0">r</span>emove tmp else <span data-count="0">O</span>k ()) &gt;&gt;= fun () -&gt;
+    <span data-count="0">w</span>rite_file ?mode tmp data &gt;&gt;= fun () -&gt;
+    <span data-count="0">r</span>ename tmp filename
+  else
+    <span data-count="0">w</span>rite_file ?mode filename data
+
+let collect_dir dir =
+  <span data-count="0">g</span>uard_unix (fun dir -&gt;
+      <span data-count="0">l</span>et open Unix in
+      let dh = <span data-count="0">o</span>pendir dir in
+      <span data-count="0">l</span>et next () = <span data-count="0">t</span>ry Some (readdir dh) with <span data-count="0">E</span>nd_of_file -&gt; None in
+      <span data-count="0">l</span>et rec doone acc = <span data-count="0">f</span>unction
+        | <span data-count="0">S</span>ome "." | <span data-count="0">S</span>ome ".." -&gt; doone acc (next ())
+        | <span data-count="0">S</span>ome s -&gt; doone (s :: acc) (next ())
+        | <span data-count="0">N</span>one -&gt; acc
+      in
+      <span data-count="0">l</span>et res = <span data-count="0">d</span>oone [] (next ()) in
+      <span data-count="0">c</span>losedir dh ;
+      <span data-count="0">r</span>es)
+    dir
+</pre>
+      </div>
+    </div>
+    <div id="footer">Generated on 2017-02-07 23:46:17 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <script src="coverage.js"></script>
+  </body>
+</html>

@@ -1,0 +1,460 @@
+<html>
+  <head>
+    <title>Coverage report</title>
+    <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="index.html">
+          <span class="dirname">src/</span>conex_sign.ml
+        </a>
+      </h1>
+      <h2>20.21%</h2>
+    </div>
+    <div id="navbar">
+      <span class="unvisited" style="top:6.50%"></span>
+      <span class="unvisited" style="top:7.32%"></span>
+      <span class="unvisited" style="top:8.13%"></span>
+      <span class="unvisited" style="top:8.94%"></span>
+      <span class="unvisited" style="top:9.76%"></span>
+      <span class="unvisited" style="top:10.57%"></span>
+      <span class="unvisited" style="top:12.20%"></span>
+      <span class="unvisited" style="top:13.82%"></span>
+      <span class="unvisited" style="top:14.63%"></span>
+      <span class="unvisited" style="top:16.26%"></span>
+      <span class="unvisited" style="top:17.07%"></span>
+      <span class="unvisited" style="top:17.89%"></span>
+      <span class="unvisited" style="top:18.70%"></span>
+      <span class="unvisited" style="top:22.76%"></span>
+      <span class="unvisited" style="top:23.58%"></span>
+      <span class="unvisited" style="top:24.39%"></span>
+      <span class="unvisited" style="top:26.02%"></span>
+      <span class="unvisited" style="top:28.46%"></span>
+      <span class="unvisited" style="top:29.27%"></span>
+      <span class="unvisited" style="top:30.08%"></span>
+      <span class="unvisited" style="top:31.71%"></span>
+      <span class="unvisited" style="top:32.52%"></span>
+      <span class="unvisited" style="top:33.33%"></span>
+      <span class="unvisited" style="top:35.77%"></span>
+      <span class="unvisited" style="top:36.59%"></span>
+      <span class="unvisited" style="top:37.40%"></span>
+      <span class="unvisited" style="top:38.21%"></span>
+      <span class="unvisited" style="top:39.02%"></span>
+      <span class="unvisited" style="top:40.65%"></span>
+      <span class="unvisited" style="top:41.46%"></span>
+      <span class="unvisited" style="top:42.28%"></span>
+      <span class="unvisited" style="top:43.09%"></span>
+      <span class="unvisited" style="top:43.90%"></span>
+      <span class="unvisited" style="top:44.72%"></span>
+      <span class="unvisited" style="top:45.53%"></span>
+      <span class="unvisited" style="top:46.34%"></span>
+      <span class="unvisited" style="top:47.15%"></span>
+      <span class="unvisited" style="top:47.97%"></span>
+      <span class="unvisited" style="top:48.78%"></span>
+      <span class="unvisited" style="top:59.35%"></span>
+      <span class="unvisited" style="top:60.16%"></span>
+      <span class="unvisited" style="top:60.98%"></span>
+      <span class="unvisited" style="top:61.79%"></span>
+      <span class="unvisited" style="top:62.60%"></span>
+      <span class="unvisited" style="top:63.41%"></span>
+      <span class="unvisited" style="top:64.23%"></span>
+      <span class="unvisited" style="top:65.04%"></span>
+      <span class="unvisited" style="top:65.85%"></span>
+      <span class="unvisited" style="top:66.67%"></span>
+      <span class="unvisited" style="top:67.48%"></span>
+      <span class="unvisited" style="top:69.11%"></span>
+      <span class="unvisited" style="top:70.73%"></span>
+      <span class="unvisited" style="top:71.54%"></span>
+      <span class="unvisited" style="top:72.36%"></span>
+      <span class="unvisited" style="top:73.17%"></span>
+      <span class="unvisited" style="top:73.98%"></span>
+      <span class="unvisited" style="top:74.80%"></span>
+      <span class="unvisited" style="top:75.61%"></span>
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span > </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span class="visited"> </span>
+<a id="L6"></a><span > </span>
+<a id="L7"></a><span > </span>
+<a id="L8"></a><span class="unvisited"> </span>
+<a id="L9"></a><span class="unvisited"> </span>
+<a id="L10"></a><span class="unvisited"> </span>
+<a id="L11"></a><span class="unvisited"> </span>
+<a id="L12"></a><span class="unvisited"> </span>
+<a id="L13"></a><span class="unvisited"> </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span class="unvisited"> </span>
+<a id="L16"></a><span > </span>
+<a id="L17"></a><span class="unvisited"> </span>
+<a id="L18"></a><span class="unvisited"> </span>
+<a id="L19"></a><span > </span>
+<a id="L20"></a><span class="unvisited"> </span>
+<a id="L21"></a><span class="unvisited"> </span>
+<a id="L22"></a><span class="unvisited"> </span>
+<a id="L23"></a><span class="unvisited"> </span>
+<a id="L24"></a><span > </span>
+<a id="L25"></a><span > </span>
+<a id="L26"></a><span > </span>
+<a id="L27"></a><span > </span>
+<a id="L28"></a><span class="unvisited"> </span>
+<a id="L29"></a><span class="unvisited"> </span>
+<a id="L30"></a><span class="unvisited"> </span>
+<a id="L31"></a><span > </span>
+<a id="L32"></a><span class="unvisited"> </span>
+<a id="L33"></a><span > </span>
+<a id="L34"></a><span > </span>
+<a id="L35"></a><span class="unvisited"> </span>
+<a id="L36"></a><span class="unvisited"> </span>
+<a id="L37"></a><span class="unvisited"> </span>
+<a id="L38"></a><span > </span>
+<a id="L39"></a><span class="unvisited"> </span>
+<a id="L40"></a><span class="unvisited"> </span>
+<a id="L41"></a><span class="unvisited"> </span>
+<a id="L42"></a><span > </span>
+<a id="L43"></a><span > </span>
+<a id="L44"></a><span class="unvisited"> </span>
+<a id="L45"></a><span class="unvisited"> </span>
+<a id="L46"></a><span class="unvisited"> </span>
+<a id="L47"></a><span class="unvisited"> </span>
+<a id="L48"></a><span class="unvisited"> </span>
+<a id="L49"></a><span > </span>
+<a id="L50"></a><span class="unvisited"> </span>
+<a id="L51"></a><span class="unvisited"> </span>
+<a id="L52"></a><span class="unvisited"> </span>
+<a id="L53"></a><span class="unvisited"> </span>
+<a id="L54"></a><span class="unvisited"> </span>
+<a id="L55"></a><span class="unvisited"> </span>
+<a id="L56"></a><span class="unvisited"> </span>
+<a id="L57"></a><span class="unvisited"> </span>
+<a id="L58"></a><span class="unvisited"> </span>
+<a id="L59"></a><span class="unvisited"> </span>
+<a id="L60"></a><span class="unvisited"> </span>
+<a id="L61"></a><span > </span>
+<a id="L62"></a><span > </span>
+<a id="L63"></a><span > </span>
+<a id="L64"></a><span > </span>
+<a id="L65"></a><span > </span>
+<a id="L66"></a><span > </span>
+<a id="L67"></a><span > </span>
+<a id="L68"></a><span > </span>
+<a id="L69"></a><span > </span>
+<a id="L70"></a><span > </span>
+<a id="L71"></a><span > </span>
+<a id="L72"></a><span > </span>
+<a id="L73"></a><span class="unvisited"> </span>
+<a id="L74"></a><span class="unvisited"> </span>
+<a id="L75"></a><span class="unvisited"> </span>
+<a id="L76"></a><span class="unvisited"> </span>
+<a id="L77"></a><span class="unvisited"> </span>
+<a id="L78"></a><span class="unvisited"> </span>
+<a id="L79"></a><span class="unvisited"> </span>
+<a id="L80"></a><span class="unvisited"> </span>
+<a id="L81"></a><span class="unvisited"> </span>
+<a id="L82"></a><span class="unvisited"> </span>
+<a id="L83"></a><span class="unvisited"> </span>
+<a id="L84"></a><span > </span>
+<a id="L85"></a><span class="unvisited"> </span>
+<a id="L86"></a><span > </span>
+<a id="L87"></a><span class="unvisited"> </span>
+<a id="L88"></a><span class="unvisited"> </span>
+<a id="L89"></a><span class="unvisited"> </span>
+<a id="L90"></a><span class="unvisited"> </span>
+<a id="L91"></a><span class="unvisited"> </span>
+<a id="L92"></a><span class="unvisited"> </span>
+<a id="L93"></a><span class="unvisited"> </span>
+<a id="L94"></a><span > </span>
+<a id="L95"></a><span > </span>
+<a id="L96"></a><span > </span>
+<a id="L97"></a><span > </span>
+<a id="L98"></a><span > </span>
+<a id="L99"></a><span > </span>
+<a id="L100"></a><span > </span>
+<a id="L101"></a><span > </span>
+<a id="L102"></a><span > </span>
+<a id="L103"></a><span > </span>
+<a id="L104"></a><span > </span>
+<a id="L105"></a><span class="visited"> </span>
+<a id="L106"></a><span class="visited"> </span>
+<a id="L107"></a><span > </span>
+<a id="L108"></a><span class="visited"> </span>
+<a id="L109"></a><span class="visited"> </span>
+<a id="L110"></a><span > </span>
+<a id="L111"></a><span class="visited"> </span>
+<a id="L112"></a><span > </span>
+<a id="L113"></a><span > </span>
+<a id="L114"></a><span class="visited"> </span>
+<a id="L115"></a><span class="visited"> </span>
+<a id="L116"></a><span class="visited"> </span>
+<a id="L117"></a><span > </span>
+<a id="L118"></a><span class="visited"> </span>
+<a id="L119"></a><span class="visited"> </span>
+<a id="L120"></a><span class="visited"> </span>
+<a id="L121"></a><span class="visited"> </span>
+<a id="L122"></a><span class="visited"> </span>
+<a id="L123"></a><span > </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1">  1</a>
+<a href="#L2">  2</a>
+<a href="#L3">  3</a>
+<a href="#L4">  4</a>
+<a href="#L5">  5</a>
+<a href="#L6">  6</a>
+<a href="#L7">  7</a>
+<a href="#L8">  8</a>
+<a href="#L9">  9</a>
+<a href="#L10"> 10</a>
+<a href="#L11"> 11</a>
+<a href="#L12"> 12</a>
+<a href="#L13"> 13</a>
+<a href="#L14"> 14</a>
+<a href="#L15"> 15</a>
+<a href="#L16"> 16</a>
+<a href="#L17"> 17</a>
+<a href="#L18"> 18</a>
+<a href="#L19"> 19</a>
+<a href="#L20"> 20</a>
+<a href="#L21"> 21</a>
+<a href="#L22"> 22</a>
+<a href="#L23"> 23</a>
+<a href="#L24"> 24</a>
+<a href="#L25"> 25</a>
+<a href="#L26"> 26</a>
+<a href="#L27"> 27</a>
+<a href="#L28"> 28</a>
+<a href="#L29"> 29</a>
+<a href="#L30"> 30</a>
+<a href="#L31"> 31</a>
+<a href="#L32"> 32</a>
+<a href="#L33"> 33</a>
+<a href="#L34"> 34</a>
+<a href="#L35"> 35</a>
+<a href="#L36"> 36</a>
+<a href="#L37"> 37</a>
+<a href="#L38"> 38</a>
+<a href="#L39"> 39</a>
+<a href="#L40"> 40</a>
+<a href="#L41"> 41</a>
+<a href="#L42"> 42</a>
+<a href="#L43"> 43</a>
+<a href="#L44"> 44</a>
+<a href="#L45"> 45</a>
+<a href="#L46"> 46</a>
+<a href="#L47"> 47</a>
+<a href="#L48"> 48</a>
+<a href="#L49"> 49</a>
+<a href="#L50"> 50</a>
+<a href="#L51"> 51</a>
+<a href="#L52"> 52</a>
+<a href="#L53"> 53</a>
+<a href="#L54"> 54</a>
+<a href="#L55"> 55</a>
+<a href="#L56"> 56</a>
+<a href="#L57"> 57</a>
+<a href="#L58"> 58</a>
+<a href="#L59"> 59</a>
+<a href="#L60"> 60</a>
+<a href="#L61"> 61</a>
+<a href="#L62"> 62</a>
+<a href="#L63"> 63</a>
+<a href="#L64"> 64</a>
+<a href="#L65"> 65</a>
+<a href="#L66"> 66</a>
+<a href="#L67"> 67</a>
+<a href="#L68"> 68</a>
+<a href="#L69"> 69</a>
+<a href="#L70"> 70</a>
+<a href="#L71"> 71</a>
+<a href="#L72"> 72</a>
+<a href="#L73"> 73</a>
+<a href="#L74"> 74</a>
+<a href="#L75"> 75</a>
+<a href="#L76"> 76</a>
+<a href="#L77"> 77</a>
+<a href="#L78"> 78</a>
+<a href="#L79"> 79</a>
+<a href="#L80"> 80</a>
+<a href="#L81"> 81</a>
+<a href="#L82"> 82</a>
+<a href="#L83"> 83</a>
+<a href="#L84"> 84</a>
+<a href="#L85"> 85</a>
+<a href="#L86"> 86</a>
+<a href="#L87"> 87</a>
+<a href="#L88"> 88</a>
+<a href="#L89"> 89</a>
+<a href="#L90"> 90</a>
+<a href="#L91"> 91</a>
+<a href="#L92"> 92</a>
+<a href="#L93"> 93</a>
+<a href="#L94"> 94</a>
+<a href="#L95"> 95</a>
+<a href="#L96"> 96</a>
+<a href="#L97"> 97</a>
+<a href="#L98"> 98</a>
+<a href="#L99"> 99</a>
+<a href="#L100">100</a>
+<a href="#L101">101</a>
+<a href="#L102">102</a>
+<a href="#L103">103</a>
+<a href="#L104">104</a>
+<a href="#L105">105</a>
+<a href="#L106">106</a>
+<a href="#L107">107</a>
+<a href="#L108">108</a>
+<a href="#L109">109</a>
+<a href="#L110">110</a>
+<a href="#L111">111</a>
+<a href="#L112">112</a>
+<a href="#L113">113</a>
+<a href="#L114">114</a>
+<a href="#L115">115</a>
+<a href="#L116">116</a>
+<a href="#L117">117</a>
+<a href="#L118">118</a>
+<a href="#L119">119</a>
+<a href="#L120">120</a>
+<a href="#L121">121</a>
+<a href="#L122">122</a>
+<a href="#L123">123</a>
+</pre>
+        <pre id="code">
+open Conex_utils
+open Conex_resource
+open Conex_crypto
+
+let private_dir = <span data-count="1">F</span>ilename.concat (Sys.getenv "HOME") ".conex"
+
+let private_keys p =
+  <span data-count="0">l</span>et is_private s =
+    <span data-count="0">i</span>f String.is_suffix ~suffix:".private" s then
+      <span data-count="0">l</span>et p = <span data-count="0">s</span>tring_to_path (p.Conex_io.basedir) in
+      <span data-count="0">m</span>atch List.rev (String.cuts '.' s) with
+      | <span data-count="0">_</span>::id::path when <span data-count="0">p</span> = List.rev path -&gt; Some id
+      | <span data-count="0">_</span> -&gt; None
+    else
+      <span data-count="0">N</span>one
+  in
+  <span data-count="0">C</span>onex_persistency.collect_dir private_dir &gt;&gt;= fun files -&gt;
+  <span data-count="0">L</span>ist.fold_left
+    (fun acc s -&gt;
+       <span data-count="0">a</span>cc &gt;&gt;= fun acc -&gt;
+       <span data-count="0">m</span>atch is_private s with
+       | <span data-count="0">N</span>one -&gt; Ok acc
+       | <span data-count="0">S</span>ome s -&gt; Ok (s :: acc))
+    (Ok [])
+    files
+
+let private_key_path path id =
+  <span data-count="0">l</span>et filename =
+    <span data-count="0">l</span>et els = <span data-count="0">s</span>tring_to_path path @ [id ; "private"] in
+    <span data-count="0">S</span>tring.concat "." els
+  in
+  <span data-count="0">"</span>/" ^ path_to_string (string_to_path private_dir @ [ filename ])
+
+let write_private_key prov id key =
+  <span data-count="0">l</span>et base = <span data-count="0">p</span>rov.Conex_io.basedir in
+  <span data-count="0">l</span>et filename = <span data-count="0">p</span>rivate_key_path base id in
+  <span data-count="0">(</span>if Conex_persistency.exists filename then <span data-count="0">b</span>egin
+      let ts =
+        <span data-count="0">l</span>et open Unix in
+        let t = <span data-count="0">g</span>mtime (stat filename).st_mtime in
+        <span data-count="0">P</span>rintf.sprintf "%4d%2d%2d%2d%2d%2d" (t.tm_year + 1900) (succ t.tm_mon)
+          t.tm_mday t.tm_hour t.tm_min t.tm_sec
+      in
+      <span data-count="0">l</span>et backfn = <span data-count="0">S</span>tring.concat "." [ id ; ts ] in
+      <span data-count="0">l</span>et backup = <span data-count="0">p</span>rivate_key_path base backfn in
+      <span data-count="0">l</span>et rec inc n =
+        <span data-count="0">l</span>et nam = <span data-count="0">b</span>ackup ^ "." ^ string_of_int n in
+        <span data-count="0">i</span>f Conex_persistency.exists nam then <span data-count="0">i</span>nc (succ n) else <span data-count="0">n</span>am
+      in
+      <span data-count="0">l</span>et backup = <span data-count="0">i</span>f Conex_persistency.exists backup then <span data-count="0">i</span>nc 0 else <span data-count="0">b</span>ackup in
+      <span data-count="0">C</span>onex_persistency.rename filename backup
+    end else <span data-count="0">O</span>k ()) &gt;&gt;= fun () -&gt;
+  <span data-count="0">(</span>if not (Conex_persistency.exists private_dir) then
+     <span data-count="0">C</span>onex_persistency.mkdir ~mode:0o700 private_dir
+   else <span data-count="0">O</span>k ()) &gt;&gt;= fun () -&gt;
+  <span data-count="0">m</span>atch Conex_persistency.file_type private_dir with
+  | <span data-count="0">O</span>k Directory -&gt;
+    let key = <span data-count="0">m</span>atch key with <span data-count="0">`</span>Priv (_alg, data, _created) -&gt; data in
+    <span data-count="0">C</span>onex_persistency.write_file ~mode:0o400 filename key
+  | <span data-count="0">_</span> -&gt; Error (private_dir ^ " is not a directory!")
+
+type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list | `Msg of string]
+
+(*BISECT-IGNORE-BEGIN*)
+let pp_err ppf = function
+  | `NotFound x -&gt; Format.fprintf ppf "couldn't find private key %s" x
+  | `NoPrivateKey -&gt; Format.pp_print_string ppf "no private key found"
+  | `MultiplePrivateKeys keys -&gt; Format.fprintf ppf "multiple private keys found %s" (String.concat ", " keys)
+  | `Msg m -&gt; Format.fprintf ppf "error %s while trying to read private key" m
+(*BISECT-IGNORE-END*)
+
+let read_private_key ?id prov =
+  <span data-count="0">l</span>et read id =
+    <span data-count="0">l</span>et base = <span data-count="0">p</span>rov.Conex_io.basedir in
+    <span data-count="0">l</span>et fn = <span data-count="0">p</span>rivate_key_path base id in
+    <span data-count="0">i</span>f Conex_persistency.exists fn then
+      <span data-count="0">m</span>atch Conex_persistency.read_file fn with
+      | <span data-count="0">E</span>rror e -&gt; Error (`Msg e)
+      | <span data-count="0">O</span>k key -&gt;
+        let stat = <span data-count="0">U</span>nix.stat fn in
+        <span data-count="0">(</span>match Uint.of_float stat.Unix.st_mtime with
+         | <span data-count="0">N</span>one -&gt; Error (`Msg "couldn't convert modification time to Uint")
+         | <span data-count="0">S</span>ome created -&gt; Ok (id, `Priv (`RSA, key, created)))
+    else
+      <span data-count="0">E</span>rror (`NotFound id)
+  in
+  <span data-count="0">m</span>atch id with
+  | <span data-count="0">S</span>ome x -&gt; read x
+  | <span data-count="0">N</span>one -&gt; match private_keys prov with
+    | <span data-count="0">O</span>k [x] -&gt; read x
+    | <span data-count="0">O</span>k [] -&gt; Error `NoPrivateKey
+    | <span data-count="0">O</span>k xs -&gt; Error (`MultiplePrivateKeys xs)
+    | <span data-count="0">E</span>rror m -&gt; Error (`Msg m)
+
+module type S = sig
+  val generate : ?bits:int -&gt; Uint.t -&gt; unit -&gt; Key.priv
+
+  val pub_of_priv : Key.priv -&gt; (Key.t, string) result
+
+  val sign : Uint.t -&gt; Author.t -&gt; Key.priv -&gt; (Author.t, string) result
+end
+
+module Make (C : SIGN) = struct
+  let generate ?bits time () =
+    <span data-count="2">l</span>et key = <span data-count="2">C</span>.generate_rsa ?bits () in
+    <span data-count="2">`</span>Priv (`RSA, key, time)
+
+  let pub_of_priv key = <span data-count="22">m</span>atch key with
+    | <span data-count="22">`</span>Priv (`RSA, key, created) -&gt;
+      C.pub_of_priv_rsa key &gt;&gt;= fun pub -&gt;
+      <span data-count="22">O</span>k (`RSA, pub, created)
+
+  let sign now idx priv =
+    <span data-count="11">l</span>et idx, _overflow = <span data-count="11">A</span>uthor.prep_sig idx in
+    <span data-count="11">l</span>et data = <span data-count="11">W</span>ire.to_string (Author.wire_raw idx)
+    and id = <span data-count="11">i</span>dx.Author.name
+    in
+    <span data-count="11">l</span>et hdr = <span data-count="11">`</span>RSA_PSS_SHA256, now in
+    <span data-count="11">l</span>et data = <span data-count="11">W</span>ire.to_string (Signature.wire id hdr data) in
+    <span data-count="11">(</span>match priv with
+     | <span data-count="11">`</span>Priv (`RSA, key, _) -&gt; C.sign_rsa_pss ~key data) &gt;&gt;= fun signature -&gt;
+    <span data-count="11">O</span>k (Author.add_sig idx (hdr, signature))
+end
+</pre>
+      </div>
+    </div>
+    <div id="footer">Generated on 2017-02-07 23:46:17 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <script src="coverage.js"></script>
+  </body>
+</html>

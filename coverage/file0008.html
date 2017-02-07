@@ -1,0 +1,1251 @@
+<html>
+  <head>
+    <title>Coverage report</title>
+    <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <div id="header">
+      <h1>
+        <a href="index.html">
+          <span class="dirname">src/</span>conex_repository.ml
+        </a>
+      </h1>
+      <h2>76.92%</h2>
+    </div>
+    <div id="navbar">
+      <span class="some-visited" style="top:4.35%"></span>
+      <span class="unvisited" style="top:5.63%"></span>
+      <span class="unvisited" style="top:8.70%"></span>
+      <span class="unvisited" style="top:9.97%"></span>
+      <span class="unvisited" style="top:10.23%"></span>
+      <span class="unvisited" style="top:36.32%"></span>
+      <span class="unvisited" style="top:36.57%"></span>
+      <span class="some-visited" style="top:59.85%"></span>
+      <span class="unvisited" style="top:64.96%"></span>
+      <span class="unvisited" style="top:67.01%"></span>
+      <span class="unvisited" style="top:67.26%"></span>
+      <span class="unvisited" style="top:68.29%"></span>
+      <span class="unvisited" style="top:72.38%"></span>
+      <span class="unvisited" style="top:75.70%"></span>
+      <span class="unvisited" style="top:80.05%"></span>
+      <span class="unvisited" style="top:89.51%"></span>
+      <span class="unvisited" style="top:89.77%"></span>
+      <span class="unvisited" style="top:90.03%"></span>
+      <span class="unvisited" style="top:90.28%"></span>
+      <span class="unvisited" style="top:90.79%"></span>
+      <span class="unvisited" style="top:91.56%"></span>
+      <span class="unvisited" style="top:91.82%"></span>
+      <span class="unvisited" style="top:92.07%"></span>
+      <span class="unvisited" style="top:92.33%"></span>
+      <span class="unvisited" style="top:92.58%"></span>
+      <span class="unvisited" style="top:93.35%"></span>
+      <span class="unvisited" style="top:93.61%"></span>
+      <span class="unvisited" style="top:93.86%"></span>
+      <span class="unvisited" style="top:94.12%"></span>
+      <span class="unvisited" style="top:94.37%"></span>
+      <span class="unvisited" style="top:95.14%"></span>
+      <span class="unvisited" style="top:95.40%"></span>
+      <span class="unvisited" style="top:95.65%"></span>
+      <span class="unvisited" style="top:95.91%"></span>
+      <span class="unvisited" style="top:96.16%"></span>
+      <span class="unvisited" style="top:96.93%"></span>
+      <span class="unvisited" style="top:97.19%"></span>
+      <span class="unvisited" style="top:97.44%"></span>
+      <span class="unvisited" style="top:97.70%"></span>
+      <span class="unvisited" style="top:97.95%"></span>
+      <span class="unvisited" style="top:98.72%"></span>
+      <span class="unvisited" style="top:98.98%"></span>
+      <span class="unvisited" style="top:99.23%"></span>
+      <span class="unvisited" style="top:99.49%"></span>
+      <span class="unvisited" style="top:99.74%"></span>
+    </div>
+    <div id="report">
+      <div id="lines-layer">
+        <pre>
+<a id="L1"></a><span > </span>
+<a id="L2"></a><span > </span>
+<a id="L3"></a><span > </span>
+<a id="L4"></a><span > </span>
+<a id="L5"></a><span > </span>
+<a id="L6"></a><span > </span>
+<a id="L7"></a><span > </span>
+<a id="L8"></a><span > </span>
+<a id="L9"></a><span > </span>
+<a id="L10"></a><span > </span>
+<a id="L11"></a><span > </span>
+<a id="L12"></a><span > </span>
+<a id="L13"></a><span > </span>
+<a id="L14"></a><span > </span>
+<a id="L15"></a><span > </span>
+<a id="L16"></a><span > </span>
+<a id="L17"></a><span class="some-visited"> </span>
+<a id="L18"></a><span class="visited"> </span>
+<a id="L19"></a><span > </span>
+<a id="L20"></a><span class="visited"> </span>
+<a id="L21"></a><span > </span>
+<a id="L22"></a><span class="unvisited"> </span>
+<a id="L23"></a><span > </span>
+<a id="L24"></a><span class="visited"> </span>
+<a id="L25"></a><span > </span>
+<a id="L26"></a><span class="visited"> </span>
+<a id="L27"></a><span > </span>
+<a id="L28"></a><span class="visited"> </span>
+<a id="L29"></a><span > </span>
+<a id="L30"></a><span > </span>
+<a id="L31"></a><span class="visited"> </span>
+<a id="L32"></a><span class="visited"> </span>
+<a id="L33"></a><span class="visited"> </span>
+<a id="L34"></a><span class="unvisited"> </span>
+<a id="L35"></a><span > </span>
+<a id="L36"></a><span > </span>
+<a id="L37"></a><span > </span>
+<a id="L38"></a><span > </span>
+<a id="L39"></a><span class="unvisited"> </span>
+<a id="L40"></a><span class="unvisited"> </span>
+<a id="L41"></a><span > </span>
+<a id="L42"></a><span > </span>
+<a id="L43"></a><span class="visited"> </span>
+<a id="L44"></a><span class="visited"> </span>
+<a id="L45"></a><span class="visited"> </span>
+<a id="L46"></a><span class="visited"> </span>
+<a id="L47"></a><span class="visited"> </span>
+<a id="L48"></a><span class="visited"> </span>
+<a id="L49"></a><span class="visited"> </span>
+<a id="L50"></a><span class="visited"> </span>
+<a id="L51"></a><span class="visited"> </span>
+<a id="L52"></a><span class="visited"> </span>
+<a id="L53"></a><span class="visited"> </span>
+<a id="L54"></a><span > </span>
+<a id="L55"></a><span class="visited"> </span>
+<a id="L56"></a><span class="visited"> </span>
+<a id="L57"></a><span > </span>
+<a id="L58"></a><span > </span>
+<a id="L59"></a><span > </span>
+<a id="L60"></a><span class="visited"> </span>
+<a id="L61"></a><span class="visited"> </span>
+<a id="L62"></a><span class="visited"> </span>
+<a id="L63"></a><span class="visited"> </span>
+<a id="L64"></a><span > </span>
+<a id="L65"></a><span > </span>
+<a id="L66"></a><span > </span>
+<a id="L67"></a><span > </span>
+<a id="L68"></a><span class="visited"> </span>
+<a id="L69"></a><span > </span>
+<a id="L70"></a><span > </span>
+<a id="L71"></a><span > </span>
+<a id="L72"></a><span > </span>
+<a id="L73"></a><span > </span>
+<a id="L74"></a><span > </span>
+<a id="L75"></a><span > </span>
+<a id="L76"></a><span > </span>
+<a id="L77"></a><span > </span>
+<a id="L78"></a><span > </span>
+<a id="L79"></a><span > </span>
+<a id="L80"></a><span > </span>
+<a id="L81"></a><span > </span>
+<a id="L82"></a><span > </span>
+<a id="L83"></a><span > </span>
+<a id="L84"></a><span > </span>
+<a id="L85"></a><span > </span>
+<a id="L86"></a><span > </span>
+<a id="L87"></a><span > </span>
+<a id="L88"></a><span > </span>
+<a id="L89"></a><span > </span>
+<a id="L90"></a><span > </span>
+<a id="L91"></a><span > </span>
+<a id="L92"></a><span > </span>
+<a id="L93"></a><span > </span>
+<a id="L94"></a><span > </span>
+<a id="L95"></a><span > </span>
+<a id="L96"></a><span > </span>
+<a id="L97"></a><span > </span>
+<a id="L98"></a><span > </span>
+<a id="L99"></a><span > </span>
+<a id="L100"></a><span > </span>
+<a id="L101"></a><span > </span>
+<a id="L102"></a><span > </span>
+<a id="L103"></a><span > </span>
+<a id="L104"></a><span > </span>
+<a id="L105"></a><span > </span>
+<a id="L106"></a><span > </span>
+<a id="L107"></a><span > </span>
+<a id="L108"></a><span > </span>
+<a id="L109"></a><span > </span>
+<a id="L110"></a><span > </span>
+<a id="L111"></a><span > </span>
+<a id="L112"></a><span > </span>
+<a id="L113"></a><span > </span>
+<a id="L114"></a><span > </span>
+<a id="L115"></a><span > </span>
+<a id="L116"></a><span > </span>
+<a id="L117"></a><span > </span>
+<a id="L118"></a><span > </span>
+<a id="L119"></a><span > </span>
+<a id="L120"></a><span > </span>
+<a id="L121"></a><span > </span>
+<a id="L122"></a><span > </span>
+<a id="L123"></a><span > </span>
+<a id="L124"></a><span > </span>
+<a id="L125"></a><span > </span>
+<a id="L126"></a><span > </span>
+<a id="L127"></a><span > </span>
+<a id="L128"></a><span > </span>
+<a id="L129"></a><span > </span>
+<a id="L130"></a><span > </span>
+<a id="L131"></a><span > </span>
+<a id="L132"></a><span > </span>
+<a id="L133"></a><span > </span>
+<a id="L134"></a><span > </span>
+<a id="L135"></a><span > </span>
+<a id="L136"></a><span > </span>
+<a id="L137"></a><span > </span>
+<a id="L138"></a><span > </span>
+<a id="L139"></a><span > </span>
+<a id="L140"></a><span class="visited"> </span>
+<a id="L141"></a><span > </span>
+<a id="L142"></a><span class="unvisited"> </span>
+<a id="L143"></a><span class="unvisited"> </span>
+<a id="L144"></a><span > </span>
+<a id="L145"></a><span > </span>
+<a id="L146"></a><span class="visited"> </span>
+<a id="L147"></a><span class="visited"> </span>
+<a id="L148"></a><span class="visited"> </span>
+<a id="L149"></a><span > </span>
+<a id="L150"></a><span > </span>
+<a id="L151"></a><span > </span>
+<a id="L152"></a><span > </span>
+<a id="L153"></a><span > </span>
+<a id="L154"></a><span > </span>
+<a id="L155"></a><span > </span>
+<a id="L156"></a><span > </span>
+<a id="L157"></a><span > </span>
+<a id="L158"></a><span > </span>
+<a id="L159"></a><span > </span>
+<a id="L160"></a><span > </span>
+<a id="L161"></a><span > </span>
+<a id="L162"></a><span > </span>
+<a id="L163"></a><span > </span>
+<a id="L164"></a><span > </span>
+<a id="L165"></a><span > </span>
+<a id="L166"></a><span > </span>
+<a id="L167"></a><span > </span>
+<a id="L168"></a><span > </span>
+<a id="L169"></a><span > </span>
+<a id="L170"></a><span > </span>
+<a id="L171"></a><span > </span>
+<a id="L172"></a><span > </span>
+<a id="L173"></a><span > </span>
+<a id="L174"></a><span > </span>
+<a id="L175"></a><span > </span>
+<a id="L176"></a><span > </span>
+<a id="L177"></a><span > </span>
+<a id="L178"></a><span > </span>
+<a id="L179"></a><span > </span>
+<a id="L180"></a><span > </span>
+<a id="L181"></a><span > </span>
+<a id="L182"></a><span > </span>
+<a id="L183"></a><span > </span>
+<a id="L184"></a><span > </span>
+<a id="L185"></a><span class="visited"> </span>
+<a id="L186"></a><span class="visited"> </span>
+<a id="L187"></a><span class="visited"> </span>
+<a id="L188"></a><span class="visited"> </span>
+<a id="L189"></a><span class="visited"> </span>
+<a id="L190"></a><span > </span>
+<a id="L191"></a><span class="visited"> </span>
+<a id="L192"></a><span > </span>
+<a id="L193"></a><span class="visited"> </span>
+<a id="L194"></a><span class="visited"> </span>
+<a id="L195"></a><span class="visited"> </span>
+<a id="L196"></a><span class="visited"> </span>
+<a id="L197"></a><span class="visited"> </span>
+<a id="L198"></a><span > </span>
+<a id="L199"></a><span > </span>
+<a id="L200"></a><span > </span>
+<a id="L201"></a><span > </span>
+<a id="L202"></a><span > </span>
+<a id="L203"></a><span class="visited"> </span>
+<a id="L204"></a><span class="visited"> </span>
+<a id="L205"></a><span class="visited"> </span>
+<a id="L206"></a><span class="visited"> </span>
+<a id="L207"></a><span class="visited"> </span>
+<a id="L208"></a><span class="visited"> </span>
+<a id="L209"></a><span > </span>
+<a id="L210"></a><span > </span>
+<a id="L211"></a><span class="visited"> </span>
+<a id="L212"></a><span class="visited"> </span>
+<a id="L213"></a><span class="visited"> </span>
+<a id="L214"></a><span class="visited"> </span>
+<a id="L215"></a><span > </span>
+<a id="L216"></a><span > </span>
+<a id="L217"></a><span class="visited"> </span>
+<a id="L218"></a><span class="visited"> </span>
+<a id="L219"></a><span class="visited"> </span>
+<a id="L220"></a><span class="visited"> </span>
+<a id="L221"></a><span class="visited"> </span>
+<a id="L222"></a><span class="visited"> </span>
+<a id="L223"></a><span > </span>
+<a id="L224"></a><span > </span>
+<a id="L225"></a><span > </span>
+<a id="L226"></a><span class="visited"> </span>
+<a id="L227"></a><span class="visited"> </span>
+<a id="L228"></a><span > </span>
+<a id="L229"></a><span > </span>
+<a id="L230"></a><span class="visited"> </span>
+<a id="L231"></a><span class="visited"> </span>
+<a id="L232"></a><span class="visited"> </span>
+<a id="L233"></a><span class="visited"> </span>
+<a id="L234"></a><span class="some-visited"> </span>
+<a id="L235"></a><span class="visited"> </span>
+<a id="L236"></a><span > </span>
+<a id="L237"></a><span > </span>
+<a id="L238"></a><span > </span>
+<a id="L239"></a><span > </span>
+<a id="L240"></a><span > </span>
+<a id="L241"></a><span > </span>
+<a id="L242"></a><span > </span>
+<a id="L243"></a><span class="visited"> </span>
+<a id="L244"></a><span class="visited"> </span>
+<a id="L245"></a><span class="visited"> </span>
+<a id="L246"></a><span class="visited"> </span>
+<a id="L247"></a><span > </span>
+<a id="L248"></a><span > </span>
+<a id="L249"></a><span class="visited"> </span>
+<a id="L250"></a><span class="visited"> </span>
+<a id="L251"></a><span > </span>
+<a id="L252"></a><span > </span>
+<a id="L253"></a><span class="visited"> </span>
+<a id="L254"></a><span class="unvisited"> </span>
+<a id="L255"></a><span > </span>
+<a id="L256"></a><span class="visited"> </span>
+<a id="L257"></a><span class="visited"> </span>
+<a id="L258"></a><span > </span>
+<a id="L259"></a><span class="visited"> </span>
+<a id="L260"></a><span class="visited"> </span>
+<a id="L261"></a><span class="visited"> </span>
+<a id="L262"></a><span class="unvisited"> </span>
+<a id="L263"></a><span class="unvisited"> </span>
+<a id="L264"></a><span > </span>
+<a id="L265"></a><span > </span>
+<a id="L266"></a><span class="visited"> </span>
+<a id="L267"></a><span class="unvisited"> </span>
+<a id="L268"></a><span class="visited"> </span>
+<a id="L269"></a><span class="visited"> </span>
+<a id="L270"></a><span class="visited"> </span>
+<a id="L271"></a><span class="visited"> </span>
+<a id="L272"></a><span > </span>
+<a id="L273"></a><span > </span>
+<a id="L274"></a><span class="visited"> </span>
+<a id="L275"></a><span class="visited"> </span>
+<a id="L276"></a><span class="visited"> </span>
+<a id="L277"></a><span class="visited"> </span>
+<a id="L278"></a><span class="visited"> </span>
+<a id="L279"></a><span > </span>
+<a id="L280"></a><span > </span>
+<a id="L281"></a><span class="visited"> </span>
+<a id="L282"></a><span > </span>
+<a id="L283"></a><span class="unvisited"> </span>
+<a id="L284"></a><span > </span>
+<a id="L285"></a><span > </span>
+<a id="L286"></a><span class="visited"> </span>
+<a id="L287"></a><span class="visited"> </span>
+<a id="L288"></a><span class="visited"> </span>
+<a id="L289"></a><span class="visited"> </span>
+<a id="L290"></a><span class="visited"> </span>
+<a id="L291"></a><span class="visited"> </span>
+<a id="L292"></a><span class="visited"> </span>
+<a id="L293"></a><span class="visited"> </span>
+<a id="L294"></a><span class="visited"> </span>
+<a id="L295"></a><span > </span>
+<a id="L296"></a><span class="unvisited"> </span>
+<a id="L297"></a><span > </span>
+<a id="L298"></a><span > </span>
+<a id="L299"></a><span class="visited"> </span>
+<a id="L300"></a><span class="visited"> </span>
+<a id="L301"></a><span > </span>
+<a id="L302"></a><span class="visited"> </span>
+<a id="L303"></a><span class="visited"> </span>
+<a id="L304"></a><span > </span>
+<a id="L305"></a><span class="visited"> </span>
+<a id="L306"></a><span class="visited"> </span>
+<a id="L307"></a><span > </span>
+<a id="L308"></a><span class="visited"> </span>
+<a id="L309"></a><span > </span>
+<a id="L310"></a><span > </span>
+<a id="L311"></a><span class="visited"> </span>
+<a id="L312"></a><span class="visited"> </span>
+<a id="L313"></a><span class="unvisited"> </span>
+<a id="L314"></a><span > </span>
+<a id="L315"></a><span > </span>
+<a id="L316"></a><span class="visited"> </span>
+<a id="L317"></a><span > </span>
+<a id="L318"></a><span class="visited"> </span>
+<a id="L319"></a><span > </span>
+<a id="L320"></a><span class="visited"> </span>
+<a id="L321"></a><span class="visited"> </span>
+<a id="L322"></a><span class="visited"> </span>
+<a id="L323"></a><span class="visited"> </span>
+<a id="L324"></a><span class="visited"> </span>
+<a id="L325"></a><span > </span>
+<a id="L326"></a><span class="visited"> </span>
+<a id="L327"></a><span class="visited"> </span>
+<a id="L328"></a><span class="visited"> </span>
+<a id="L329"></a><span > </span>
+<a id="L330"></a><span class="visited"> </span>
+<a id="L331"></a><span class="visited"> </span>
+<a id="L332"></a><span > </span>
+<a id="L333"></a><span > </span>
+<a id="L334"></a><span class="visited"> </span>
+<a id="L335"></a><span > </span>
+<a id="L336"></a><span class="visited"> </span>
+<a id="L337"></a><span > </span>
+<a id="L338"></a><span class="visited"> </span>
+<a id="L339"></a><span class="visited"> </span>
+<a id="L340"></a><span class="visited"> </span>
+<a id="L341"></a><span class="visited"> </span>
+<a id="L342"></a><span class="visited"> </span>
+<a id="L343"></a><span > </span>
+<a id="L344"></a><span class="visited"> </span>
+<a id="L345"></a><span class="visited"> </span>
+<a id="L346"></a><span class="visited"> </span>
+<a id="L347"></a><span > </span>
+<a id="L348"></a><span > </span>
+<a id="L349"></a><span > </span>
+<a id="L350"></a><span class="unvisited"> </span>
+<a id="L351"></a><span class="unvisited"> </span>
+<a id="L352"></a><span class="unvisited"> </span>
+<a id="L353"></a><span class="unvisited"> </span>
+<a id="L354"></a><span > </span>
+<a id="L355"></a><span class="unvisited"> </span>
+<a id="L356"></a><span > </span>
+<a id="L357"></a><span > </span>
+<a id="L358"></a><span class="unvisited"> </span>
+<a id="L359"></a><span class="unvisited"> </span>
+<a id="L360"></a><span class="unvisited"> </span>
+<a id="L361"></a><span class="unvisited"> </span>
+<a id="L362"></a><span class="unvisited"> </span>
+<a id="L363"></a><span > </span>
+<a id="L364"></a><span > </span>
+<a id="L365"></a><span class="unvisited"> </span>
+<a id="L366"></a><span class="unvisited"> </span>
+<a id="L367"></a><span class="unvisited"> </span>
+<a id="L368"></a><span class="unvisited"> </span>
+<a id="L369"></a><span class="unvisited"> </span>
+<a id="L370"></a><span > </span>
+<a id="L371"></a><span > </span>
+<a id="L372"></a><span class="unvisited"> </span>
+<a id="L373"></a><span class="unvisited"> </span>
+<a id="L374"></a><span class="unvisited"> </span>
+<a id="L375"></a><span class="unvisited"> </span>
+<a id="L376"></a><span class="unvisited"> </span>
+<a id="L377"></a><span > </span>
+<a id="L378"></a><span > </span>
+<a id="L379"></a><span class="unvisited"> </span>
+<a id="L380"></a><span class="unvisited"> </span>
+<a id="L381"></a><span class="unvisited"> </span>
+<a id="L382"></a><span class="unvisited"> </span>
+<a id="L383"></a><span class="unvisited"> </span>
+<a id="L384"></a><span > </span>
+<a id="L385"></a><span > </span>
+<a id="L386"></a><span class="unvisited"> </span>
+<a id="L387"></a><span class="unvisited"> </span>
+<a id="L388"></a><span class="unvisited"> </span>
+<a id="L389"></a><span class="unvisited"> </span>
+<a id="L390"></a><span class="unvisited"> </span>
+<a id="L391"></a><span > </span>
+</pre>
+      </div>
+      <div id="text-layer">
+        <pre id="line-numbers">
+<a href="#L1">  1</a>
+<a href="#L2">  2</a>
+<a href="#L3">  3</a>
+<a href="#L4">  4</a>
+<a href="#L5">  5</a>
+<a href="#L6">  6</a>
+<a href="#L7">  7</a>
+<a href="#L8">  8</a>
+<a href="#L9">  9</a>
+<a href="#L10"> 10</a>
+<a href="#L11"> 11</a>
+<a href="#L12"> 12</a>
+<a href="#L13"> 13</a>
+<a href="#L14"> 14</a>
+<a href="#L15"> 15</a>
+<a href="#L16"> 16</a>
+<a href="#L17"> 17</a>
+<a href="#L18"> 18</a>
+<a href="#L19"> 19</a>
+<a href="#L20"> 20</a>
+<a href="#L21"> 21</a>
+<a href="#L22"> 22</a>
+<a href="#L23"> 23</a>
+<a href="#L24"> 24</a>
+<a href="#L25"> 25</a>
+<a href="#L26"> 26</a>
+<a href="#L27"> 27</a>
+<a href="#L28"> 28</a>
+<a href="#L29"> 29</a>
+<a href="#L30"> 30</a>
+<a href="#L31"> 31</a>
+<a href="#L32"> 32</a>
+<a href="#L33"> 33</a>
+<a href="#L34"> 34</a>
+<a href="#L35"> 35</a>
+<a href="#L36"> 36</a>
+<a href="#L37"> 37</a>
+<a href="#L38"> 38</a>
+<a href="#L39"> 39</a>
+<a href="#L40"> 40</a>
+<a href="#L41"> 41</a>
+<a href="#L42"> 42</a>
+<a href="#L43"> 43</a>
+<a href="#L44"> 44</a>
+<a href="#L45"> 45</a>
+<a href="#L46"> 46</a>
+<a href="#L47"> 47</a>
+<a href="#L48"> 48</a>
+<a href="#L49"> 49</a>
+<a href="#L50"> 50</a>
+<a href="#L51"> 51</a>
+<a href="#L52"> 52</a>
+<a href="#L53"> 53</a>
+<a href="#L54"> 54</a>
+<a href="#L55"> 55</a>
+<a href="#L56"> 56</a>
+<a href="#L57"> 57</a>
+<a href="#L58"> 58</a>
+<a href="#L59"> 59</a>
+<a href="#L60"> 60</a>
+<a href="#L61"> 61</a>
+<a href="#L62"> 62</a>
+<a href="#L63"> 63</a>
+<a href="#L64"> 64</a>
+<a href="#L65"> 65</a>
+<a href="#L66"> 66</a>
+<a href="#L67"> 67</a>
+<a href="#L68"> 68</a>
+<a href="#L69"> 69</a>
+<a href="#L70"> 70</a>
+<a href="#L71"> 71</a>
+<a href="#L72"> 72</a>
+<a href="#L73"> 73</a>
+<a href="#L74"> 74</a>
+<a href="#L75"> 75</a>
+<a href="#L76"> 76</a>
+<a href="#L77"> 77</a>
+<a href="#L78"> 78</a>
+<a href="#L79"> 79</a>
+<a href="#L80"> 80</a>
+<a href="#L81"> 81</a>
+<a href="#L82"> 82</a>
+<a href="#L83"> 83</a>
+<a href="#L84"> 84</a>
+<a href="#L85"> 85</a>
+<a href="#L86"> 86</a>
+<a href="#L87"> 87</a>
+<a href="#L88"> 88</a>
+<a href="#L89"> 89</a>
+<a href="#L90"> 90</a>
+<a href="#L91"> 91</a>
+<a href="#L92"> 92</a>
+<a href="#L93"> 93</a>
+<a href="#L94"> 94</a>
+<a href="#L95"> 95</a>
+<a href="#L96"> 96</a>
+<a href="#L97"> 97</a>
+<a href="#L98"> 98</a>
+<a href="#L99"> 99</a>
+<a href="#L100">100</a>
+<a href="#L101">101</a>
+<a href="#L102">102</a>
+<a href="#L103">103</a>
+<a href="#L104">104</a>
+<a href="#L105">105</a>
+<a href="#L106">106</a>
+<a href="#L107">107</a>
+<a href="#L108">108</a>
+<a href="#L109">109</a>
+<a href="#L110">110</a>
+<a href="#L111">111</a>
+<a href="#L112">112</a>
+<a href="#L113">113</a>
+<a href="#L114">114</a>
+<a href="#L115">115</a>
+<a href="#L116">116</a>
+<a href="#L117">117</a>
+<a href="#L118">118</a>
+<a href="#L119">119</a>
+<a href="#L120">120</a>
+<a href="#L121">121</a>
+<a href="#L122">122</a>
+<a href="#L123">123</a>
+<a href="#L124">124</a>
+<a href="#L125">125</a>
+<a href="#L126">126</a>
+<a href="#L127">127</a>
+<a href="#L128">128</a>
+<a href="#L129">129</a>
+<a href="#L130">130</a>
+<a href="#L131">131</a>
+<a href="#L132">132</a>
+<a href="#L133">133</a>
+<a href="#L134">134</a>
+<a href="#L135">135</a>
+<a href="#L136">136</a>
+<a href="#L137">137</a>
+<a href="#L138">138</a>
+<a href="#L139">139</a>
+<a href="#L140">140</a>
+<a href="#L141">141</a>
+<a href="#L142">142</a>
+<a href="#L143">143</a>
+<a href="#L144">144</a>
+<a href="#L145">145</a>
+<a href="#L146">146</a>
+<a href="#L147">147</a>
+<a href="#L148">148</a>
+<a href="#L149">149</a>
+<a href="#L150">150</a>
+<a href="#L151">151</a>
+<a href="#L152">152</a>
+<a href="#L153">153</a>
+<a href="#L154">154</a>
+<a href="#L155">155</a>
+<a href="#L156">156</a>
+<a href="#L157">157</a>
+<a href="#L158">158</a>
+<a href="#L159">159</a>
+<a href="#L160">160</a>
+<a href="#L161">161</a>
+<a href="#L162">162</a>
+<a href="#L163">163</a>
+<a href="#L164">164</a>
+<a href="#L165">165</a>
+<a href="#L166">166</a>
+<a href="#L167">167</a>
+<a href="#L168">168</a>
+<a href="#L169">169</a>
+<a href="#L170">170</a>
+<a href="#L171">171</a>
+<a href="#L172">172</a>
+<a href="#L173">173</a>
+<a href="#L174">174</a>
+<a href="#L175">175</a>
+<a href="#L176">176</a>
+<a href="#L177">177</a>
+<a href="#L178">178</a>
+<a href="#L179">179</a>
+<a href="#L180">180</a>
+<a href="#L181">181</a>
+<a href="#L182">182</a>
+<a href="#L183">183</a>
+<a href="#L184">184</a>
+<a href="#L185">185</a>
+<a href="#L186">186</a>
+<a href="#L187">187</a>
+<a href="#L188">188</a>
+<a href="#L189">189</a>
+<a href="#L190">190</a>
+<a href="#L191">191</a>
+<a href="#L192">192</a>
+<a href="#L193">193</a>
+<a href="#L194">194</a>
+<a href="#L195">195</a>
+<a href="#L196">196</a>
+<a href="#L197">197</a>
+<a href="#L198">198</a>
+<a href="#L199">199</a>
+<a href="#L200">200</a>
+<a href="#L201">201</a>
+<a href="#L202">202</a>
+<a href="#L203">203</a>
+<a href="#L204">204</a>
+<a href="#L205">205</a>
+<a href="#L206">206</a>
+<a href="#L207">207</a>
+<a href="#L208">208</a>
+<a href="#L209">209</a>
+<a href="#L210">210</a>
+<a href="#L211">211</a>
+<a href="#L212">212</a>
+<a href="#L213">213</a>
+<a href="#L214">214</a>
+<a href="#L215">215</a>
+<a href="#L216">216</a>
+<a href="#L217">217</a>
+<a href="#L218">218</a>
+<a href="#L219">219</a>
+<a href="#L220">220</a>
+<a href="#L221">221</a>
+<a href="#L222">222</a>
+<a href="#L223">223</a>
+<a href="#L224">224</a>
+<a href="#L225">225</a>
+<a href="#L226">226</a>
+<a href="#L227">227</a>
+<a href="#L228">228</a>
+<a href="#L229">229</a>
+<a href="#L230">230</a>
+<a href="#L231">231</a>
+<a href="#L232">232</a>
+<a href="#L233">233</a>
+<a href="#L234">234</a>
+<a href="#L235">235</a>
+<a href="#L236">236</a>
+<a href="#L237">237</a>
+<a href="#L238">238</a>
+<a href="#L239">239</a>
+<a href="#L240">240</a>
+<a href="#L241">241</a>
+<a href="#L242">242</a>
+<a href="#L243">243</a>
+<a href="#L244">244</a>
+<a href="#L245">245</a>
+<a href="#L246">246</a>
+<a href="#L247">247</a>
+<a href="#L248">248</a>
+<a href="#L249">249</a>
+<a href="#L250">250</a>
+<a href="#L251">251</a>
+<a href="#L252">252</a>
+<a href="#L253">253</a>
+<a href="#L254">254</a>
+<a href="#L255">255</a>
+<a href="#L256">256</a>
+<a href="#L257">257</a>
+<a href="#L258">258</a>
+<a href="#L259">259</a>
+<a href="#L260">260</a>
+<a href="#L261">261</a>
+<a href="#L262">262</a>
+<a href="#L263">263</a>
+<a href="#L264">264</a>
+<a href="#L265">265</a>
+<a href="#L266">266</a>
+<a href="#L267">267</a>
+<a href="#L268">268</a>
+<a href="#L269">269</a>
+<a href="#L270">270</a>
+<a href="#L271">271</a>
+<a href="#L272">272</a>
+<a href="#L273">273</a>
+<a href="#L274">274</a>
+<a href="#L275">275</a>
+<a href="#L276">276</a>
+<a href="#L277">277</a>
+<a href="#L278">278</a>
+<a href="#L279">279</a>
+<a href="#L280">280</a>
+<a href="#L281">281</a>
+<a href="#L282">282</a>
+<a href="#L283">283</a>
+<a href="#L284">284</a>
+<a href="#L285">285</a>
+<a href="#L286">286</a>
+<a href="#L287">287</a>
+<a href="#L288">288</a>
+<a href="#L289">289</a>
+<a href="#L290">290</a>
+<a href="#L291">291</a>
+<a href="#L292">292</a>
+<a href="#L293">293</a>
+<a href="#L294">294</a>
+<a href="#L295">295</a>
+<a href="#L296">296</a>
+<a href="#L297">297</a>
+<a href="#L298">298</a>
+<a href="#L299">299</a>
+<a href="#L300">300</a>
+<a href="#L301">301</a>
+<a href="#L302">302</a>
+<a href="#L303">303</a>
+<a href="#L304">304</a>
+<a href="#L305">305</a>
+<a href="#L306">306</a>
+<a href="#L307">307</a>
+<a href="#L308">308</a>
+<a href="#L309">309</a>
+<a href="#L310">310</a>
+<a href="#L311">311</a>
+<a href="#L312">312</a>
+<a href="#L313">313</a>
+<a href="#L314">314</a>
+<a href="#L315">315</a>
+<a href="#L316">316</a>
+<a href="#L317">317</a>
+<a href="#L318">318</a>
+<a href="#L319">319</a>
+<a href="#L320">320</a>
+<a href="#L321">321</a>
+<a href="#L322">322</a>
+<a href="#L323">323</a>
+<a href="#L324">324</a>
+<a href="#L325">325</a>
+<a href="#L326">326</a>
+<a href="#L327">327</a>
+<a href="#L328">328</a>
+<a href="#L329">329</a>
+<a href="#L330">330</a>
+<a href="#L331">331</a>
+<a href="#L332">332</a>
+<a href="#L333">333</a>
+<a href="#L334">334</a>
+<a href="#L335">335</a>
+<a href="#L336">336</a>
+<a href="#L337">337</a>
+<a href="#L338">338</a>
+<a href="#L339">339</a>
+<a href="#L340">340</a>
+<a href="#L341">341</a>
+<a href="#L342">342</a>
+<a href="#L343">343</a>
+<a href="#L344">344</a>
+<a href="#L345">345</a>
+<a href="#L346">346</a>
+<a href="#L347">347</a>
+<a href="#L348">348</a>
+<a href="#L349">349</a>
+<a href="#L350">350</a>
+<a href="#L351">351</a>
+<a href="#L352">352</a>
+<a href="#L353">353</a>
+<a href="#L354">354</a>
+<a href="#L355">355</a>
+<a href="#L356">356</a>
+<a href="#L357">357</a>
+<a href="#L358">358</a>
+<a href="#L359">359</a>
+<a href="#L360">360</a>
+<a href="#L361">361</a>
+<a href="#L362">362</a>
+<a href="#L363">363</a>
+<a href="#L364">364</a>
+<a href="#L365">365</a>
+<a href="#L366">366</a>
+<a href="#L367">367</a>
+<a href="#L368">368</a>
+<a href="#L369">369</a>
+<a href="#L370">370</a>
+<a href="#L371">371</a>
+<a href="#L372">372</a>
+<a href="#L373">373</a>
+<a href="#L374">374</a>
+<a href="#L375">375</a>
+<a href="#L376">376</a>
+<a href="#L377">377</a>
+<a href="#L378">378</a>
+<a href="#L379">379</a>
+<a href="#L380">380</a>
+<a href="#L381">381</a>
+<a href="#L382">382</a>
+<a href="#L383">383</a>
+<a href="#L384">384</a>
+<a href="#L385">385</a>
+<a href="#L386">386</a>
+<a href="#L387">387</a>
+<a href="#L388">388</a>
+<a href="#L389">389</a>
+<a href="#L390">390</a>
+<a href="#L391">391</a>
+</pre>
+        <pre id="code">
+open Conex_resource
+open Conex_utils
+open Conex_crypto
+
+type valid_resources = (name * Uint.t * typ * S.t) M.t
+
+type teams = S.t M.t
+
+type t = {
+  quorum : int ;
+  strict : bool ;
+  valid : valid_resources ;
+  teams : teams ;
+  ids : S.t ;
+}
+
+let repository ?(quorum = <span data-count="0">3</span>) ?(strict = <span data-count="36">f</span>alse) () =
+  <span data-count="36">{</span> quorum ; strict ; valid = M.empty ; teams = M.empty ; ids = S.empty }
+
+let quorum t = <span data-count="1">t</span>.quorum
+
+let strict t = <span data-count="0">t</span>.strict
+
+let find_team t id = <span data-count="124">t</span>ry Some (M.find id t.teams) with <span data-count="79">N</span>ot_found -&gt; None
+
+let id_loaded t id = <span data-count="6">S</span>.mem id t.ids || <span data-count="2">f</span>ind_team t id &lt;&gt; None
+
+let add_id t id = <span data-count="10">{</span> t with ids = S.add id t.ids }
+
+let expand_owner r os =
+  <span data-count="72">S</span>.fold
+    (fun id s -&gt; <span data-count="39">m</span>atch find_team r id with
+       | <span data-count="39">N</span>one -&gt; S.add id s
+       | <span data-count="0">S</span>ome mems -&gt; S.union s mems)
+    os
+    S.empty
+
+let authorised r a id =
+  <span data-count="0">l</span>et owners = <span data-count="0">e</span>xpand_owner r a.Authorisation.authorised in
+  <span data-count="0">S</span>.mem id owners
+
+let add_valid_resource repo id res =
+  <span data-count="79">l</span>et open Author in
+  let t = <span data-count="79">r</span>epo.valid in
+  <span data-count="79">l</span>et dgst_str = <span data-count="79">D</span>igest.to_string res.digest in
+  <span data-count="79">t</span>ry
+    let n, s, r, ids = <span data-count="79">M</span>.find dgst_str t in
+    <span data-count="24">i</span>f not (name_equal n res.rname) then
+      <span data-count="1">E</span>rror ("name not equal: " ^ n ^ " vs " ^ res.rname)
+    else <span data-count="23">i</span>f not (typ_equal r res.rtyp) then
+      <span data-count="3">E</span>rror ("resource not equal: " ^ typ_to_string r ^ " vs " ^ typ_to_string res.rtyp)
+    else <span data-count="20">i</span>f not (s = res.size) then
+      <span data-count="1">E</span>rror ("size not equal: " ^ Uint.decimal s ^ " vs " ^ Uint.decimal res.size)
+    else
+      <span data-count="19">O</span>k ({ repo with valid = M.add dgst_str (n, s, r, S.add id ids) t })
+  with <span data-count="55">N</span>ot_found -&gt;
+    Ok ({ repo with valid = M.add dgst_str (res.rname, res.size, res.rtyp, S.singleton id) t})
+
+let add_index repo idx =
+  <span data-count="6">L</span>ist.fold_left (fun (repo, warn) res -&gt;
+      <span data-count="8">m</span>atch add_valid_resource repo idx.Author.name res with
+      | <span data-count="6">O</span>k r -&gt; r, warn
+      | <span data-count="2">E</span>rror msg -&gt; repo, msg :: warn)
+    (repo, [])
+    idx.Author.resources
+
+let add_team repo team =
+  <span data-count="30">{</span> repo with teams = M.add team.Team.name team.Team.members repo.teams  }
+
+module type S = sig
+
+  val digest : string -&gt; Digest.t
+  val id : Key.t -&gt; string
+
+  val contains : ?queued:bool -&gt; Author.t -&gt; name -&gt; typ -&gt; Wire.t -&gt; bool
+
+  val pp_ok : Format.formatter -&gt; [&lt; `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -&gt; unit
+
+  type base_error = [
+    | `InvalidName of name * name
+    | `InvalidResource of name * typ * typ
+    | `NotSigned of name * typ * S.t
+  ]
+
+  val pp_error : Format.formatter -&gt;
+    [&lt; base_error
+    | `InsufficientQuorum of name * typ * S.t
+    | `MissingSignature of identifier
+    | `IdNotPresent of name * S.t
+    | `MemberNotPresent of identifier * S.t
+    | `AuthRelMismatch of name * name
+    | `InvalidReleases of name * S.t * S.t
+    | `NoSharedPrefix of name * S.t
+    | `NotInReleases of name * S.t
+    | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]
+    -&gt; unit
+
+  val verify : identifier -&gt; Key.t -&gt; string -&gt; Signature.t -&gt; (unit, [&gt; verification_error]) result
+
+  val verify_author : t -&gt; Author.t -&gt; (t * string list * identifier, [&gt; verification_error ]) result
+
+  val verify_signatures : Author.t -&gt; Key.t list * (Key.t * verification_error) list
+
+  val verify_key : t -&gt; identifier -&gt; Key.t -&gt;
+    ([ `Both of identifier * S.t ],
+     [&gt; base_error | `InsufficientQuorum of name * typ * S.t | `MissingSignature of identifier ]) result
+
+  val verify_team : t -&gt; Team.t -&gt;
+    (t * [ `Quorum of S.t ],
+     [&gt; base_error | `InsufficientQuorum of name * typ * S.t | `MemberNotPresent of identifier * S.t ]) result
+
+  val verify_authorisation : t -&gt; Authorisation.t -&gt;
+    ([ `Quorum of S.t ],
+     [&gt; base_error | `InsufficientQuorum of name * typ * S.t | `IdNotPresent of name * S.t ]) result
+
+  val verify_package : t -&gt; ?on_disk:Package.t -&gt; Authorisation.t -&gt; Package.t -&gt;
+    ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
+     [&gt; base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t | `NoSharedPrefix of name * S.t ]) result
+
+  val verify_release : t -&gt; ?on_disk:Release.t -&gt; Authorisation.t -&gt; Package.t -&gt; Release.t -&gt;
+    ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
+     [&gt; base_error
+     | `AuthRelMismatch of name * name
+     | `NotInReleases of name * S.t
+     | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]) result
+
+  (* Monotonicity *)
+  type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
+
+  val pp_m_err : Format.formatter -&gt; m_err -&gt; unit
+
+  val monoton_author : ?old:Author.t -&gt; ?now:Author.t -&gt; t -&gt; (unit, m_err) result
+  val monoton_team : ?old:Team.t -&gt; ?now:Team.t -&gt; t -&gt; (unit, m_err) result
+  val monoton_authorisation : ?old:Authorisation.t -&gt; ?now:Authorisation.t -&gt; t -&gt; (unit, m_err) result
+  val monoton_package : ?old:Package.t -&gt; ?now:Package.t -&gt; t -&gt; (unit, m_err) result
+  val monoton_release : ?old:Release.t -&gt; ?now:Release.t -&gt; t -&gt; (unit, m_err) result
+end
+
+module Make (C : VERIFY) = struct
+  let digest data = <span data-count="143">(</span>`SHA256, C.b64sha256 data)
+
+  let id key = <span data-count="0">m</span>atch key with
+    | <span data-count="0">`</span>RSA, key, _ -&gt; snd (digest key)
+
+  let verify name key data (hdr, sigval) =
+    <span data-count="21">l</span>et data = <span data-count="21">S</span>ignature.wire name hdr data in
+    <span data-count="21">l</span>et key = <span data-count="21">m</span>atch key with <span data-count="21">`</span>RSA, k, _ -&gt; k in
+    <span data-count="21">C</span>.verify_rsa_pss ~key ~data:(Wire.to_string data) ~signature:sigval
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_ok ppf = function
+    | `Signed id -&gt; Format.fprintf ppf "ok by id %s" id
+    | `Both (id, js) -&gt; Format.fprintf ppf "ok by id %s and quorum %s" id (String.concat ", " (S.elements js))
+    | `Quorum js -&gt; Format.fprintf ppf "ok by quorum %s" (String.concat ", " (S.elements js))
+  (*BISECT-IGNORE-END*)
+
+  type base_error = [
+    | `InvalidName of name * name
+    | `InvalidResource of name * typ * typ
+    | `NotSigned of name * typ * S.t
+  ]
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_cs ppf (a, b) =
+    Format.fprintf ppf "have %a want %a" Release.pp_checksum a Release.pp_checksum b
+
+  let pp_error ppf = function
+    | `InvalidName (w, h) -&gt; Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
+    | `InvalidResource (n, w, h) -&gt; Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_typ w pp_typ h
+    | `NotSigned (n, r, _) -&gt; Format.fprintf ppf "unsigned %a %a" pp_typ r pp_name n
+    | `InsufficientQuorum (name, r, goods) -&gt; Format.fprintf ppf "quorum for %a %a insufficient: %a" pp_typ r pp_name name (pp_list pp_id) (S.elements goods)
+    | `MissingSignature id -&gt; Format.fprintf ppf "publickey %a: missing self-signature" pp_id id
+    | `IdNotPresent (n, s) -&gt; Format.fprintf ppf "packages %a, authorised ids %a missing" pp_name n (pp_list pp_id) (S.elements s)
+    | `MemberNotPresent (n, s) -&gt; Format.fprintf ppf "team %a, members %a missing" pp_id n (pp_list pp_id) (S.elements s)
+    | `AuthRelMismatch (a, r) -&gt; Format.fprintf ppf "package name in authorisation of %a is different from releases %a" pp_name a pp_name r
+    | `InvalidReleases (n, h, w) when S.equal h S.empty -&gt; Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
+    | `InvalidReleases (n, h, w) when S.equal w S.empty -&gt; Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
+    | `InvalidReleases (n, h, w) -&gt; Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
+    | `NoSharedPrefix (n, rels) -&gt; Format.fprintf ppf "releases %a contains releases where its name is not a prefix %a" pp_name n (pp_list pp_name) (S.elements rels)
+    | `NotInReleases (c, rs) -&gt; Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
+    | `ChecksumsDiff (n, miss, too, diffs) -&gt; Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
+  (*BISECT-IGNORE-END*)
+
+  let verify_resource repo owners name resource data =
+    <span data-count="72">l</span>et csum = <span data-count="72">d</span>igest data in
+    <span data-count="72">l</span>et csum_str = <span data-count="72">D</span>igest.to_string csum in
+    <span data-count="72">l</span>et n, _s, r, ids =
+      <span data-count="72">i</span>f M.mem csum_str repo.valid then
+        <span data-count="55">M</span>.find csum_str repo.valid
+      else
+        <span data-count="17">(</span>name, Uint.of_int_exn (String.length data), resource, S.empty)
+    in
+    <span data-count="72">l</span>et janitors = <span data-count="72">m</span>atch find_team repo "janitors" with <span data-count="32">N</span>one -&gt; S.empty | <span data-count="40">S</span>ome s -&gt; s in
+    <span data-count="72">l</span>et js = <span data-count="72">S</span>.inter janitors ids in
+    <span data-count="72">l</span>et owners = <span data-count="72">e</span>xpand_owner repo owners in
+    <span data-count="72">l</span>et signed_owners = <span data-count="72">S</span>.inter ids owners in
+    <span data-count="72">m</span>atch
+      name_equal n name,
+      typ_equal r resource,
+      S.cardinal signed_owners &gt; 0,
+      S.cardinal js &gt;= repo.quorum
+    with
+    | <span data-count="5">f</span>alse, _    , _    , _     -&gt; Error (`InvalidName (name, n))
+    | <span data-count="5">t</span>rue , false, _    , _     -&gt; Error (`InvalidResource (name, resource, r))
+    | <span data-count="15">t</span>rue , true , false, false -&gt; Error (`NotSigned (n, r, js))
+    | <span data-count="32">t</span>rue , true , false, true  -&gt; Ok (`Quorum js)
+    | <span data-count="11">t</span>rue , true , true , false -&gt; Ok (`IdNoQuorum (S.choose signed_owners, js))
+    | <span data-count="4">t</span>rue , true , true , true  -&gt; Ok (`Both (S.choose signed_owners, js))
+
+  let verify_key repo id key =
+    <span data-count="18">v</span>erify_resource repo (S.singleton id) id `Key (Wire.to_string (Key.wire id key)) &gt;&gt;= function
+    | <span data-count="2">`</span>Both b -&gt; Ok (`Both b)
+    | <span data-count="7">`</span>Quorum _ -&gt; Error (`MissingSignature id)
+    | <span data-count="5">`</span>IdNoQuorum (id, js) -&gt; Error (`InsufficientQuorum (id, `Key, js))
+
+  let verify_signatures idx =
+    <span data-count="12">l</span>et tbv = <span data-count="12">W</span>ire.to_string (Author.wire_raw idx) in
+    <span data-count="12">L</span>ist.fold_left (fun (good, warn) k -&gt;
+        <span data-count="12">m</span>atch List.fold_left (fun r s -&gt;
+            <span data-count="11">m</span>atch r, verify idx.Author.name k tbv s with
+            | <span data-count="1">O</span>k (), _ -&gt; Ok ()
+            | <span data-count="10">_</span>, b -&gt; b)
+            (Error `NoSignature)
+            idx.Author.signatures
+        with
+        | <span data-count="8">O</span>k () -&gt; (k :: good, warn)
+        | <span data-count="4">E</span>rror e -&gt; (good, (k, e) :: warn))
+      ([], []) idx.Author.keys
+
+  let contains ?(queued = <span data-count="8">f</span>alse) idx name typ data =
+    <span data-count="8">l</span>et encoded = <span data-count="8">W</span>ire.to_string data in
+    <span data-count="8">l</span>et digest = <span data-count="8">d</span>igest encoded in
+    <span data-count="8">l</span>et r = <span data-count="8">A</span>uthor.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
+    <span data-count="8">l</span>et xs = <span data-count="8">i</span>f queued then <span data-count="0">i</span>dx.Author.resources @ idx.Author.queued else <span data-count="8">i</span>dx.Author.resources in
+    <span data-count="8">L</span>ist.exists (Author.r_equal r) xs
+
+  let verify_author repo idx =
+    (* this is a multi step process:
+       - use all keys of the idx, filter:
+       - those with a valid signature for the idx
+       - those with a valid resource entry
+       - those that can be verified (quorum) *)
+    <span data-count="12">l</span>et id = <span data-count="12">i</span>dx.Author.name in
+    <span data-count="12">l</span>et signed_keys, _s_warn = <span data-count="12">v</span>erify_signatures idx in
+    <span data-count="12">l</span>et valid_keys, _r_warn = <span data-count="12">L</span>ist.partition
+        (fun key -&gt; <span data-count="8">c</span>ontains idx id `Key (Key.wire id key))
+        signed_keys
+    in
+    <span data-count="12">m</span>atch valid_keys, idx.Author.resources with
+    | <span data-count="4">[</span>], [] -&gt;
+      (* this is the case where deleted ids will end *)
+      begin match verify_resource repo S.empty id `Author (Wire.to_string (Author.wire idx)) with
+        | <span data-count="4">O</span>k _ -&gt; Ok (add_id repo id, [], id)
+        | <span data-count="0">E</span>rror _ -&gt; Error `NoSignature
+      end
+    | <span data-count="2">[</span>], _ -&gt; Error `NoSignature
+    | <span data-count="6">_</span>, _ -&gt;
+      let quorum, _q_warn =
+        <span data-count="6">L</span>ist.fold_left (fun (good, warn) pub -&gt;
+            <span data-count="6">m</span>atch verify_key repo id pub with
+            | <span data-count="6">E</span>rror (`MissingSignature _) (* we checked above that the publickey is in the resources list! *)
+            | <span data-count="0">O</span>k (`Both _) -&gt; pub :: good, warn
+            | <span data-count="0">_</span> -&gt; good, pub :: warn)
+          ([], []) valid_keys
+      in
+      <span data-count="6">m</span>atch quorum with
+      | <span data-count="0">[</span>] -&gt; Error `NoSignature
+      | <span data-count="6">_</span> -&gt;
+        let repo, warn = <span data-count="6">a</span>dd_index repo idx in
+        <span data-count="6">l</span>et repo = <span data-count="6">a</span>dd_id repo id in
+        <span data-count="6">O</span>k (repo, warn, id)
+
+  let verify_team repo team =
+    <span data-count="15">l</span>et id = <span data-count="15">t</span>eam.Team.name in
+    <span data-count="15">m</span>atch verify_resource repo S.empty id `Team (Wire.to_string (Team.wire team)) with
+    | <span data-count="5">E</span>rror (`NotSigned (n, _, js)) -&gt; Error (`InsufficientQuorum (n, `Team, js))
+    | <span data-count="2">E</span>rror e -&gt; Error e
+    | <span data-count="8">O</span>k (`Quorum js) -&gt;
+      guard (S.subset team.Team.members repo.ids)
+        (`MemberNotPresent (id, S.diff team.Team.members repo.ids)) &gt;&gt;= fun () -&gt;
+      <span data-count="7">O</span>k (add_team repo team, `Quorum js)
+    (* the following two cases will never happen, since authorised is S.empty! *)
+    | <span data-count="0">O</span>k (`IdNoQuorum _) | <span data-count="0">O</span>k (`Both _) -&gt; invalid_arg "can not happen"
+
+  let verify_authorisation repo auth =
+    <span data-count="14">l</span>et name = <span data-count="14">a</span>uth.Authorisation.name in
+    <span data-count="14">m</span>atch verify_resource repo S.empty name `Authorisation (Wire.to_string (Authorisation.wire auth)) with
+    | <span data-count="5">E</span>rror (`NotSigned (n, _, js)) -&gt; Error (`InsufficientQuorum (n, `Authorisation, js))
+    | <span data-count="2">E</span>rror e -&gt; Error e
+    | <span data-count="7">O</span>k (`Quorum js) -&gt;
+      let all = <span data-count="7">a</span>uth.Authorisation.authorised in
+      <span data-count="7">g</span>uard (S.for_all (id_loaded repo) all)
+        (`IdNotPresent (name, S.filter (fun id -&gt; <span data-count="3">n</span>ot (id_loaded repo id)) all)) &gt;&gt;= fun () -&gt;
+      <span data-count="6">O</span>k (`Quorum js)
+    (* the following two cases will never happen, since authorised is S.empty! *)
+    | <span data-count="0">O</span>k (`IdNoQuorum _) | <span data-count="0">O</span>k (`Both _) -&gt; invalid_arg "can not happen"
+
+  let ensure_releases rel disk =
+    <span data-count="4">l</span>et rels = <span data-count="4">r</span>el.Package.releases
+    and dirs = <span data-count="4">d</span>isk.Package.releases
+    in
+    <span data-count="4">i</span>f S.equal rels dirs then
+      <span data-count="1">O</span>k ()
+    else
+      <span data-count="3">l</span>et have = <span data-count="3">S</span>.diff dirs rels
+      and want = <span data-count="3">S</span>.diff rels dirs
+      in
+      <span data-count="3">E</span>rror (have, want)
+
+  let is_release name a =
+    <span data-count="5">m</span>atch Conex_opam_repository_layout.authorisation_of_item a with
+    | <span data-count="5">S</span>ome x -&gt; name_equal name x
+    | <span data-count="0">_</span> -&gt; false
+
+  let verify_package repo ?on_disk a r =
+    <span data-count="13">g</span>uard (name_equal a.Authorisation.name r.Package.name)
+      (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) &gt;&gt;= fun () -&gt;
+    <span data-count="12">g</span>uard (S.for_all (is_release r.Package.name) r.Package.releases)
+      (`NoSharedPrefix (r.Package.name, r.Package.releases)) &gt;&gt;= fun () -&gt;
+    <span data-count="11">v</span>erify_resource repo a.Authorisation.authorised r.Package.name `Package (Wire.to_string (Package.wire r)) &gt;&gt;= fun res -&gt;
+    <span data-count="7">l</span>et res = <span data-count="7">m</span>atch res with
+      | <span data-count="1">`</span>Both b -&gt; Ok (`Both b)
+      | <span data-count="1">`</span>Quorum js -&gt; Ok (`Quorum js)
+      | <span data-count="5">`</span>IdNoQuorum (id, _) -&gt; Ok (`Signed id)
+    in
+    <span data-count="7">m</span>atch on_disk with
+    | <span data-count="3">N</span>one -&gt; res
+    | <span data-count="4">S</span>ome rels -&gt;
+      match ensure_releases r rels with
+      | <span data-count="3">E</span>rror (h, w) -&gt; Error (`InvalidReleases (r.Package.name, h, w))
+      | <span data-count="1">O</span>k () -&gt; res
+
+  let verify_release repo ?on_disk a r cs =
+    <span data-count="12">g</span>uard (name_equal a.Authorisation.name r.Package.name)
+      (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) &gt;&gt;= fun () -&gt;
+    <span data-count="11">g</span>uard (S.mem cs.Release.name r.Package.releases)
+      (`NotInReleases (cs.Release.name, r.Package.releases)) &gt;&gt;= fun () -&gt;
+    <span data-count="10">v</span>erify_resource repo a.Authorisation.authorised cs.Release.name `Release (Wire.to_string (Release.wire cs)) &gt;&gt;= fun res -&gt;
+    <span data-count="7">l</span>et res = <span data-count="7">m</span>atch res with
+      | <span data-count="1">`</span>Both b -&gt; Ok (`Both b)
+      | <span data-count="5">`</span>Quorum js -&gt; Ok (`Quorum js)
+      | <span data-count="1">`</span>IdNoQuorum (id, _) -&gt; Ok (`Signed id)
+    in
+    <span data-count="7">m</span>atch on_disk with
+    | <span data-count="1">N</span>one -&gt; res
+    | <span data-count="6">S</span>ome css -&gt; Release.compare_checksums cs css &gt;&gt;= fun () -&gt; <span data-count="3">r</span>es
+
+  type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
+
+  let pp_m_err ppf = <span data-count="0">f</span>unction
+    | <span data-count="0">`</span>NotIncreased (res, nam) -&gt; Format.fprintf ppf "monotonicity: counter of %a %a was not increased" pp_typ res pp_name nam
+    | <span data-count="0">`</span>Deleted (res, nam) -&gt; Format.fprintf ppf "monotonicity: %a %a was deleted" pp_typ res pp_name nam
+    | <span data-count="0">`</span>Msg (res, str) -&gt; Format.fprintf ppf "monotonicity: %a %s" pp_typ res str
+
+  let increased old ne r nam = <span data-count="0">g</span>uard (Uint.compare ne old = 1) (`NotIncreased (r, nam))
+
+  let monoton_author ?old ?now _t =
+    <span data-count="0">m</span>atch old, now with
+    | <span data-count="0">S</span>ome idx, Some idx' -&gt; increased idx.Author.counter idx'.Author.counter `Author idx.Author.name
+    | <span data-count="0">N</span>one, Some _ -&gt; Ok () (* allow creation of ids *)
+    | <span data-count="0">S</span>ome idx, None -&gt; Error (`Deleted (`Author, idx.Author.name)) (* DO NOT allow author deletions *)
+    | <span data-count="0">N</span>one, None -&gt; Error (`Msg (`Author, "both are none"))
+
+  let monoton_team ?old ?now _t =
+    <span data-count="0">m</span>atch old, now with
+    | <span data-count="0">S</span>ome team, Some team' -&gt; increased team.Team.counter team'.Team.counter `Team team.Team.name
+    | <span data-count="0">N</span>one, Some _ -&gt; Ok () (* allow creation of ids *)
+    | <span data-count="0">S</span>ome team, None -&gt; Error (`Deleted (`Team, team.Team.name)) (* DO NOT allow team deletions *)
+    | <span data-count="0">N</span>one, None -&gt; Error (`Msg (`Team, "both are none"))
+
+  let monoton_authorisation ?old ?now _t =
+    <span data-count="0">m</span>atch old, now with
+    | <span data-count="0">S</span>ome a, Some a' -&gt; increased a.Authorisation.counter a'.Authorisation.counter `Authorisation a.Authorisation.name
+    | <span data-count="0">N</span>one, Some _ -&gt; Ok () (* allow creation *)
+    | <span data-count="0">S</span>ome a, None -&gt; Error (`Deleted (`Authorisation, a.Authorisation.name)) (* DO NOT allow deletion of authorsations *)
+    | <span data-count="0">N</span>one, None -&gt; Error (`Msg (`Authorisation, "both are none"))
+
+  let monoton_package ?old ?now _t =
+    <span data-count="0">m</span>atch old, now with
+    | <span data-count="0">S</span>ome rel, Some rel' -&gt; increased rel.Package.counter rel'.Package.counter `Package rel.Package.name
+    | <span data-count="0">N</span>one, Some _ -&gt; Ok () (* allow creation *)
+    | <span data-count="0">S</span>ome rel, None -&gt; Error (`Deleted (`Package, rel.Package.name)) (* DO NOT allow deletion of packages *)
+    | <span data-count="0">N</span>one, None -&gt; Error (`Msg (`Package, "both are none"))
+
+  let monoton_release ?old ?now _t =
+    <span data-count="0">m</span>atch old, now with
+    | <span data-count="0">S</span>ome cs, Some cs' -&gt; increased cs.Release.counter cs'.Release.counter `Release cs.Release.name
+    | <span data-count="0">N</span>one, Some _ -&gt; Ok () (* allow creation *)
+    | <span data-count="0">S</span>ome _, None -&gt; Ok () (* allow deletion of releases *)
+    | <span data-count="0">N</span>one, None -&gt; Error (`Msg (`Release, "both are none"))
+end
+</pre>
+      </div>
+    </div>
+    <div id="footer">Generated on 2017-02-07 23:46:17 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <script src="coverage.js"></script>
+  </body>
+</html>
