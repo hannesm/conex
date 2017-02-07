@@ -31,7 +31,8 @@
     in different environments (e.g. [openssl] as crypto provider, no [Unix] file
     system interaction at all).
 
-    The high level API in this module is subject to change.
+    {b NOTE: this is still work in progress, especially the documentation is not
+    yet finished, and some API changes need to happen for clarification}
 
     {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
 

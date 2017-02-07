@@ -73,6 +73,9 @@ val authorised : t -> Authorisation.t -> identifier -> bool
 
 (** {2 Unsafe operations} *)
 
+(** These operations extend which resources are trusted.  Usually you should not
+    need them, but use {!verify_author} and {!verify_team} instead. *)
+
 (** [add_valid_resource repo id r] marks resource [r] valid under [id] in
     [repo].  If the digest of [r] is already present for a different resource,
     an error will be returned. *)
