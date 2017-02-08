@@ -4,7 +4,7 @@ Conex_resource
 Conex_opam_repository_layout
 Conex_diff
 Conex_crypto
-Conex_sign
+Conex_private_key
 
 Conex_opam_encoding
 

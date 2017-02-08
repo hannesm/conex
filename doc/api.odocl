@@ -11,4 +11,4 @@ Conex_unix_provider
 Conex_diff
 Conex_diff_provider
 nocrypto/Conex_nocrypto
-Conex_sign
+Conex_private_key

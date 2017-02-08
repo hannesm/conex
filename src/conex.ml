@@ -1,7 +1,6 @@
 open Conex_utils
 open Conex_resource
 open Conex_repository
-open Conex_crypto
 
 let str pp e =
   Format.(fprintf str_formatter "%a" pp e) ;
@@ -9,7 +8,7 @@ let str pp e =
 
 module IO = Conex_io
 
-module Make (L : LOGS) (C : VERIFY) = struct
+module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
 
   module R = Make (C)
 
@@ -18,13 +17,19 @@ module Make (L : LOGS) (C : VERIFY) = struct
     | Error err ->
       if strict repo then Error (str pp err) else
         (L.warn (fun m -> m "%a" pp err) ; Ok res)
-
+(*
+  let verify_and_load repo author =
+    
+    match R.verify_author repo author with
+    | Ok (ok, repo) ->
+  *)
   (* TODO: do crypto in here, not in repository
      (which provides some mechanism to check for quorum) *)
   let load_id io repo id =
     if id_loaded repo id then begin
       L.debug (fun m -> m "%a already loaded" pp_id id) ;
-      Ok repo end else
+      Ok repo
+    end else
       match IO.read_author io id with
       | Ok idx ->
         (L.debug (fun m -> m "%a" Author.pp idx) ;

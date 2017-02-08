@@ -1,6 +1,4 @@
 open Conex_utils
-open Conex_resource
-open Conex_crypto
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
@@ -31,7 +29,7 @@ let private_key_path path id =
   in
   "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
 
-let write_private_key prov id key =
+let write prov id key =
   let base = prov.Conex_io.basedir in
   let filename = private_key_path base id in
   (if Conex_persistency.exists filename then begin
@@ -69,7 +67,7 @@ let pp_err ppf = function
   | `Msg m -> Format.fprintf ppf "error %s while trying to read private key" m
 (*BISECT-IGNORE-END*)
 
-let read_private_key ?id prov =
+let read ?id prov =
   let read id =
     let base = prov.Conex_io.basedir in
     let fn = private_key_path base id in
@@ -91,33 +89,3 @@ let read_private_key ?id prov =
     | Ok [] -> Error `NoPrivateKey
     | Ok xs -> Error (`MultiplePrivateKeys xs)
     | Error m -> Error (`Msg m)
-
-module type S = sig
-  val generate : ?bits:int -> Uint.t -> unit -> Key.priv
-
-  val pub_of_priv : Key.priv -> (Key.t, string) result
-
-  val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
-end
-
-module Make (C : SIGN) = struct
-  let generate ?bits time () =
-    let key = C.generate_rsa ?bits () in
-    `Priv (`RSA, key, time)
-
-  let pub_of_priv key = match key with
-    | `Priv (`RSA, key, created) ->
-      C.pub_of_priv_rsa key >>= fun pub ->
-      Ok (`RSA, pub, created)
-
-  let sign now idx priv =
-    let idx, _overflow = Author.prep_sig idx in
-    let data = Wire.to_string (Author.wire_raw idx)
-    and id = idx.Author.name
-    in
-    let hdr = `RSA_PSS_SHA256, now in
-    let data = Wire.to_string (Signature.wire id hdr data) in
-    (match priv with
-     | `Priv (`RSA, key, _) -> C.sign_rsa_pss ~key data) >>= fun signature ->
-    Ok (Author.add_sig idx (hdr, signature))
-end
