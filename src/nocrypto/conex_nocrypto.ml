@@ -82,6 +82,5 @@ module C = struct
     | None -> Error "couldn't decode private key"
 end
 
-module NC_S = Conex_crypto.Make (C)
-
-module NC_R = Conex_repository.Make (V)
+module NC_S = Conex_crypto.Make_sign (C)
+module NC_V = Conex_crypto.Make_verify (V)

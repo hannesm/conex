@@ -57,7 +57,7 @@ module Make (L : LOGS) (C : VERIFY): sig
       those public keys which fingerprints are provided via [valid].  If
       successful, it uses in a second step the resulting repository to verify
       the remaining janitors, followed by verification of the janitor team. *)
-  val load_janitors : ?valid:(identifier -> string -> bool) ->
+  val load_janitors : ?valid:(identifier -> Digest.t -> bool) ->
     Conex_io.t -> Conex_repository.t ->
     (Conex_repository.t, string) result
 

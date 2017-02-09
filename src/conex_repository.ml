@@ -1,8 +1,7 @@
 open Conex_resource
 open Conex_utils
-open Conex_crypto
 
-type valid_resources = (name * Uint.t * typ * S.t) M.t
+type valid_resources = (name * typ * S.t) M.t
 
 type teams = S.t M.t
 
@@ -12,14 +11,17 @@ type t = {
   valid : valid_resources ;
   teams : teams ;
   ids : S.t ;
+  digestf : (Wire.t -> Digest.t);
 }
 
-let repository ?(quorum = 3) ?(strict = false) () =
-  { quorum ; strict ; valid = M.empty ; teams = M.empty ; ids = S.empty }
+let repository ?(quorum = 3) ?(strict = false) digestf () =
+  { quorum ; strict ; valid = M.empty ; teams = M.empty ; ids = S.empty ; digestf }
 
 let quorum t = t.quorum
 
 let strict t = t.strict
+
+let digestf t = t.digestf
 
 let find_team t id = try Some (M.find id t.teams) with Not_found -> None
 
@@ -39,22 +41,31 @@ let authorised r a id =
   let owners = expand_owner r a.Authorisation.authorised in
   S.mem id owners
 
+type conflict = [
+  | `NameConflict of name * Author.r
+  | `TypConflict of typ * Author.r
+]
+
+(*BISECT-IGNORE-BEGIN*)
+let pp_conflict ppf = function
+  | `NameConflict (have, inmem) -> Format.fprintf ppf "resource name conflict %a vs %a" pp_name have Author.pp_resource inmem
+  | `TypConflict (have, inmem) -> Format.fprintf ppf "resource type conflict %a vs %a" pp_typ have Author.pp_resource inmem
+(*BISECT-IGNORE-END*)
+
 let add_valid_resource repo id res =
   let open Author in
   let t = repo.valid in
   let dgst_str = Digest.to_string res.digest in
   try
-    let n, s, r, ids = M.find dgst_str t in
+    let n, r, ids = M.find dgst_str t in
     if not (name_equal n res.rname) then
-      Error ("name not equal: " ^ n ^ " vs " ^ res.rname)
+      Error (`NameConflict (n, res))
     else if not (typ_equal r res.rtyp) then
-      Error ("resource not equal: " ^ typ_to_string r ^ " vs " ^ typ_to_string res.rtyp)
-    else if not (s = res.size) then
-      Error ("size not equal: " ^ Uint.decimal s ^ " vs " ^ Uint.decimal res.size)
+      Error (`TypConflict (r, res))
     else
-      Ok ({ repo with valid = M.add dgst_str (n, s, r, S.add id ids) t })
+      Ok ({ repo with valid = M.add dgst_str (n, r, S.add id ids) t })
   with Not_found ->
-    Ok ({ repo with valid = M.add dgst_str (res.rname, res.size, res.rtyp, S.singleton id) t})
+    Ok ({ repo with valid = M.add dgst_str (res.rname, res.rtyp, S.singleton id) t})
 
 let add_index repo idx =
   List.fold_left (fun (repo, warn) res ->
@@ -67,325 +78,220 @@ let add_index repo idx =
 let add_team repo team =
   { repo with teams = M.add team.Team.name team.Team.members repo.teams  }
 
-module type S = sig
+(*BISECT-IGNORE-BEGIN*)
+let pp_ok ppf = function
+  | `Approved id -> Format.fprintf ppf "ok by id %s" id
+  | `Both (id, js) -> Format.fprintf ppf "ok by id %s and quorum %s" id (String.concat ", " (S.elements js))
+  | `Quorum js -> Format.fprintf ppf "ok by quorum %s" (String.concat ", " (S.elements js))
+(*BISECT-IGNORE-END*)
 
-  val digest : string -> Digest.t
-  val id : Key.t -> string
+type base_error = [
+  | `InvalidName of name * name
+  | `InvalidResource of name * typ * typ
+  | `NotApproved of name * typ * S.t
+]
 
-  val contains : ?queued:bool -> Author.t -> name -> typ -> Wire.t -> bool
+(*BISECT-IGNORE-BEGIN*)
+let pp_cs ppf (a, b) =
+  Format.fprintf ppf "have %a want %a" Release.pp_checksum a Release.pp_checksum b
 
-  val pp_ok : Format.formatter -> [< `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ] -> unit
+let pp_error ppf = function
+  | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
+  | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_typ w pp_typ h
+  | `NotApproved (n, r, _) -> Format.fprintf ppf "not approved %a %a" pp_typ r pp_name n
+  | `InsufficientQuorum (name, r, goods) -> Format.fprintf ppf "quorum for %a %a insufficient: %a" pp_typ r pp_name name (pp_list pp_id) (S.elements goods)
+  | `AuthorWithoutKeys id -> Format.fprintf ppf "author %a does not have any public keys" pp_id id
+  | `IdNotPresent (n, s) -> Format.fprintf ppf "packages %a, authorised ids %a missing" pp_name n (pp_list pp_id) (S.elements s)
+  | `MemberNotPresent (n, s) -> Format.fprintf ppf "team %a, members %a missing" pp_id n (pp_list pp_id) (S.elements s)
+  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "package name in authorisation of %a is different from releases %a" pp_name a pp_name r
+  | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
+  | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
+  | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
+  | `NoSharedPrefix (n, rels) -> Format.fprintf ppf "releases %a contains releases where its name is not a prefix %a" pp_name n (pp_list pp_name) (S.elements rels)
+  | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
+  | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
+(*BISECT-IGNORE-END*)
 
-  type base_error = [
-    | `InvalidName of name * name
-    | `InvalidResource of name * typ * typ
-    | `NotSigned of name * typ * S.t
-  ]
-
-  val pp_error : Format.formatter ->
-    [< base_error
-    | `InsufficientQuorum of name * typ * S.t
-    | `MissingSignature of identifier
-    | `IdNotPresent of name * S.t
-    | `MemberNotPresent of identifier * S.t
-    | `AuthRelMismatch of name * name
-    | `InvalidReleases of name * S.t * S.t
-    | `NoSharedPrefix of name * S.t
-    | `NotInReleases of name * S.t
-    | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]
-    -> unit
-
-  val verify : identifier -> Key.t -> string -> Signature.t -> (unit, [> verification_error]) result
-
-  val verify_author : t -> Author.t -> (t * string list * identifier, [> verification_error ]) result
-
-  val verify_signatures : Author.t -> Key.t list * (Key.t * verification_error) list
-
-  val verify_key : t -> identifier -> Key.t ->
-    ([ `Both of identifier * S.t ],
-     [> base_error | `InsufficientQuorum of name * typ * S.t | `MissingSignature of identifier ]) result
-
-  val verify_team : t -> Team.t ->
-    (t * [ `Quorum of S.t ],
-     [> base_error | `InsufficientQuorum of name * typ * S.t | `MemberNotPresent of identifier * S.t ]) result
-
-  val verify_authorisation : t -> Authorisation.t ->
-    ([ `Quorum of S.t ],
-     [> base_error | `InsufficientQuorum of name * typ * S.t | `IdNotPresent of name * S.t ]) result
-
-  val verify_package : t -> ?on_disk:Package.t -> Authorisation.t -> Package.t ->
-    ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-     [> base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t | `NoSharedPrefix of name * S.t ]) result
-
-  val verify_release : t -> ?on_disk:Release.t -> Authorisation.t -> Package.t -> Release.t ->
-    ([ `Signed of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-     [> base_error
-     | `AuthRelMismatch of name * name
-     | `NotInReleases of name * S.t
-     | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]) result
-
-  (* Monotonicity *)
-  type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
-
-  val pp_m_err : Format.formatter -> m_err -> unit
-
-  val monoton_author : ?old:Author.t -> ?now:Author.t -> t -> (unit, m_err) result
-  val monoton_team : ?old:Team.t -> ?now:Team.t -> t -> (unit, m_err) result
-  val monoton_authorisation : ?old:Authorisation.t -> ?now:Authorisation.t -> t -> (unit, m_err) result
-  val monoton_package : ?old:Package.t -> ?now:Package.t -> t -> (unit, m_err) result
-  val monoton_release : ?old:Release.t -> ?now:Release.t -> t -> (unit, m_err) result
-end
-
-module Make (C : VERIFY) = struct
-  let digest data = (`SHA256, C.b64sha256 data)
-
-  let id key = match key with
-    | `RSA, key, _ -> snd (digest key)
-
-  let verify name key data (hdr, sigval) =
-    let data = Signature.wire name hdr data in
-    let key = match key with `RSA, k, _ -> k in
-    C.verify_rsa_pss ~key ~data:(Wire.to_string data) ~signature:sigval
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_ok ppf = function
-    | `Signed id -> Format.fprintf ppf "ok by id %s" id
-    | `Both (id, js) -> Format.fprintf ppf "ok by id %s and quorum %s" id (String.concat ", " (S.elements js))
-    | `Quorum js -> Format.fprintf ppf "ok by quorum %s" (String.concat ", " (S.elements js))
-  (*BISECT-IGNORE-END*)
-
-  type base_error = [
-    | `InvalidName of name * name
-    | `InvalidResource of name * typ * typ
-    | `NotSigned of name * typ * S.t
-  ]
-
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_cs ppf (a, b) =
-    Format.fprintf ppf "have %a want %a" Release.pp_checksum a Release.pp_checksum b
-
-  let pp_error ppf = function
-    | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
-    | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_typ w pp_typ h
-    | `NotSigned (n, r, _) -> Format.fprintf ppf "unsigned %a %a" pp_typ r pp_name n
-    | `InsufficientQuorum (name, r, goods) -> Format.fprintf ppf "quorum for %a %a insufficient: %a" pp_typ r pp_name name (pp_list pp_id) (S.elements goods)
-    | `MissingSignature id -> Format.fprintf ppf "publickey %a: missing self-signature" pp_id id
-    | `IdNotPresent (n, s) -> Format.fprintf ppf "packages %a, authorised ids %a missing" pp_name n (pp_list pp_id) (S.elements s)
-    | `MemberNotPresent (n, s) -> Format.fprintf ppf "team %a, members %a missing" pp_id n (pp_list pp_id) (S.elements s)
-    | `AuthRelMismatch (a, r) -> Format.fprintf ppf "package name in authorisation of %a is different from releases %a" pp_name a pp_name r
-    | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
-    | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
-    | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
-    | `NoSharedPrefix (n, rels) -> Format.fprintf ppf "releases %a contains releases where its name is not a prefix %a" pp_name n (pp_list pp_name) (S.elements rels)
-    | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
-    | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
-  (*BISECT-IGNORE-END*)
-
-  let verify_resource repo owners name resource data =
-    let csum = digest data in
-    let csum_str = Digest.to_string csum in
-    let n, _s, r, ids =
-      if M.mem csum_str repo.valid then
-        M.find csum_str repo.valid
-      else
-        (name, Uint.of_int_exn (String.length data), resource, S.empty)
-    in
-    let janitors = match find_team repo "janitors" with None -> S.empty | Some s -> s in
-    let js = S.inter janitors ids in
-    let owners = expand_owner repo owners in
-    let signed_owners = S.inter ids owners in
-    match
-      name_equal n name,
-      typ_equal r resource,
-      S.cardinal signed_owners > 0,
-      S.cardinal js >= repo.quorum
-    with
-    | false, _    , _    , _     -> Error (`InvalidName (name, n))
-    | true , false, _    , _     -> Error (`InvalidResource (name, resource, r))
-    | true , true , false, false -> Error (`NotSigned (n, r, js))
-    | true , true , false, true  -> Ok (`Quorum js)
-    | true , true , true , false -> Ok (`IdNoQuorum (S.choose signed_owners, js))
-    | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
-
-  let verify_key repo id key =
-    verify_resource repo (S.singleton id) id `Key (Wire.to_string (Key.wire id key)) >>= function
-    | `Both b -> Ok (`Both b)
-    | `Quorum _ -> Error (`MissingSignature id)
-    | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Key, js))
-
-  let verify_signatures idx =
-    let tbv = Wire.to_string (Author.wire_raw idx) in
-    List.fold_left (fun (good, warn) k ->
-        match List.fold_left (fun r s ->
-            match r, verify idx.Author.name k tbv s with
-            | Ok (), _ -> Ok ()
-            | _, b -> b)
-            (Error `NoSignature)
-            idx.Author.signatures
-        with
-        | Ok () -> (k :: good, warn)
-        | Error e -> (good, (k, e) :: warn))
-      ([], []) idx.Author.keys
-
-  let contains ?(queued = false) idx name typ data =
-    let encoded = Wire.to_string data in
-    let digest = digest encoded in
-    let r = Author.r Uint.zero name (Uint.of_int_exn (String.length encoded)) typ digest in
-    let xs = if queued then idx.Author.resources @ idx.Author.queued else idx.Author.resources in
-    List.exists (Author.r_equal r) xs
-
-  let verify_author repo idx =
-    (* this is a multi step process:
-       - use all keys of the idx, filter:
-       - those with a valid signature for the idx
-       - those with a valid resource entry
-       - those that can be verified (quorum) *)
-    let id = idx.Author.name in
-    let signed_keys, _s_warn = verify_signatures idx in
-    let valid_keys, _r_warn = List.partition
-        (fun key -> contains idx id `Key (Key.wire id key))
-        signed_keys
-    in
-    match valid_keys, idx.Author.resources with
-    | [], [] ->
-      (* this is the case where deleted ids will end *)
-      begin match verify_resource repo S.empty id `Author (Wire.to_string (Author.wire idx)) with
-        | Ok _ -> Ok (add_id repo id, [], id)
-        | Error _ -> Error `NoSignature
-      end
-    | [], _ -> Error `NoSignature
-    | _, _ ->
-      let quorum, _q_warn =
-        List.fold_left (fun (good, warn) pub ->
-            match verify_key repo id pub with
-            | Error (`MissingSignature _) (* we checked above that the publickey is in the resources list! *)
-            | Ok (`Both _) -> pub :: good, warn
-            | _ -> good, pub :: warn)
-          ([], []) valid_keys
-      in
-      match quorum with
-      | [] -> Error `NoSignature
-      | _ ->
-        let repo, warn = add_index repo idx in
-        let repo = add_id repo id in
-        Ok (repo, warn, id)
-
-  let verify_team repo team =
-    let id = team.Team.name in
-    match verify_resource repo S.empty id `Team (Wire.to_string (Team.wire team)) with
-    | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
-    | Error e -> Error e
-    | Ok (`Quorum js) ->
-      guard (S.subset team.Team.members repo.ids)
-        (`MemberNotPresent (id, S.diff team.Team.members repo.ids)) >>= fun () ->
-      Ok (add_team repo team, `Quorum js)
-    (* the following two cases will never happen, since authorised is S.empty! *)
-    | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-
-  let verify_authorisation repo auth =
-    let name = auth.Authorisation.name in
-    match verify_resource repo S.empty name `Authorisation (Wire.to_string (Authorisation.wire auth)) with
-    | Error (`NotSigned (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
-    | Error e -> Error e
-    | Ok (`Quorum js) ->
-      let all = auth.Authorisation.authorised in
-      guard (S.for_all (id_loaded repo) all)
-        (`IdNotPresent (name, S.filter (fun id -> not (id_loaded repo id)) all)) >>= fun () ->
-      Ok (`Quorum js)
-    (* the following two cases will never happen, since authorised is S.empty! *)
-    | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-
-  let ensure_releases rel disk =
-    let rels = rel.Package.releases
-    and dirs = disk.Package.releases
-    in
-    if S.equal rels dirs then
-      Ok ()
+let validate_resource repo owners name resource wire =
+  let digest = repo.digestf wire in
+  let csum_str = Digest.to_string digest in
+  let n, r, ids =
+    if M.mem csum_str repo.valid then
+      M.find csum_str repo.valid
     else
-      let have = S.diff dirs rels
-      and want = S.diff rels dirs
-      in
-      Error (have, want)
+      (name, resource, S.empty)
+  in
+  let janitors = match find_team repo "janitors" with None -> S.empty | Some s -> s in
+  let js = S.inter janitors ids in
+  let owners = expand_owner repo owners in
+  let signed_owners = S.inter ids owners in
+  match
+    name_equal n name,
+    typ_equal r resource,
+    S.cardinal signed_owners > 0,
+    S.cardinal js >= repo.quorum
+  with
+  | false, _    , _    , _     -> Error (`InvalidName (name, n))
+  | true , false, _    , _     -> Error (`InvalidResource (name, resource, r))
+  | true , true , false, false -> Error (`NotApproved (n, r, js))
+  | true , true , false, true  -> Ok (`Quorum js)
+  | true , true , true , false -> Ok (`IdNoQuorum (S.choose signed_owners, js))
+  | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
 
-  let is_release name a =
-    match Conex_opam_repository_layout.authorisation_of_item a with
-    | Some x -> name_equal name x
-    | _ -> false
+let validate_key repo id key =
+  validate_resource repo (S.singleton id) id `Key (Key.wire id key) >>= function
+  | `Both b -> Ok (`Both b)
+  | `Quorum _ -> Error (`NotApproved (id, `Key, S.empty))
+  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Key, js))
 
-  let verify_package repo ?on_disk a r =
-    guard (name_equal a.Authorisation.name r.Package.name)
-      (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
-    guard (S.for_all (is_release r.Package.name) r.Package.releases)
-      (`NoSharedPrefix (r.Package.name, r.Package.releases)) >>= fun () ->
-    verify_resource repo a.Authorisation.authorised r.Package.name `Package (Wire.to_string (Package.wire r)) >>= fun res ->
-    let res = match res with
-      | `Both b -> Ok (`Both b)
-      | `Quorum js -> Ok (`Quorum js)
-      | `IdNoQuorum (id, _) -> Ok (`Signed id)
+let contains ?queued repo idx name typ data =
+  let digest = repo.digestf data in
+  let r = Author.r Uint.zero name typ digest in
+  Author.contains ?queued idx r
+
+let validate_account repo author a =
+  let name = author.Author.name
+  and wired = Author.wire_account a
+  in
+  validate_resource repo (S.singleton name) name `Account wired >>= function
+  | `Both _ -> Ok (`Approved name)
+  | `Quorum _ -> Error (`NotApproved (name, `Account, S.empty)) (* TODO: loses account *)
+  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Account, js))
+
+let validate_author repo author =
+  let id = author.Author.name in
+  match author.Author.keys, author.Author.resources with
+  | [], [] ->
+    (match validate_resource repo S.empty id `Author (Author.wire_raw author) with
+     | Ok (`Quorum _) -> Ok (add_id repo id, [])
+     | _ -> Error (`AuthorWithoutKeys id))
+  | [], _ -> Error (`AuthorWithoutKeys id)
+  | _k :: _keys, _rs ->
+    let repo', warnings = add_index repo author in
+    List.fold_left (fun r (k, _) ->
+        match r, validate_key repo' id k with
+        | Ok (), _ -> Ok ()
+        | Error _, Ok _ -> Ok ()
+        | Error _, Error e -> Error e)
+      (Error (`NotApproved (id, `Key, S.empty)))
+      author.Author.keys >>= fun () ->
+    Ok (repo', warnings)
+
+let validate_team repo team =
+  let id = team.Team.name in
+  match validate_resource repo S.empty id `Team (Team.wire team) with
+  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
+  | Error e -> Error e
+  | Ok (`Quorum js) ->
+    guard (S.subset team.Team.members repo.ids)
+      (`MemberNotPresent (id, S.diff team.Team.members repo.ids)) >>= fun () ->
+    Ok (add_team repo team, `Quorum js)
+  (* the following two cases will never happen, since authorised is S.empty! *)
+  | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
+
+let validate_authorisation repo auth =
+  let name = auth.Authorisation.name in
+  match validate_resource repo S.empty name `Authorisation (Authorisation.wire auth) with
+  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
+  | Error e -> Error e
+  | Ok (`Quorum js) ->
+    let all = auth.Authorisation.authorised in
+    guard (S.for_all (id_loaded repo) all)
+      (`IdNotPresent (name, S.filter (fun id -> not (id_loaded repo id)) all)) >>= fun () ->
+    Ok (`Quorum js)
+  (* the following two cases will never happen, since authorised is S.empty! *)
+  | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
+
+let ensure_releases rel disk =
+  let rels = rel.Package.releases
+  and dirs = disk.Package.releases
+  in
+  if S.equal rels dirs then
+    Ok ()
+  else
+    let have = S.diff dirs rels
+    and want = S.diff rels dirs
     in
-    match on_disk with
-    | None -> res
-    | Some rels ->
-      match ensure_releases r rels with
-      | Error (h, w) -> Error (`InvalidReleases (r.Package.name, h, w))
-      | Ok () -> res
+    Error (have, want)
 
-  let verify_release repo ?on_disk a r cs =
-    guard (name_equal a.Authorisation.name r.Package.name)
-      (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
-    guard (S.mem cs.Release.name r.Package.releases)
-      (`NotInReleases (cs.Release.name, r.Package.releases)) >>= fun () ->
-    verify_resource repo a.Authorisation.authorised cs.Release.name `Release (Wire.to_string (Release.wire cs)) >>= fun res ->
-    let res = match res with
-      | `Both b -> Ok (`Both b)
-      | `Quorum js -> Ok (`Quorum js)
-      | `IdNoQuorum (id, _) -> Ok (`Signed id)
-    in
-    match on_disk with
-    | None -> res
-    | Some css -> Release.compare_checksums cs css >>= fun () -> res
+let is_release name a =
+  match Conex_opam_repository_layout.authorisation_of_item a with
+  | Some x -> name_equal name x
+  | _ -> false
 
-  type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
+let validate_package repo ?on_disk a r =
+  guard (name_equal a.Authorisation.name r.Package.name)
+    (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
+  guard (S.for_all (is_release r.Package.name) r.Package.releases)
+    (`NoSharedPrefix (r.Package.name, r.Package.releases)) >>= fun () ->
+  validate_resource repo a.Authorisation.authorised r.Package.name `Package (Package.wire r) >>= fun res ->
+  let res = match res with
+    | `Both b -> Ok (`Both b)
+    | `Quorum js -> Ok (`Quorum js)
+    | `IdNoQuorum (id, _) -> Ok (`Approved id)
+  in
+  match on_disk with
+  | None -> res
+  | Some rels ->
+    match ensure_releases r rels with
+    | Error (h, w) -> Error (`InvalidReleases (r.Package.name, h, w))
+    | Ok () -> res
 
-  let pp_m_err ppf = function
-    | `NotIncreased (res, nam) -> Format.fprintf ppf "monotonicity: counter of %a %a was not increased" pp_typ res pp_name nam
-    | `Deleted (res, nam) -> Format.fprintf ppf "monotonicity: %a %a was deleted" pp_typ res pp_name nam
-    | `Msg (res, str) -> Format.fprintf ppf "monotonicity: %a %s" pp_typ res str
+let validate_release repo ?on_disk a r cs =
+  guard (name_equal a.Authorisation.name r.Package.name)
+    (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
+  guard (S.mem cs.Release.name r.Package.releases)
+    (`NotInReleases (cs.Release.name, r.Package.releases)) >>= fun () ->
+  validate_resource repo a.Authorisation.authorised cs.Release.name `Release (Release.wire cs) >>= fun res ->
+  let res = match res with
+    | `Both b -> Ok (`Both b)
+    | `Quorum js -> Ok (`Quorum js)
+    | `IdNoQuorum (id, _) -> Ok (`Approved id)
+  in
+  match on_disk with
+  | None -> res
+  | Some css -> Release.compare_checksums cs css >>= fun () -> res
 
-  let increased old ne r nam = guard (Uint.compare ne old = 1) (`NotIncreased (r, nam))
+type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
 
-  let monoton_author ?old ?now _t =
-    match old, now with
-    | Some idx, Some idx' -> increased idx.Author.counter idx'.Author.counter `Author idx.Author.name
-    | None, Some _ -> Ok () (* allow creation of ids *)
-    | Some idx, None -> Error (`Deleted (`Author, idx.Author.name)) (* DO NOT allow author deletions *)
-    | None, None -> Error (`Msg (`Author, "both are none"))
+let pp_m_err ppf = function
+  | `NotIncreased (res, nam) -> Format.fprintf ppf "monotonicity: counter of %a %a was not increased" pp_typ res pp_name nam
+  | `Deleted (res, nam) -> Format.fprintf ppf "monotonicity: %a %a was deleted" pp_typ res pp_name nam
+  | `Msg (res, str) -> Format.fprintf ppf "monotonicity: %a %s" pp_typ res str
 
-  let monoton_team ?old ?now _t =
-    match old, now with
-    | Some team, Some team' -> increased team.Team.counter team'.Team.counter `Team team.Team.name
-    | None, Some _ -> Ok () (* allow creation of ids *)
-    | Some team, None -> Error (`Deleted (`Team, team.Team.name)) (* DO NOT allow team deletions *)
-    | None, None -> Error (`Msg (`Team, "both are none"))
+let increased old ne r nam = guard (Uint.compare ne old = 1) (`NotIncreased (r, nam))
 
-  let monoton_authorisation ?old ?now _t =
-    match old, now with
-    | Some a, Some a' -> increased a.Authorisation.counter a'.Authorisation.counter `Authorisation a.Authorisation.name
-    | None, Some _ -> Ok () (* allow creation *)
-    | Some a, None -> Error (`Deleted (`Authorisation, a.Authorisation.name)) (* DO NOT allow deletion of authorsations *)
-    | None, None -> Error (`Msg (`Authorisation, "both are none"))
+let monoton_author ?old ?now _t =
+  match old, now with
+  | Some idx, Some idx' -> increased idx.Author.counter idx'.Author.counter `Author idx.Author.name
+  | None, Some _ -> Ok () (* allow creation of ids *)
+  | Some idx, None -> Error (`Deleted (`Author, idx.Author.name)) (* DO NOT allow author deletions *)
+  | None, None -> Error (`Msg (`Author, "both are none"))
 
-  let monoton_package ?old ?now _t =
-    match old, now with
-    | Some rel, Some rel' -> increased rel.Package.counter rel'.Package.counter `Package rel.Package.name
-    | None, Some _ -> Ok () (* allow creation *)
-    | Some rel, None -> Error (`Deleted (`Package, rel.Package.name)) (* DO NOT allow deletion of packages *)
-    | None, None -> Error (`Msg (`Package, "both are none"))
+let monoton_team ?old ?now _t =
+  match old, now with
+  | Some team, Some team' -> increased team.Team.counter team'.Team.counter `Team team.Team.name
+  | None, Some _ -> Ok () (* allow creation of ids *)
+  | Some team, None -> Error (`Deleted (`Team, team.Team.name)) (* DO NOT allow team deletions *)
+  | None, None -> Error (`Msg (`Team, "both are none"))
 
-  let monoton_release ?old ?now _t =
-    match old, now with
-    | Some cs, Some cs' -> increased cs.Release.counter cs'.Release.counter `Release cs.Release.name
-    | None, Some _ -> Ok () (* allow creation *)
-    | Some _, None -> Ok () (* allow deletion of releases *)
-    | None, None -> Error (`Msg (`Release, "both are none"))
-end
+let monoton_authorisation ?old ?now _t =
+  match old, now with
+  | Some a, Some a' -> increased a.Authorisation.counter a'.Authorisation.counter `Authorisation a.Authorisation.name
+  | None, Some _ -> Ok () (* allow creation *)
+  | Some a, None -> Error (`Deleted (`Authorisation, a.Authorisation.name)) (* DO NOT allow deletion of authorsations *)
+  | None, None -> Error (`Msg (`Authorisation, "both are none"))
+
+let monoton_package ?old ?now _t =
+  match old, now with
+  | Some rel, Some rel' -> increased rel.Package.counter rel'.Package.counter `Package rel.Package.name
+  | None, Some _ -> Ok () (* allow creation *)
+  | Some rel, None -> Error (`Deleted (`Package, rel.Package.name)) (* DO NOT allow deletion of packages *)
+  | None, None -> Error (`Msg (`Package, "both are none"))
+
+let monoton_release ?old ?now _t =
+  match old, now with
+  | Some cs, Some cs' -> increased cs.Release.counter cs'.Release.counter `Release cs.Release.name
+  | None, Some _ -> Ok () (* allow creation *)
+  | Some _, None -> Ok () (* allow deletion of releases *)
+  | None, None -> Error (`Msg (`Release, "both are none"))

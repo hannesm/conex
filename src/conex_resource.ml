@@ -356,53 +356,48 @@ module Author = struct
   type r = {
     index : Uint.t ;
     rname : string ;
-    size : Uint.t ;
     rtyp : typ ;
     digest : Digest.t ;
   }
 
-  let r index rname size rtyp digest =
-    { index ; rname ; size ; rtyp ; digest }
+  let r index rname rtyp digest =
+    { index ; rname ; rtyp ; digest }
 
   let resource_of_wire data =
     let open Wire in
     map data >>= fun map ->
-    Header.keys ~header:false ["index" ; "name" ; "size" ; "typ" ; "digest" ] map >>= fun () ->
+    Header.keys ~header:false ["index" ; "name" ; "typ" ; "digest" ] map >>= fun () ->
     opt_err (search map "index") >>= int >>= fun index ->
     opt_err (search map "name") >>= string >>= fun rname ->
-    opt_err (search map "size") >>= int >>= fun size ->
     opt_err (search map "typ") >>= typ_of_wire >>= fun rtyp ->
     opt_err (search map "digest") >>= Digest.of_wire >>= fun digest ->
-    Ok (r index rname size rtyp digest)
+    Ok (r index rname rtyp digest)
 
   let wire_resource r =
     let open Wire in
     M.add "index" (Int r.index)
       (M.add "name" (String r.rname)
-         (M.add "size" (Int r.size)
-            (M.add "typ" (wire_typ r.rtyp)
-               (M.add "digest" (Digest.wire_raw r.digest)
-                  M.empty))))
+         (M.add "typ" (wire_typ r.rtyp)
+            (M.add "digest" (Digest.wire_raw r.digest)
+               M.empty)))
 
   let r_equal a b =
     name_equal a.rname b.rname &&
-    Uint.compare a.size b.size = 0 &&
     typ_equal a.rtyp b.rtyp &&
     Digest.equal a.digest b.digest
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_resource ppf { index ; rname ; size ; rtyp ; digest } =
-    Format.fprintf ppf "%a #%s %a@ %s bytes@ %a"
+  let pp_resource ppf { index ; rname ; rtyp ; digest } =
+    Format.fprintf ppf "%a #%s %a@ %a"
       pp_typ rtyp
       (Uint.decimal index)
       pp_name rname
-      (Uint.decimal size)
       Digest.pp digest
   (*BISECT-IGNORE-END*)
 
   type email = identifier
 
-  type service = [
+  type account = [
     | `Email of email
     | `GitHub of identifier
     | `Other of identifier * string
@@ -421,21 +416,23 @@ module Author = struct
         Ok (data :: xs))
       map (Ok [])
 
-  let wire_account m =
+  let wire_account_raw m =
     let open Wire in
     function
     | `Email e -> M.add "email" (String e) m
     | `GitHub g -> M.add "github" (String g) m
     | `Other (k, v) -> M.add k (String v) m
 
-  let service_equal a b = match a, b with
+  let wire_account a = wire_account_raw M.empty a
+
+  let account_equal a b = match a, b with
     | `Email a, `Email b -> id_equal a b
     | `GitHub a, `GitHub b -> id_equal a b
     | `Other (a, b), `Other (c, d) -> id_equal a c && String.compare b d = 0
     | _ -> false
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_service ppf = function
+  let pp_account ppf = function
     | `Email e -> Format.fprintf ppf "email %s" e
     | `GitHub e -> Format.fprintf ppf "GitHub %s" e
     | `Other (k, v) -> Format.fprintf ppf "%s %s" k v
@@ -443,34 +440,46 @@ module Author = struct
 
   let version = Uint.zero
   type t = {
+    (* signed part *)
     created : Uint.t ;
     counter : Uint.t ;
     wraps : Uint.t ;
     name : identifier ;
-    accounts : service list ;
-    keys : Key.t list ;
     resources : r list ;
-    signatures : Signature.t list ;
+    (* in raw outer shield *)
+    accounts : account list ;
+    keys : (Key.t * Signature.t) list ;
     queued : r list ;
   }
 
-  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(accounts = []) ?(keys = []) ?(resources = []) ?(signatures = []) ?(queued = []) created name =
-    { created ; counter ; wraps ; name ; accounts ; keys ; resources ; signatures ; queued }
+  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(accounts = []) ?(keys = []) ?(resources = []) ?(queued = []) created name =
+    { created ; counter ; wraps ; name ; accounts ; keys ; resources ; queued }
+
+  let contains ?(queued = false) author r =
+    let xs = if queued then author.resources @ author.queued else author.resources in
+    List.exists (r_equal r) xs
 
   (* wire representation is as follows:
-      accounts: service list
-      keys: pub list
-      signatures: sig list
+      accounts: account list
+      keys: pub * sig list
       queued: r list
       signed:
         Header.t with typ = `Author
-        resources (list, including matching `Key and `Account above)
+        resources r list (including matching `Key and `Account above)
  *)
   let of_wire data =
     let open Wire in
-    Header.keys ~header:false ["signatures" ; "signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
-    opt_list (search data "signatures") >>= fun sigs ->
-    foldM (fun acc v -> Signature.of_wire v >>= fun s -> Ok (s :: acc)) [] sigs >>= fun signatures ->
+    Header.keys ~header:false ["signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
+    opt_list (search data "keys") >>= fun keys ->
+    foldM (fun acc d ->
+        list d >>= function
+        | [ key ; signature ] ->
+          Key.of_wire key >>= fun key ->
+          Signature.of_wire signature >>= fun signature ->
+          Ok ((key, signature) :: acc)
+        | _ -> Error "expected a key signature pair!")
+      []
+      keys >>= fun keys ->
     opt_err (search data "signed") >>= map >>= fun signed ->
     Header.keys ["resources"] signed >>= fun () ->
     Header.of_wire signed >>= fun h ->
@@ -479,10 +488,8 @@ module Author = struct
     foldM (fun acc v -> resource_of_wire v >>= fun r -> Ok (r :: acc)) [] rs >>= fun resources ->
     opt_list (search data "queued") >>= fun qs ->
     foldM (fun acc v -> resource_of_wire v >>= fun r -> Ok (r :: acc)) [] qs >>= fun queued ->
-    opt_list (search data "keys") >>= fun keys ->
-    foldM (fun acc k -> Key.of_wire k >>= fun r -> Ok (r :: acc)) [] keys >>= fun keys ->
     opt_map (search data "accounts") >>= accounts_of_wire >>= fun accounts ->
-    Ok (t ~keys ~accounts ~counter:h.Header.counter ~wraps:h.Header.wraps ~resources ~queued ~signatures h.Header.created h.Header.name)
+    Ok (t ~keys ~accounts ~counter:h.Header.counter ~wraps:h.Header.wraps ~resources ~queued h.Header.created h.Header.name)
 
   let wire_raw t =
     let open Wire in
@@ -498,12 +505,11 @@ module Author = struct
 
   let wire i =
     let open Wire in
-    M.add "keys" (List (List.map Key.wire_raw i.keys))
-      (M.add "accounts" (Map (List.fold_left wire_account M.empty i.accounts))
+    M.add "keys" (List (List.map (fun (k, s) -> List [ Key.wire_raw k ; Signature.wire_raw s ]) i.keys))
+      (M.add "accounts" (Map (List.fold_left wire_account_raw M.empty i.accounts))
          (M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) i.queued))
             (M.add "signed" (Map (wire_raw i))
-               (M.add "signatures" (List (List.map Signature.wire_raw i.signatures))
-                  M.empty))))
+               M.empty)))
 
   let equal a b =
     id_equal a.name b.name &&
@@ -511,8 +517,8 @@ module Author = struct
     List.length a.keys = List.length b.keys &&
     List.length a.resources = List.length b.resources &&
     List.length a.queued = List.length b.queued &&
-    List.for_all (fun r -> List.exists (service_equal r) a.accounts) b.accounts &&
-    List.for_all (fun r -> List.exists (Key.equal r) a.keys) b.keys &&
+    List.for_all (fun r -> List.exists (account_equal r) a.accounts) b.accounts &&
+    List.for_all (fun (r, _) -> List.exists (fun (k, _) -> Key.equal k r) a.keys) b.keys &&
     List.for_all (fun r -> List.exists (r_equal r) a.resources) b.resources &&
     List.for_all (fun r -> List.exists (r_equal r) a.queued) b.queued
 
@@ -530,26 +536,27 @@ module Author = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp ppf i =
-    Format.fprintf ppf "author %a %s (created %s)@ accounts %a@ keys %a@ resources %a@ queued %a@ signatures %a"
+    Format.fprintf ppf "author %a %s (created %s)@ accounts %a@ keys %a %a@ resources %a@ queued %a"
       pp_id i.name
       (Header.counter i.counter i.wraps)
       (Header.timestamp i.created)
-      (pp_list pp_service) i.accounts
-      (pp_list Key.pp) i.keys
+      (pp_list pp_account) i.accounts
+      (pp_list Key.pp) (List.map fst i.keys)
+      (pp_list Signature.pp) (List.map snd i.keys)
       (pp_list pp_resource) i.resources
       (pp_list pp_resource) i.queued
-      (pp_list Signature.pp) i.signatures
   (*BISECT-IGNORE-END*)
 
   let prep_sig i =
-    let signatures = []
-    and resources = i.resources @ i.queued
+    let resources = i.resources @ i.queued
     and queued = []
     and carry, counter = Uint.succ i.counter
     in
-    { i with signatures ; resources ; queued ; counter }, carry
+    { i with resources ; queued ; counter }, carry
 
-  let add_sig i s = { i with signatures = s :: i.signatures }
+  let replace_sig i (k, s) =
+    let keys = List.filter (fun (k', _) -> not (Key.equal k k')) i.keys in
+    { i with keys = (k, s) :: keys }
 end
 
 
@@ -719,34 +726,31 @@ end
 module Release = struct
   type c = {
     filename : name ;
-    size     : Uint.t ;
     digest   : Digest.t ;
   }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum ppf c =
-    Format.fprintf ppf "%a (%s bytes) %a"
-      pp_name c.filename (Uint.decimal c.size) Digest.pp c.digest
+    Format.fprintf ppf "%a: %a"
+      pp_name c.filename Digest.pp c.digest
   (*BISECT-IGNORE-END*)
 
   let checksum_equal a b =
-    name_equal a.filename b.filename && a.size = b.size && Digest.equal a.digest b.digest
+    name_equal a.filename b.filename && Digest.equal a.digest b.digest
 
   let checksum_of_wire data =
     let open Wire in
     map data >>= fun map ->
-    Header.keys ~header:false ["filename" ; "size" ; "digest"] map >>= fun () ->
+    Header.keys ~header:false ["filename" ; "digest"] map >>= fun () ->
     opt_err (search map "filename") >>= string >>= fun filename ->
-    opt_err (search map "size") >>= int >>= fun size ->
     opt_err (search map "digest") >>= Digest.of_wire >>= function digest ->
-    Ok ({ filename ; size ; digest })
+    Ok ({ filename ; digest })
 
   let wire_checksum c =
     let open Wire in
     M.add "filename" (String c.filename)
-      (M.add "size" (Int c.size)
-         (M.add "digest" (Digest.wire_raw c.digest)
-            M.empty))
+      (M.add "digest" (Digest.wire_raw c.digest)
+         M.empty)
 
   type checksum_map = c M.t
 

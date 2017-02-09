@@ -5,9 +5,9 @@ module C : sig
 end
 
 module V : sig
-  include Conex_crypto.VERIFY
+  include Conex_crypto.VERIFY_BACK
 end
 
 module NC_S : (Conex_crypto.SIGN)
 
-module NC_R : (Conex_repository.S)
+module NC_V : (Conex_crypto.VERIFY)

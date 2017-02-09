@@ -1,4 +1,4 @@
-(** Sign: signing resources, and private key utilities. *)
+(** Private key IO *)
 
 open Conex_utils
 open Conex_resource

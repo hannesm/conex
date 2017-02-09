@@ -1,6 +1,8 @@
 open Conex_utils
 open Conex_resource
 
+module SIGN = Conex_nocrypto.NC_S
+
 let sset =
   let module M = struct
     type t = S.t
@@ -118,6 +120,6 @@ let verr =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
-  match Conex_nocrypto.NC_S.sign Uint.zero idx p with
+  match SIGN.sign Uint.zero idx p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

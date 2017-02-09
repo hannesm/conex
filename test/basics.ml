@@ -1,7 +1,7 @@
 open Conex_utils
 open Conex_resource
 
-module R = Conex_nocrypto.NC_R
+module V = Conex_nocrypto.NC_V
 module CS = Conex_nocrypto.NC_S
 
 module Ui = struct
@@ -194,29 +194,31 @@ let verify_fail () =
   let idx = Author.t Uint.zero "a" in
   let k, p = gen_pub () in
   let signed = sign_idx idx p in
-  let single_sig = match signed.Author.signatures with
-    | [x] -> x
+  let single_sig = match signed.Author.keys with
+    | [(_,x)] -> x
     | _ -> Alcotest.fail "expected a single signature"
   in
-  let raw = Wire.to_string (Author.wire_raw signed) in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies" (Ok ())
-    (R.verify "a" k raw single_sig) ;
-  let (hdr, _) = single_sig in
+    (V.verify signed) ;
+  let (hdr, v) = single_sig in
+  let v' = Bytes.(of_string v) in
+  Bytes.set v' 3 'f' ;
+  let idx = Author.replace_sig signed (k, (hdr, (Bytes.to_string v'))) in
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
-    (R.verify "foo" k raw single_sig) ;
+    (V.verify idx) ;
   let pub = match CS.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
     | Ok p -> p
     | Error _ -> Alcotest.fail "couldn't pub_of_priv"
   in
+  let idx = Author.t ~keys:[pub, single_sig] Uint.zero "a" in
   Alcotest.check (result Alcotest.unit verr) "too small key"
     (Error `InvalidPublicKey)
-    (R.verify "a" pub raw single_sig) ;
+    (V.verify idx) ;
+  let idx = Author.replace_sig signed (k, (hdr, Wire.to_string (Author.wire_raw signed))) in
   Alcotest.check (result Alcotest.unit verr) "invalid b64 sig"
     (Error `InvalidBase64Encoding)
-    (R.verify "a" k
-       (Wire.to_string (Author.wire_raw signed))
-       (hdr, "bad"))
+    (V.verify idx)
 
 
 let sign_tests = [
@@ -227,78 +229,39 @@ let sign_tests = [
 ]
 
 let idx_sign () =
-  let k, p = gen_pub () in
+  let _, p = gen_pub () in
   let idx = Author.t Uint.zero "a" in
   let signed = sign_idx idx p in
-  let single_sig = match signed.Author.signatures with
-    | [x] -> x
-    | _ -> Alcotest.fail "expected a single signature"
-  in
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
-    (Ok ())
-    (R.verify "a" k
-       (Wire.to_string (Author.wire_raw signed))
-       single_sig) ;
-  let r = Author.r (Author.next_id idx) "foo" (Uint.of_int_exn 4) `Key (`SHA256, "2342") in
+    (Ok ()) (V.verify signed) ;
+  let r = Author.r (Author.next_id idx) "foo" `Key (`SHA256, "2342") in
   let idx' = Author.add_resource signed r in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Ok ())
-    (R.verify "a" k
-       (Wire.to_string (Author.wire_raw idx')) single_sig) ;
+    (V.verify idx') ;
   let idx', _ = Author.prep_sig idx' in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Error `InvalidSignature)
-    (R.verify "a" k
-       (Wire.to_string (Author.wire_raw idx')) single_sig)
-
-let idx_sign_other () =
-  (* this shows that Publickey.verify does not check
-       index.identifier == fst signature
-     cause it does not get the index *)
-  let k, p = gen_pub () in
-  let idx = Author.t Uint.zero "b" in
-  let signed = sign_idx idx p in
-  let signature = match signed.Author.signatures with
-    | [x] -> x
-    | _ -> Alcotest.fail "expected a single signature"
-  in
-  Alcotest.check (result Alcotest.unit verr) "signed index verifies"
-    (Ok ())
-    (R.verify "b" k
-       (Wire.to_string (Author.wire_raw signed))
-       signature)
+    (V.verify idx')
 
 let idx_sign_bad () =
-  let k, p = gen_pub () in
+  let _, p = gen_pub () in
   let idx = Author.t Uint.zero "b" in
   let signed = sign_idx idx p in
-  let single_sig = match signed.Author.signatures with
-    | [x] -> x
-    | _ -> Alcotest.fail "expected a single signature"
-  in
-  let idx' = Author.t Uint.zero "c" in
-  let raw = Wire.to_string (Author.wire_raw idx') in
+  let idx' = Author.t ~keys:signed.Author.keys Uint.zero "c" in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong id)"
-    (Error `InvalidSignature)
-    (R.verify "c" k raw single_sig)
+    (Error `InvalidSignature) (V.verify idx')
 
 let idx_sign_bad2 () =
-  let k, p = gen_pub () in
+  let _, p = gen_pub () in
   let idx = Author.t Uint.zero "a" in
   let signed = sign_idx idx p in
-  let single_sig = match signed.Author.signatures with
-    | [x] -> x
-    | _ -> Alcotest.fail "expected a single signature"
-  in
-  let idx' = Author.t ~counter:(Uint.of_int_exn 23) Uint.zero "b" in
-  let raw = Wire.to_string (Author.wire_raw idx') in
+  let idx' = Author.t ~keys:signed.Author.keys ~counter:(Uint.of_int_exn 23) Uint.zero "a" in
   Alcotest.check (result Alcotest.unit verr) "signed index does not verify (wrong data)"
-    (Error `InvalidSignature)
-    (R.verify "b" k raw single_sig)
+    (Error `InvalidSignature) (V.verify idx')
 
 let idx_tests = [
   "good index", `Quick, idx_sign ;
-  "good index other", `Quick, idx_sign_other ;
   "bad index", `Quick, idx_sign_bad ;
   "bad index 2", `Quick, idx_sign_bad2 ;
 ]

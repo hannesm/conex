@@ -4,9 +4,9 @@ open Conex_resource
 open Rresult
 
 (* this should likely be elsewhere (conex-bells&whistles) *)
-module C = Conex.Make(Logs)(Conex_nocrypto.V)
-module CR = Conex_nocrypto.NC_R
-module CS = Conex_nocrypto.NC_S
+module V = Conex_nocrypto.NC_V
+module C = Conex.Make(Logs)(V)
+module SIGN = Conex_nocrypto.NC_S
 
 let str_to_msg = function
   | Ok x -> Ok x
@@ -63,7 +63,7 @@ let setup_log style_renderer level =
 
 let init_repo ?quorum ?strict dry path =
   str_to_msg (Conex_unix_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
-  Ok (Conex_repository.repository ?quorum ?strict (), prov)
+  Ok (Conex_repository.repository ?quorum ?strict V.digest (), prov)
 
 let help _ _ _ _ _ _ man_format cmds = function
   | None -> `Help (`Pager, None)
@@ -90,10 +90,10 @@ let load_self_queued io r id =
     Logs.warn (fun m -> m "error while loading id %s" e) ;
     let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
     let r, warns = Conex_repository.add_index r idx in
-    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warns ;
+    List.iter (fun msg -> Logs.warn (fun m -> m "%a" Conex_repository.pp_conflict msg)) warns ;
     match foldM (fun repo r -> Conex_repository.add_valid_resource repo id r) r idx.Author.queued with
     | Ok r -> r
-    | Error e -> Logs.warn (fun m -> m "while adding %s" e) ; r
+    | Error e -> Logs.warn (fun m -> m "while adding %a" Conex_repository.pp_conflict e) ; r
 
 let status_all io r id no_team =
   R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
@@ -146,10 +146,8 @@ let status _ dry path quorum strict id name no_rec =
 
 let add_r idx name typ data =
   let counter = Author.next_id idx in
-  let encoded = Wire.to_string data in
-  let size = Uint.of_int_exn (String.length encoded) in
-  let digest = CR.digest encoded in
-  let res = Author.r counter name size typ digest in
+  let digest = V.digest data in
+  let res = Author.r counter name typ digest in
   Logs.info (fun m -> m "added %a to change queue" Author.pp_resource res) ;
   Author.add_resource idx res
 
@@ -159,7 +157,7 @@ let init _ dry path id email =
      | None -> Error (`Msg "please provide '--id'")
      | Some id ->
        Nocrypto_entropy_unix.initialize () ;
-       init_repo ~quorum:0 dry path >>= fun (r, io) ->
+       init_repo ~quorum:0 dry path >>= fun (_, io) ->
        Logs.info (fun m -> m "repository %a" Conex_io.pp io) ;
        (match IO.read_id io id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
@@ -178,28 +176,24 @@ let init _ dry path id email =
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
         | Error _ ->
-          let p = CS.generate now () in
+          let p = SIGN.generate now () in
           str_to_msg (Conex_private_key.write io id p) >>| fun () ->
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
-       str_to_msg (CS.pub_of_priv priv) >>= fun public ->
+       str_to_msg (SIGN.pub_of_priv priv) >>= fun public ->
        let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts
        and counter = idx.Author.counter
        and wraps = idx.Author.wraps
-       and keys = public :: idx.Author.keys
-       and signatures = idx.Author.signatures
        and queued = idx.Author.queued
        and resources = idx.Author.resources
        and created = idx.Author.created
        in
-       let idx = Author.t ~accounts ~keys ~counter ~wraps ~resources ~signatures ~queued created id in
+       let idx = Author.t ~accounts ~counter ~wraps ~resources ~queued created id in
        let idx = add_r idx id `Key (Key.wire id public) in
-       str_to_msg (CS.sign now idx priv) >>= fun idx ->
+       str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
        str_to_msg (IO.write_author io idx) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;
-       R.error_to_msg ~pp_error:Conex_crypto.pp_verification_error
-         (CR.verify_author r idx >>| fun (_, _, id) ->
-          Logs.info (fun m -> m "verified %s" id)) >>| fun () ->
+       R.error_to_msg ~pp_error:Conex_crypto.pp_verification_error (V.verify idx) >>| fun () ->
        Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id))
 
 let find_idx io name =
@@ -229,7 +223,7 @@ let sign _ dry path id =
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (CS.sign now idx priv) >>= fun idx ->
+       str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
        Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "wrote %s to disk" id))
@@ -260,7 +254,7 @@ let find_auth io name =
 
 let auth _ dry path id remove members p =
   msg_to_cmdliner
-    (init_repo dry path >>= fun (_r, io) ->
+    (init_repo dry path >>= fun (r, io) ->
      self io id >>= fun id ->
      let auth = find_auth io p in
      let members = match members with [] -> [id] | xs -> xs in
@@ -276,7 +270,7 @@ let auth _ dry path id remove members p =
        let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "modified authorisation and added resource to your list.")
-     end else if not (CR.contains ~queued:true idx p `Authorisation (Authorisation.wire auth)) then begin
+     end else if not (Conex_repository.contains ~queued:true r idx p `Authorisation (Authorisation.wire auth)) then begin
        let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your list.")
@@ -317,7 +311,7 @@ let release _ dry path id remove p =
         str_to_msg (IO.write_package io rel) >>| fun () ->
         Logs.info (fun m -> m "wrote %a" Package.pp rel) ;
         add_r idx pn `Package (Package.wire rel)
-       end else if not (CR.contains ~queued:true idx pn `Package (Package.wire rel')) then begin
+       end else if not (Conex_repository.contains ~queued:true r idx pn `Package (Package.wire rel')) then begin
         Ok (add_r idx pn `Package (Package.wire rel))
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
@@ -335,7 +329,7 @@ let release _ dry path id remove p =
             cs)
        in
        R.error_to_msg ~pp_error:IO.pp_cc_err
-         (IO.compute_release CR.digest io now name) >>= fun cs' ->
+         (IO.compute_release V.raw_digest io now name) >>= fun cs' ->
        if not (Release.equal cs cs') then
          let cs' = Release.set_counter cs' cs'.Release.counter in
          let cs', overflow = Release.prep cs' in
@@ -343,7 +337,7 @@ let release _ dry path id remove p =
          str_to_msg (IO.write_release io cs') >>| fun () ->
          Logs.info (fun m -> m "wrote %a" Release.pp cs') ;
          add_r idx name `Release (Release.wire cs')
-       else if not (CR.contains ~queued:true idx name `Release (Release.wire cs)) then
+       else if not (Conex_repository.contains ~queued:true r idx name `Release (Release.wire cs)) then
          Ok (add_r idx name `Release (Release.wire cs))
        else
          Ok idx
@@ -358,7 +352,7 @@ let release _ dry path id remove p =
 
 let team _ dry repo id remove members tid =
   msg_to_cmdliner
-    (init_repo dry repo >>= fun (_r, io) ->
+    (init_repo dry repo >>= fun (r, io) ->
      self io id >>= fun id ->
      let team =
        let use e =
@@ -385,7 +379,7 @@ let team _ dry repo id remove members tid =
        let idx = add_r idx tid `Team (Team.wire team) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "modified team and added resource to your resource list.")
-     end else if not (CR.contains ~queued:true idx tid `Team (Team.wire team)) then begin
+     end else if not (Conex_repository.contains ~queued:true r idx tid `Team (Team.wire team)) then begin
        let idx = add_r idx tid `Team (Team.wire team) in
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.app (fun m -> m "added resource to your resource list.")

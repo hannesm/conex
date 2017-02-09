@@ -243,12 +243,11 @@ module Author : sig
   type r = private {
     index : Uint.t ;
     rname : string ;
-    size : Uint.t ;
     rtyp : typ ;
     digest : Digest.t ;
   }
 
-  val r : Uint.t -> string -> Uint.t -> typ -> Digest.t -> r
+  val r : Uint.t -> string -> typ -> Digest.t -> r
 
   val r_equal : r -> r -> bool
 
@@ -256,27 +255,32 @@ module Author : sig
 
   type email = identifier
 
-  type service = [
+  type account = [
     | `Email of email
     | `GitHub of identifier
     | `Other of identifier * string
   ]
 
+  val wire_account : account -> Wire.t
+
   type t = private {
+    (* signed part *)
     created : Uint.t ;
     counter : Uint.t ;
     wraps : Uint.t ;
     name : identifier ;
-    accounts : service list ;
-    keys : Key.t list ;
     resources : r list ;
-    signatures : Signature.t list ;
+    (* unsigned part *)
+    accounts : account list ;
+    keys : (Key.t * Signature.t) list ;
     queued : r list ;
   }
 
   val pp : t fmt
 
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> ?accounts:(service list) -> ?keys:(Key.t list) -> ?resources:(r list) -> ?signatures:(Signature.t list) -> ?queued:(r list) -> Uint.t -> identifier -> t
+  val t : ?counter:Uint.t -> ?wraps:Uint.t -> ?accounts:(account list) -> ?keys:((Key.t * Signature.t) list) -> ?resources:(r list) -> ?queued:(r list) -> Uint.t -> identifier -> t
+
+  val contains : ?queued:bool -> t -> r -> bool
 
   val of_wire : Wire.t -> (t, string) result
 
@@ -294,7 +298,7 @@ module Author : sig
 
   val prep_sig : t -> t * bool
 
-  val add_sig : t -> Signature.t -> t
+  val replace_sig : t -> Key.t * Signature.t -> t
 end
 
 
@@ -375,7 +379,6 @@ end
 module Release : sig
   type c = {
     filename : name ;
-    size     : Uint.t ;
     digest   : Digest.t ;
   }
 

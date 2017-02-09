@@ -46,10 +46,8 @@ let checksum_files t pv =
 
 let compute_release digest t now name =
   let checksum filename data =
-    let size = Uint.of_int_exn (String.length data)
-    and digest = digest data
-    in
-    { Release.filename ; size ; digest }
+    let digest = digest data in
+    { Release.filename ; digest }
   in
   match t.file_type (release_dir name) with
   | Error _ -> Error (`FileNotFound name)

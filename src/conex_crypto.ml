@@ -16,10 +16,49 @@ let pp_verification_error ppf = function
   | `NoSignature -> Format.fprintf ppf "no signature found"
 (*BISECT-IGNORE-END*)
 
-module type VERIFY = sig
+module type VERIFY_BACK = sig
   val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> verification_error ]) result
 
   val b64sha256 : string -> string
+end
+
+module type VERIFY = sig
+  val raw_digest : string -> Digest.t
+
+  val digest : Wire.t -> Digest.t
+
+  val keyid : Key.t -> Digest.t
+
+  val verify : Author.t -> (unit, [> verification_error ]) result
+
+  val verify_signature : string -> identifier -> Key.t -> Signature.t ->
+    (unit, [> verification_error ]) result
+end
+
+(** Instantiation. *)
+module Make_verify (C : VERIFY_BACK) = struct
+
+  let raw_digest data = `SHA256, C.b64sha256 data
+
+  let digest data =
+    raw_digest (Wire.to_string data)
+
+  let keyid key = match key with
+    | `RSA, key, _ -> raw_digest key
+
+  let verify_signature data name key (hdr, sigval) =
+    let data = Signature.wire name hdr data in
+    let key = match key with `RSA, k, _ -> k in
+    C.verify_rsa_pss ~key ~data:(Wire.to_string data) ~signature:sigval
+
+  let verify author =
+    let tbv = Wire.to_string (Author.wire_raw author) in
+    match author.Author.keys with
+    | [] -> Error `NoSignature
+    | _ ->
+      foldM
+        (fun () (k, s) -> verify_signature tbv author.Author.name k s)
+        () author.Author.keys
 end
 
 module type SIGN_BACK = sig
@@ -38,7 +77,7 @@ module type SIGN = sig
   val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
 end
 
-module Make (C : SIGN_BACK) = struct
+module Make_sign (C : SIGN_BACK) = struct
   let generate ?bits time () =
     let key = C.generate_rsa ?bits () in
     `Priv (`RSA, key, time)
@@ -57,5 +96,6 @@ module Make (C : SIGN_BACK) = struct
     let data = Wire.to_string (Signature.wire id hdr data) in
     (match priv with
      | `Priv (`RSA, key, _) -> C.sign_rsa_pss ~key data) >>= fun signature ->
-    Ok (Author.add_sig idx (hdr, signature))
+    pub_of_priv priv >>= fun key ->
+    Ok (Author.replace_sig idx (key, (hdr, signature)))
 end

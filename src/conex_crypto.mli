@@ -18,7 +18,7 @@ type verification_error = [
 (** [pp_verification_error] is a pretty printer for [verification_error]. *)
 val pp_verification_error : verification_error fmt
 
-module type VERIFY = sig
+module type VERIFY_BACK = sig
   (** [verify_rsa_pss ~key ~data ~signature] returns [Ok ()] on success,
       otherwise a [verification_error].  The digest used is SHA256 at the moment. *)
   val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> verification_error ]) result
@@ -27,6 +27,24 @@ module type VERIFY = sig
       binary output to base64. *)
   val b64sha256 : string -> string
 end
+
+module type VERIFY = sig
+
+  val raw_digest : string -> Digest.t
+
+  val digest : Wire.t -> Digest.t
+
+  val keyid : Key.t -> Digest.t
+
+  val verify : Author.t -> (unit, [> verification_error ]) result
+
+  val verify_signature : string -> identifier -> Key.t -> Signature.t ->
+    (unit, [> verification_error ]) result
+
+end
+
+(** Instantiation. *)
+module Make_verify (C : VERIFY_BACK) : VERIFY
 
 (** {1 Signing} *)
 
@@ -60,4 +78,4 @@ module type SIGN = sig
 end
 
 (** Instantiation. *)
-module Make (C : SIGN_BACK) : SIGN
+module Make_sign (C : SIGN_BACK) : SIGN
