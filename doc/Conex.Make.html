@@ -23,7 +23,7 @@
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
 <link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex.Make</title>
+<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex.Make</title>
 </head>
 <body>
 <div class="navbar">&nbsp;<a class="up" href="Conex.html" title="Conex">Up</a>
@@ -61,7 +61,7 @@
       ids present in <code class="code">io</code>), applying <code class="code">load_id</code>.<br>
 </div>
 
-<pre><span id="VALload_janitors"><span class="keyword">val</span> load_janitors</span> : <code class="type">?valid:(<a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> string -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<pre><span id="VALload_janitors"><span class="keyword">val</span> load_janitors</span> : <code class="type">?valid:(<a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
 <code class="code">load_janitors&nbsp;~valid&nbsp;io&nbsp;repo</code> reads the team janitors from <code class="code">io</code>, and all
       team members.  It verifies the data by doing two steps: first it uses only
       those public keys which fingerprints are provided via <code class="code">valid</code>.  If

@@ -21,7 +21,7 @@
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
 <link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Index of values</title>
+<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Index of values</title>
 </head>
 <body>
 <div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
@@ -41,6 +41,8 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Team.html#VALadd">add</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conex_repository.html#VALadd_id">add_id</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
 <tr><td><a href="Conex_repository.html#VALadd_index">add_index</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
 <code class="code">add_index&nbsp;repo&nbsp;author</code> applies <a href="Conex_repository.html#VALadd_valid_resource"><code class="code"><span class="constructor">Conex_repository</span>.add_valid_resource</code></a> to each member of
@@ -48,8 +50,6 @@
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALadd_resource">add_resource</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conex_resource.Author.html#VALadd_sig">add_sig</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_repository.html#VALadd_team">add_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
@@ -99,7 +99,7 @@
 </div>
 </td></tr>
 <tr><td align="left"><br>B</td></tr>
-<tr><td><a href="Conex_crypto.VERIFY.html#VALb64sha256">b64sha256</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<tr><td><a href="Conex_crypto.VERIFY_BACK.html#VALb64sha256">b64sha256</a> [<a href="Conex_crypto.VERIFY_BACK.html">Conex_crypto.VERIFY_BACK</a>]</td>
 <td><div class="info">
 <code class="code">b64sha356&nbsp;str</code> computes the SHA256 digest of <code class="code">str</code> and converts its
       binary output to base64.
@@ -142,10 +142,12 @@
 <code class="code">concat&nbsp;sep&nbsp;xs</code> concatenates all <code class="code">xs</code>, using <code class="code">sep</code> as separator.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALcontains">contains</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_resource.Author.html#VALcontains">contains</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALcontains">contains</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
 <code class="code">contains&nbsp;~queued&nbsp;author&nbsp;name&nbsp;typ&nbsp;data</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">data</code> named <code class="code">name</code>
-      of <code class="code">typ</code> is a member in the list of resources of <code class="code">author</code>.
+    of <code class="code">typ</code> is a member in the list of resources of <code class="code">author</code>.
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Header.html#VALcounter">counter</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
@@ -192,11 +194,10 @@
     <code class="code">releases</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALdigest">digest</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
-<td><div class="info">
-<code class="code">digest&nbsp;str</code> computes a digest from the given string.
-</div>
-</td></tr>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALdigest">digest</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALdigestf">digestf</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
 <tr><td align="left"><br>E</td></tr>
 <tr><td><a href="Conex_opam_encoding.html#VALencode">encode</a> [<a href="Conex_opam_encoding.html">Conex_opam_encoding</a>]</td>
 <td><div class="info">
@@ -273,12 +274,12 @@
 <tr><td><a href="Conex_unix_provider.html#VALfs_ro_provider">fs_ro_provider</a> [<a href="Conex_unix_provider.html">Conex_unix_provider</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>G</td></tr>
-<tr><td><a href="Conex_sign.S.html#VALgenerate">generate</a> [<a href="Conex_sign.S.html">Conex_sign.S</a>]</td>
+<tr><td><a href="Conex_crypto.SIGN.html#VALgenerate">generate</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
 <td><div class="info">
 <code class="code">generate&nbsp;?bits&nbsp;created&nbsp;()</code> generates a <code class="code">bits</code> sized private key.
 </div>
 </td></tr>
-<tr><td><a href="Conex_crypto.SIGN.html#VALgenerate_rsa">generate_rsa</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<tr><td><a href="Conex_crypto.SIGN_BACK.html#VALgenerate_rsa">generate_rsa</a> [<a href="Conex_crypto.SIGN_BACK.html">Conex_crypto.SIGN_BACK</a>]</td>
 <td><div class="info">
 <code class="code">generate_rsa&nbsp;~bits&nbsp;()</code> generates an RSA private key with <code class="code">bits</code> size.
 </div>
@@ -294,11 +295,6 @@
 </div>
 </td></tr>
 <tr><td align="left"><br>I</td></tr>
-<tr><td><a href="Conex_repository.S.html#VALid">id</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
-<td><div class="info">
-<code class="code">id&nbsp;key</code> is the public key identifier.
-</div>
-</td></tr>
 <tr><td><a href="Conex_resource.html#VALid_equal">id_equal</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
 <td><div class="info">
 <code class="code">id_equal&nbsp;a&nbsp;b</code> is the result of a case insensitive comparison of <code class="code">a</code> and <code class="code">b</code>.
@@ -347,6 +343,9 @@
 </td></tr>
 <tr><td><a href="Conex_io.html#VALitems">items</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
+<tr><td align="left"><br>K</td></tr>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALkeyid">keyid</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<td></td></tr>
 <tr><td align="left"><br>L</td></tr>
 <tr><td><a href="Conex_utils.String.html#VALlength">length</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
 <td><div class="info">
@@ -374,15 +373,15 @@
 <tr><td align="left"><br>M</td></tr>
 <tr><td><a href="Conex_persistency.html#VALmkdir">mkdir</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_repository.S.html#VALmonoton_author">monoton_author</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALmonoton_author">monoton_author</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_repository.S.html#VALmonoton_authorisation">monoton_authorisation</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALmonoton_authorisation">monoton_authorisation</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_repository.S.html#VALmonoton_package">monoton_package</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALmonoton_package">monoton_package</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_repository.S.html#VALmonoton_release">monoton_release</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALmonoton_release">monoton_release</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_repository.S.html#VALmonoton_team">monoton_team</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALmonoton_team">monoton_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>N</td></tr>
 <tr><td><a href="Conex_resource.html#VALname_equal">name_equal</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
@@ -488,14 +487,16 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Release.html#VALpp_checksum">pp_checksum</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_sign.html#VALpp_err">pp_err</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
+<tr><td><a href="Conex_repository.html#VALpp_conflict">pp_conflict</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_private_key.html#VALpp_err">pp_err</a> [<a href="Conex_private_key.html">Conex_private_key</a>]</td>
 <td><div class="info">
 <code class="code">pp_err&nbsp;err</code> pretty prints <code class="code">err</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALpp_error">pp_error</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALpp_error">pp_error</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
-<code class="code">pp_error</code> prints verification errors.
+<code class="code">pp_error</code> prints validation errors.
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.html#VALpp_id">pp_id</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
@@ -509,16 +510,16 @@
     elements are separated by semicolon).
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALpp_m_err">pp_m_err</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALpp_m_err">pp_m_err</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_resource.html#VALpp_name">pp_name</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
 <td><div class="info">
 <code class="code">pp_name&nbsp;name</code> is a pretty printer for <code class="code">name</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALpp_ok">pp_ok</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALpp_ok">pp_ok</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
-<code class="code">pp_ok</code> pretty prints verification success
+<code class="code">pp_ok</code> pretty prints validation success
 </div>
 </td></tr>
 <tr><td><a href="Conex_io.html#VALpp_r_err">pp_r_err</a> [<a href="Conex_io.html">Conex_io</a>]</td>
@@ -532,7 +533,7 @@
 </td></tr>
 <tr><td><a href="Conex_crypto.html#VALpp_verification_error">pp_verification_error</a> [<a href="Conex_crypto.html">Conex_crypto</a>]</td>
 <td><div class="info">
-<code class="code">pp_verification_error&nbsp;pp</code> is a pretty printer for <code class="code">verification_error</code>.
+<code class="code">pp_verification_error</code> is a pretty printer for <code class="code">verification_error</code>.
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Release.html#VALprep">prep</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
@@ -545,12 +546,12 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALprep_sig">prep_sig</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_sign.S.html#VALpub_of_priv">pub_of_priv</a> [<a href="Conex_sign.S.html">Conex_sign.S</a>]</td>
+<tr><td><a href="Conex_crypto.SIGN.html#VALpub_of_priv">pub_of_priv</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
 <td><div class="info">
 <code class="code">pub_of_priv&nbsp;priv</code> extracts the public key from the private.
 </div>
 </td></tr>
-<tr><td><a href="Conex_crypto.SIGN.html#VALpub_of_priv_rsa">pub_of_priv_rsa</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<tr><td><a href="Conex_crypto.SIGN_BACK.html#VALpub_of_priv_rsa">pub_of_priv_rsa</a> [<a href="Conex_crypto.SIGN_BACK.html">Conex_crypto.SIGN_BACK</a>]</td>
 <td><div class="info">
 <code class="code">pub_of_priv_rsa&nbsp;priv</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;pub</code> or <code class="code"><span class="constructor">Error</span>&nbsp;str</code>.
 </div>
@@ -566,6 +567,13 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALr_equal">r_equal</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALraw_digest">raw_digest</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_private_key.html#VALread">read</a> [<a href="Conex_private_key.html">Conex_private_key</a>]</td>
+<td><div class="info">
+<code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
+</div>
+</td></tr>
 <tr><td><a href="Conex_io.html#VALread_author">read_author</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALread_authorisation">read_authorisation</a> [<a href="Conex_io.html">Conex_io</a>]</td>
@@ -576,11 +584,6 @@
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALread_package">read_package</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_sign.html#VALread_private_key">read_private_key</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
-<td><div class="info">
-<code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
-</div>
-</td></tr>
 <tr><td><a href="Conex_io.html#VALread_release">read_release</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALread_team">read_team</a> [<a href="Conex_io.html">Conex_io</a>]</td>
@@ -611,9 +614,11 @@
 <td></td></tr>
 <tr><td><a href="Conex_persistency.html#VALrename">rename</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALreplace_sig">replace_sig</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
 <tr><td><a href="Conex_repository.html#VALrepository">repository</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
-<code class="code">repository&nbsp;~quorum&nbsp;~strict&nbsp;()</code> is a fresh empty repository.
+<code class="code">repository&nbsp;~quorum&nbsp;~strict&nbsp;digest&nbsp;()</code> is a fresh empty repository.
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALreset">reset</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
@@ -626,13 +631,13 @@
 </td></tr>
 <tr><td><a href="Conex_resource.Release.html#VALset_counter">set_counter</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_sign.S.html#VALsign">sign</a> [<a href="Conex_sign.S.html">Conex_sign.S</a>]</td>
+<tr><td><a href="Conex_crypto.SIGN.html#VALsign">sign</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
 <td><div class="info">
 <code class="code">sign&nbsp;created&nbsp;author&nbsp;priv</code> uses <a href="Conex_resource.Author.html#VALprep_sig"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.prep_sig</code></a> to
       prepare <code class="code">author</code> (incrementing counter, moving queued resource to signed).
 </div>
 </td></tr>
-<tr><td><a href="Conex_crypto.SIGN.html#VALsign_rsa_pss">sign_rsa_pss</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<tr><td><a href="Conex_crypto.SIGN_BACK.html#VALsign_rsa_pss">sign_rsa_pss</a> [<a href="Conex_crypto.SIGN_BACK.html">Conex_crypto.SIGN_BACK</a>]</td>
 <td><div class="info">
 <code class="code">sign_rsa_pss&nbsp;~key&nbsp;data</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;signature</code> or <code class="code"><span class="constructor">Error</span>&nbsp;str</code>.
 </div>
@@ -746,19 +751,30 @@
     or <a href="Conex_utils.String.html#VALis_ascii">String.is_ascii</a> <code class="code">name</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify">verify</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALvalidate_account">validate_account</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALvalidate_author">validate_author</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
-<code class="code">verify&nbsp;id&nbsp;key&nbsp;data&nbsp;signature</code> succeeds when the <code class="code">signature</code> was done
-      using the private part of the <code class="code">key</code>, and the <code class="code">id</code>.
+<code class="code">verify_author&nbsp;verify&nbsp;repo&nbsp;author</code> verifies the author resource: all
+    signatures must be good, and at least one public key must be approved by
+    janitors (or resource list is empty and it is approved by a quorum of
+    janitors).
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_author">verify_author</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALvalidate_authorisation">validate_authorisation</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALvalidate_key">validate_key</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
-<code class="code">verify_author&nbsp;repo&nbsp;author</code> verifies the author resource: at least one
-      public keys must be signed off by janitors.
+<code class="code">validate_key&nbsp;repo&nbsp;id&nbsp;key</code>
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_authorisation">verify_authorisation</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_repository.html#VALvalidate_package">validate_package</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALvalidate_release">validate_release</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_repository.html#VALvalidate_team">validate_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALverify">verify</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex.Make.html#VALverify_diff">verify_diff</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
 <td><div class="info">
@@ -771,28 +787,13 @@
       authorisation of the package <code class="code">name</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_key">verify_key</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
-<td><div class="info">
-<code class="code">verify_key&nbsp;repo&nbsp;id&nbsp;key</code>
-</div>
-</td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_package">verify_package</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_release">verify_release</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conex_crypto.VERIFY.html#VALverify_rsa_pss">verify_rsa_pss</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
+<tr><td><a href="Conex_crypto.VERIFY_BACK.html#VALverify_rsa_pss">verify_rsa_pss</a> [<a href="Conex_crypto.VERIFY_BACK.html">Conex_crypto.VERIFY_BACK</a>]</td>
 <td><div class="info">
 <code class="code">verify_rsa_pss&nbsp;~key&nbsp;~data&nbsp;~signature</code> returns <code class="code"><span class="constructor">Ok</span>&nbsp;()</code> on success,
       otherwise a <code class="code">verification_error</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_signatures">verify_signatures</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
-<td><div class="info">
-<code class="code">verify_signatures&nbsp;author</code> splits the keys into two partitions: those
-      with a proper signatures and those without.
-</div>
-</td></tr>
-<tr><td><a href="Conex_repository.S.html#VALverify_team">verify_team</a> [<a href="Conex_repository.S.html">Conex_repository.S</a>]</td>
+<tr><td><a href="Conex_crypto.VERIFY.html#VALverify_signature">verify_signature</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>W</td></tr>
 <tr><td><a href="Conex_utils.LOGS.html#VALwarn">warn</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
@@ -819,6 +820,8 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Header.html#VALwire">wire</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALwire_account">wire_account</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td></td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_resource.Digest.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
@@ -827,6 +830,12 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Key.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conex_private_key.html#VALwrite">write</a> [<a href="Conex_private_key.html">Conex_private_key</a>]</td>
+<td><div class="info">
+<code class="code">write_private_key&nbsp;prov&nbsp;id&nbsp;key</code> writes the given key to disk (in
+    "~/.conex/", using the <code class="code">basedir</code> of <code class="code">prov</code> as file prefix.
+</div>
+</td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_author">write_author</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_authorisation">write_authorisation</a> [<a href="Conex_io.html">Conex_io</a>]</td>
@@ -835,12 +844,6 @@
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_package">write_package</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_sign.html#VALwrite_private_key">write_private_key</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
-<td><div class="info">
-<code class="code">write_private_key&nbsp;prov&nbsp;id&nbsp;key</code> writes the given key to disk (in
-    "~/.conex/", using the <code class="code">basedir</code> of <code class="code">prov</code> as file prefix.
-</div>
-</td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_release">write_release</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_persistency.html#VALwrite_replace">write_replace</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>

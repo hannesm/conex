@@ -20,7 +20,7 @@
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
 <link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_nocrypto</title>
+<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_nocrypto</title>
 </head>
 <body>
 <code class="code"><span class="keyword">sig</span><br>
@@ -39,6 +39,6 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(unit,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_crypto</span>.verification_error&nbsp;])&nbsp;result<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;b64sha256&nbsp;:&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;string<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">end</span><br>
-&nbsp;&nbsp;<span class="keyword">module</span>&nbsp;<span class="constructor">NC_S</span>&nbsp;:&nbsp;<span class="constructor">Conex_sign</span>.<span class="constructor">S</span><br>
-&nbsp;&nbsp;<span class="keyword">module</span>&nbsp;<span class="constructor">NC_R</span>&nbsp;:&nbsp;<span class="constructor">Conex_repository</span>.<span class="constructor">S</span><br>
+&nbsp;&nbsp;<span class="keyword">module</span>&nbsp;<span class="constructor">NC_S</span>&nbsp;:&nbsp;<span class="constructor">Conex_crypto</span>.<span class="constructor">SIGN</span><br>
+&nbsp;&nbsp;<span class="keyword">module</span>&nbsp;<span class="constructor">NC_V</span>&nbsp;:&nbsp;<span class="constructor">Conex_crypto</span>.<span class="constructor">VERIFY</span><br>
 <span class="keyword">end</span></code></body></html>

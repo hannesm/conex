@@ -21,7 +21,7 @@
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
 <link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Index of modules</title>
+<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Index of modules</title>
 </head>
 <body>
 <div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
@@ -78,6 +78,11 @@ Opam repository layout
 </td></tr>
 <tr><td><a href="Conex_persistency.html">Conex_persistency</a> </td>
 <td></td></tr>
+<tr><td><a href="Conex_private_key.html">Conex_private_key</a> </td>
+<td><div class="info">
+Private key IO
+</div>
+</td></tr>
 <tr><td><a href="Conex_repository.html">Conex_repository</a> </td>
 <td><div class="info">
 Repository state and verification logic
@@ -86,11 +91,6 @@ Repository state and verification logic
 <tr><td><a href="Conex_resource.html">Conex_resource</a> </td>
 <td><div class="info">
 Persistent data: on wire and record types
-</div>
-</td></tr>
-<tr><td><a href="Conex_sign.html">Conex_sign</a> </td>
-<td><div class="info">
-Sign: signing resources, and private key utilities.
 </div>
 </td></tr>
 <tr><td><a href="Conex_unix_provider.html">Conex_unix_provider</a> </td>
@@ -115,19 +115,22 @@ String, unsigned integers, logging, collections, and more
 <code class="code"><span class="constructor">M</span></code> is a <code class="code"><span class="constructor">Map</span></code> which keys are strings.
 </div>
 </td></tr>
-<tr><td><a href="Conex_sign.Make.html">Make</a> [<a href="Conex_sign.html">Conex_sign</a>]</td>
-<td><div class="info">
-Instantiating the functor.
-</div>
-</td></tr>
-<tr><td><a href="Conex_repository.Make.html">Make</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conex.Make.html">Make</a> [<a href="Conex.html">Conex</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conex_crypto.Make_sign.html">Make_sign</a> [<a href="Conex_crypto.html">Conex_crypto</a>]</td>
+<td><div class="info">
+Instantiation.
+</div>
+</td></tr>
+<tr><td><a href="Conex_crypto.Make_verify.html">Make_verify</a> [<a href="Conex_crypto.html">Conex_crypto</a>]</td>
+<td><div class="info">
+Instantiation.
+</div>
+</td></tr>
 <tr><td align="left"><br>N</td></tr>
-<tr><td><a href="Conex_nocrypto.NC_R.html">NC_R</a> [<a href="Conex_nocrypto.html">Conex_nocrypto</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conex_nocrypto.NC_S.html">NC_S</a> [<a href="Conex_nocrypto.html">Conex_nocrypto</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conex_nocrypto.NC_V.html">NC_V</a> [<a href="Conex_nocrypto.html">Conex_nocrypto</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>P</td></tr>
 <tr><td><a href="Conex_resource.Package.html">Package</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>

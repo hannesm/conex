@@ -25,7 +25,7 @@
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
 <link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_sign" rel="Chapter" href="Conex_sign.html"><title>Conex_resource.Author</title>
+<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_resource.Author</title>
 </head>
 <body>
 <div class="navbar"><a class="pre" href="Conex_resource.Digest.html" title="Conex_resource.Digest">Previous</a>
@@ -55,13 +55,6 @@
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTr.size">size</span>&nbsp;: <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a></code>;</code></td>
-
-</tr>
-<tr>
-<td align="left" valign="top" >
-<code>&nbsp;&nbsp;</code></td>
-<td align="left" valign="top" >
 <code><span id="TYPEELTr.rtyp">rtyp</span>&nbsp;: <code class="type"><a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a></code>;</code></td>
 
 </tr>
@@ -76,15 +69,16 @@
 
 
 
-<pre><span id="VALr"><span class="keyword">val</span> r</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       string -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a></code></pre>
+<pre><span id="VALr"><span class="keyword">val</span> r</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       string -><br>       <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a></code></pre>
 <pre><span id="VALr_equal"><span class="keyword">val</span> r_equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> bool</code></pre>
 <pre><span id="VALpp_resource"><span class="keyword">val</span> pp_resource</span> : <code class="type">Format.formatter -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> unit</code></pre>
 <pre><span id="TYPEemail"><span class="keyword">type</span> <code class="type"></code>email</span> = <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a></code> </pre>
 
 
-<pre><span id="TYPEservice"><span class="keyword">type</span> <code class="type"></code>service</span> = <code class="type">[ `Email of <a href="Conex_resource.Author.html#TYPEemail">email</a><br>       | `GitHub of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `Other of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * string ]</code> </pre>
+<pre><span id="TYPEaccount"><span class="keyword">type</span> <code class="type"></code>account</span> = <code class="type">[ `Email of <a href="Conex_resource.Author.html#TYPEemail">email</a><br>       | `GitHub of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `Other of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * string ]</code> </pre>
 
 
+<pre><span id="VALwire_account"><span class="keyword">val</span> wire_account</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
 <pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = private {</code></pre><table class="typetable">
 <tr>
 <td align="left" valign="top" >
@@ -118,20 +112,6 @@
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTt.accounts">accounts</span>&nbsp;: <code class="type"><a href="Conex_resource.Author.html#TYPEservice">service</a> list</code>;</code></td>
-
-</tr>
-<tr>
-<td align="left" valign="top" >
-<code>&nbsp;&nbsp;</code></td>
-<td align="left" valign="top" >
-<code><span id="TYPEELTt.keys">keys</span>&nbsp;: <code class="type"><a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> list</code>;</code></td>
-
-</tr>
-<tr>
-<td align="left" valign="top" >
-<code>&nbsp;&nbsp;</code></td>
-<td align="left" valign="top" >
 <code><span id="TYPEELTt.resources">resources</span>&nbsp;: <code class="type"><a href="Conex_resource.Author.html#TYPEr">r</a> list</code>;</code></td>
 
 </tr>
@@ -139,7 +119,14 @@
 <td align="left" valign="top" >
 <code>&nbsp;&nbsp;</code></td>
 <td align="left" valign="top" >
-<code><span id="TYPEELTt.signatures">signatures</span>&nbsp;: <code class="type"><a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> list</code>;</code></td>
+<code><span id="TYPEELTt.accounts">accounts</span>&nbsp;: <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> list</code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTt.keys">keys</span>&nbsp;: <code class="type">(<a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a>) list</code>;</code></td>
 
 </tr>
 <tr>
@@ -154,7 +141,8 @@
 
 
 <pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre>
-<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?accounts:<a href="Conex_resource.Author.html#TYPEservice">service</a> list -><br>       ?keys:<a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> list -><br>       ?resources:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       ?signatures:<a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> list -><br>       ?queued:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre>
+<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?accounts:<a href="Conex_resource.Author.html#TYPEaccount">account</a> list -><br>       ?keys:(<a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a>) list -><br>       ?resources:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       ?queued:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre>
+<pre><span id="VALcontains"><span class="keyword">val</span> contains</span> : <code class="type">?queued:bool -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> bool</code></pre>
 <pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Author.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
 <pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
 <pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
@@ -163,4 +151,4 @@
 <pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> bool</code></pre>
 <pre><span id="VALreset"><span class="keyword">val</span> reset</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre>
 <pre><span id="VALprep_sig"><span class="keyword">val</span> prep_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> * bool</code></pre>
-<pre><span id="VALadd_sig"><span class="keyword">val</span> add_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre></body></html>
+<pre><span id="VALreplace_sig"><span class="keyword">val</span> replace_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre></body></html>
