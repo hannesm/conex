@@ -43,7 +43,7 @@ let handle_one io base commit pr github mail maps =
   if List.mem pr ignore_pr then
     (Logs.app (fun m -> m "ignored PR") ; Ok maps)
   else
-  Conex_persistency.read_file
+  Conex_unix_persistency.read_file
     (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff"))) >>= fun content ->
   let diffs = Conex_diff.to_diffs content in
   let _ids, _auths, _rels, packages = Conex_diff.diffs_to_components diffs in
@@ -86,12 +86,12 @@ let handle_one io base commit pr github mail maps =
 let handle_prs dir =
   Conex_unix_provider.fs_ro_provider dir >>= fun io ->
   let base = Filename.concat dir "prs" in
-  Conex_persistency.collect_dir base >>= fun prs ->
+  Conex_unix_persistency.collect_dir base >>= fun prs ->
   let total = List.length prs in
   let (github_map, package_map), _ = List.fold_left
       (fun (map, i) pr ->
          Logs.app (fun m -> m "%d/%d" i total) ;
-         match Conex_persistency.read_file (Filename.concat base pr) with
+         match Conex_unix_persistency.read_file (Filename.concat base pr) with
          | Ok data ->
            let eles = Astring.String.cuts ~sep:" " data in
            let cid = List.nth eles 0

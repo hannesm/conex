@@ -6,9 +6,9 @@ Conex_io
 Conex_opam_repository_layout
 Conex_crypto
 Conex_opam_encoding
-Conex_persistency
+Conex_unix_persistency
 Conex_unix_provider
+Conex_unix_private_key
 Conex_diff
 Conex_diff_provider
 nocrypto/Conex_nocrypto
-Conex_private_key

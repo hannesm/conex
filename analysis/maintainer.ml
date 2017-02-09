@@ -168,7 +168,7 @@ module PR = struct
 
   let check authorised base commit pr github _mail acc =
     if S.mem github janitors then (Log.info (fun m -> m "%s %s janitor" pr github) ; Ok acc) else
-    Conex_persistency.read_file
+    Conex_unix_persistency.read_file
       (Filename.concat base (Filename.concat "diffs" (commit ^ ".diff"))) >>= fun content ->
     let diffs = Conex_diff.to_diffs content in
     let _ids, _auths, _rels, packages = Conex_diff.diffs_to_components diffs in
@@ -178,7 +178,7 @@ module PR = struct
     in
     let stuff =
       M.fold (fun pn _pvs (empty, violation, teams) ->
-          if Conex_persistency.exists
+          if Conex_unix_persistency.exists
               (Filename.concat base (String.concat ~sep:"/" (Conex_opam_repository_layout.authorisation_path pn)))
           then
             let auth = M.find pn authorised in
@@ -206,10 +206,10 @@ module PR = struct
 
   let handle_prs dir f acc =
     let base = Filename.concat dir "prs" in
-    Conex_persistency.collect_dir base >>= fun prs ->
+    Conex_unix_persistency.collect_dir base >>= fun prs ->
     foldM
       (fun acc pr ->
-         Conex_persistency.read_file (Filename.concat base pr) >>= fun data ->
+         Conex_unix_persistency.read_file (Filename.concat base pr) >>= fun data ->
          let eles = Astring.String.cuts ~sep:" " data in
          let cid = List.nth eles 0
          and pr = List.nth eles 1

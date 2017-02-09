@@ -4,14 +4,14 @@ Conex_resource
 Conex_opam_repository_layout
 Conex_diff
 Conex_crypto
-Conex_private_key
 
 Conex_opam_encoding
 
 Conex_repository
 
-Conex_persistency
+Conex_unix_persistency
 Conex_unix_provider
+Conex_unix_private_key
 Conex_diff_provider
 Conex_io
 

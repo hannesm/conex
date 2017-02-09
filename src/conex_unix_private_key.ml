@@ -1,4 +1,5 @@
 open Conex_utils
+open Conex_unix_persistency
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
@@ -12,7 +13,7 @@ let private_keys p =
     else
       None
   in
-  Conex_persistency.collect_dir private_dir >>= fun files ->
+  collect_dir private_dir >>= fun files ->
   List.fold_left
     (fun acc s ->
        acc >>= fun acc ->
@@ -32,7 +33,7 @@ let private_key_path path id =
 let write prov id key =
   let base = prov.Conex_io.basedir in
   let filename = private_key_path base id in
-  (if Conex_persistency.exists filename then begin
+  (if exists filename then begin
       let ts =
         let open Unix in
         let t = gmtime (stat filename).st_mtime in
@@ -43,18 +44,18 @@ let write prov id key =
       let backup = private_key_path base backfn in
       let rec inc n =
         let nam = backup ^ "." ^ string_of_int n in
-        if Conex_persistency.exists nam then inc (succ n) else nam
+        if exists nam then inc (succ n) else nam
       in
-      let backup = if Conex_persistency.exists backup then inc 0 else backup in
-      Conex_persistency.rename filename backup
+      let backup = if exists backup then inc 0 else backup in
+      rename filename backup
     end else Ok ()) >>= fun () ->
-  (if not (Conex_persistency.exists private_dir) then
-     Conex_persistency.mkdir ~mode:0o700 private_dir
+  (if not (exists private_dir) then
+     mkdir ~mode:0o700 private_dir
    else Ok ()) >>= fun () ->
-  match Conex_persistency.file_type private_dir with
+  match file_type private_dir with
   | Ok Directory ->
     let key = match key with `Priv (_alg, data, _created) -> data in
-    Conex_persistency.write_file ~mode:0o400 filename key
+    write_file ~mode:0o400 filename key
   | _ -> Error (private_dir ^ " is not a directory!")
 
 type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list | `Msg of string]
@@ -71,8 +72,8 @@ let read ?id prov =
   let read id =
     let base = prov.Conex_io.basedir in
     let fn = private_key_path base id in
-    if Conex_persistency.exists fn then
-      match Conex_persistency.read_file fn with
+    if exists fn then
+      match read_file fn with
       | Error e -> Error (`Msg e)
       | Ok key ->
         let stat = Unix.stat fn in

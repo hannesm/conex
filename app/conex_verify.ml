@@ -106,7 +106,7 @@ true
 module IO = Conex_io
 
 let verify_patch io repo patch =
-  Conex_persistency.read_file patch >>= C.verify_diff io repo
+  Conex_unix_persistency.read_file patch >>= C.verify_diff io repo
 
 let verify_full io repo anchors =
   let valid id (_, digest) =

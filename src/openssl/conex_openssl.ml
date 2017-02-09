@@ -5,13 +5,13 @@ module V = struct
 
   let verify_rsa_pss ~key ~data ~signature =
     match
-      Conex_persistency.write_file "/tmp/key.pem" key >>= fun () ->
-      Conex_persistency.write_file "/tmp/data.txt" data >>= fun () ->
+      Conex_unix_persistency.write_file "/tmp/key.pem" key >>= fun () ->
+      Conex_unix_persistency.write_file "/tmp/data.txt" data >>= fun () ->
       let cmd = Printf.sprintf "echo %s | openssl base64 -d" signature in
       let input = Unix.open_process_in cmd in
       let output = input_line input in
       let _ = Unix.close_process_in input in
-      Conex_persistency.write_file "/tmp/sig.out" output >>= fun () ->
+      Conex_unix_persistency.write_file "/tmp/sig.out" output >>= fun () ->
       if 0 = Sys.command "openssl dgst -sha256 -verify /tmp/key.pem -sigopt rsa_padding_mode:pss -signature /tmp/sig.out /tmp/data.txt" then
         Ok ()
       else

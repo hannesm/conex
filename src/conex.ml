@@ -160,7 +160,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
          L.debug (fun m -> m "%a" pp_ok ok) ;
          Ok ())
 
-  (* TODO: rename "authorised"..., do digest computation inline *)
+  (* TODO: rename "authorised"..., *)
   let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
     (match IO.read_authorisation io name with
      | Error e -> if strict repo then Error (str IO.pp_r_err e) else

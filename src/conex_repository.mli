@@ -1,26 +1,26 @@
-(** Repository state and verification logic
+(** Repository state and validation logic
 
     The repository keeps track of valid resources, which are added after
-    successful verification of author resources.  The only configuration element
-    is the [quorum]: how many janitors have to sign off a change.
+    successful verification of an author.  The only configuration element is the
+    [quorum]: how many janitors have to sign off a change.
 
     The single resource which is signed with an asymmetric crypto operation is
     the author, which contains a list of resources the author signed off.  To
-    verify a resource, first the authorised authors have to be verified.  Once
-    they are verified, resource verification is a lookup of a computed hash in a
-    map which is part of the repository.
+    validate a resource, first the authorised authors have to be validated.
+    Once they are approved, resource validation is a lookup of a computed hash
+    in a map which is part of the repository.
 
-    This module contains the program logic to verify the different resources,
+    This module contains the program logic to validate the different resources,
     which have different rules:
     {ul
-    {- {!verify_author} requires a self-signature with a verified key OR has
+    {- {!validate_author} requires a self-signature with a validated key OR has
        an empty list of resources and approved by a quorum of janitors}
-    {- {!validate_service} is successful if the service is in the authors
+    {- {!validate_account} is successful if the account is in the authors
        resource list, and approved by a quorum of janitors}
     {- {!validate_key} is successful if the key is in the authors resource list,
        and approved by a quorum of janitors}
     {- {!validate_team} is successful if approved by a quorum of janitors}
-    {- {!verify_authorisation} is successful if approved by a quorum of
+    {- {!validate_authorisation} is successful if approved by a quorum of
        janitors}
     {- {!validate_package} is successful if approved by an authorised author OR
        a quorum of janitors}
@@ -42,8 +42,6 @@
 *)
 
 (* TODO: I can support removal of team and id: fold over items and look that id is not used! *)
-(* TODO: this should not be functorised - can we take the digest (or function) as input? *)
-(* TODO: use verify for author only, and some other term (validate?) for the other resources *)
 open Conex_utils
 open Conex_resource
 
@@ -131,7 +129,7 @@ val pp_error :
   | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]
     fmt
 
-(** [verify_author verify repo author] verifies the author resource: all
+(** [validate_author repo author] validates the author resource: all
     signatures must be good, and at least one public key must be approved by
     janitors (or resource list is empty and it is approved by a quorum of
     janitors). *)

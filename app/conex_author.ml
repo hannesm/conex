@@ -76,9 +76,9 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 module IO = Conex_io
 
 let self io id =
-  R.error_to_msg ~pp_error:Conex_private_key.pp_err
+  R.error_to_msg ~pp_error:Conex_unix_private_key.pp_err
     (match id with
-     | None -> Conex_private_key.read io >>| fst
+     | None -> Conex_unix_private_key.read io >>| fst
      | Some id -> Ok id) >>| fun id ->
   Logs.debug (fun m -> m "using identifier %s" id);
   id
@@ -170,14 +170,14 @@ let init _ dry path id email =
           Logs.info (fun m -> m "error reading author %s %a, creating a fresh one"
                          id Conex_io.pp_r_err err) ;
           Ok (Author.t now id)) >>= fun idx ->
-       (match Conex_private_key.read ~id io with
+       (match Conex_unix_private_key.read ~id io with
         | Ok (_, priv) ->
           let created = match priv with `Priv (_, _, c) -> c in
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
         | Error _ ->
           let p = SIGN.generate now () in
-          str_to_msg (Conex_private_key.write io id p) >>| fun () ->
+          str_to_msg (Conex_unix_private_key.write io id p) >>| fun () ->
           Logs.info (fun m -> m "generated and wrote private key %s" id) ;
           p) >>= fun priv ->
        str_to_msg (SIGN.pub_of_priv priv) >>= fun public ->
@@ -211,8 +211,8 @@ let find_idx io name =
 let sign _ dry path id =
   msg_to_cmdliner
     (init_repo dry path >>= fun (_r, io) ->
-     R.error_to_msg ~pp_error:Conex_private_key.pp_err
-       (Conex_private_key.read ?id io) >>= fun (id, priv) ->
+     R.error_to_msg ~pp_error:Conex_unix_private_key.pp_err
+       (Conex_unix_private_key.read ?id io) >>= fun (id, priv) ->
      Logs.info (fun m -> m "using private key %s" id) ;
      let idx = find_idx io id in
      match idx.Author.queued with
