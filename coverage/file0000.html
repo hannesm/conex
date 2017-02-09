@@ -194,37 +194,37 @@ let rec encode_s = <span data-count="1">f</span>unction
           s []
       in
       <span data-count="8">O</span>pamParserTypes.List (np, data)
-  | <span data-count="42">W</span>ire.List l -&gt; OpamParserTypes.List (np, List.map encode_s l)
-  | <span data-count="37">W</span>ire.String s -&gt; OpamParserTypes.String (np, s)
-  | <span data-count="69">W</span>ire.Int i -&gt; OpamParserTypes.Ident (np, "UINT" ^ Uint.to_string i)
+  | <span data-count="33">W</span>ire.List l -&gt; OpamParserTypes.List (np, List.map encode_s l)
+  | <span data-count="35">W</span>ire.String s -&gt; OpamParserTypes.String (np, s)
+  | <span data-count="68">W</span>ire.Int i -&gt; OpamParserTypes.Ident (np, "UINT" ^ Uint.to_string i)
 
 let encode t =
   <span data-count="17">l</span>et file_contents =
     <span data-count="17">M</span>.fold (fun k v acc -&gt;
-        <span data-count="103">O</span>pamParserTypes.Variable (np, k, encode_s v) :: acc)
+        <span data-count="95">O</span>pamParserTypes.Variable (np, k, encode_s v) :: acc)
       t []
   in
   <span data-count="17">l</span>et file = <span data-count="17">{</span> OpamParserTypes.file_contents ; file_name = "" } in
   <span data-count="17">O</span>pamPrinter.Normalise.opamfile file
 
 let rec decode_s = <span data-count="1">f</span>unction
-  | <span data-count="112">O</span>pamParserTypes.Ident (_, data) -&gt;
+  | <span data-count="111">O</span>pamParserTypes.Ident (_, data) -&gt;
     if String.is_prefix ~prefix:"UINT" data then
-      <span data-count="101">m</span>atch Uint.of_string (String.slice ~start:4 data) with
+      <span data-count="100">m</span>atch Uint.of_string (String.slice ~start:4 data) with
       | <span data-count="0">N</span>one -&gt; Error "cannot parse unsigned integer"
-      | <span data-count="101">S</span>ome x -&gt; Ok (Wire.Int x)
+      | <span data-count="100">S</span>ome x -&gt; Ok (Wire.Int x)
     else <span data-count="11">i</span>f data = "emptymap" then
       <span data-count="11">O</span>k (Wire.Map M.empty)
     else
       <span data-count="0">E</span>rror "unexpected ident"
-  | <span data-count="53">O</span>pamParserTypes.String (_, s) -&gt; Ok (Wire.String s)
+  | <span data-count="51">O</span>pamParserTypes.String (_, s) -&gt; Ok (Wire.String s)
   | <span data-count="11">O</span>pamParserTypes.List (_, []) -&gt; Ok (Wire.List [])
-  | <span data-count="14">O</span>pamParserTypes.List (_, l) -&gt;
-    let is_pair = <span data-count="14">f</span>unction
+  | <span data-count="12">O</span>pamParserTypes.List (_, l) -&gt;
+    let is_pair = <span data-count="12">f</span>unction
         <span data-count="77">O</span>pamParserTypes.List (_, [OpamParserTypes.String _ ; _]) -&gt; true
-      | <span data-count="3">_</span> -&gt; false
+      | <span data-count="1">_</span> -&gt; false
     in
-    <span data-count="14">i</span>f List.for_all is_pair l then <span data-count="11">b</span>egin
+    <span data-count="12">i</span>f List.for_all is_pair l then <span data-count="11">b</span>egin
       List.fold_left (fun m xs -&gt;
           <span data-count="77">m</span> &gt;&gt;= fun m -&gt;
           <span data-count="77">m</span>atch xs with
@@ -234,12 +234,12 @@ let rec decode_s = <span data-count="1">f</span>unction
         (Ok M.empty) l &gt;&gt;= fun map -&gt;
       <span data-count="11">O</span>k (Wire.Map map)
     end else
-      <span data-count="3">L</span>ist.fold_left (fun xs s -&gt;
-          <span data-count="5">x</span>s &gt;&gt;= fun xs -&gt;
-          <span data-count="5">d</span>ecode_s s &gt;&gt;= fun x -&gt;
-          <span data-count="5">O</span>k (x :: xs))
+      <span data-count="1">L</span>ist.fold_left (fun xs s -&gt;
+          <span data-count="1">x</span>s &gt;&gt;= fun xs -&gt;
+          <span data-count="1">d</span>ecode_s s &gt;&gt;= fun x -&gt;
+          <span data-count="1">O</span>k (x :: xs))
           (Ok []) l &gt;&gt;= fun xs -&gt;
-      <span data-count="3">O</span>k (Wire.List (List.rev xs))
+      <span data-count="1">O</span>k (Wire.List (List.rev xs))
   | <span data-count="0">_</span> -&gt; Error "unexpected thing while decoding"
 
 let decode data =
@@ -247,17 +247,17 @@ let decode data =
      <span data-count="8">P</span>arsing.Parse_error -&gt; Error "parse error") &gt;&gt;= fun file -&gt;
   <span data-count="25">l</span>et items = <span data-count="25">f</span>ile.OpamParserTypes.file_contents in
   <span data-count="25">L</span>ist.fold_left (fun acc v -&gt;
-      <span data-count="108">a</span>cc &gt;&gt;= fun acc -&gt;
-      <span data-count="108">m</span>atch v with
+      <span data-count="107">a</span>cc &gt;&gt;= fun acc -&gt;
+      <span data-count="107">m</span>atch v with
       | <span data-count="0">O</span>pamParserTypes.Section _ -&gt; Error "unexpected section"
-      | <span data-count="108">O</span>pamParserTypes.Variable (_, k, v) -&gt;
+      | <span data-count="107">O</span>pamParserTypes.Variable (_, k, v) -&gt;
         decode_s v &gt;&gt;= fun v -&gt;
-        <span data-count="108">O</span>k (M.add k v acc))
+        <span data-count="107">O</span>k (M.add k v acc))
     (Ok M.empty) items
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-07 23:46:17 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>
