@@ -73,10 +73,13 @@ val id_loaded : t -> identifier -> bool
     of a team which is authorised. *)
 val authorised : t -> Authorisation.t -> identifier -> bool
 
-(** {2 Unsafe operations} *)
+(** [contains ~queued author name typ data] is [true] if [data] named [name]
+    of [typ] is a member in the list of resources of [author].  If [queued] is
+    [true], membership of the resource in the queued list of resources is
+    sufficient.  *)
+val contains : ?queued:bool -> t -> Author.t -> name -> typ -> Wire.t -> bool
 
-(** These operations extend which resources are trusted.  Usually you should not
-    need them, but use {!validate_author} and {!validate_team} instead. *)
+(** {1 Validation} *)
 
 type conflict = [
   | `NameConflict of name * Author.r
@@ -85,28 +88,13 @@ type conflict = [
 
 val pp_conflict : conflict fmt
 
-(** [add_valid_resource repo id r] marks resource [r] valid under [id] in
-    [repo].  If the digest of [r] is already present for a different resource,
-    an error will be returned. *)
-val add_valid_resource : t -> identifier -> Author.r -> (t, conflict) result
-
-(** [add_index repo author] applies {!add_valid_resource} to each member of
-    the resource list from [author]. *)
-val add_index : t -> Author.t -> t * conflict list
-
-(** [add_team repo team] adds the team to the repo. *)
-val add_team : t -> Team.t -> t
-
-val add_id : t -> identifier -> t
-
-(** [contains ~queued author name typ data] is [true] if [data] named [name]
-    of [typ] is a member in the list of resources of [author].  If [queued] is
-    [true], membership of the resource in the queued list of resources is
-    sufficient.  *)
-val contains : ?queued:bool -> t -> Author.t -> name -> typ -> Wire.t -> bool
 
 (** [pp_ok] pretty prints validation success *)
-val pp_ok : [< `Approved of identifier | `Quorum of S.t | `Both of identifier * S.t ] fmt
+val pp_ok :
+  [< `Approved of identifier
+  | `Quorum of S.t
+  | `Both of identifier * S.t ]
+    fmt
 
 (** Errors which can occur during any validation. *)
 type base_error = [
@@ -136,7 +124,9 @@ val pp_error :
 val validate_author :
   t -> Author.t ->
   (t * conflict list,
-   [> base_error | `InsufficientQuorum of name * typ * S.t | `AuthorWithoutKeys of identifier ]) result
+   [> base_error
+   | `InsufficientQuorum of name * typ * S.t
+   | `AuthorWithoutKeys of identifier ]) result
 
 val validate_account : t -> Author.t -> Author.account ->
   ([ `Approved of identifier ],
@@ -149,15 +139,22 @@ val validate_key : t -> identifier -> Key.t ->
 
 val validate_team : t -> Team.t ->
   (t * [ `Quorum of S.t ],
-   [> base_error | `InsufficientQuorum of name * typ * S.t | `MemberNotPresent of identifier * S.t ]) result
+   [> base_error
+   | `InsufficientQuorum of name * typ * S.t
+   | `MemberNotPresent of identifier * S.t ]) result
 
 val validate_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
-   [> base_error | `InsufficientQuorum of name * typ * S.t | `IdNotPresent of name * S.t ]) result
+   [> base_error
+   | `InsufficientQuorum of name * typ * S.t
+   | `IdNotPresent of name * S.t ]) result
 
 val validate_package : t -> ?on_disk:Package.t -> Authorisation.t -> Package.t ->
   ([ `Approved of identifier | `Quorum of S.t | `Both of identifier * S.t ],
-   [> base_error | `AuthRelMismatch of name * name | `InvalidReleases of name * S.t * S.t | `NoSharedPrefix of name * S.t ]) result
+   [> base_error
+   | `AuthRelMismatch of name * name
+   | `InvalidReleases of name * S.t * S.t
+   | `NoSharedPrefix of name * S.t ]) result
 
 val validate_release : t -> ?on_disk:Release.t -> Authorisation.t -> Package.t -> Release.t ->
   ([ `Approved of identifier | `Quorum of S.t | `Both of identifier * S.t ],
@@ -166,8 +163,14 @@ val validate_release : t -> ?on_disk:Release.t -> Authorisation.t -> Package.t -
    | `NotInReleases of name * S.t
    | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]) result
 
-(* Monotonicity *)
-type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
+(** {1 Monotonicity} *)
+
+
+type m_err = [
+  | `NotIncreased of typ * name
+  | `Deleted of typ * name
+  | `Msg of typ * string
+]
 
 val pp_m_err : Format.formatter -> m_err -> unit
 
@@ -176,3 +179,22 @@ val monoton_team : ?old:Team.t -> ?now:Team.t -> t -> (unit, m_err) result
 val monoton_authorisation : ?old:Authorisation.t -> ?now:Authorisation.t -> t -> (unit, m_err) result
 val monoton_package : ?old:Package.t -> ?now:Package.t -> t -> (unit, m_err) result
 val monoton_release : ?old:Release.t -> ?now:Release.t -> t -> (unit, m_err) result
+
+(** {1 Unsafe operations} *)
+
+(** These operations extend which resources are trusted.  Usually you should not
+    need them, but use {!validate_author} and {!validate_team} instead. *)
+
+(** [add_valid_resource repo id r] marks resource [r] valid under [id] in
+    [repo].  If the digest of [r] is already present for a different resource,
+    an error will be returned. *)
+val add_valid_resource : t -> identifier -> Author.r -> (t, conflict) result
+
+(** [add_index repo author] applies {!add_valid_resource} to each member of
+    the resource list from [author]. *)
+val add_index : t -> Author.t -> t * conflict list
+
+(** [add_team repo team] adds the team to the repo. *)
+val add_team : t -> Team.t -> t
+
+val add_id : t -> identifier -> t

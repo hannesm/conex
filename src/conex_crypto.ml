@@ -30,9 +30,6 @@ module type VERIFY = sig
   val keyid : Key.t -> Digest.t
 
   val verify : Author.t -> (unit, [> verification_error ]) result
-
-  val verify_signature : string -> identifier -> Key.t -> Signature.t ->
-    (unit, [> verification_error ]) result
 end
 
 (** Instantiation. *)

@@ -1,4 +1,4 @@
-(** Interface to crypto backend
+(** Crypto primitives
 
     Implementations are provided in {!Conex_nocrypto} and {!Conex_openssl}. *)
 
@@ -18,29 +18,36 @@ type verification_error = [
 (** [pp_verification_error] is a pretty printer for [verification_error]. *)
 val pp_verification_error : verification_error fmt
 
-module type VERIFY_BACK = sig
-  (** [verify_rsa_pss ~key ~data ~signature] returns [Ok ()] on success,
-      otherwise a [verification_error].  The digest used is SHA256 at the moment. *)
-  val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> verification_error ]) result
-
-  (** [b64sha356 str] computes the SHA256 digest of [str] and converts its
-      binary output to base64. *)
-  val b64sha256 : string -> string
-end
-
+(** The verification module type *)
 module type VERIFY = sig
 
+  (** [raw_digest str] is the digest of the given [str]. *)
   val raw_digest : string -> Digest.t
 
+  (** [digest wire] is the digest of the {{!Conex_resource.Wire.to_string}string
+      encoding} of [wire]. *)
   val digest : Wire.t -> Digest.t
 
+  (** [keyid key] is the unique fingerprint of [key]. *)
   val keyid : Key.t -> Digest.t
 
+  (** [verify author] verifies all signatures of [author]: they have to sign
+      the current resource list. *)
   val verify : Author.t -> (unit, [> verification_error ]) result
+end
 
-  val verify_signature : string -> identifier -> Key.t -> Signature.t ->
+(** The verification backend, to be implemented by a crypto provider *)
+module type VERIFY_BACK = sig
+
+  (** [verify_rsa_pss ~key ~data ~signature] returns [Ok ()] on success,
+      otherwise a [verification_error].  Currently, SHA256 is used as hash
+      algorithm. *)
+  val verify_rsa_pss : key:string -> data:string -> signature:string ->
     (unit, [> verification_error ]) result
 
+  (** [b64sha356 str] computes the SHA256 digest of [str] and converts it to
+      base64. *)
+  val b64sha256 : string -> string
 end
 
 (** Instantiation. *)
@@ -48,19 +55,7 @@ module Make_verify (C : VERIFY_BACK) : VERIFY
 
 (** {1 Signing} *)
 
-module type SIGN_BACK = sig
-
-  (** [pub_of_priv_rsa priv] is either [Ok pub] or [Error str].  The encoding is
-      left to the provider, usual PKCS8 PEM encoding works fine. *)
-  val pub_of_priv_rsa : string -> (string, string) result
-
-  (** [generate_rsa ~bits ()] generates an RSA private key with [bits] size. *)
-  val generate_rsa : ?bits:int -> unit -> string
-
-  (** [sign_rsa_pss ~key data] is either [Ok signature] or [Error str]. *)
-  val sign_rsa_pss : key:string -> string -> (string, string) result
-end
-
+(** The signing module type *)
 module type SIGN = sig
 
   (** [generate ?bits created ()] generates a [bits] sized private key. *)
@@ -75,6 +70,20 @@ module type SIGN = sig
       data.  This includes the author name, and the signature algorithm (at the
       moment RSA-PSS-SHA256). *)
   val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
+end
+
+(** The signing backend, to be implemented by a crypto provider. *)
+module type SIGN_BACK = sig
+
+  (** [pub_of_priv_rsa priv] is either [Ok pub] or [Error str].  The encoding is
+      left to the provider, usual PKCS8 PEM encoding works fine. *)
+  val pub_of_priv_rsa : string -> (string, string) result
+
+  (** [generate_rsa ~bits ()] generates an RSA private key with [bits] size. *)
+  val generate_rsa : ?bits:int -> unit -> string
+
+  (** [sign_rsa_pss ~key data] is either [Ok signature] or [Error str]. *)
+  val sign_rsa_pss : key:string -> string -> (string, string) result
 end
 
 (** Instantiation. *)

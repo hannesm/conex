@@ -1,6 +1,114 @@
-(** Establishing trust into community repositories
+(** Establish trust into community repositories
 
-    A community repository is a map where a package name is the key and its
+    A community repository gathers data from authors to provide an index
+    including cross-references.
+
+    Software package repositories contain metadata about libraries: license,
+    author, dependencies, build instructions, url and checksum of the release
+    tarball.  Someone publishes a library, and it gets integrated as long as the
+    package name is not yet used and approved by those keeping the repository
+    tidy.  Sometimes it is necessary to include small patch files in the
+    repository, e.g. to get a library to compile with a new compiler release, or
+    on non-mainstream operating system.  Library build instructions often
+    include shell scripts, source code can execute arbitrary code, modifying
+    version constraints in dependency may lead to compiling code with known
+    security vulnerabilities.
+
+    The transport layer to the repository is usually secured using TLS, or SSH
+    and git.  But what about the repository itself?  Can we ensure that it
+    serves the library metadata as intended by the authors?  Or do we have to
+    trust the administrators of the repository server to ensure its integrity?
+    Again, these are people who can be malicious, blackmailed, forced by the
+    government, or have other evil intentions.
+
+    [Conex] ensures that each library release has been approved by its author.
+    Furthermore, once a library release is known to the client, this information
+    cannot be rolled back by an attacker. A timestamping service periodically
+    approves a global view of all libraries in the repository, and thus
+    mitigates mix-and-match attacks where someone malicious prevents a client
+    from getting updates for one library while retrieving other updates.
+
+    The trust is rooted in digital signatures by library authors.  The server
+    which hosts the repository does not need to be trusted.  Neither does the
+    host serving release tarballs.
+
+    Someone needs to vouch for an author: the private part of a public key
+    stored in the repository should be known to the real author, and solely to
+    that person.  If a single entity would be in control to vouch for authors,
+    this entity would need to fully trusted by all clients.  Instead, a quorum
+    of a janitor team is used in conex.  Janitors can together vouch for a
+    public key of an author, extend and shrink teams, authorise and deauthorise
+    an author or team for a package, and even checksums of packages and releases
+    - useful for hot fixing when a core package is updated, and all reverse
+    dependencies need adjustments.
+
+    Conex adds metadata to a data repository (viewed as a map where package name
+    is the domain and releases thereof the codomain) to ensure integrity and
+    authenticity.  Different resource types are added:
+    {ul
+    {- Authors, consisting of a unique identifier, public key(s), accounts.}
+    {- Teams, sharing the same namespace as authors, containing a set of
+       members.}
+    {- Authorisation, for each package, describing which identities are
+       authorised for the package.}
+    {- Package, for each package, listing all releases.}
+    {- Release, for each release, listing checksums of all data files.}}
+
+    Modifications to identities and authorisations need to be approved by a
+    quorum of janitors, package and release files can be modified either by an
+    authorised author or by a quorum of janitors.
+
+    Conex initially ensures that the repository is properly signed, and updates
+    to the repository are verified individually: the repository on disk is
+    trusted, a given patch file is verified by ensuring all resources modified
+    in the patch result in a valid repository (sufficient approvals).
+    Additionally, monotonicity is preserved by embedding counters in each
+    resource, and enforcing a counter increment after modification.
+
+    {b NOTE: this is still work in progress, especially the documentation is not
+    yet finished, and some API changes need to happen for clarification}
+
+    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
+
+(*
+    time vs counter
+
+    errors and warnings:
+    - it is ok to have a package without package file -- (in non-strict mode) --> warning
+    - all ids of an authorisation + team must exist -> otherwise: error!
+    - resource digest conflicts are fatal errors
+
+    - queued view: you'd like to see the state of repo if you'd sign now (and
+      your public key is trusted -- but you also want to see what's missing (n/m
+      in a quorum))
+    - should queued have an influence on verification?  or kept external?  they
+      should _not_ be added to the valid resources..
+
+    - ./conex_verify (in initial mode) and ./conex_author status should have the
+      same view on the repository -- but conex_author needs some special
+      handling for _own_ key (might not yet be janitor-approved) and missing
+      quorums on own packages
+
+    - a janitor would also like to see: this is the repo, here's a PR, what's
+      missing (quorum-wise)?
+
+    - there's the "public view" (verify), strict or non-strict -- and then there
+      is the "PR XXX requires a, b, c", and the "if approved, a, b, c would be
+      valid" (plus "d, e, f are queued").
+
+    # administration of repositories (janitors as trust anchors)
+
+    What [conex] does not ensure
+
+    index, which opens the possibility to depend on each others work.
+
+    # Design: workflow, dependencies, goal (rollover)
+
+
+    Our view of a community repository is 
+
+
+    map where a package name is the key and its
     value are the releases of the package.  The goal of [conex] is that
     legitimate package authors can publish new releases and modify metadata.
     This requires the information who is authorised for a package, either an
@@ -29,12 +137,7 @@
     [Conex] is functorised over {{!Conex_utils.LOGS}logging},
     {{!Conex_crypto}crypto}, and soon {{!Conex_io}IO} to allow its usage
     in different environments (e.g. [openssl] as crypto provider, no [Unix] file
-    system interaction at all).
-
-    {b NOTE: this is still work in progress, especially the documentation is not
-    yet finished, and some API changes need to happen for clarification}
-
-    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
+    system interaction at all). *)
 
 open Conex_utils
 open Conex_resource
