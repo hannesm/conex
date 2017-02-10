@@ -34,7 +34,11 @@
 </div>
 <h1>Module <a href="type_Conex_resource.Package.html">Conex_resource.Package</a></h1>
 
-<pre><span class="keyword">module</span> Package: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Package.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module</span> Package: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Package.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+A package lists all releases of a given package.  There is one package
+    resource for each package.<br>
+</div>
+<hr width="100%">
 
 <pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = private {</code></pre><table class="typetable">
 <tr>
@@ -74,13 +78,41 @@
 </tr></table>
 }
 
+<div class="info ">
+The record for a package: a header, and a set of release names.<br>
+</div>
 
 
-<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?releases:Conex_utils.S.t -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a></code></pre>
-<pre><span id="VALadd"><span class="keyword">val</span> add</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a></code></pre>
-<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a></code></pre>
-<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a> * bool</code></pre>
-<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a> -> bool</code></pre>
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Package.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
-<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type">Format.formatter -> <a href="Conex_resource.Package.html#TYPEt">t</a> -> unit</code></pre></body></html>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?releases:Conex_utils.S.t -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">t&nbsp;~counter&nbsp;~wraps&nbsp;~releases&nbsp;created&nbsp;name</code> is a constructor.<br>
+</div>
+
+<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">equal&nbsp;t&nbsp;t'</code> is true if the names are equal and the set of releases.<br>
+</div>
+
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Package.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;w</code> converts <code class="code">w</code> to a package or error.<br>
+</div>
+
+<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire&nbsp;t</code> is the wire representation of <code class="code">t</code>, as stored on disk.<br>
+</div>
+
+<pre><span id="VALadd"><span class="keyword">val</span> add</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">add&nbsp;t&nbsp;name</code> adds <code class="code">name</code> to <code class="code">t.releases</code>.<br>
+</div>
+
+<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">remove&nbsp;t&nbsp;name</code> removes <code class="code">name</code> from <code class="code">t.releases</code>.<br>
+</div>
+
+<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Package.html#TYPEt">t</a> -> <a href="Conex_resource.Package.html#TYPEt">t</a> * bool</code></pre><div class="info ">
+<code class="code">prep&nbsp;t</code> increments <code class="code">t.counter</code>, the carry bit is returned as second
+      component.<br>
+</div>
+</body></html>

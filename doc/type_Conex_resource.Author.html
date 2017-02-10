@@ -30,15 +30,14 @@
 &nbsp;&nbsp;&nbsp;&nbsp;rtyp&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.typ;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;digest&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t;<br>
 &nbsp;&nbsp;}<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_r&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;r&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;r_equal&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_resource&nbsp;:&nbsp;<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
-&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;email&nbsp;=&nbsp;<span class="constructor">Conex_resource</span>.identifier<br>
 &nbsp;&nbsp;<span class="keyword">type</span>&nbsp;account&nbsp;=<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">Email</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.email<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">Email</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">GitHub</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">Other</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;*&nbsp;string&nbsp;]<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;wire_account&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.account&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Wire</span>.t<br>
@@ -62,14 +61,14 @@
 &nbsp;&nbsp;&nbsp;&nbsp;?queued:<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;contains&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;?queued:bool&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;of_wire&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Wire</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;wire_raw&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Wire</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;wire&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Wire</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;contains&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;?queued:bool&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;next_id&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_resource&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>

@@ -34,14 +34,45 @@
 </div>
 <h1>Module <a href="type_Conex_unix_persistency.html">Conex_unix_persistency</a></h1>
 
-<pre><span class="keyword">module</span> Conex_unix_persistency: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_unix_persistency.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module</span> Conex_unix_persistency: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_unix_persistency.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+File system operations using Unix<br>
+</div>
+<hr width="100%">
 
-<pre><span id="VALexists"><span class="keyword">val</span> exists</span> : <code class="type">string -> bool</code></pre>
-<pre><span id="VALmkdir"><span class="keyword">val</span> mkdir</span> : <code class="type">?mode:int -> string -> (unit, string) Pervasives.result</code></pre>
-<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type">string -> (unit, string) Pervasives.result</code></pre>
-<pre><span id="VALrename"><span class="keyword">val</span> rename</span> : <code class="type">string -> string -> (unit, string) Pervasives.result</code></pre>
-<pre><span id="VALfile_type"><span class="keyword">val</span> file_type</span> : <code class="type">string -> (<a href="Conex_utils.html#TYPEfile_type">Conex_utils.file_type</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">string -> (string, string) Pervasives.result</code></pre>
-<pre><span id="VALwrite_file"><span class="keyword">val</span> write_file</span> : <code class="type">?mode:int -> string -> string -> (unit, string) Pervasives.result</code></pre>
-<pre><span id="VALwrite_replace"><span class="keyword">val</span> write_replace</span> : <code class="type">?mode:int -> string -> string -> (unit, string) Pervasives.result</code></pre>
-<pre><span id="VALcollect_dir"><span class="keyword">val</span> collect_dir</span> : <code class="type">string -> (string list, string) Pervasives.result</code></pre></body></html>
+<pre><span id="VALexists"><span class="keyword">val</span> exists</span> : <code class="type">string -> bool</code></pre><div class="info ">
+<code class="code">exists</code> is <code class="code"><span class="constructor">Sys</span>.exists</code>.<br>
+</div>
+
+<pre><span id="VALmkdir"><span class="keyword">val</span> mkdir</span> : <code class="type">?mode:int -> string -> (unit, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">mkdir&nbsp;~mode&nbsp;name</code> creates a directory <code class="code">name</code>, or errors.<br>
+</div>
+
+<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type">string -> (unit, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">remove</code> is <code class="code"><span class="constructor">Sys</span>.remove</code> or error.<br>
+</div>
+
+<pre><span id="VALrename"><span class="keyword">val</span> rename</span> : <code class="type">string -> string -> (unit, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">rename</code> is <code class="code"><span class="constructor">Sys</span>.rename</code> or error.<br>
+</div>
+
+<pre><span id="VALfile_type"><span class="keyword">val</span> file_type</span> : <code class="type">string -> (<a href="Conex_utils.html#TYPEfile_type">Conex_utils.file_type</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">file_type&nbsp;path</code> is the file type of <code class="code">path</code> or error.<br>
+</div>
+
+<pre><span id="VALread_file"><span class="keyword">val</span> read_file</span> : <code class="type">string -> (string, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">read_file&nbsp;path</code> is the contents of <code class="code">path</code> or error.<br>
+</div>
+
+<pre><span id="VALwrite_file"><span class="keyword">val</span> write_file</span> : <code class="type">?mode:int -> string -> string -> (unit, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">write_file&nbsp;~mode&nbsp;path&nbsp;data</code> writes <code class="code">data</code> under <code class="code">path</code> or error.<br>
+</div>
+
+<pre><span id="VALwrite_replace"><span class="keyword">val</span> write_replace</span> : <code class="type">?mode:int -> string -> string -> (unit, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">write_replace&nbsp;~mode&nbsp;path&nbsp;data</code> writes <code class="code">data</code> under <code class="code">path.tmp</code> and
+    renames <code class="code">path.tmp</code> to <code class="code">path</code> or error.<br>
+</div>
+
+<pre><span id="VALcollect_dir"><span class="keyword">val</span> collect_dir</span> : <code class="type">string -> (string list, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">collect_dir&nbsp;path</code> are the inhabitants of <code class="code">path</code> or error.<br>
+</div>
+</body></html>

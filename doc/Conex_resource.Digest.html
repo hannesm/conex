@@ -69,5 +69,12 @@ A digest is a pair of digest algorithm and value.<br>
       have the same value.<br>
 </div>
 
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a> -> (<a href="Conex_resource.Digest.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Digest.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a></code></pre></body></html>
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a> -> (<a href="Conex_resource.Digest.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;w</code> converts <code class="code">w</code> to a digest or error.<br>
+</div>
+
+<pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Digest.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a></code></pre><div class="info ">
+<code class="code">wire_raw&nbsp;t</code> is the wire representation of <code class="code">t</code>, used by <a href="Conex_resource.Author.html#VALwire"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.wire</code></a> and
+      <a href="Conex_resource.Release.html#VALwire"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.wire</code></a>.<br>
+</div>
+</body></html>

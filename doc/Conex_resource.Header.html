@@ -34,7 +34,10 @@
 </div>
 <h1>Module <a href="type_Conex_resource.Header.html">Conex_resource.Header</a></h1>
 
-<pre><span class="keyword">module</span> Header: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Header.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module</span> Header: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Header.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Common header on disk<br>
+</div>
+<hr width="100%">
 
 <pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = {</code></pre><table class="typetable">
 <tr>
@@ -81,10 +84,30 @@
 </tr></table>
 }
 
+<div class="info ">
+The header consists of version, created, counter, wraps, a name, and a typ.<br>
+</div>
 
 
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Header.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALtimestamp"><span class="keyword">val</span> timestamp</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> string</code></pre>
-<pre><span id="VALcounter"><span class="keyword">val</span> counter</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> string</code></pre>
-<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Header.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre>
-<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Header.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre></body></html>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Header.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Header.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire&nbsp;t</code> is the wire representation of <code class="code">t</code>.<br>
+</div>
+
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Header.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;t</code> converts <code class="code">t</code> into a <a href="Conex_resource.Header.html#TYPEt"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Header</span>.t</code></a> or error.<br>
+</div>
+
+<pre><span id="VALtimestamp"><span class="keyword">val</span> timestamp</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> string</code></pre><div class="info ">
+<code class="code">timestamp&nbsp;uint</code> prints <code class="code">uint</code> to a string as a timestamp (decimal as
+      seconds since UNIX epoch).<br>
+</div>
+
+<pre><span id="VALcounter"><span class="keyword">val</span> counter</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> string</code></pre><div class="info ">
+<code class="code">counter&nbsp;ctr&nbsp;wrap</code> prints <code class="code">ctr,&nbsp;wrap</code> to a string containing the counter
+      and wraps (unless zero).<br>
+</div>
+</body></html>

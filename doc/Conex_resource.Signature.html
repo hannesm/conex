@@ -57,7 +57,8 @@ The signature header, an algorithm and a created timestamp.<br>
 
 
 <pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Signature.html#TYPEhdr">hdr</a> -> string -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
-<code class="code">wire&nbsp;id&nbsp;hdr&nbsp;data</code> extends the given data with the header and id to a string which is then signed.<br>
+<code class="code">wire&nbsp;id&nbsp;hdr&nbsp;data</code> extends the given data with the header and id to a
+      string which is then signed.<br>
 </div>
 
 <pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = <code class="type"><a href="Conex_resource.Signature.html#TYPEhdr">hdr</a> * string</code> </pre>
@@ -70,5 +71,11 @@ A signature is a pair of header and value.<br>
 <code class="code">pp&nbsp;<span class="keyword">sig</span></code> is a pretty printer for a signature.<br>
 </div>
 
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a> -><br>       (<a href="Conex_resource.Signature.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Signature.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a></code></pre></body></html>
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a> -><br>       (<a href="Conex_resource.Signature.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;w</code> converts <code class="code">w</code> to a signature or error.<br>
+</div>
+
+<pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Signature.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEs">Conex_resource.Wire.s</a></code></pre><div class="info ">
+<code class="code">wire_raw&nbsp;t</code> is the wire representation of <code class="code">t</code>, used by <a href="Conex_resource.Author.html#VALwire"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.wire</code></a>.<br>
+</div>
+</body></html>

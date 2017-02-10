@@ -51,39 +51,39 @@
 </table>
 <hr width="100%">
 
-<pre><span id="VALload_id"><span class="keyword">val</span> load_id</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">load_id&nbsp;io&nbsp;repo&nbsp;id</code> reads <code class="code">id</code>, either a team or an individual author,
-      in <code class="code">repo</code>.  and verifies the read data.<br>
+<pre><span id="VALverify_id"><span class="keyword">val</span> verify_id</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_id&nbsp;io&nbsp;repo&nbsp;id</code> reads <code class="code">id</code> from <code class="code">io</code> unless <code class="code">id</code> is already part of
+      <code class="code">repo</code>.  The read data will either be a team or an author.  If
+      verification is successful, resource and identitiy data are added to
+      <code class="code">repo</code>.<br>
 </div>
 
-<pre><span id="VALload_ids"><span class="keyword">val</span> load_ids</span> : <code class="type">?ids:Conex_utils.S.t -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">load_ids&nbsp;~ids&nbsp;io&nbsp;repo</code> folds over <code class="code">ids</code> (default: all
-      ids present in <code class="code">io</code>), applying <code class="code">load_id</code>.<br>
+<pre><span id="VALverify_ids"><span class="keyword">val</span> verify_ids</span> : <code class="type">?ids:Conex_utils.S.t -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_ids&nbsp;~ids&nbsp;io&nbsp;repo</code> folds over <code class="code">ids</code> (default: all ids present on
+      <code class="code">io</code>), calling <code class="code">verify_id</code>.<br>
 </div>
 
-<pre><span id="VALload_janitors"><span class="keyword">val</span> load_janitors</span> : <code class="type">?valid:(<a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">load_janitors&nbsp;~valid&nbsp;io&nbsp;repo</code> reads the team janitors from <code class="code">io</code>, and all
-      team members.  It verifies the data by doing two steps: first it uses only
-      those public keys which fingerprints are provided via <code class="code">valid</code>.  If
-      successful, it uses in a second step the resulting repository to verify
-      the remaining janitors, followed by verification of the janitor team.<br>
+<pre><span id="VALverify_janitors"><span class="keyword">val</span> verify_janitors</span> : <code class="type">?valid:(<a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_janitors&nbsp;~valid&nbsp;io&nbsp;repo</code> reads the team "janitors" from <code class="code">io</code>, and
+      all its team members.  It verifies in two steps: first it uses only those
+      public keys which fingerprints are <code class="code">valid</code>.  If successful, in a second
+      step the resulting repository is used to verify the remaining janitors,
+      followed by verification of the janitor team.<br>
 </div>
 
-<pre><span id="VALverify_item"><span class="keyword">val</span> verify_item</span> : <code class="type">?authorised:(Conex_utils.S.t -> bool) -><br>       ?release:(<a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">verify_item&nbsp;~authorised&nbsp;~release&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the
+<pre><span id="VALverify_package"><span class="keyword">val</span> verify_package</span> : <code class="type">?authorised:(Conex_utils.S.t -> bool) -><br>       ?release:(<a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_package&nbsp;~authorised&nbsp;~release&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the
       authorisation of the package <code class="code">name</code>.  All <code class="code">ids</code> who are authorised are
-      loaded into the repository (using <code class="code">load_ids</code>).  If <code class="code">authorised</code> is
+      loaded into the repository (using <code class="code">verify_ids</code>).  If <code class="code">authorised</code> is
       <code class="code"><span class="keyword">true</span></code>, the package data for <code class="code">name</code> is read and verified, followed by all
-      releases (filtered with <code class="code">release</code>).  Each
-      release is read and verified.<br>
+      releases (filtered with <code class="code">release</code>).  Each release is read and verified.<br>
 </div>
 
 <pre><span id="VALverify_diff"><span class="keyword">val</span> verify_diff</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       string -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
 <code class="code">verify_diff&nbsp;io&nbsp;repository&nbsp;patch</code> first parses the <code class="code">patch</code> and applies it.
-      The janitors of the old <code class="code">repository</code> are loaded and their public key
-      fingerprints are used to validate the janitors team of the repository with
-      applied <code class="code">patch</code>.  All identifiers and packages of the repository with
-      <code class="code">patch</code> applied are verified, and additionally all modified resources have
-      their monotonicity verified.<br>
+      The key fingerprints ofjanitors in <code class="code">repository</code> are used to validate the
+      janitors team of the repository with applied <code class="code">patch</code>.  All identifiers and
+      packages of the repository with <code class="code">patch</code> applied are verified, and
+      additionally all modified resources have their monotonicity verified.<br>
 </div>
 </body></html>

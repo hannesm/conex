@@ -28,7 +28,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;filename&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.name;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;digest&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t;<br>
 &nbsp;&nbsp;}<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_checksum&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.c&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_c&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.c&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;checksum_equal&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.c&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.c&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
 &nbsp;&nbsp;<span class="keyword">type</span>&nbsp;checksum_map<br>
@@ -39,7 +39,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;name&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.name;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;files&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.checksum_map;<br>
 &nbsp;&nbsp;}<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp&nbsp;:&nbsp;<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;t&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;?counter:<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;?wraps:<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
@@ -53,7 +53,7 @@
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;set_counter&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;compare_checksums&nbsp;:<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;compare_t&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(unit,<br>

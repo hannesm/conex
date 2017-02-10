@@ -25,7 +25,9 @@
 <link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex_resource.Author</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><link title="Resources" rel="Section" href="#2_Resources">
+<link title="Accounts" rel="Section" href="#2_Accounts">
+<title>Conex_resource.Author</title>
 </head>
 <body>
 <div class="navbar"><a class="pre" href="Conex_resource.Digest.html" title="Conex_resource.Digest">Previous</a>
@@ -34,7 +36,15 @@
 </div>
 <h1>Module <a href="type_Conex_resource.Author.html">Conex_resource.Author</a></h1>
 
-<pre><span class="keyword">module</span> Author: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Author.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module</span> Author: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Author.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+An author contains a list of approved resources (name, typ, digest).  It
+    also contains a list of key and signature pairs, and a list of accounts.
+    Keys have to be approved by a quorum of janitors, but the resource list is
+    modified only by the author themselves.<br>
+</div>
+<hr width="100%">
+<br>
+<h2 id="2_Resources">Resources</h2><br>
 
 <pre><code><span id="TYPEr"><span class="keyword">type</span> <code class="type"></code>r</span> = private {</code></pre><table class="typetable">
 <tr>
@@ -67,18 +77,37 @@
 </tr></table>
 }
 
+<div class="info ">
+The type of a resource in the approved list: a counter (the index), a
+      name, a typ, and its digest.<br>
+</div>
 
 
-<pre><span id="VALr"><span class="keyword">val</span> r</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       string -><br>       <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a></code></pre>
-<pre><span id="VALr_equal"><span class="keyword">val</span> r_equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> bool</code></pre>
-<pre><span id="VALpp_resource"><span class="keyword">val</span> pp_resource</span> : <code class="type">Format.formatter -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> unit</code></pre>
-<pre><span id="TYPEemail"><span class="keyword">type</span> <code class="type"></code>email</span> = <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a></code> </pre>
+<pre><span id="VALpp_r"><span class="keyword">val</span> pp_r</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEr">r</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_r</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALr"><span class="keyword">val</span> r</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       string -><br>       <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a></code></pre><div class="info ">
+<code class="code">r&nbsp;idx&nbsp;name&nbsp;typ&nbsp;dgst</code> is a constructor.<br>
+</div>
+
+<pre><span id="VALr_equal"><span class="keyword">val</span> r_equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> bool</code></pre><div class="info ">
+<code class="code">r_equal&nbsp;r&nbsp;r'</code> is <code class="code"><span class="keyword">true</span></code> is the name, type, and digest of <code class="code">r</code> and <code class="code">r'</code> are
+      equal.<br>
+</div>
+<br>
+<h2 id="2_Accounts">Accounts</h2><br>
+
+<pre><span id="TYPEaccount"><span class="keyword">type</span> <code class="type"></code>account</span> = <code class="type">[ `Email of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `GitHub of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `Other of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * string ]</code> </pre>
+<div class="info ">
+Variant of accounts<br>
+</div>
 
 
-<pre><span id="TYPEaccount"><span class="keyword">type</span> <code class="type"></code>account</span> = <code class="type">[ `Email of <a href="Conex_resource.Author.html#TYPEemail">email</a><br>       | `GitHub of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>       | `Other of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * string ]</code> </pre>
+<pre><span id="VALwire_account"><span class="keyword">val</span> wire_account</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire_account&nbsp;a</code> is the wire representation of <code class="code">a</code>.<br>
+</div>
 
-
-<pre><span id="VALwire_account"><span class="keyword">val</span> wire_account</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
 <pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = private {</code></pre><table class="typetable">
 <tr>
 <td align="left" valign="top" >
@@ -138,17 +167,64 @@
 </tr></table>
 }
 
+<div class="info ">
+The record of an author: name, key/signature pairs, created, counter,
+      approved and queued resource lists.<br>
+</div>
 
 
-<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre>
-<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?accounts:<a href="Conex_resource.Author.html#TYPEaccount">account</a> list -><br>       ?keys:(<a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a>) list -><br>       ?resources:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       ?queued:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre>
-<pre><span id="VALcontains"><span class="keyword">val</span> contains</span> : <code class="type">?queued:bool -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> bool</code></pre>
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Author.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
-<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
-<pre><span id="VALnext_id"><span class="keyword">val</span> next_id</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a></code></pre>
-<pre><span id="VALadd_resource"><span class="keyword">val</span> add_resource</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre>
-<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> bool</code></pre>
-<pre><span id="VALreset"><span class="keyword">val</span> reset</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre>
-<pre><span id="VALprep_sig"><span class="keyword">val</span> prep_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> * bool</code></pre>
-<pre><span id="VALreplace_sig"><span class="keyword">val</span> replace_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre></body></html>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?accounts:<a href="Conex_resource.Author.html#TYPEaccount">account</a> list -><br>       ?keys:(<a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a>) list -><br>       ?resources:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       ?queued:<a href="Conex_resource.Author.html#TYPEr">r</a> list -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">t&nbsp;~counter&nbsp;~wraps&nbsp;~accounts&nbsp;~keys&nbsp;~resources&nbsp;~queued&nbsp;created&nbsp;name</code> is a
+      constructor.<br>
+</div>
+
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Author.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;w</code> converts <code class="code">w</code> to an author or error.<br>
+</div>
+
+<pre><span id="VALwire_raw"><span class="keyword">val</span> wire_raw</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire_raw&nbsp;t</code> is the raw wire representation of <code class="code">t</code>, including only header
+      and resource list.  This is used for signing.<br>
+</div>
+
+<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire&nbsp;t</code> is the raw wire representation of <code class="code">t</code>, as written to disk.<br>
+</div>
+
+<pre><span id="VALcontains"><span class="keyword">val</span> contains</span> : <code class="type">?queued:bool -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> bool</code></pre><div class="info ">
+<code class="code">contains&nbsp;~queued&nbsp;author&nbsp;resource</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">resource</code> is in
+      <code class="code">author.resources</code> (or <code class="code">author.queued</code> if <code class="code">queued</code> is true (default:
+      false).<br>
+</div>
+
+<pre><span id="VALnext_id"><span class="keyword">val</span> next_id</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a></code></pre><div class="info ">
+<code class="code">next_id&nbsp;t</code> is the next free identitifer of the resource list index.<br>
+</div>
+
+<pre><span id="VALadd_resource"><span class="keyword">val</span> add_resource</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">add_resource&nbsp;t&nbsp;r</code> adds <code class="code">r</code> to <code class="code">t.queued</code>.<br>
+</div>
+
+<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">equal&nbsp;t&nbsp;t'</code> is true if name, keys, accounts, resource lists, and queued
+      are equal.<br>
+</div>
+
+<pre><span id="VALreset"><span class="keyword">val</span> reset</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">reset&nbsp;t</code> drops <code class="code">t.queued</code>.<br>
+</div>
+
+<pre><span id="VALprep_sig"><span class="keyword">val</span> prep_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> * bool</code></pre><div class="info ">
+<code class="code">prep_sig&nbsp;t</code> appends <code class="code">t.queued</code> to <code class="code">t.resources</code> and increments
+      <code class="code">t.counter</code>.  Returns the carry bit as second component.<br>
+</div>
+
+<pre><span id="VALreplace_sig"><span class="keyword">val</span> replace_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">replace_sig&nbsp;t&nbsp;(k,&nbsp;s)</code> adds <code class="code">k,s</code> to <code class="code">t.keys</code>, filtering existing pairs
+      where the same public key is used.<br>
+</div>
+</body></html>

@@ -32,7 +32,11 @@
 &nbsp;</div>
 <h1>Module <a href="type_Conex_resource.Release.html">Conex_resource.Release</a></h1>
 
-<pre><span class="keyword">module</span> Release: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Release.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module</span> Release: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Release.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+A release contains a map of all files in the repository relevant for this
+    release and their digests.<br>
+</div>
+<hr width="100%">
 
 <pre><code><span id="TYPEc"><span class="keyword">type</span> <code class="type"></code>c</span> = {</code></pre><table class="typetable">
 <tr>
@@ -51,11 +55,24 @@
 </tr></table>
 }
 
+<div class="info ">
+The record for a checksum: filename and digest.<br>
+</div>
 
 
-<pre><span id="VALpp_checksum"><span class="keyword">val</span> pp_checksum</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEc">c</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre>
-<pre><span id="VALchecksum_equal"><span class="keyword">val</span> checksum_equal</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEc">c</a> -> <a href="Conex_resource.Release.html#TYPEc">c</a> -> bool</code></pre>
+<pre><span id="VALpp_c"><span class="keyword">val</span> pp_c</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEc">c</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_c</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALchecksum_equal"><span class="keyword">val</span> checksum_equal</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEc">c</a> -> <a href="Conex_resource.Release.html#TYPEc">c</a> -> bool</code></pre><div class="info ">
+<code class="code">c_equal&nbsp;c&nbsp;c'</code> is true if the filenames are equal, and the digests are
+      equal.<br>
+</div>
+
 <pre><span id="TYPEchecksum_map"><span class="keyword">type</span> <code class="type"></code>checksum_map</span> </pre>
+<div class="info ">
+Type of a checksum map.<br>
+</div>
 
 
 <pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = private {</code></pre><table class="typetable">
@@ -96,15 +113,50 @@
 </tr></table>
 }
 
+<div class="info ">
+The record of a release: a header, and a checksum map.<br>
+</div>
 
 
-<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type">Format.formatter -> <a href="Conex_resource.Release.html#TYPEt">t</a> -> unit</code></pre>
-<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       string -> <a href="Conex_resource.Release.html#TYPEc">c</a> list -> <a href="Conex_resource.Release.html#TYPEt">t</a></code></pre>
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Release.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
-<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_resource.Release.html#TYPEt">t</a> -> bool</code></pre>
-<pre><span id="VALset_counter"><span class="keyword">val</span> set_counter</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.Release.html#TYPEt">t</a></code></pre>
-<pre><span id="VALcompare_checksums"><span class="keyword">val</span> compare_checksums</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Release.html#TYPEt">t</a> -><br>       (unit,<br>        [> `ChecksumsDiff of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             (<a href="Conex_resource.Release.html#TYPEc">c</a> * <a href="Conex_resource.Release.html#TYPEc">c</a>) list<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> ])<br>       Pervasives.result</code></pre>
-<pre><span id="VALfold"><span class="keyword">val</span> fold</span> : <code class="type">(<a href="Conex_resource.Release.html#TYPEc">c</a> -> 'b -> 'b) -><br>       <a href="Conex_resource.Release.html#TYPEchecksum_map">checksum_map</a> -> 'b -> 'b</code></pre>
-<pre><span id="VALfind"><span class="keyword">val</span> find</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEchecksum_map">checksum_map</a> -> string -> <a href="Conex_resource.Release.html#TYPEc">c</a></code></pre>
-<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_resource.Release.html#TYPEt">t</a> * bool</code></pre></body></html>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       string -> <a href="Conex_resource.Release.html#TYPEc">c</a> list -> <a href="Conex_resource.Release.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">t&nbsp;~counter&nbsp;~wraps&nbsp;created&nbsp;name&nbsp;checksums</code> is a constructor.<br>
+</div>
+
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Release.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;w</code> converts <code class="code">w</code> to a release or error.<br>
+</div>
+
+<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire&nbsp;t</code> is the wire representation of <code class="code">t</code>.<br>
+</div>
+
+<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_resource.Release.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">equal&nbsp;t&nbsp;t'</code> is true if the name is equal and the checksum maps are
+      equal.<br>
+</div>
+
+<pre><span id="VALset_counter"><span class="keyword">val</span> set_counter</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.Release.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">set_counter&nbsp;t&nbsp;ctr</code> sets <code class="code">t.counter</code> to <code class="code">ctr</code>.<br>
+</div>
+
+<pre><span id="VALcompare_t"><span class="keyword">val</span> compare_t</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Release.html#TYPEt">t</a> -><br>       (unit,<br>        [> `ChecksumsDiff of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             (<a href="Conex_resource.Release.html#TYPEc">c</a> * <a href="Conex_resource.Release.html#TYPEc">c</a>) list<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> ])<br>       Pervasives.result</code></pre><div class="info ">
+<code class="code">compare_t&nbsp;t&nbsp;t'</code> compares <code class="code">t</code> and <code class="code">t'</code>, either they are equal, their names
+      are different, or their checksum maps differ.<br>
+</div>
+
+<pre><span id="VALfold"><span class="keyword">val</span> fold</span> : <code class="type">(<a href="Conex_resource.Release.html#TYPEc">c</a> -> 'b -> 'b) -><br>       <a href="Conex_resource.Release.html#TYPEchecksum_map">checksum_map</a> -> 'b -> 'b</code></pre><div class="info ">
+<code class="code">fold&nbsp;f&nbsp;m&nbsp;acc</code> folds <code class="code">f</code> over <code class="code">m</code>.<br>
+</div>
+
+<pre><span id="VALfind"><span class="keyword">val</span> find</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEchecksum_map">checksum_map</a> -> string -> <a href="Conex_resource.Release.html#TYPEc">c</a></code></pre><div class="info ">
+<code class="code">find&nbsp;m&nbsp;k</code> looks <code class="code">k</code> up in <code class="code">m</code>.<br>
+</div>
+
+<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Release.html#TYPEt">t</a> -> <a href="Conex_resource.Release.html#TYPEt">t</a> * bool</code></pre><div class="info ">
+<code class="code">prep&nbsp;t</code> increments <code class="code">t.counter</code>, returns carry as second component.<br>
+</div>
+</body></html>

@@ -31,7 +31,11 @@
 <link title="Asymmetric key types" rel="Section" href="#1_Asymmetrickeytypes">
 <link title="Cryptographic signatures" rel="Section" href="#1_Cryptographicsignatures">
 <link title="Digests" rel="Section" href="#1_Digests">
+<link title="Author" rel="Section" href="#1_Author">
 <link title="Team" rel="Section" href="#1_Team">
+<link title="Authorisation" rel="Section" href="#1_Authorisation">
+<link title="Package" rel="Section" href="#1_Package">
+<link title="Release" rel="Section" href="#1_Release">
 <title>Conex_resource</title>
 </head>
 <body>
@@ -42,7 +46,16 @@
 <h1>Module <a href="type_Conex_resource.html">Conex_resource</a></h1>
 
 <pre><span class="keyword">module</span> Conex_resource: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
-Persistent data: on wire and record types<br>
+Persistent data: on wire and record types
+<p>
+
+    Every resource in conex is a piece of data (or metadata), and has its own
+    purpose.  Resources stored on disk consists of a common header: a name, a
+    type, a counter, a wraparound counter, and a creation timestamp.  There are
+    broadly three kinds of resources: those containing identities (<a href="Conex_resource.Team.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Team</span></code></a> and
+    <a href="Conex_resource.Author.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span></code></a>), those regulating access to packages (<a href="Conex_resource.Authorisation.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span></code></a>), and
+    those with the digests of the opam repository data (<a href="Conex_resource.Package.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Package</span></code></a> and
+    <a href="Conex_resource.Release.html"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Release</span></code></a>).<br>
 </div>
 <hr width="100%">
 <br>
@@ -108,7 +121,10 @@ The sum type of all possible resources.<br>
 </div>
 
 <pre><span id="VALtyp_of_wire"><span class="keyword">val</span> typ_of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEs">Wire.s</a> -> (<a href="Conex_resource.html#TYPEtyp">typ</a>, string) Pervasives.result</code></pre>
-<pre><span class="keyword">module</span> <a href="Conex_resource.Header.html">Header</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Header.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Header.html">Header</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Header.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+Common header on disk
+</div>
+<br>
 <h1 id="1_Asymmetrickeytypes">Asymmetric key types</h1><br>
 
 <pre><span class="keyword">module</span> <a href="Conex_resource.Key.html">Key</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Key.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
@@ -117,15 +133,36 @@ The sum type of all possible resources.<br>
 <pre><span class="keyword">module</span> <a href="Conex_resource.Signature.html">Signature</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Signature.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
 <h1 id="1_Digests">Digests</h1><br>
 
-<pre><span class="keyword">module</span> <a href="Conex_resource.Digest.html">Digest</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Digest.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
-<pre><span class="keyword">module</span> <a href="Conex_resource.Author.html">Author</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Author.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Digest.html">Digest</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Digest.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
+<h1 id="1_Author">Author</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Author.html">Author</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Author.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+An author contains a list of approved resources (name, typ, digest).
+</div>
+<br>
 <h1 id="1_Team">Team</h1><br>
 
 <pre><span class="keyword">module</span> <a href="Conex_resource.Team.html">Team</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Team.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
-A team consists of a group of authors, and teams can be authorised for
-     packages.
+A team consists of a group of authors.
 </div>
+<br>
+<h1 id="1_Authorisation">Authorisation</h1><br>
 
-<pre><span class="keyword">module</span> <a href="Conex_resource.Authorisation.html">Authorisation</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Authorisation.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
-<pre><span class="keyword">module</span> <a href="Conex_resource.Package.html">Package</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Package.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
-<pre><span class="keyword">module</span> <a href="Conex_resource.Release.html">Release</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Release.html">..</a> <code class="code"><span class="keyword">end</span></code></pre></body></html>
+<pre><span class="keyword">module</span> <a href="Conex_resource.Authorisation.html">Authorisation</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Authorisation.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+An authorisation contains the information who is authorised to modify a
+    package.
+</div>
+<br>
+<h1 id="1_Package">Package</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Package.html">Package</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Package.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+A package lists all releases of a given package.
+</div>
+<br>
+<h1 id="1_Release">Release</h1><br>
+
+<pre><span class="keyword">module</span> <a href="Conex_resource.Release.html">Release</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Release.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+A release contains a map of all files in the repository relevant for this
+    release and their digests.
+</div>
+</body></html>

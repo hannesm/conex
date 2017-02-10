@@ -34,7 +34,17 @@
 </div>
 <h1>Module <a href="type_Conex_unix_provider.html">Conex_unix_provider</a></h1>
 
-<pre><span class="keyword">module</span> Conex_unix_provider: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_unix_provider.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module</span> Conex_unix_provider: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_unix_provider.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Unix IO provider<br>
+</div>
+<hr width="100%">
 
-<pre><span id="VALfs_provider"><span class="keyword">val</span> fs_provider</span> : <code class="type">string -> (<a href="Conex_io.html#TYPEt">Conex_io.t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALfs_ro_provider"><span class="keyword">val</span> fs_ro_provider</span> : <code class="type">string -> (<a href="Conex_io.html#TYPEt">Conex_io.t</a>, string) Pervasives.result</code></pre></body></html>
+<pre><span id="VALfs_provider"><span class="keyword">val</span> fs_provider</span> : <code class="type">string -> (<a href="Conex_io.html#TYPEt">Conex_io.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">fs_provider&nbsp;path</code> is a data provider backed by a file system or error.<br>
+</div>
+
+<pre><span id="VALfs_ro_provider"><span class="keyword">val</span> fs_ro_provider</span> : <code class="type">string -> (<a href="Conex_io.html#TYPEt">Conex_io.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">fs_ro_provider&nbsp;path</code> is a read-only data provider backed by a file system
+    or error.<br>
+</div>
+</body></html>

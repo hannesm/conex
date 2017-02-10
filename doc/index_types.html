@@ -30,7 +30,10 @@
 <table>
 <tr><td align="left"><br>A</td></tr>
 <tr><td><a href="Conex_resource.Author.html#TYPEaccount">account</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
-<td></td></tr>
+<td><div class="info">
+Variant of accounts
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Digest.html#TYPEalg">alg</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
 <td><div class="info">
 The sum type of supported digest algorithms.
@@ -54,16 +57,26 @@ Errors which can occur during any validation.
 </td></tr>
 <tr><td align="left"><br>C</td></tr>
 <tr><td><a href="Conex_resource.Release.html#TYPEc">c</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The record for a checksum: filename and digest.
+</div>
+</td></tr>
 <tr><td><a href="Conex_io.html#TYPEcc_err">cc_err</a> [<a href="Conex_io.html">Conex_io</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The variant of errors when computing checksums
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Release.html#TYPEchecksum_map">checksum_map</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
-<td></td></tr>
+<td><div class="info">
+Type of a checksum map.
+</div>
+</td></tr>
 <tr><td><a href="Conex_repository.html#TYPEconflict">conflict</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The variant of a conflict in the digest map.
+</div>
+</td></tr>
 <tr><td align="left"><br>E</td></tr>
-<tr><td><a href="Conex_resource.Author.html#TYPEemail">email</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conex_unix_private_key.html#TYPEerr">err</a> [<a href="Conex_unix_private_key.html">Conex_unix_private_key</a>]</td>
 <td><div class="info">
 Potential read errors
@@ -107,7 +120,10 @@ An <code class="code">item</code> is a type and its payload
 <td></td></tr>
 <tr><td align="left"><br>M</td></tr>
 <tr><td><a href="Conex_repository.html#TYPEm_err">m_err</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The variant of monotonicity errors.
+</div>
+</td></tr>
 <tr><td><a href="Conex_utils.LOGS.html#TYPEmsgf">msgf</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
 <td><div class="info">
 msgf
@@ -132,9 +148,16 @@ The type of private keys
 </td></tr>
 <tr><td align="left"><br>R</td></tr>
 <tr><td><a href="Conex_resource.Author.html#TYPEr">r</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The type of a resource in the approved list: a counter (the index), a
+      name, a typ, and its digest.
+</div>
+</td></tr>
 <tr><td><a href="Conex_io.html#TYPEr_err">r_err</a> [<a href="Conex_io.html">Conex_io</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The variant of read and parse errors.
+</div>
+</td></tr>
 <tr><td align="left"><br>S</td></tr>
 <tr><td><a href="Conex_resource.Wire.html#TYPEs">s</a> [<a href="Conex_resource.Wire.html">Conex_resource.Wire</a>]</td>
 <td><div class="info">
@@ -160,15 +183,31 @@ A provider contains its base directory, a description, and read/write/exist
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Release.html#TYPEt">t</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The record of a release: a header, and a checksum map.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Package.html#TYPEt">t</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The record for a package: a header, and a set of release names.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Authorisation.html#TYPEt">t</a> [<a href="Conex_resource.Authorisation.html">Conex_resource.Authorisation</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The authorisation record: a header, a name, and a set of authorised ids.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Team.html#TYPEt">t</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The record for a team: a header and a set of members.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Author.html#TYPEt">t</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The record of an author: name, key/signature pairs, created, counter,
+      approved and queued resource lists.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Digest.html#TYPEt">t</a> [<a href="Conex_resource.Digest.html">Conex_resource.Digest</a>]</td>
 <td><div class="info">
 A digest is a pair of digest algorithm and value.
@@ -185,7 +224,10 @@ The type of public keys
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Header.html#TYPEt">t</a> [<a href="Conex_resource.Header.html">Conex_resource.Header</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The header consists of version, created, counter, wraps, a name, and a typ.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Wire.html#TYPEt">t</a> [<a href="Conex_resource.Wire.html">Conex_resource.Wire</a>]</td>
 <td><div class="info">
 The toplevel node, a Map

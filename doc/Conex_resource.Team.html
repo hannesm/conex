@@ -35,9 +35,8 @@
 <h1>Module <a href="type_Conex_resource.Team.html">Conex_resource.Team</a></h1>
 
 <pre><span class="keyword">module</span> Team: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_resource.Team.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
-A team consists of a group of authors, and teams can be authorised for
-     packages.  Team members can dynamically join and leave.  All
-     modifications to teams require a quorum of janitors.<br>
+A team consists of a group of authors.  Team members can dynamically join
+     and leave.<br>
 </div>
 <hr width="100%">
 
@@ -79,13 +78,42 @@ A team consists of a group of authors, and teams can be authorised for
 </tr></table>
 }
 
+<div class="info ">
+The record for a team: a header and a set of members.<br>
+</div>
 
 
-<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?members:Conex_utils.S.t -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a></code></pre>
-<pre><span id="VALadd"><span class="keyword">val</span> add</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a></code></pre>
-<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a></code></pre>
-<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a> * bool</code></pre>
-<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a> -> bool</code></pre>
-<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Team.html#TYPEt">t</a>, string) Pervasives.result</code></pre>
-<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre>
-<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre></body></html>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALt"><span class="keyword">val</span> t</span> : <code class="type">?counter:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?wraps:<a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       ?members:Conex_utils.S.t -><br>       <a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">t&nbsp;~counter&nbsp;~wraps&nbsp;~members&nbsp;created&nbsp;id</code> is a constructor for a team.<br>
+</div>
+
+<pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
+<code class="code">equal&nbsp;t&nbsp;t'</code> is true if the set of members is equal and the name is
+      equal.<br>
+</div>
+
+<pre><span id="VALof_wire"><span class="keyword">val</span> of_wire</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> (<a href="Conex_resource.Team.html#TYPEt">t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">of_wire&nbsp;w</code> converts <code class="code">w</code> to a team or error.<br>
+</div>
+
+<pre><span id="VALwire"><span class="keyword">val</span> wire</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire&nbsp;t</code> is the wire representation of <code class="code">t</code>.<br>
+</div>
+
+<pre><span id="VALadd"><span class="keyword">val</span> add</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">add&nbsp;t&nbsp;id</code> adds <code class="code">id</code> to team.<br>
+</div>
+
+<pre><span id="VALremove"><span class="keyword">val</span> remove</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">remove&nbsp;t&nbsp;id</code> removes <code class="code">id</code> from team.<br>
+</div>
+
+<pre><span id="VALprep"><span class="keyword">val</span> prep</span> : <code class="type"><a href="Conex_resource.Team.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">t</a> * bool</code></pre><div class="info ">
+<code class="code">prep&nbsp;t</code> prepares increments <code class="code">t.counter</code>.  Returns the carry bit as second
+      component.  Used after a batch of changes.<br>
+</div>
+</body></html>

@@ -36,68 +36,68 @@
 &nbsp;&nbsp;&nbsp;&nbsp;exists&nbsp;:&nbsp;<span class="constructor">Conex_utils</span>.path&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool;<br>
 &nbsp;&nbsp;}<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;ids&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;packages&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;releases&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">type</span>&nbsp;cc_err&nbsp;=<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">FileNotFound</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.name<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NotADirectory</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;]<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_cc_err&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.cc_err&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;compute_release&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;(string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t)&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t,&nbsp;<span class="constructor">Conex_io</span>.cc_err)&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_cc_err&nbsp;:&nbsp;<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_io</span>.cc_err&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;compute_package&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">Uint</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Package</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;ids&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;items&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;subitems&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">type</span>&nbsp;r_err&nbsp;=<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">NameMismatch</span>&nbsp;<span class="keyword">of</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.name<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NotFound</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.name<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">ParseError</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;*&nbsp;string&nbsp;]<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_r_err&nbsp;:&nbsp;<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_r_err&nbsp;:&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_id&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;([&nbsp;<span class="keywordsign">`</span><span class="constructor">Author</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">Team</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t&nbsp;],<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_team&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_team&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_author&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_author&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_team&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_authorisation&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span>.t,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_authorisation&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_package&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Package</span>.t,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_package&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Package</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read_release&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_io</span>.r_err&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_author&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_team&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_authorisation&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_package&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Package</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write_release&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>

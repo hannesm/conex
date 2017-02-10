@@ -30,15 +30,22 @@
 <table>
 <tr><td align="left"><br>A</td></tr>
 <tr><td><a href="Conex_resource.Author.html">Author</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
-<td></td></tr>
+<td><div class="info">
+An author contains a list of approved resources (name, typ, digest).
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Authorisation.html">Authorisation</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
-<td></td></tr>
+<td><div class="info">
+An authorisation contains the information who is authorised to modify a
+    package.
+</div>
+</td></tr>
 <tr><td align="left"><br>C</td></tr>
 <tr><td><a href="Conex_nocrypto.C.html">C</a> [<a href="Conex_nocrypto.html">Conex_nocrypto</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex.html">Conex</a> </td>
 <td><div class="info">
-Establish trust into community repositories
+Establish trust in community repositories
 </div>
 </td></tr>
 <tr><td><a href="Conex_crypto.html">Conex_crypto</a> </td>
@@ -87,14 +94,20 @@ Persistent data: on wire and record types
 </div>
 </td></tr>
 <tr><td><a href="Conex_unix_persistency.html">Conex_unix_persistency</a> </td>
-<td></td></tr>
+<td><div class="info">
+File system operations using Unix
+</div>
+</td></tr>
 <tr><td><a href="Conex_unix_private_key.html">Conex_unix_private_key</a> </td>
 <td><div class="info">
 Private key IO
 </div>
 </td></tr>
 <tr><td><a href="Conex_unix_provider.html">Conex_unix_provider</a> </td>
-<td></td></tr>
+<td><div class="info">
+Unix IO provider
+</div>
+</td></tr>
 <tr><td><a href="Conex_utils.html">Conex_utils</a> </td>
 <td><div class="info">
 String, unsigned integers, logging, collections, and more
@@ -105,7 +118,10 @@ String, unsigned integers, logging, collections, and more
 <td></td></tr>
 <tr><td align="left"><br>H</td></tr>
 <tr><td><a href="Conex_resource.Header.html">Header</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
-<td></td></tr>
+<td><div class="info">
+Common header on disk
+</div>
+</td></tr>
 <tr><td align="left"><br>K</td></tr>
 <tr><td><a href="Conex_resource.Key.html">Key</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
 <td></td></tr>
@@ -134,10 +150,17 @@ Instantiation.
 <td></td></tr>
 <tr><td align="left"><br>P</td></tr>
 <tr><td><a href="Conex_resource.Package.html">Package</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
-<td></td></tr>
+<td><div class="info">
+A package lists all releases of a given package.
+</div>
+</td></tr>
 <tr><td align="left"><br>R</td></tr>
 <tr><td><a href="Conex_resource.Release.html">Release</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
-<td></td></tr>
+<td><div class="info">
+A release contains a map of all files in the repository relevant for this
+    release and their digests.
+</div>
+</td></tr>
 <tr><td align="left"><br>S</td></tr>
 <tr><td><a href="Conex_utils.S.html">S</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
 <td><div class="info">
@@ -160,8 +183,7 @@ Tag, as in logs
 </td></tr>
 <tr><td><a href="Conex_resource.Team.html">Team</a> [<a href="Conex_resource.html">Conex_resource</a>]</td>
 <td><div class="info">
-A team consists of a group of authors, and teams can be authorised for
-     packages.
+A team consists of a group of authors.
 </div>
 </td></tr>
 <tr><td align="left"><br>U</td></tr>
