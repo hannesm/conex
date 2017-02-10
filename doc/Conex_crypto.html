@@ -20,12 +20,12 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><link title="Verification" rel="Section" href="#1_Verification">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><link title="Verification" rel="Section" href="#1_Verification">
 <link title="Signing" rel="Section" href="#1_Signing">
 <title>Conex_crypto</title>
 </head>
@@ -37,7 +37,7 @@
 <h1>Module <a href="type_Conex_crypto.html">Conex_crypto</a></h1>
 
 <pre><span class="keyword">module</span> Conex_crypto: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
-Interface to crypto backend
+Crypto primitives
 <p>
 
     Implementations are provided in <a href="Conex_nocrypto.html"><code class="code"><span class="constructor">Conex_nocrypto</span></code></a> and <code class="code"><span class="constructor">Conex_openssl</span></code>.<br>
@@ -56,16 +56,28 @@ Potential error case when verifying a signature<br>
 <code class="code">pp_verification_error</code> is a pretty printer for <code class="code">verification_error</code>.<br>
 </div>
 
-<pre><span class="keyword">module type</span> <a href="Conex_crypto.VERIFY_BACK.html">VERIFY_BACK</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY_BACK.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
-<pre><span class="keyword">module type</span> <a href="Conex_crypto.VERIFY.html">VERIFY</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module type</span> <a href="Conex_crypto.VERIFY.html">VERIFY</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+The verification module type
+</div>
+
+<pre><span class="keyword">module type</span> <a href="Conex_crypto.VERIFY_BACK.html">VERIFY_BACK</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY_BACK.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+The verification backend, to be implemented by a crypto provider
+</div>
+
 <pre><span class="keyword">module</span> <a href="Conex_crypto.Make_verify.html">Make_verify</a>: <div class="sig_block"><code class="code"><span class="keyword">functor</span>&nbsp;(</code><code class="code"><span class="constructor">C</span></code><code class="code">&nbsp;:&nbsp;</code><code class="type"><a href="Conex_crypto.VERIFY_BACK.html">VERIFY_BACK</a></code><code class="code">)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;</code><code class="type"><a href="Conex_crypto.VERIFY.html">VERIFY</a></code><code class="type"> </code></div></pre><div class="info">
 Instantiation.
 </div>
 <br>
 <h1 id="1_Signing">Signing</h1><br>
 
-<pre><span class="keyword">module type</span> <a href="Conex_crypto.SIGN_BACK.html">SIGN_BACK</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN_BACK.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
-<pre><span class="keyword">module type</span> <a href="Conex_crypto.SIGN.html">SIGN</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN.html">..</a> <code class="code"><span class="keyword">end</span></code></pre>
+<pre><span class="keyword">module type</span> <a href="Conex_crypto.SIGN.html">SIGN</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+The signing module type
+</div>
+
+<pre><span class="keyword">module type</span> <a href="Conex_crypto.SIGN_BACK.html">SIGN_BACK</a> = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN_BACK.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info">
+The signing backend, to be implemented by a crypto provider.
+</div>
+
 <pre><span class="keyword">module</span> <a href="Conex_crypto.Make_sign.html">Make_sign</a>: <div class="sig_block"><code class="code"><span class="keyword">functor</span>&nbsp;(</code><code class="code"><span class="constructor">C</span></code><code class="code">&nbsp;:&nbsp;</code><code class="type"><a href="Conex_crypto.SIGN_BACK.html">SIGN_BACK</a></code><code class="code">)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;</code><code class="type"><a href="Conex_crypto.SIGN.html">SIGN</a></code><code class="type"> </code></div></pre><div class="info">
 Instantiation.
 </div>

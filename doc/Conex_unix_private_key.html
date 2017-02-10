@@ -5,7 +5,8 @@
 <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="Start" href="index.html">
-<link rel="previous" href="Conex_nocrypto.html">
+<link rel="previous" href="Conex_unix_provider.html">
+<link rel="next" href="Conex_diff.html">
 <link rel="Up" href="index.html">
 <link title="Index of types" rel=Appendix href="index_types.html">
 <link title="Index of values" rel=Appendix href="index_values.html">
@@ -19,20 +20,21 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_private_key</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex_unix_private_key</title>
 </head>
 <body>
-<div class="navbar"><a class="pre" href="Conex_nocrypto.html" title="Conex_nocrypto">Previous</a>
+<div class="navbar"><a class="pre" href="Conex_unix_provider.html" title="Conex_unix_provider">Previous</a>
 &nbsp;<a class="up" href="index.html" title="Index">Up</a>
-&nbsp;</div>
-<h1>Module <a href="type_Conex_private_key.html">Conex_private_key</a></h1>
+&nbsp;<a class="post" href="Conex_diff.html" title="Conex_diff">Next</a>
+</div>
+<h1>Module <a href="type_Conex_unix_private_key.html">Conex_unix_private_key</a></h1>
 
-<pre><span class="keyword">module</span> Conex_private_key: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_private_key.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+<pre><span class="keyword">module</span> Conex_unix_private_key: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_unix_private_key.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
 Private key IO<br>
 </div>
 <hr width="100%">
@@ -48,11 +50,11 @@ Potential read errors<br>
 </div>
 
 
-<pre><span id="VALpp_err"><span class="keyword">val</span> pp_err</span> : <code class="type"><a href="Conex_private_key.html#TYPEerr">err</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<pre><span id="VALpp_err"><span class="keyword">val</span> pp_err</span> : <code class="type"><a href="Conex_unix_private_key.html#TYPEerr">err</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
 <code class="code">pp_err&nbsp;err</code> pretty prints <code class="code">err</code>.<br>
 </div>
 
-<pre><span id="VALread"><span class="keyword">val</span> read</span> : <code class="type">?id:string -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       (string * <a href="Conex_resource.Key.html#TYPEpriv">Conex_resource.Key.priv</a>, <a href="Conex_private_key.html#TYPEerr">err</a>) Pervasives.result</code></pre><div class="info ">
+<pre><span id="VALread"><span class="keyword">val</span> read</span> : <code class="type">?id:string -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       (string * <a href="Conex_resource.Key.html#TYPEpriv">Conex_resource.Key.priv</a>, <a href="Conex_unix_private_key.html#TYPEerr">err</a>)<br>       Pervasives.result</code></pre><div class="info ">
 <code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
     If <code class="code">id</code> is provided, the private key corresponding to <code class="code">prov</code> and <code class="code">id</code> is
     loaded.  If no <code class="code">id</code> is provided, and there is only one private key for the

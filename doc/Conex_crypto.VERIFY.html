@@ -5,8 +5,7 @@
 <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="Start" href="index.html">
-<link rel="previous" href="Conex_crypto.VERIFY_BACK.html">
-<link rel="next" href="Conex_crypto.SIGN_BACK.html">
+<link rel="next" href="Conex_crypto.VERIFY_BACK.html">
 <link rel="Up" href="Conex_crypto.html">
 <link title="Index of types" rel=Appendix href="index_types.html">
 <link title="Index of values" rel=Appendix href="index_values.html">
@@ -20,24 +19,39 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_crypto.VERIFY</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex_crypto.VERIFY</title>
 </head>
 <body>
-<div class="navbar"><a class="pre" href="Conex_crypto.VERIFY_BACK.html" title="Conex_crypto.VERIFY_BACK">Previous</a>
-&nbsp;<a class="up" href="Conex_crypto.html" title="Conex_crypto">Up</a>
-&nbsp;<a class="post" href="Conex_crypto.SIGN_BACK.html" title="Conex_crypto.SIGN_BACK">Next</a>
+<div class="navbar">&nbsp;<a class="up" href="Conex_crypto.html" title="Conex_crypto">Up</a>
+&nbsp;<a class="post" href="Conex_crypto.VERIFY_BACK.html" title="Conex_crypto.VERIFY_BACK">Next</a>
 </div>
 <h1>Module type <a href="type_Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a></h1>
 
-<pre><span class="keyword">module type</span> VERIFY = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module type</span> VERIFY = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.VERIFY.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info modtype top">
+The verification module type<br>
+</div>
+<hr width="100%">
 
-<pre><span id="VALraw_digest"><span class="keyword">val</span> raw_digest</span> : <code class="type">string -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a></code></pre>
-<pre><span id="VALdigest"><span class="keyword">val</span> digest</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a></code></pre>
-<pre><span id="VALkeyid"><span class="keyword">val</span> keyid</span> : <code class="type"><a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a></code></pre>
-<pre><span id="VALverify"><span class="keyword">val</span> verify</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       (unit, [> <a href="Conex_crypto.html#TYPEverification_error">Conex_crypto.verification_error</a> ]) Pervasives.result</code></pre>
-<pre><span id="VALverify_signature"><span class="keyword">val</span> verify_signature</span> : <code class="type">string -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> -><br>       <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> -><br>       (unit, [> <a href="Conex_crypto.html#TYPEverification_error">Conex_crypto.verification_error</a> ]) Pervasives.result</code></pre></body></html>
+<pre><span id="VALraw_digest"><span class="keyword">val</span> raw_digest</span> : <code class="type">string -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a></code></pre><div class="info ">
+<code class="code">raw_digest&nbsp;str</code> is the digest of the given <code class="code">str</code>.<br>
+</div>
+
+<pre><span id="VALdigest"><span class="keyword">val</span> digest</span> : <code class="type"><a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a></code></pre><div class="info ">
+<code class="code">digest&nbsp;wire</code> is the digest of the <a href="Conex_resource.Wire.html#VALto_string">string
+      encoding</a> of <code class="code">wire</code>.<br>
+</div>
+
+<pre><span id="VALkeyid"><span class="keyword">val</span> keyid</span> : <code class="type"><a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> -> <a href="Conex_resource.Digest.html#TYPEt">Conex_resource.Digest.t</a></code></pre><div class="info ">
+<code class="code">keyid&nbsp;key</code> is the unique fingerprint of <code class="code">key</code>.<br>
+</div>
+
+<pre><span id="VALverify"><span class="keyword">val</span> verify</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       (unit, [> <a href="Conex_crypto.html#TYPEverification_error">Conex_crypto.verification_error</a> ]) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify&nbsp;author</code> verifies all signatures of <code class="code">author</code>: they have to sign
+      the current resource list.<br>
+</div>
+</body></html>

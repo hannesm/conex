@@ -20,13 +20,15 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><link title="Repository type, constructor, predicates" rel="Section" href="#1_Repositorytypeconstructorpredicates">
-<link title="Unsafe operations" rel="Subsection" href="#2_Unsafeoperations">
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><link title="Repository type, constructor, predicates" rel="Section" href="#1_Repositorytypeconstructorpredicates">
+<link title="Validation" rel="Section" href="#1_Validation">
+<link title="Monotonicity" rel="Section" href="#1_Monotonicity">
+<link title="Unsafe operations" rel="Section" href="#1_Unsafeoperations">
 <title>Conex_repository</title>
 </head>
 <body>
@@ -37,32 +39,32 @@
 <h1>Module <a href="type_Conex_repository.html">Conex_repository</a></h1>
 
 <pre><span class="keyword">module</span> Conex_repository: <code class="code"><span class="keyword">sig</span></code> <a href="Conex_repository.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
-Repository state and verification logic
+Repository state and validation logic
 <p>
 
     The repository keeps track of valid resources, which are added after
-    successful verification of author resources.  The only configuration element
-    is the <code class="code">quorum</code>: how many janitors have to sign off a change.
+    successful verification of an author.  The only configuration element is the
+    <code class="code">quorum</code>: how many janitors have to sign off a change.
 <p>
 
     The single resource which is signed with an asymmetric crypto operation is
     the author, which contains a list of resources the author signed off.  To
-    verify a resource, first the authorised authors have to be verified.  Once
-    they are verified, resource verification is a lookup of a computed hash in a
-    map which is part of the repository.
+    validate a resource, first the authorised authors have to be validated.
+    Once they are approved, resource validation is a lookup of a computed hash
+    in a map which is part of the repository.
 <p>
 
-    This module contains the program logic to verify the different resources,
+    This module contains the program logic to validate the different resources,
     which have different rules:
     <ul>
-<li><code class="code">verify_author</code> requires a self-signature with a verified key OR has
+<li><a href="Conex_repository.html#VALvalidate_author"><code class="code"><span class="constructor">Conex_repository</span>.validate_author</code></a> requires a self-signature with a validated key OR has
        an empty list of resources and approved by a quorum of janitors</li>
-<li><code class="code">validate_service</code> is successful if the service is in the authors
+<li><a href="Conex_repository.html#VALvalidate_account"><code class="code"><span class="constructor">Conex_repository</span>.validate_account</code></a> is successful if the account is in the authors
        resource list, and approved by a quorum of janitors</li>
 <li><a href="Conex_repository.html#VALvalidate_key"><code class="code"><span class="constructor">Conex_repository</span>.validate_key</code></a> is successful if the key is in the authors resource list,
        and approved by a quorum of janitors</li>
 <li><a href="Conex_repository.html#VALvalidate_team"><code class="code"><span class="constructor">Conex_repository</span>.validate_team</code></a> is successful if approved by a quorum of janitors</li>
-<li><code class="code">verify_authorisation</code> is successful if approved by a quorum of
+<li><a href="Conex_repository.html#VALvalidate_authorisation"><code class="code"><span class="constructor">Conex_repository</span>.validate_authorisation</code></a> is successful if approved by a quorum of
        janitors</li>
 <li><a href="Conex_repository.html#VALvalidate_package"><code class="code"><span class="constructor">Conex_repository</span>.validate_package</code></a> is successful if approved by an authorised author OR
        a quorum of janitors</li>
@@ -122,39 +124,20 @@ The repository type<br>
 <code class="code">authorised&nbsp;repo&nbsp;auth&nbsp;id</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">id</code> is a member of <code class="code">auth</code> or member
     of a team which is authorised.<br>
 </div>
-<br>
-<h2 id="2_Unsafeoperations">Unsafe operations</h2><br>
-<br>
-These operations extend which resources are trusted.  Usually you should not
-    need them, but use <a href="Conex_repository.html#VALvalidate_author"><code class="code"><span class="constructor">Conex_repository</span>.validate_author</code></a> and <a href="Conex_repository.html#VALvalidate_team"><code class="code"><span class="constructor">Conex_repository</span>.validate_team</code></a> instead.<br>
 
-<pre><span id="TYPEconflict"><span class="keyword">type</span> <code class="type"></code>conflict</span> = <code class="type">[ `NameConflict of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a><br>       | `TypConflict of <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a> ]</code> </pre>
-
-
-<pre><span id="VALpp_conflict"><span class="keyword">val</span> pp_conflict</span> : <code class="type"><a href="Conex_repository.html#TYPEconflict">conflict</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre>
-<pre><span id="VALadd_valid_resource"><span class="keyword">val</span> add_valid_resource</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a> -><br>       (<a href="Conex_repository.html#TYPEt">t</a>, <a href="Conex_repository.html#TYPEconflict">conflict</a>) Pervasives.result</code></pre><div class="info ">
-<code class="code">add_valid_resource&nbsp;repo&nbsp;id&nbsp;r</code> marks resource <code class="code">r</code> valid under <code class="code">id</code> in
-    <code class="code">repo</code>.  If the digest of <code class="code">r</code> is already present for a different resource,
-    an error will be returned.<br>
-</div>
-
-<pre><span id="VALadd_index"><span class="keyword">val</span> add_index</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> * <a href="Conex_repository.html#TYPEconflict">conflict</a> list</code></pre><div class="info ">
-<code class="code">add_index&nbsp;repo&nbsp;author</code> applies <a href="Conex_repository.html#VALadd_valid_resource"><code class="code"><span class="constructor">Conex_repository</span>.add_valid_resource</code></a> to each member of
-    the resource list from <code class="code">author</code>.<br>
-</div>
-
-<pre><span id="VALadd_team"><span class="keyword">val</span> add_team</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">Conex_resource.Team.t</a> -> <a href="Conex_repository.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">add_team&nbsp;repo&nbsp;team</code> adds the team to the repo.<br>
-</div>
-
-<pre><span id="VALadd_id"><span class="keyword">val</span> add_id</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_repository.html#TYPEt">t</a></code></pre>
 <pre><span id="VALcontains"><span class="keyword">val</span> contains</span> : <code class="type">?queued:bool -><br>       <a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a> -> bool</code></pre><div class="info ">
 <code class="code">contains&nbsp;~queued&nbsp;author&nbsp;name&nbsp;typ&nbsp;data</code> is <code class="code"><span class="keyword">true</span></code> if <code class="code">data</code> named <code class="code">name</code>
     of <code class="code">typ</code> is a member in the list of resources of <code class="code">author</code>.  If <code class="code">queued</code> is
     <code class="code"><span class="keyword">true</span></code>, membership of the resource in the queued list of resources is
     sufficient.<br>
 </div>
+<br>
+<h1 id="1_Validation">Validation</h1><br>
 
+<pre><span id="TYPEconflict"><span class="keyword">type</span> <code class="type"></code>conflict</span> = <code class="type">[ `NameConflict of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a><br>       | `TypConflict of <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a> ]</code> </pre>
+
+
+<pre><span id="VALpp_conflict"><span class="keyword">val</span> pp_conflict</span> : <code class="type"><a href="Conex_repository.html#TYPEconflict">conflict</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre>
 <pre><span id="VALpp_ok"><span class="keyword">val</span> pp_ok</span> : <code class="type">[< `Approved of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>        | `Both of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * Conex_utils.S.t<br>        | `Quorum of Conex_utils.S.t ]<br>       <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
 <code class="code">pp_ok</code> pretty prints validation success<br>
 </div>
@@ -170,7 +153,7 @@ Errors which can occur during any validation.<br>
 </div>
 
 <pre><span id="VALvalidate_author"><span class="keyword">val</span> validate_author</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       (<a href="Conex_repository.html#TYPEt">t</a> * <a href="Conex_repository.html#TYPEconflict">conflict</a> list,<br>        [> `AuthorWithoutKeys of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>         | `InsufficientQuorum of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidResource of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a><br>         | `NotApproved of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t ])<br>       Pervasives.result</code></pre><div class="info ">
-<code class="code">verify_author&nbsp;verify&nbsp;repo&nbsp;author</code> verifies the author resource: all
+<code class="code">validate_author&nbsp;repo&nbsp;author</code> validates the author resource: all
     signatures must be good, and at least one public key must be approved by
     janitors (or resource list is empty and it is approved by a quorum of
     janitors).<br>
@@ -184,7 +167,9 @@ Errors which can occur during any validation.<br>
 <pre><span id="VALvalidate_team"><span class="keyword">val</span> validate_team</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Team.html#TYPEt">Conex_resource.Team.t</a> -><br>       (<a href="Conex_repository.html#TYPEt">t</a> * [ `Quorum of Conex_utils.S.t ],<br>        [> `InsufficientQuorum of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidResource of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a><br>         | `MemberNotPresent of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * Conex_utils.S.t<br>         | `NotApproved of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t ])<br>       Pervasives.result</code></pre>
 <pre><span id="VALvalidate_authorisation"><span class="keyword">val</span> validate_authorisation</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -><br>       ([ `Quorum of Conex_utils.S.t ],<br>        [> `IdNotPresent of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * Conex_utils.S.t<br>         | `InsufficientQuorum of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidResource of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a><br>         | `NotApproved of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t ])<br>       Pervasives.result</code></pre>
 <pre><span id="VALvalidate_package"><span class="keyword">val</span> validate_package</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       ?on_disk:<a href="Conex_resource.Package.html#TYPEt">Conex_resource.Package.t</a> -><br>       <a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -><br>       <a href="Conex_resource.Package.html#TYPEt">Conex_resource.Package.t</a> -><br>       ([ `Approved of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>        | `Both of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * Conex_utils.S.t<br>        | `Quorum of Conex_utils.S.t ],<br>        [> `AuthRelMismatch of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidReleases of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * Conex_utils.S.t * Conex_utils.S.t<br>         | `InvalidResource of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a><br>         | `NoSharedPrefix of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * Conex_utils.S.t<br>         | `NotApproved of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t ])<br>       Pervasives.result</code></pre>
-<pre><span id="VALvalidate_release"><span class="keyword">val</span> validate_release</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       ?on_disk:<a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       <a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -><br>       <a href="Conex_resource.Package.html#TYPEt">Conex_resource.Package.t</a> -><br>       <a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       ([ `Approved of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>        | `Both of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * Conex_utils.S.t<br>        | `Quorum of Conex_utils.S.t ],<br>        [> `AuthRelMismatch of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `ChecksumsDiff of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             (<a href="Conex_resource.Release.html#TYPEc">Conex_resource.Release.c</a> * <a href="Conex_resource.Release.html#TYPEc">Conex_resource.Release.c</a>) list<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidResource of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a><br>         | `NotApproved of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t<br>         | `NotInReleases of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * Conex_utils.S.t ])<br>       Pervasives.result</code></pre>
+<pre><span id="VALvalidate_release"><span class="keyword">val</span> validate_release</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       ?on_disk:<a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       <a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -><br>       <a href="Conex_resource.Package.html#TYPEt">Conex_resource.Package.t</a> -><br>       <a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       ([ `Approved of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a><br>        | `Both of <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> * Conex_utils.S.t<br>        | `Quorum of Conex_utils.S.t ],<br>        [> `AuthRelMismatch of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `ChecksumsDiff of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> list *<br>             (<a href="Conex_resource.Release.html#TYPEc">Conex_resource.Release.c</a> * <a href="Conex_resource.Release.html#TYPEc">Conex_resource.Release.c</a>) list<br>         | `InvalidName of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>         | `InvalidResource of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a><br>         | `NotApproved of<br>             <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * Conex_utils.S.t<br>         | `NotInReleases of <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> * Conex_utils.S.t ])<br>       Pervasives.result</code></pre><br>
+<h1 id="1_Monotonicity">Monotonicity</h1><br>
+
 <pre><span id="TYPEm_err"><span class="keyword">type</span> <code class="type"></code>m_err</span> = <code class="type">[ `Deleted of <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a><br>       | `Msg of <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * string<br>       | `NotIncreased of <a href="Conex_resource.html#TYPEtyp">Conex_resource.typ</a> * <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> ]</code> </pre>
 
 
@@ -193,4 +178,25 @@ Errors which can occur during any validation.<br>
 <pre><span id="VALmonoton_team"><span class="keyword">val</span> monoton_team</span> : <code class="type">?old:<a href="Conex_resource.Team.html#TYPEt">Conex_resource.Team.t</a> -><br>       ?now:<a href="Conex_resource.Team.html#TYPEt">Conex_resource.Team.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> -> (unit, <a href="Conex_repository.html#TYPEm_err">m_err</a>) Pervasives.result</code></pre>
 <pre><span id="VALmonoton_authorisation"><span class="keyword">val</span> monoton_authorisation</span> : <code class="type">?old:<a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -><br>       ?now:<a href="Conex_resource.Authorisation.html#TYPEt">Conex_resource.Authorisation.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> -> (unit, <a href="Conex_repository.html#TYPEm_err">m_err</a>) Pervasives.result</code></pre>
 <pre><span id="VALmonoton_package"><span class="keyword">val</span> monoton_package</span> : <code class="type">?old:<a href="Conex_resource.Package.html#TYPEt">Conex_resource.Package.t</a> -><br>       ?now:<a href="Conex_resource.Package.html#TYPEt">Conex_resource.Package.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> -> (unit, <a href="Conex_repository.html#TYPEm_err">m_err</a>) Pervasives.result</code></pre>
-<pre><span id="VALmonoton_release"><span class="keyword">val</span> monoton_release</span> : <code class="type">?old:<a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       ?now:<a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> -> (unit, <a href="Conex_repository.html#TYPEm_err">m_err</a>) Pervasives.result</code></pre></body></html>
+<pre><span id="VALmonoton_release"><span class="keyword">val</span> monoton_release</span> : <code class="type">?old:<a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       ?now:<a href="Conex_resource.Release.html#TYPEt">Conex_resource.Release.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> -> (unit, <a href="Conex_repository.html#TYPEm_err">m_err</a>) Pervasives.result</code></pre><br>
+<h1 id="1_Unsafeoperations">Unsafe operations</h1><br>
+<br>
+These operations extend which resources are trusted.  Usually you should not
+    need them, but use <a href="Conex_repository.html#VALvalidate_author"><code class="code"><span class="constructor">Conex_repository</span>.validate_author</code></a> and <a href="Conex_repository.html#VALvalidate_team"><code class="code"><span class="constructor">Conex_repository</span>.validate_team</code></a> instead.<br>
+
+<pre><span id="VALadd_valid_resource"><span class="keyword">val</span> add_valid_resource</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Author.html#TYPEr">Conex_resource.Author.r</a> -><br>       (<a href="Conex_repository.html#TYPEt">t</a>, <a href="Conex_repository.html#TYPEconflict">conflict</a>) Pervasives.result</code></pre><div class="info ">
+<code class="code">add_valid_resource&nbsp;repo&nbsp;id&nbsp;r</code> marks resource <code class="code">r</code> valid under <code class="code">id</code> in
+    <code class="code">repo</code>.  If the digest of <code class="code">r</code> is already present for a different resource,
+    an error will be returned.<br>
+</div>
+
+<pre><span id="VALadd_index"><span class="keyword">val</span> add_index</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       <a href="Conex_repository.html#TYPEt">t</a> * <a href="Conex_repository.html#TYPEconflict">conflict</a> list</code></pre><div class="info ">
+<code class="code">add_index&nbsp;repo&nbsp;author</code> applies <a href="Conex_repository.html#VALadd_valid_resource"><code class="code"><span class="constructor">Conex_repository</span>.add_valid_resource</code></a> to each member of
+    the resource list from <code class="code">author</code>.<br>
+</div>
+
+<pre><span id="VALadd_team"><span class="keyword">val</span> add_team</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.Team.html#TYPEt">Conex_resource.Team.t</a> -> <a href="Conex_repository.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">add_team&nbsp;repo&nbsp;team</code> adds the team to the repo.<br>
+</div>
+
+<pre><span id="VALadd_id"><span class="keyword">val</span> add_id</span> : <code class="type"><a href="Conex_repository.html#TYPEt">t</a> -> <a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -> <a href="Conex_repository.html#TYPEt">t</a></code></pre></body></html>

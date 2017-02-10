@@ -15,12 +15,12 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_repository</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex_repository</title>
 </head>
 <body>
 <code class="code"><span class="keyword">sig</span><br>
@@ -40,29 +40,16 @@
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;authorised&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Authorisation</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
-&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;conflict&nbsp;=<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">NameConflict</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">TypConflict</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;]<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_conflict&nbsp;:&nbsp;<span class="constructor">Conex_repository</span>.conflict&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_valid_resource&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_repository</span>.t,&nbsp;<span class="constructor">Conex_repository</span>.conflict)&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_index&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;*&nbsp;<span class="constructor">Conex_repository</span>.conflict&nbsp;list<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_team&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_repository</span>.t<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_id&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_repository</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;contains&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;?queued:bool&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Wire</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;conflict&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">NameConflict</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.name&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">TypConflict</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.typ&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;]<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_conflict&nbsp;:&nbsp;<span class="constructor">Conex_repository</span>.conflict&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_ok&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[&lt;&nbsp;<span class="keywordsign">`</span><span class="constructor">Approved</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">Both</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;*&nbsp;<span class="constructor">Conex_utils</span>.<span class="constructor">S</span>.t<br>
@@ -224,4 +211,17 @@
 &nbsp;&nbsp;&nbsp;&nbsp;?old:<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;?now:<span class="constructor">Conex_resource</span>.<span class="constructor">Release</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;<span class="constructor">Conex_repository</span>.m_err)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_valid_resource&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.r&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_repository</span>.t,&nbsp;<span class="constructor">Conex_repository</span>.conflict)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_index&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;*&nbsp;<span class="constructor">Conex_repository</span>.conflict&nbsp;list<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_team&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Team</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_repository</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;add_id&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_repository</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_repository</span>.t<br>
 <span class="keyword">end</span></code></body></html>

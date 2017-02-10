@@ -16,12 +16,12 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Index of values</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Index of values</title>
 </head>
 <body>
 <div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
@@ -101,8 +101,8 @@
 <tr><td align="left"><br>B</td></tr>
 <tr><td><a href="Conex_crypto.VERIFY_BACK.html#VALb64sha256">b64sha256</a> [<a href="Conex_crypto.VERIFY_BACK.html">Conex_crypto.VERIFY_BACK</a>]</td>
 <td><div class="info">
-<code class="code">b64sha356&nbsp;str</code> computes the SHA256 digest of <code class="code">str</code> and converts its
-      binary output to base64.
+<code class="code">b64sha356&nbsp;str</code> computes the SHA256 digest of <code class="code">str</code> and converts it to
+      base64.
 </div>
 </td></tr>
 <tr><td align="left"><br>C</td></tr>
@@ -113,7 +113,7 @@
 </td></tr>
 <tr><td><a href="Conex_resource.Release.html#VALchecksum_equal">checksum_equal</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_persistency.html#VALcollect_dir">collect_dir</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALcollect_dir">collect_dir</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_utils.Uint.html#VALcompare">compare</a> [<a href="Conex_utils.Uint.html">Conex_utils.Uint</a>]</td>
 <td><div class="info">
@@ -195,7 +195,11 @@
 </div>
 </td></tr>
 <tr><td><a href="Conex_crypto.VERIFY.html#VALdigest">digest</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
-<td></td></tr>
+<td><div class="info">
+<code class="code">digest&nbsp;wire</code> is the digest of the <a href="Conex_resource.Wire.html#VALto_string">string
+      encoding</a> of <code class="code">wire</code>.
+</div>
+</td></tr>
 <tr><td><a href="Conex_repository.html#VALdigestf">digestf</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>E</td></tr>
@@ -230,7 +234,7 @@
 <code class="code">err&nbsp;k</code> logs <code class="code">k</code>, a to the error stream
 </div>
 </td></tr>
-<tr><td><a href="Conex_persistency.html#VALexists">exists</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALexists">exists</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>F</td></tr>
 <tr><td><a href="Conex_diff.html#VALfile">file</a> [<a href="Conex_diff.html">Conex_diff</a>]</td>
@@ -239,7 +243,7 @@
     <code class="code">their_name</code> is used.
 </div>
 </td></tr>
-<tr><td><a href="Conex_persistency.html#VALfile_type">file_type</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALfile_type">file_type</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_utils.html#VALfilter_map">filter_map</a> [<a href="Conex_utils.html">Conex_utils</a>]</td>
 <td><div class="info">
@@ -345,7 +349,10 @@
 <td></td></tr>
 <tr><td align="left"><br>K</td></tr>
 <tr><td><a href="Conex_crypto.VERIFY.html#VALkeyid">keyid</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
-<td></td></tr>
+<td><div class="info">
+<code class="code">keyid&nbsp;key</code> is the unique fingerprint of <code class="code">key</code>.
+</div>
+</td></tr>
 <tr><td align="left"><br>L</td></tr>
 <tr><td><a href="Conex_utils.String.html#VALlength">length</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
 <td><div class="info">
@@ -371,7 +378,7 @@
 </div>
 </td></tr>
 <tr><td align="left"><br>M</td></tr>
-<tr><td><a href="Conex_persistency.html#VALmkdir">mkdir</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALmkdir">mkdir</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_repository.html#VALmonoton_author">monoton_author</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
@@ -489,7 +496,7 @@
 <td></td></tr>
 <tr><td><a href="Conex_repository.html#VALpp_conflict">pp_conflict</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_private_key.html#VALpp_err">pp_err</a> [<a href="Conex_private_key.html">Conex_private_key</a>]</td>
+<tr><td><a href="Conex_unix_private_key.html#VALpp_err">pp_err</a> [<a href="Conex_unix_private_key.html">Conex_unix_private_key</a>]</td>
 <td><div class="info">
 <code class="code">pp_err&nbsp;err</code> pretty prints <code class="code">err</code>.
 </div>
@@ -568,8 +575,11 @@
 <tr><td><a href="Conex_resource.Author.html#VALr_equal">r_equal</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_crypto.VERIFY.html#VALraw_digest">raw_digest</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conex_private_key.html#VALread">read</a> [<a href="Conex_private_key.html">Conex_private_key</a>]</td>
+<td><div class="info">
+<code class="code">raw_digest&nbsp;str</code> is the digest of the given <code class="code">str</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_unix_private_key.html#VALread">read</a> [<a href="Conex_unix_private_key.html">Conex_unix_private_key</a>]</td>
 <td><div class="info">
 <code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
 </div>
@@ -578,7 +588,7 @@
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALread_authorisation">read_authorisation</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_persistency.html#VALread_file">read_file</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALread_file">read_file</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALread_id">read_id</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
@@ -604,7 +614,7 @@
 <code class="code">release_path&nbsp;name</code> is <code class="code">release_dir&nbsp;@&nbsp;release_filename</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_persistency.html#VALremove">remove</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALremove">remove</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_resource.Package.html#VALremove">remove</a> [<a href="Conex_resource.Package.html">Conex_resource.Package</a>]</td>
 <td></td></tr>
@@ -612,7 +622,7 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Team.html#VALremove">remove</a> [<a href="Conex_resource.Team.html">Conex_resource.Team</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_persistency.html#VALrename">rename</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALrename">rename</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALreplace_sig">replace_sig</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td></td></tr>
@@ -755,7 +765,7 @@
 <td></td></tr>
 <tr><td><a href="Conex_repository.html#VALvalidate_author">validate_author</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
-<code class="code">verify_author&nbsp;verify&nbsp;repo&nbsp;author</code> verifies the author resource: all
+<code class="code">validate_author&nbsp;repo&nbsp;author</code> validates the author resource: all
     signatures must be good, and at least one public key must be approved by
     janitors (or resource list is empty and it is approved by a quorum of
     janitors).
@@ -775,7 +785,11 @@
 <tr><td><a href="Conex_repository.html#VALvalidate_team">validate_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_crypto.VERIFY.html#VALverify">verify</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
-<td></td></tr>
+<td><div class="info">
+<code class="code">verify&nbsp;author</code> verifies all signatures of <code class="code">author</code>: they have to sign
+      the current resource list.
+</div>
+</td></tr>
 <tr><td><a href="Conex.Make.html#VALverify_diff">verify_diff</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
 <td><div class="info">
 <code class="code">verify_diff&nbsp;io&nbsp;repository&nbsp;patch</code> first parses the <code class="code">patch</code> and applies it.
@@ -793,8 +807,6 @@
       otherwise a <code class="code">verification_error</code>.
 </div>
 </td></tr>
-<tr><td><a href="Conex_crypto.VERIFY.html#VALverify_signature">verify_signature</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
-<td></td></tr>
 <tr><td align="left"><br>W</td></tr>
 <tr><td><a href="Conex_utils.LOGS.html#VALwarn">warn</a> [<a href="Conex_utils.LOGS.html">Conex_utils.LOGS</a>]</td>
 <td><div class="info">
@@ -830,7 +842,7 @@
 <td></td></tr>
 <tr><td><a href="Conex_resource.Key.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Key.html">Conex_resource.Key</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_private_key.html#VALwrite">write</a> [<a href="Conex_private_key.html">Conex_private_key</a>]</td>
+<tr><td><a href="Conex_unix_private_key.html#VALwrite">write</a> [<a href="Conex_unix_private_key.html">Conex_unix_private_key</a>]</td>
 <td><div class="info">
 <code class="code">write_private_key&nbsp;prov&nbsp;id&nbsp;key</code> writes the given key to disk (in
     "~/.conex/", using the <code class="code">basedir</code> of <code class="code">prov</code> as file prefix.
@@ -840,13 +852,13 @@
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_authorisation">write_authorisation</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_persistency.html#VALwrite_file">write_file</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALwrite_file">write_file</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_package">write_package</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_release">write_release</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conex_persistency.html#VALwrite_replace">write_replace</a> [<a href="Conex_persistency.html">Conex_persistency</a>]</td>
+<tr><td><a href="Conex_unix_persistency.html#VALwrite_replace">write_replace</a> [<a href="Conex_unix_persistency.html">Conex_unix_persistency</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conex_io.html#VALwrite_team">write_team</a> [<a href="Conex_io.html">Conex_io</a>]</td>
 <td></td></tr>

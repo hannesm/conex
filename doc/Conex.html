@@ -19,12 +19,12 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex</title>
 </head>
 <body>
 <div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
@@ -33,50 +33,90 @@
 <h1>Module <a href="type_Conex.html">Conex</a></h1>
 
 <pre><span class="keyword">module</span> Conex: <code class="code"><span class="keyword">sig</span></code> <a href="Conex.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
-Establishing trust into community repositories
+Establish trust into community repositories
 <p>
 
-    A community repository is a map where a package name is the key and its
-    value are the releases of the package.  The goal of <code class="code">conex</code> is that
-    legitimate package authors can publish new releases and modify metadata.
-    This requires the information who is authorised for a package, either an
-    individual author or a team, which can change over time.  The authorisation
-    information, as well as public keys of individuals, is approved by a quorum
-    of janitors, a team whose members keep the repository clean.
+    A community repository gathers data from authors to provide an index
+    including cross-references.
 <p>
 
-    The repository itself is a directory tree, initially verified using a set of
-    janitor public key fingerprints, and afterwards updated using patches.  A
-    repository on its own can be verified, but also a repository on disk, and a
-    patch.  The latter preserves monotonicity of the repository (otherwise, an
-    attacker could present you a rolled back version of the repository).  A
-    client uses conex when updating their repository to ensure that all updates
-    were signed by the package author or a quorum of janitors.
+    Software package repositories contain metadata about libraries: license,
+    author, dependencies, build instructions, url and checksum of the release
+    tarball.  Someone publishes a library, and it gets integrated as long as the
+    package name is not yet used and approved by those keeping the repository
+    tidy.  Sometimes it is necessary to include small patch files in the
+    repository, e.g. to get a library to compile with a new compiler release, or
+    on non-mainstream operating system.  Library build instructions often
+    include shell scripts, source code can execute arbitrary code, modifying
+    version constraints in dependency may lead to compiling code with known
+    security vulnerabilities.
 <p>
 
-    Together with a timestamping service, which updates its repository
-    regularly, verifies all patches, and signs the (global) repository state,
-    rollback, freeze, and mix-and-match attacks are avoided.  This timestamping
-    service is not yet finished, but will be a MirageOS unikernel (to minimise
-    the trusted computing base).
+    The transport layer to the repository is usually secured using TLS, or SSH
+    and git.  But what about the repository itself?  Can we ensure that it
+    serves the library metadata as intended by the authors?  Or do we have to
+    trust the administrators of the repository server to ensure its integrity?
+    Again, these are people who can be malicious, blackmailed, forced by the
+    government, or have other evil intentions.
 <p>
 
-    This library was developed with bootstrapping in mind: <code class="code">conex_verify</code>, the
-    command line tool clients will use, does only depend on <code class="code">opam-file-format</code>
-    and <code class="code">cmdliner</code> - both of which is already required by opam.
+    <code class="code"><span class="constructor">Conex</span></code> ensures that each library release has been approved by its author.
+    Furthermore, once a library release is known to the client, this information
+    cannot be rolled back by an attacker. A timestamping service periodically
+    approves a global view of all libraries in the repository, and thus
+    mitigates mix-and-match attacks where someone malicious prevents a client
+    from getting updates for one library while retrieving other updates.
 <p>
 
-    <code class="code"><span class="constructor">Conex</span></code> is functorised over <a href="Conex_utils.LOGS.html">logging</a>,
-    <a href="Conex_crypto.html">crypto</a>, and soon <a href="Conex_io.html">IO</a> to allow its usage
-    in different environments (e.g. <code class="code">openssl</code> as crypto provider, no <code class="code"><span class="constructor">Unix</span></code> file
-    system interaction at all).
+    The trust is rooted in digital signatures by library authors.  The server
+    which hosts the repository does not need to be trusted.  Neither does the
+    host serving release tarballs.
+<p>
+
+    Someone needs to vouch for an author: the private part of a public key
+    stored in the repository should be known to the real author, and solely to
+    that person.  If a single entity would be in control to vouch for authors,
+    this entity would need to fully trusted by all clients.  Instead, a quorum
+    of a janitor team is used in conex.  Janitors can together vouch for a
+    public key of an author, extend and shrink teams, authorise and deauthorise
+    an author or team for a package, and even checksums of packages and releases<ul>
+<li>useful for hot fixing when a core package is updated, and all reverse
+    dependencies need adjustments.</li>
+</ul>
+
+    Conex adds metadata to a data repository (viewed as a map where package name
+    is the domain and releases thereof the codomain) to ensure integrity and
+    authenticity.  Different resource types are added:
+    <ul>
+<li>Authors, consisting of a unique identifier, public key(s), accounts.</li>
+<li>Teams, sharing the same namespace as authors, containing a set of
+       members.</li>
+<li>Authorisation, for each package, describing which identities are
+       authorised for the package.</li>
+<li>Package, for each package, listing all releases.</li>
+<li>Release, for each release, listing checksums of all data files.</li>
+</ul>
+
+<p>
+
+    Modifications to identities and authorisations need to be approved by a
+    quorum of janitors, package and release files can be modified either by an
+    authorised author or by a quorum of janitors.
+<p>
+
+    Conex initially ensures that the repository is properly signed, and updates
+    to the repository are verified individually: the repository on disk is
+    trusted, a given patch file is verified by ensuring all resources modified
+    in the patch result in a valid repository (sufficient approvals).
+    Additionally, monotonicity is preserved by embedding counters in each
+    resource, and enforcing a counter increment after modification.
 <p>
 
     <b>NOTE: this is still work in progress, especially the documentation is not
     yet finished, and some API changes need to happen for clarification</b>
 <p>
 
-    <em>9e02ac1 - <a href="https://github.com/hannesm/conex ">homepage</a></em><br>
+    <em>471fd87 - <a href="https://github.com/hannesm/conex ">homepage</a></em><br>
 </div>
 <hr width="100%">
 

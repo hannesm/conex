@@ -15,12 +15,12 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_private_key</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex_unix_private_key</title>
 </head>
 <body>
 <code class="code"><span class="keyword">sig</span><br>
@@ -32,10 +32,10 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">MultiplePrivateKeys</span>&nbsp;<span class="keyword">of</span>&nbsp;string&nbsp;list<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NoPrivateKey</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NotFound</span>&nbsp;<span class="keyword">of</span>&nbsp;string&nbsp;]<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_err&nbsp;:&nbsp;<span class="constructor">Conex_private_key</span>.err&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_err&nbsp;:&nbsp;<span class="constructor">Conex_unix_private_key</span>.err&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;?id:string&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;(string&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.priv,&nbsp;<span class="constructor">Conex_private_key</span>.err)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(string&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.priv,&nbsp;<span class="constructor">Conex_unix_private_key</span>.err)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Pervasives</span>.result<br>
 <span class="keyword">end</span></code></body></html>

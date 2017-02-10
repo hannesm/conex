@@ -5,8 +5,7 @@
 <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="Start" href="index.html">
-<link rel="previous" href="Conex_crypto.VERIFY.html">
-<link rel="next" href="Conex_crypto.SIGN.html">
+<link rel="previous" href="Conex_crypto.SIGN.html">
 <link rel="Up" href="Conex_crypto.html">
 <link title="Index of types" rel=Appendix href="index_types.html">
 <link title="Index of values" rel=Appendix href="index_values.html">
@@ -20,21 +19,23 @@
 <link title="Conex_opam_repository_layout" rel="Chapter" href="Conex_opam_repository_layout.html">
 <link title="Conex_crypto" rel="Chapter" href="Conex_crypto.html">
 <link title="Conex_opam_encoding" rel="Chapter" href="Conex_opam_encoding.html">
-<link title="Conex_persistency" rel="Chapter" href="Conex_persistency.html">
+<link title="Conex_unix_persistency" rel="Chapter" href="Conex_unix_persistency.html">
 <link title="Conex_unix_provider" rel="Chapter" href="Conex_unix_provider.html">
+<link title="Conex_unix_private_key" rel="Chapter" href="Conex_unix_private_key.html">
 <link title="Conex_diff" rel="Chapter" href="Conex_diff.html">
 <link title="Conex_diff_provider" rel="Chapter" href="Conex_diff_provider.html">
-<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html">
-<link title="Conex_private_key" rel="Chapter" href="Conex_private_key.html"><title>Conex_crypto.SIGN_BACK</title>
+<link title="Conex_nocrypto" rel="Chapter" href="Conex_nocrypto.html"><title>Conex_crypto.SIGN_BACK</title>
 </head>
 <body>
-<div class="navbar"><a class="pre" href="Conex_crypto.VERIFY.html" title="Conex_crypto.VERIFY">Previous</a>
+<div class="navbar"><a class="pre" href="Conex_crypto.SIGN.html" title="Conex_crypto.SIGN">Previous</a>
 &nbsp;<a class="up" href="Conex_crypto.html" title="Conex_crypto">Up</a>
-&nbsp;<a class="post" href="Conex_crypto.SIGN.html" title="Conex_crypto.SIGN">Next</a>
-</div>
+&nbsp;</div>
 <h1>Module type <a href="type_Conex_crypto.SIGN_BACK.html">Conex_crypto.SIGN_BACK</a></h1>
 
-<pre><span class="keyword">module type</span> SIGN_BACK = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN_BACK.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+<pre><span class="keyword">module type</span> SIGN_BACK = <code class="code"><span class="keyword">sig</span></code> <a href="Conex_crypto.SIGN_BACK.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info modtype top">
+The signing backend, to be implemented by a crypto provider.<br>
+</div>
+<hr width="100%">
 
 <pre><span id="VALpub_of_priv_rsa"><span class="keyword">val</span> pub_of_priv_rsa</span> : <code class="type">string -> (string, string) Pervasives.result</code></pre><div class="info ">
 <code class="code">pub_of_priv_rsa&nbsp;priv</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;pub</code> or <code class="code"><span class="constructor">Error</span>&nbsp;str</code>.  The encoding is
