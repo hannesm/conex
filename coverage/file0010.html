@@ -498,15 +498,15 @@ module S = Set.Make(String)
 let s_of_list es = <span data-count="132">L</span>ist.fold_left (fun s v -&gt; <span data-count="653">S</span>.add v s) S.empty es
 
 let (&gt;&gt;=) a f =
-  <span data-count="1546">m</span>atch a with
-  | <span data-count="1442">O</span>k x -&gt; f x
-  | <span data-count="104">E</span>rror e -&gt; Error e
+  <span data-count="1559">m</span>atch a with
+  | <span data-count="1453">O</span>k x -&gt; f x
+  | <span data-count="106">E</span>rror e -&gt; Error e
 
 let guard p err = <span data-count="75">i</span>f p then <span data-count="67">O</span>k () else <span data-count="8">E</span>rror err
 
-let rec foldM f n = <span data-count="99">f</span>unction
-  | <span data-count="61">[</span>] -&gt; Ok n
-  | <span data-count="38">x</span>::xs -&gt; f n x &gt;&gt;= fun n' -&gt; <span data-count="30">f</span>oldM f n' xs
+let rec foldM f n = <span data-count="113">f</span>unction
+  | <span data-count="67">[</span>] -&gt; Ok n
+  | <span data-count="46">x</span>::xs -&gt; f n x &gt;&gt;= fun n' -&gt; <span data-count="37">f</span>oldM f n' xs
 
 let foldS f a s =
   <span data-count="0">S</span>.fold (fun id r -&gt;
@@ -562,16 +562,16 @@ module String = struct
 
   let lowercase_char = <span data-count="1">f</span>unction
     | <span data-count="0">'</span>A' .. 'Z' as c -&gt; char_of_int (int_of_char c + 0x20)
-    | <span data-count="2549">c</span> -&gt; c
+    | <span data-count="2543">c</span> -&gt; c
 
   let to_lower s =
-    <span data-count="600">l</span>et last = <span data-count="600">p</span>red (String.length s)
-    and bs = <span data-count="600">B</span>ytes.of_string s
+    <span data-count="598">l</span>et last = <span data-count="598">p</span>red (String.length s)
+    and bs = <span data-count="598">B</span>ytes.of_string s
     in
-    <span data-count="600">f</span>or k = 0 to last do
-      <span data-count="2549">B</span>ytes.set bs k (lowercase_char (Bytes.get bs k))
+    <span data-count="598">f</span>or k = 0 to last do
+      <span data-count="2543">B</span>ytes.set bs k (lowercase_char (Bytes.get bs k))
     done ;
-    <span data-count="600">B</span>ytes.to_string bs
+    <span data-count="598">B</span>ytes.to_string bs
 
   let ascii_char ?(p = <span data-count="0">f</span>un _ -&gt; <span data-count="0">f</span>alse) = <span data-count="0">f</span>unction
     | <span data-count="0">'</span>0' .. '9'
@@ -598,7 +598,7 @@ module String = struct
   let length = <span data-count="1">S</span>tring.length
 
   let compare_insensitive a b =
-    <span data-count="300">c</span>ompare (to_lower a) (to_lower b) = 0
+    <span data-count="299">c</span>ompare (to_lower a) (to_lower b) = 0
 end
 
 module Uint = struct
@@ -621,7 +621,7 @@ module Uint = struct
     else
       <span data-count="18">(</span>false, Int64.succ x)
 
-  let to_string s = <span data-count="15791">P</span>rintf.sprintf "%LX" s
+  let to_string s = <span data-count="15787">P</span>rintf.sprintf "%LX" s
 
   let decimal s = <span data-count="2">P</span>rintf.sprintf "%Lu" s
 
@@ -709,7 +709,7 @@ type item = file_type * string
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-10 20:05:19 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>

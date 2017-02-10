@@ -1771,7 +1771,7 @@ type name = string
 let pp_name ppf x = Format.pp_print_string ppf x
 (*BISECT-IGNORE-END*)
 
-let name_equal a b = <span data-count="250">S</span>tring.compare_insensitive a b
+let name_equal a b = <span data-count="249">S</span>tring.compare_insensitive a b
 
 
 type identifier = string
@@ -1790,19 +1790,19 @@ module Wire = struct
     | Int of Uint.t
 
   let rec s_to_string = <span data-count="1">f</span>unction
-    | <span data-count="717">I</span>nt x -&gt; "0x" ^ Uint.to_string x
-    | <span data-count="638">S</span>tring s -&gt; "'"^s^"'"
+    | <span data-count="713">I</span>nt x -&gt; "0x" ^ Uint.to_string x
+    | <span data-count="634">S</span>tring s -&gt; "'"^s^"'"
     | <span data-count="171">L</span>ist xs -&gt; "[" ^ String.concat "; " (List.map s_to_string xs) ^ "]"
-    | <span data-count="227">M</span>ap m -&gt;
+    | <span data-count="226">M</span>ap m -&gt;
       let strs =
-        <span data-count="227">M</span>.fold (fun k v acc -&gt; <span data-count="1416">(</span>k ^ ": " ^ s_to_string v) :: acc) m []
+        <span data-count="226">M</span>.fold (fun k v acc -&gt; <span data-count="1408">(</span>k ^ ": " ^ s_to_string v) :: acc) m []
       in
-      <span data-count="227">"</span>{" ^ String.concat "KEY" strs ^ "}"
+      <span data-count="226">"</span>{" ^ String.concat "KEY" strs ^ "}"
 
   type t = s M.t
 
   (* TODO: should we sort lists somehow, and maps lexical? *)
-  let to_string t = <span data-count="176">s</span>_to_string (Map t)
+  let to_string t = <span data-count="175">s</span>_to_string (Map t)
 
   let search t k =
     <span data-count="284">t</span>ry Some (M.find k t) with <span data-count="34">N</span>ot_found -&gt; None
@@ -1882,7 +1882,7 @@ let typ_equal a b = <span data-count="189">m</span>atch a, b with
 
 let typ_to_string = <span data-count="1">f</span>unction
   | <span data-count="24">`</span>Signature -&gt; "signature"
-  | <span data-count="44">`</span>Key -&gt; "key"
+  | <span data-count="43">`</span>Key -&gt; "key"
   | <span data-count="0">`</span>Account -&gt; "account"
   | <span data-count="42">`</span>Author -&gt; "author"
   | <span data-count="0">`</span>Wrap -&gt; "wrap"
@@ -1907,7 +1907,7 @@ let string_to_typ = <span data-count="1">f</span>unction
 let pp_typ ppf typ = Format.pp_print_string ppf (typ_to_string typ)
 (*BISECT-IGNORE-END*)
 
-let wire_typ typ = <span data-count="210">W</span>ire.String (typ_to_string typ)
+let wire_typ typ = <span data-count="209">W</span>ire.String (typ_to_string typ)
 let typ_of_wire = <span data-count="1">f</span>unction
   | <span data-count="35">W</span>ire.String str -&gt;
     (match string_to_typ str with
@@ -1953,7 +1953,7 @@ module Header = struct
   (*BISECT-IGNORE-END*)
 
   let wire t =
-    <span data-count="196">l</span>et open Wire in
+    <span data-count="195">l</span>et open Wire in
     M.add "version" (Int t.version)
       (M.add "created" (Int t.created)
          (M.add "counter" (Int t.counter)
@@ -1990,7 +1990,7 @@ end
 module Key = struct
   type alg = [ `RSA ]
 
-  let alg_to_string = <span data-count="1">f</span>unction <span data-count="34">`</span>RSA -&gt; "RSA"
+  let alg_to_string = <span data-count="1">f</span>unction <span data-count="33">`</span>RSA -&gt; "RSA"
   let string_to_alg = <span data-count="1">f</span>unction <span data-count="5">"</span>RSA" -&gt; Some `RSA | <span data-count="1">_</span> -&gt; None
   let alg_equal a b = <span data-count="6">m</span>atch a, b with
     | <span data-count="6">`</span>RSA, `RSA -&gt; true
@@ -2026,13 +2026,13 @@ module Key = struct
 
   (* this is exposed, used for signing *)
   let wire name (a, k, created) =
-    <span data-count="32">l</span>et open Wire in
-    let counter = <span data-count="32">U</span>int.zero
-    and wraps = <span data-count="32">U</span>int.zero
-    and typ = <span data-count="32">`</span>Key
+    <span data-count="31">l</span>et open Wire in
+    let counter = <span data-count="31">U</span>int.zero
+    and wraps = <span data-count="31">U</span>int.zero
+    and typ = <span data-count="31">`</span>Key
     in
-    <span data-count="32">l</span>et header = <span data-count="32">{</span> Header.created ; counter ; version ; wraps ; name ; typ } in
-    <span data-count="32">M</span>.add "keytype" (String (alg_to_string a))
+    <span data-count="31">l</span>et header = <span data-count="31">{</span> Header.created ; counter ; version ; wraps ; name ; typ } in
+    <span data-count="31">M</span>.add "keytype" (String (alg_to_string a))
       (M.add "keydata" (String k)
          (Header.wire header))
 end
@@ -2088,13 +2088,13 @@ end
 
 module Digest = struct
   type alg = [ `SHA256 ]
-  let alg_to_string = <span data-count="1">f</span>unction <span data-count="197">`</span>SHA256 -&gt; "SHA256"
+  let alg_to_string = <span data-count="1">f</span>unction <span data-count="196">`</span>SHA256 -&gt; "SHA256"
   let string_to_alg = <span data-count="1">f</span>unction
     | <span data-count="4">"</span>SHA256" -&gt; Some `SHA256
     | <span data-count="1">_</span> -&gt; None
 
   type t = alg * string
-  let to_string (a, b) = <span data-count="151">a</span>lg_to_string a ^ b
+  let to_string (a, b) = <span data-count="150">a</span>lg_to_string a ^ b
   let equal (ta, a) (tb, b) = <span data-count="34">m</span>atch ta, tb with
   | <span data-count="34">`</span>SHA256, `SHA256 -&gt; String.compare a b = 0
 
@@ -2151,7 +2151,7 @@ module Author = struct
     <span data-count="2">D</span>igest.equal a.digest b.digest
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_resource ppf { index ; rname ; rtyp ; digest } =
+  let pp_r ppf { index ; rname ; rtyp ; digest } =
     Format.fprintf ppf "%a #%s %a@ %a"
       pp_typ rtyp
       (Uint.decimal index)
@@ -2307,8 +2307,8 @@ module Author = struct
       (pp_list pp_account) i.accounts
       (pp_list Key.pp) (List.map fst i.keys)
       (pp_list Signature.pp) (List.map snd i.keys)
-      (pp_list pp_resource) i.resources
-      (pp_list pp_resource) i.queued
+      (pp_list pp_r) i.resources
+      (pp_list pp_r) i.queued
   (*BISECT-IGNORE-END*)
 
   let prep_sig i =
@@ -2494,7 +2494,7 @@ module Release = struct
   }
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_checksum ppf c =
+  let pp_c ppf c =
     Format.fprintf ppf "%a: %a"
       pp_name c.filename Digest.pp c.digest
   (*BISECT-IGNORE-END*)
@@ -2523,7 +2523,7 @@ module Release = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum_map ppf cs =
-    pp_list pp_checksum ppf
+    pp_list pp_c ppf
       (List.sort (fun a b -&gt; String.compare a.filename b.filename)
          (snd (List.split (M.bindings cs))))
   (*BISECT-IGNORE-END*)
@@ -2573,7 +2573,7 @@ module Release = struct
 
   let set_counter cs counter = <span data-count="0">{</span> cs with counter }
 
-  let compare_checksums a b =
+  let compare_t a b =
     <span data-count="10">g</span>uard (name_equal a.name b.name) (`InvalidName (a.name, b.name)) &gt;&gt;= fun () -&gt;
     <span data-count="10">i</span>f M.equal checksum_equal a.files b.files then
       <span data-count="7">O</span>k ()
@@ -2595,7 +2595,7 @@ module Release = struct
       <span data-count="3">E</span>rror (`ChecksumsDiff (a.name, missing, toomany, invalid))
 
   let equal a b =
-    <span data-count="0">m</span>atch compare_checksums a b with
+    <span data-count="0">m</span>atch compare_t a b with
     | <span data-count="0">O</span>k () -&gt; true
     | <span data-count="0">_</span> -&gt; false
 
@@ -2606,7 +2606,7 @@ end
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-10 20:05:19 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>

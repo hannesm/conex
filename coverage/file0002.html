@@ -409,7 +409,7 @@ let pp_cc_err ppf = function
  (*BISECT-IGNORE-END*)
 
 let checksum_files t pv =
-  <span data-count="5">(</span>match authorisation_of_item pv with
+  <span data-count="5">(</span>match authorisation_of_package pv with
    | <span data-count="5">S</span>ome de -&gt; Ok (data_path@[ de ; pv ])
    | <span data-count="0">N</span>one -&gt; Error (`FileNotFound pv )) &gt;&gt;= fun st -&gt;
   <span data-count="5">l</span>et rec collect1 acc d = <span data-count="17">f</span>unction
@@ -452,11 +452,11 @@ let ids t = <span data-count="5">r</span>ead_dir (function <span data-count="7">
 
 let dirs = <span data-count="1">(</span>function <span data-count="7">D</span>irectory, d -&gt; Some d | <span data-count="0">_</span> -&gt; None)
 
-let items t = <span data-count="1">r</span>ead_dir dirs t data_path
-let subitems t name = <span data-count="5">r</span>ead_dir dirs t (data_path@[name])
+let packages t = <span data-count="1">r</span>ead_dir dirs t data_path
+let releases t name = <span data-count="5">r</span>ead_dir dirs t (data_path@[name])
 
 let compute_package t now name =
-  <span data-count="4">s</span>ubitems t name &gt;&gt;= fun releases -&gt;
+  <span data-count="4">r</span>eleases t name &gt;&gt;= fun releases -&gt;
   <span data-count="4">O</span>k (Package.t ~releases now name)
 
 
@@ -558,7 +558,7 @@ let write_release t csum =
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-10 20:05:19 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>

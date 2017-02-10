@@ -149,7 +149,7 @@ let valid_name package =
   <span data-count="0">l</span>et p = <span data-count="0">f</span>unction <span data-count="0">'</span>-' | <span data-count="0">'</span>_' -&gt; true | <span data-count="0">_</span> -&gt; false in
   <span data-count="0">S</span>tring.is_ascii ~p package
 
-let authorisation_of_item x =
+let authorisation_of_package x =
   <span data-count="28">m</span>atch String.cut '.' x with
   | <span data-count="27">S</span>ome (pre, _) -&gt; Some pre
   | <span data-count="1">N</span>one -&gt; None
@@ -171,7 +171,7 @@ let package_path id = <span data-count="6">[</span> data_dir ; id ; package_file
 let release_filename = <span data-count="1">"</span>release"
 
 let release_dir p =
-  <span data-count="18">m</span>atch authorisation_of_item p with
+  <span data-count="18">m</span>atch authorisation_of_package p with
   | <span data-count="17">S</span>ome d -&gt; [ data_dir ; d ; p ]
   | <span data-count="1">N</span>one -&gt; [ data_dir ; p ; p ]
 
@@ -184,11 +184,11 @@ let categorise = <span data-count="1">f</span>unction
   | <span data-count="0">d</span>d :: id :: dfn :: [] when <span data-count="0">d</span>d = data_dir &amp;&amp; <span data-count="0">d</span>fn = package_filename -&gt; `Package id
   | <span data-count="0">d</span>d :: id :: dfn :: _ when <span data-count="0">d</span>d = data_dir -&gt;
     (* current: packages/foo/foo.0.0.1 *)
-    (match authorisation_of_item dfn with
+    (match authorisation_of_package dfn with
      | <span data-count="0">S</span>ome x when <span data-count="0">S</span>tring.compare_insensitive x id -&gt; `Release (id, dfn)
      | <span data-count="0">_</span> -&gt;
        (* earlier: packages/foo.0.0.1 *)
-       match authorisation_of_item id with
+       match authorisation_of_package id with
        | <span data-count="0">S</span>ome x -&gt; `Release (x, id)
        | <span data-count="0">_</span> -&gt; `Unknown)
   | <span data-count="0">c</span>c :: v :: vm :: _ when <span data-count="0">c</span>c = "compilers" -&gt; `Compiler (v, vm)
@@ -196,7 +196,7 @@ let categorise = <span data-count="1">f</span>unction
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-10 20:05:19 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>

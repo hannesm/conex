@@ -321,8 +321,8 @@ let result <span data-count="1">(</span>type a) (type e) a e =
       | <span data-count="0">O</span>k    t -&gt; Format.fprintf fmt "Ok @[(%a)@]" A.pp t
       | <span data-count="0">E</span>rror e -&gt; Format.fprintf fmt "Error @[(%a)@]" E.pp e
     let equal x y = <span data-count="244">m</span>atch x, y with
-      | <span data-count="114">O</span>k    x, Ok    y -&gt; A.equal x y
-      | <span data-count="130">E</span>rror x, Error y -&gt; E.equal x y
+      | <span data-count="113">O</span>k    x, Ok    y -&gt; A.equal x y
+      | <span data-count="131">E</span>rror x, Error y -&gt; E.equal x y
       | <span data-count="0">_</span>      , _       -&gt; false
   end in
   (module M: Alcotest.TESTABLE with type t = M.t)
@@ -389,7 +389,7 @@ let rel =
   <span data-count="1">l</span>et module M = struct
     type t = Release.t
     let pp = <span data-count="1">R</span>elease.pp
-    let equal a b = <span data-count="4">m</span>atch Release.compare_checksums a b with <span data-count="4">O</span>k () -&gt; true | <span data-count="0">_</span> -&gt; false
+    let equal a b = <span data-count="4">m</span>atch Release.compare_t a b with <span data-count="4">O</span>k () -&gt; true | <span data-count="0">_</span> -&gt; false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
@@ -413,7 +413,7 @@ let sign_idx idx p =
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-10 20:05:19 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>

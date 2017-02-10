@@ -232,10 +232,10 @@ module V = struct
       | <span data-count="6">_</span> -&gt; Error `InvalidPublicKey
 
   let b64sha256 data =
-    <span data-count="136">l</span>et cs = <span data-count="136">C</span>struct.of_string data in
-    <span data-count="136">l</span>et check = <span data-count="136">N</span>ocrypto.Hash.digest `SHA256 cs in
-    <span data-count="136">l</span>et b64 = <span data-count="136">N</span>ocrypto.Base64.encode check in
-    <span data-count="136">C</span>struct.to_string b64
+    <span data-count="135">l</span>et cs = <span data-count="135">C</span>struct.of_string data in
+    <span data-count="135">l</span>et check = <span data-count="135">N</span>ocrypto.Hash.digest `SHA256 cs in
+    <span data-count="135">l</span>et b64 = <span data-count="135">N</span>ocrypto.Base64.encode check in
+    <span data-count="135">C</span>struct.to_string b64
 end
 
 module C = struct
@@ -286,7 +286,7 @@ module NC_V = Conex_crypto.Make_verify (V)
 </pre>
       </div>
     </div>
-    <div id="footer">Generated on 2017-02-09 03:18:55 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
+    <div id="footer">Generated on 2017-02-10 20:05:19 by <a href="https://github.com/aantron/bisect_ppx">Bisect_ppx</a> 1.2.0</div>
     <script src="coverage.js"></script>
   </body>
 </html>
