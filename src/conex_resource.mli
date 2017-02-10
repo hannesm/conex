@@ -1,54 +1,12 @@
-(** Persistent data: on wire and record types *)
+(** Persistent data: on wire and record types
 
-(*
     Every resource in conex is a piece of data (or metadata), and has its own
-    purpose.  Resources are persistent objects stored in the repository.  Conex'
-    view on repository updates are resource modifications over time: addition of
-    a package release, introduction of a new team, modification of dependency
-    constraints of a certain package, key renewal by its author, authorising a
-    team instead of an individual for a package, provisioning of a new
-    timestamping service by a quorum of janitors, ...
-
-    Initially, conex verifies the authenticity and freshness of a cloned
-    repository (authenticity by using public key fingerprints verified over a
-    trusted channel, and freshness by looking at the last signature of the
-    timestamping service).
-
-    Afterwards, it trusts the local repository and verifies resource updates.
-    Not every update has to be verified individually (if a client is updating
-    rarely, they don't verify intermediate states).  Both authenticity and
-    monotonicity are preserved.  To minimise the amount of public key
-    operations, instead of signing each resource with their private key, each
-    author digitally signs their individual list of approved resources: their
-    name, their type, and their digest.  Each author can approve multiple
-    versions of a single resource (e.g. a team red with members Joseph and
-    Vladimir in version 41, and also the same team red with Joseph, Vladimir,
-    and in version 42).  The resource list is just a resource, which is modified
-    only by the author who owns it (thus no merge conflicts from simultaneous
-    edits by multiple people).
-
-    Resources are stored in the same repository they should protect from
-    malicious updates or downgrades.  Additionally, they have to protect
-    themselves from attackers.
-
-    Some resource updates need approval by a quorum of janitors, this is to
-    avoid a centralised trust authority which is a single point of failure.  As
-    long as fewer than a quorum of janitor private keys are compromised, the
-    guarantees provided by conex are preserved.  Janitors themselves are a team,
-    and part of the repository.  This allows dynamic updates of the trusted
-    group.
-
-    The possibility to have multiple versions of a resource approved is crucial
-    for the update workflow: only after a quorum of janitors approved the update
-    (each by adding it to their resource list), this resource update can be
-    verified by conex (the merge of the resource update needs to wait until
-    sufficient janitors approved it).
-
-    Resources stored on disk consists of a common header: a name, a type, a
-    counter, a wraparound counter, and a creation timestamp.  There are
+    purpose.  Resources stored on disk consists of a common header: a name, a
+    type, a counter, a wraparound counter, and a creation timestamp.  There are
     broadly three kinds of resources: those containing identities ({!Team} and
-    {!Author}), those regulating access to packages ({!Authorisation}), and those
-    with the digests of the opam repository data ({!Package} and {!Release}).
+    {!Author}), those regulating access to packages ({!Authorisation}), and
+    those with the digests of the opam repository data ({!Package} and
+    {!Release}).
 *)
 
 open Conex_utils
@@ -74,7 +32,6 @@ val pp_id : identifier fmt
 val id_equal : identifier -> identifier -> bool
 
 
-
 (** {1 Wire format} *)
 
 (** The wire encoding is abstract here, one suitable decoding and encoding
@@ -93,6 +50,9 @@ module Wire : sig
   (** The toplevel node, a Map *)
   type t = s M.t
 
+  (** [to_string t] is a string representing [t].  This is used by
+      {!Conex_crypto} to compute digests and signatures.  There is no parser for
+      this string encoding available. *)
   val to_string : t -> string
 end
 
@@ -125,7 +85,11 @@ val typ_equal : typ -> typ -> bool
 
 val typ_of_wire : Wire.s -> (typ, string) result
 
+
+(** Common header on disk *)
 module Header : sig
+
+  (** The header consists of version, created, counter, wraps, a name, and a typ. *)
   type t = {
     version : Uint.t ;
     created : Uint.t ;
@@ -135,15 +99,22 @@ module Header : sig
     typ : typ
   }
 
-  val of_wire : Wire.t -> (t, string) result
-
-  val timestamp : Uint.t -> string
-
-  val counter : Uint.t -> Uint.t -> string
-
+  (** [pp] is a pretty printer. *)
   val pp : t fmt
 
+  (** [wire t] is the wire representation of [t]. *)
   val wire : t -> Wire.t
+
+  (** [of_wire t] converts [t] into a {!Header.t} or error. *)
+  val of_wire : Wire.t -> (t, string) result
+
+  (** [timestamp uint] prints [uint] to a string as a timestamp (decimal as
+      seconds since UNIX epoch). *)
+  val timestamp : Uint.t -> string
+
+  (** [counter ctr wrap] prints [ctr, wrap] to a string containing the counter
+      and wraps (unless zero). *)
+  val counter : Uint.t -> Uint.t -> string
 end
 
 
@@ -172,10 +143,14 @@ module Key : sig
   (** [pp] is a pretty printer for public keys *)
   val pp : t fmt
 
+  (** [of_wire w] converts [w] to a key or error. *)
   val of_wire : Wire.s -> (t, string) result
 
+  (** [wire_raw t] is the raw wire representation of [t] used by
+      {!Author.wire}. *)
   val wire_raw : t -> Wire.s
 
+  (** [wire id key] is [w], the wire representation used for approving [key]. *)
   val wire : identifier -> t -> Wire.t
 end
 
@@ -194,7 +169,8 @@ module Signature : sig
   (** The signature header, an algorithm and a created timestamp. *)
   type hdr = alg * Uint.t
 
-  (** [wire id hdr data] extends the given data with the header and id to a string which is then signed. *)
+  (** [wire id hdr data] extends the given data with the header and id to a
+      string which is then signed. *)
   val wire : identifier -> hdr -> string -> Wire.t
 
   (** A signature is a pair of header and value. *)
@@ -203,8 +179,10 @@ module Signature : sig
   (** [pp sig] is a pretty printer for a signature. *)
   val pp : t fmt
 
+  (** [of_wire w] converts [w] to a signature or error. *)
   val of_wire : Wire.s -> (t, string) result
 
+  (** [wire_raw t] is the wire representation of [t], used by {!Author.wire}. *)
   val wire_raw : t -> Wire.s
 end
 
@@ -234,12 +212,26 @@ module Digest : sig
       have the same value. *)
   val equal : t -> t -> bool
 
+  (** [of_wire w] converts [w] to a digest or error. *)
   val of_wire : Wire.s -> (t, string) result
 
+  (** [wire_raw t] is the wire representation of [t], used by {!Author.wire} and
+      {!Release.wire}. *)
   val wire_raw : t -> Wire.s
 end
 
+(** {1 Author} *)
+
+(** An author contains a list of approved resources (name, typ, digest).  It
+    also contains a list of key and signature pairs, and a list of accounts.
+    Keys have to be approved by a quorum of janitors, but the resource list is
+    modified only by the author themselves. *)
 module Author : sig
+
+  (** {2 Resources} *)
+
+  (** The type of a resource in the approved list: a counter (the index), a
+      name, a typ, and its digest. *)
   type r = private {
     index : Uint.t ;
     rname : string ;
@@ -247,22 +239,30 @@ module Author : sig
     digest : Digest.t ;
   }
 
+  (** [pp_r] is a pretty printer. *)
+  val pp_r : r fmt
+
+  (** [r idx name typ dgst] is a constructor. *)
   val r : Uint.t -> string -> typ -> Digest.t -> r
 
+  (** [r_equal r r'] is [true] is the name, type, and digest of [r] and [r'] are
+      equal. *)
   val r_equal : r -> r -> bool
 
-  val pp_resource : Format.formatter -> r -> unit
+  (** {2 Accounts} *)
 
-  type email = identifier
-
+  (** Variant of accounts *)
   type account = [
-    | `Email of email
+    | `Email of identifier
     | `GitHub of identifier
     | `Other of identifier * string
   ]
 
+  (** [wire_account a] is the wire representation of [a]. *)
   val wire_account : account -> Wire.t
 
+  (** The record of an author: name, key/signature pairs, created, counter,
+      approved and queued resource lists. *)
   type t = private {
     (* signed part *)
     created : Uint.t ;
@@ -276,38 +276,63 @@ module Author : sig
     queued : r list ;
   }
 
+  (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> ?accounts:(account list) -> ?keys:((Key.t * Signature.t) list) -> ?resources:(r list) -> ?queued:(r list) -> Uint.t -> identifier -> t
+  (** [t ~counter ~wraps ~accounts ~keys ~resources ~queued created name] is a
+      constructor. *)
+  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+    ?accounts:(account list) ->
+    ?keys:((Key.t * Signature.t) list) ->
+    ?resources:(r list) ->
+    ?queued:(r list) ->
+    Uint.t -> identifier -> t
 
-  val contains : ?queued:bool -> t -> r -> bool
-
+  (** [of_wire w] converts [w] to an author or error. *)
   val of_wire : Wire.t -> (t, string) result
 
-  (* resources only *)
+  (** [wire_raw t] is the raw wire representation of [t], including only header
+      and resource list.  This is used for signing.  *)
   val wire_raw : t -> Wire.t
+
+  (** [wire t] is the raw wire representation of [t], as written to disk. *)
   val wire : t -> Wire.t
 
+  (** [contains ~queued author resource] is [true] if [resource] is in
+      [author.resources] (or [author.queued] if [queued] is true (default:
+      false). *)
+  val contains : ?queued:bool -> t -> r -> bool
+
+  (** [next_id t] is the next free identitifer of the resource list index. *)
   val next_id : t -> Uint.t
 
+  (** [add_resource t r] adds [r] to [t.queued]. *)
   val add_resource : t -> r -> t
 
+  (** [equal t t'] is true if name, keys, accounts, resource lists, and queued
+      are equal. *)
   val equal : t -> t -> bool
 
+  (** [reset t] drops [t.queued]. *)
   val reset : t -> t
 
+  (** [prep_sig t] appends [t.queued] to [t.resources] and increments
+      [t.counter].  Returns the carry bit as second component. *)
   val prep_sig : t -> t * bool
 
+  (** [replace_sig t (k, s)] adds [k,s] to [t.keys], filtering existing pairs
+      where the same public key is used. *)
   val replace_sig : t -> Key.t * Signature.t -> t
 end
 
 
 (** {1 Team} *)
 
-(** A team consists of a group of authors, and teams can be authorised for
-     packages.  Team members can dynamically join and leave.  All
-     modifications to teams require a quorum of janitors.  *)
+(** A team consists of a group of authors.  Team members can dynamically join
+     and leave. *)
 module Team : sig
+
+  (** The record for a team: a header and a set of members. *)
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
@@ -316,21 +341,42 @@ module Team : sig
     members : S.t
   }
 
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> ?members:S.t -> Uint.t -> identifier -> t
+  (** [pp] is a pretty printer. *)
+  val pp : t fmt
 
-  val add : t -> identifier -> t
-  val remove : t -> identifier -> t
-  val prep : t -> t * bool
+  (** [t ~counter ~wraps ~members created id] is a constructor for a team. *)
+  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+    ?members:S.t -> Uint.t -> identifier -> t
 
+  (** [equal t t'] is true if the set of members is equal and the name is
+      equal. *)
   val equal : t -> t -> bool
 
+  (** [of_wire w] converts [w] to a team or error. *)
   val of_wire : Wire.t -> (t, string) result
+
+  (** [wire t] is the wire representation of [t]. *)
   val wire : t -> Wire.t
 
-  val pp : t fmt
+  (** [add t id] adds [id] to team. *)
+  val add : t -> identifier -> t
+
+  (** [remove t id] removes [id] from team. *)
+  val remove : t -> identifier -> t
+
+  (** [prep t] prepares increments [t.counter].  Returns the carry bit as second
+      component.  Used after a batch of changes. *)
+  val prep : t -> t * bool
 end
 
+(** {1 Authorisation} *)
+
+(** An authorisation contains the information who is authorised to modify a
+    package.  There is always a single authorisation file per package, approved
+    by a quorum of janitors. *)
 module Authorisation : sig
+
+  (** The authorisation record: a header, a name, and a set of authorised ids. *)
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
@@ -339,21 +385,41 @@ module Authorisation : sig
     authorised : S.t ;
   }
 
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> ?authorised:S.t -> Uint.t -> name -> t
+  (** [pp] is a pretty printer. *)
+  val pp : t fmt
 
-  val add : t -> identifier -> t
-  val remove : t -> identifier -> t
-  val prep : t -> t * bool
+  (** [t ~counter ~wraps ~authorised created name] is a constructor. *)
+  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+    ?authorised:S.t -> Uint.t -> name -> t
 
+  (** [equal t t'] is true if the names are equal and the set of authorised ids
+      are equal. *)
   val equal : t -> t -> bool
 
+  (** [of_wire w] converts [w] to an authorisation or error. *)
   val of_wire : Wire.t -> (t, string) result
+
+  (** [wire t] is the wire representation of [t], written to disk. *)
   val wire : t -> Wire.t
 
-  val pp : Format.formatter -> t -> unit
+  (** [add t id] adds [id] to [t.authorised]. *)
+  val add : t -> identifier -> t
+
+  (** [remove t id] removed [id] from [t.authorised]. *)
+  val remove : t -> identifier -> t
+
+  (** [prep t] increments [t.counter], returns the carry bit as second
+      component. *)
+  val prep : t -> t * bool
 end
 
+(** {1 Package} *)
+
+(** A package lists all releases of a given package.  There is one package
+    resource for each package. *)
 module Package : sig
+
+  (** The record for a package: a header, and a set of release names. *)
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
@@ -362,31 +428,56 @@ module Package : sig
     releases : S.t ;
   }
 
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> ?releases:S.t -> Uint.t -> name -> t
+  (** [pp] is a pretty printer. *)
+  val pp : t fmt
 
-  val add : t -> name -> t
-  val remove : t -> name -> t
-  val prep : t -> t * bool
+  (** [t ~counter ~wraps ~releases created name] is a constructor. *)
+  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+    ?releases:S.t -> Uint.t -> name -> t
 
+  (** [equal t t'] is true if the names are equal and the set of releases. *)
   val equal : t -> t -> bool
 
+  (** [of_wire w] converts [w] to a package or error. *)
   val of_wire : Wire.t -> (t, string) result
+
+  (** [wire t] is the wire representation of [t], as stored on disk. *)
   val wire : t -> Wire.t
 
-  val pp : Format.formatter -> t -> unit
+  (** [add t name] adds [name] to [t.releases]. *)
+  val add : t -> name -> t
+
+  (** [remove t name] removes [name] from [t.releases]. *)
+  val remove : t -> name -> t
+
+  (** [prep t] increments [t.counter], the carry bit is returned as second
+      component. *)
+  val prep : t -> t * bool
 end
 
+(** {1 Release} *)
+
+(** A release contains a map of all files in the repository relevant for this
+    release and their digests. *)
 module Release : sig
+
+  (** The record for a checksum: filename and digest. *)
   type c = {
     filename : name ;
     digest   : Digest.t ;
   }
 
-  val pp_checksum : c fmt
+  (** [pp_c] is a pretty printer. *)
+  val pp_c : c fmt
+
+  (** [c_equal c c'] is true if the filenames are equal, and the digests are
+      equal. *)
   val checksum_equal : c -> c -> bool
 
+  (** Type of a checksum map. *)
   type checksum_map
 
+  (** The record of a release: a header, and a checksum map. *)
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
@@ -395,25 +486,39 @@ module Release : sig
     files : checksum_map ;
   }
 
-  val pp : Format.formatter -> t -> unit
+  (** [pp] is a pretty printer. *)
+  val pp : t fmt
 
+  (** [t ~counter ~wraps created name checksums] is a constructor. *)
   val t : ?counter:Uint.t -> ?wraps:Uint.t -> Uint.t -> string -> c list -> t
 
+  (** [of_wire w] converts [w] to a release or error. *)
   val of_wire : Wire.t -> (t, string) result
+
+  (** [wire t] is the wire representation of [t]. *)
   val wire : t -> Wire.t
 
+  (** [equal t t'] is true if the name is equal and the checksum maps are
+      equal. *)
   val equal : t -> t -> bool
 
+  (** [set_counter t ctr] sets [t.counter] to [ctr]. *)
   val set_counter : t -> Uint.t -> t
 
-  val compare_checksums : t -> t ->
+  (** [compare_t t t'] compares [t] and [t'], either they are equal, their names
+      are different, or their checksum maps differ. *)
+  val compare_t : t -> t ->
     (unit,
      [> `InvalidName of name * name
      | `ChecksumsDiff of name * name list * name list * (c * c) list ])
       result
 
+  (** [fold f m acc] folds [f] over [m]. *)
   val fold : (c -> 'b -> 'b) -> checksum_map -> 'b -> 'b
+
+  (** [find m k] looks [k] up in [m]. *)
   val find : checksum_map -> string -> c
 
+  (** [prep t] increments [t.counter], returns carry as second component. *)
   val prep : t -> t * bool
 end

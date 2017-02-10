@@ -14,7 +14,7 @@ let id_c =
 
 let name_c =
   let parse s =
-    let pn = match Conex_opam_repository_layout.authorisation_of_item s with
+    let pn = match Conex_opam_repository_layout.authorisation_of_package s with
       | None -> s
       | Some x -> x
     in

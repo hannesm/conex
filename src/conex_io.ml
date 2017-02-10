@@ -27,7 +27,7 @@ let pp_cc_err ppf = function
  (*BISECT-IGNORE-END*)
 
 let checksum_files t pv =
-  (match authorisation_of_item pv with
+  (match authorisation_of_package pv with
    | Some de -> Ok (data_path@[ de ; pv ])
    | None -> Error (`FileNotFound pv )) >>= fun st ->
   let rec collect1 acc d = function
@@ -70,11 +70,11 @@ let ids t = read_dir (function File, f -> Some f | _ -> None) t id_path
 
 let dirs = (function Directory, d -> Some d | _ -> None)
 
-let items t = read_dir dirs t data_path
-let subitems t name = read_dir dirs t (data_path@[name])
+let packages t = read_dir dirs t data_path
+let releases t name = read_dir dirs t (data_path@[name])
 
 let compute_package t now name =
-  subitems t name >>= fun releases ->
+  releases t name >>= fun releases ->
   Ok (Package.t ~releases now name)
 
 

@@ -10,41 +10,32 @@ module IO = Conex_io
 
 module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
 
-  let maybe repo pp res = function
+  let to_str pp = function
     | Ok a -> Ok a
-    | Error err ->
-      if strict repo then Error (str pp err) else
-        (L.warn (fun m -> m "%a" pp err) ; Ok res)
+    | Error e -> Error (str pp e)
 
   let verify_and_validate repo author =
     L.debug (fun m -> m "%a" Author.pp author) ;
-    match C.verify author with
-    | Error e ->
-      if strict repo then Error (str Conex_crypto.pp_verification_error e) else
-        (L.warn (fun m -> m "%a" Conex_crypto.pp_verification_error e) ; Ok repo)
-    | Ok () ->
-      maybe repo pp_error repo
-        (validate_author repo author >>= fun (repo, conflicts) ->
-         L.info (fun m -> m "%a verified" pp_id author.Author.name) ;
-         List.iter (fun c -> L.warn (fun m -> m "%a" pp_conflict c)) conflicts ;
-         Ok repo)
+    to_str Conex_crypto.pp_verification_error (C.verify author) >>= fun () ->
+    to_str pp_error (validate_author repo author) >>= fun repo ->
+    L.info (fun m -> m "%a verified" pp_id author.Author.name) ;
+    Ok repo
 
-  let load_id io repo id =
+  let verify_id io repo id =
     if id_loaded repo id then begin
       L.debug (fun m -> m "%a already loaded" pp_id id) ;
       Ok repo
     end else
-      match IO.read_author io id with
-      | Ok idx -> verify_and_validate repo idx
-      | Error e -> if strict repo then Error (str IO.pp_r_err e) else Ok repo
+      to_str IO.pp_r_err (IO.read_author io id) >>= fun author ->
+      verify_and_validate repo author
 
-  let load_ids ?ids io repo =
+  let verify_ids ?ids io repo =
     (match ids with
      | Some x -> Ok x
      | None -> IO.ids io) >>= fun ids ->
     let ids = S.filter (fun id -> not (id_loaded repo id)) ids in
-    foldS (fun acc id ->
-        maybe repo IO.pp_r_err acc (IO.read_id io id >>= fun x -> Ok (x :: acc)))
+    foldS (fun acc id -> to_str IO.pp_r_err (IO.read_id io id) >>= fun x ->
+            Ok (x :: acc))
       [] ids >>= fun ids ->
     let users, teams =
       List.fold_left (fun (is, ts) -> function
@@ -54,153 +45,107 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     in
     foldM verify_and_validate repo users >>= fun repo ->
     foldM (fun repo t ->
-        foldS (load_id io) repo t.Team.members >>= fun repo ->
-        maybe repo pp_error repo
-          (validate_team repo t >>= fun (r, ok) ->
-           L.debug (fun m -> m "%a" pp_ok ok) ;
-           Ok r))
+        foldS (verify_id io) repo t.Team.members >>= fun repo ->
+        to_str pp_error (validate_team repo t) >>= fun (r, ok) ->
+        L.info (fun m -> m "%a verified %a" Team.pp t pp_ok ok) ;
+        Ok r)
       repo teams
 
-  let load_janitors ?(valid = fun _ _ -> false) io repo =
-    match IO.read_team io "janitors" with
-    | Error e ->
-      if strict repo then Error (str IO.pp_r_err e) else
-        (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok repo)
-    | Ok team ->
-      L.debug (fun m -> m "%a" Team.pp team) ;
-      foldS (fun acc id ->
-          maybe repo IO.pp_r_err acc
-            (IO.read_author io id >>= fun idx ->
-             L.debug (fun m -> m "%a" Author.pp idx) ;
-             Ok (idx :: acc)))
-        [] team.Team.members >>= fun idxs ->
-      (* for each, validate public key(s): signs the index *)
-      (* TODO: error behaviour - should we exit on verification error here? *)
-      let valid_idxs =
-        List.fold_left (fun acc author ->
-            match C.verify author with
-            | Ok () -> author :: acc
-            | Error pv ->
-              L.warn (fun m -> m "%a %a" Author.pp author Conex_crypto.pp_verification_error pv) ;
-              acc)
-          [] idxs
-      in
-      (* filter by fingerprint, create a repository *)
-      let approved, notyet =
-        List.fold_left (fun (v, i) author ->
-            let id = author.Author.name in
-            match
-              List.filter (fun (k, _) -> valid id (C.keyid k)) author.Author.keys
-            with
-            | [] ->
-              L.debug (fun m -> m "ignoring janitor %s: missing valid fingerprint" id) ;
-              (v, author :: i)
-            | _ ->
-              L.debug (fun m -> m "fingerprint valid for janitor %s" id) ;
-              (author :: v, i))
-          ([], []) valid_idxs
-      in
-      let add_warn ign repo idx =
-        let repo, warns = add_index repo idx in
-        if not ign then
-          List.iter (fun msg -> L.warn (fun m -> m "%a" pp_conflict msg)) warns ;
-        repo
-      in
-      let jrepo = List.fold_left (add_warn true) repo approved in
+  let verify_janitors ?(valid = fun _ _ -> false) io repo =
+    to_str IO.pp_r_err (IO.read_team io "janitors") >>= fun team ->
+    L.debug (fun m -> m "read %a" Team.pp team) ;
+    foldS (fun acc id ->
+        to_str IO.pp_r_err (IO.read_author io id) >>= fun idx ->
+        L.debug (fun m -> m "read %a" Author.pp idx) ;
+        Ok (idx :: acc))
+      [] team.Team.members >>= fun idxs ->
 
-      (* repo is full with all good indexes! *)
-      (* validate all the authors! *)
-      (* TODO: error handling: what should happen if we fail to validate some
-         janitors? go further with the subset?  might actually happen in cases
-         where a janitor does a key rollover, and gets signed by those not part
-         of the trust anchor *)
-      let good, others =
-        List.fold_left (fun (v, i) author ->
-            match validate_author jrepo author with
-            | Ok _ -> (author :: v, i)
-            | Error _ -> (v, author :: i))
-          ([], []) approved
-      in
+    (* for each, validate public key(s): signs the index *)
+    foldM (fun acc author ->
+        to_str Conex_crypto.pp_verification_error (C.verify author) >>= fun () ->
+        L.info (fun m -> m "verified %a" Author.pp author) ;
+        Ok (author :: acc))
+      [] idxs >>= fun valid_idxs ->
 
-      (* verify the team janitor *)
-      let good_j_repo = List.fold_left (add_warn false) repo good in
-      match validate_team good_j_repo team with
-      | Error e -> Error (str pp_error e)
-      | Ok (repo, ok) ->
-        L.info (fun m -> m "team janitors verified %a" pp_ok ok) ;
-        (* team is good, there may be more janitors: esp notyet and others *)
-        (* load in a similar style:
-           - add all the idxs
-           - verify at least one key of each idx
-           - insert all verified idx *)
-        let rest = notyet @ others in
-        let jrepo' = List.fold_left (add_warn true) repo rest in
-        foldM (fun (repo, acc) author ->
-            match validate_author jrepo author with
-            | Ok (repo, _) ->
-              L.info (fun m -> m "validated janitor %a" Author.pp author) ;
-              Ok (repo, author :: acc)
-            | Error e ->
-              L.warn (fun m -> m "couldn't validate (%a) janitor %a" pp_error e Author.pp author) ;
-              Ok (repo, acc))
-          (jrepo', []) rest >>= fun (_, good) ->
-        Ok (List.fold_left (add_warn false) repo good)
+    (* filter by fingerprint, create a repository *)
+    let approved, notyet =
+      List.fold_left (fun (v, i) author ->
+          let id = author.Author.name in
+          match
+            List.filter (fun (k, _) -> valid id (C.keyid k)) author.Author.keys
+          with
+          | [] ->
+            L.debug (fun m -> m "ignoring janitor %s: missing valid fingerprint" id) ;
+            (v, author :: i)
+          | _ ->
+            L.debug (fun m -> m "fingerprint valid for janitor %s" id) ;
+            (author :: v, i))
+        ([], []) valid_idxs
+    in
+
+    to_str pp_conflict (foldM add_index repo approved) >>= fun jrepo ->
+
+    (* jrepo is full with all good indexes! *)
+    (* validate all the authors! *)
+    let good, others =
+      List.fold_left (fun (v, i) author ->
+          match validate_author jrepo author with
+          | Ok _ -> (author :: v, i)
+          | Error _ -> (v, author :: i))
+        ([], []) approved
+    in
+
+    (* verify the team janitor *)
+    to_str pp_conflict (foldM add_index repo good) >>= fun good_j_repo ->
+    to_str pp_error (validate_team good_j_repo team) >>= fun (repo, ok) ->
+    L.info (fun m -> m "team janitors verified %a" pp_ok ok) ;
+    (* team is good, there may be more janitors: esp notyet and others *)
+    (* load in a similar style:
+       - add all the idxs
+       - verify at least one key of each idx
+       - insert all verified idx *)
+    let rest = notyet @ others in
+    to_str pp_conflict (foldM add_index repo rest) >>= fun jrepo' ->
+    to_str pp_error (foldM (fun repo author ->
+        validate_author repo author >>= fun repo ->
+        L.info (fun m -> m "validated janitor %a" Author.pp author) ;
+        Ok repo) jrepo' rest)
 
   let verify_single_release io repo auth rel version =
-    match IO.read_release io version with
-    | Error e -> if strict repo then Error (str IO.pp_r_err e) else
-        (L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok ())
-    | Ok cs ->
-      L.debug (fun m -> m "%a" Release.pp cs) ;
-      maybe repo Conex_io.pp_cc_err None
-        (IO.compute_release C.raw_digest io Uint.zero version >>= fun cs ->
-         Ok (Some cs)) >>= fun on_disk ->
-      maybe repo pp_error ()
-        (validate_release repo ?on_disk auth rel cs >>= fun ok ->
-         L.debug (fun m -> m "%a" pp_ok ok) ;
-         Ok ())
+    to_str IO.pp_r_err (IO.read_release io version) >>= fun cs ->
+    L.debug (fun m -> m "%a" Release.pp cs) ;
+    to_str Conex_io.pp_cc_err
+      (IO.compute_release C.raw_digest io Uint.zero version) >>= fun on_disk ->
+    to_str pp_error (validate_release repo ~on_disk auth rel cs) >>= fun ok ->
+    L.debug (fun m -> m "%a" pp_ok ok) ;
+    Ok ()
 
   (* TODO: rename "authorised"..., *)
-  let verify_item ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
-    (match IO.read_authorisation io name with
-     | Error e -> if strict repo then Error (str IO.pp_r_err e) else
-         (L.warn (fun m -> m "%a" IO.pp_r_err e) ;
-          Ok (Authorisation.t Uint.zero name, repo))
-     | Ok auth ->
-       L.debug (fun m ->m "%a" Authorisation.pp auth) ;
-       (* need to load indexes before verifying! *)
-       load_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
-       maybe repo pp_error ()
-         (validate_authorisation repo auth >>= fun ok ->
-          L.debug (fun m -> m "%a" pp_ok ok) ; Ok ()) >>= fun () ->
-       Ok (auth, repo)) >>= fun (auth, repo) ->
-    (if authorised auth.Authorisation.authorised then
-       (match IO.read_package io name with
-        | Error e ->
-          if strict repo then Error (str IO.pp_r_err e) else
-            (L.warn (fun m -> m "%a" IO.pp_r_err e) ;
-             IO.compute_package io Uint.zero name)
-        | Ok rel ->
-          L.debug (fun m -> m "%a" Package.pp rel) ;
-          (match IO.compute_package io Uint.zero name with
-           | Error e -> if strict repo then Error e else
-               (L.warn (fun m -> m "couldn't compute releases %s: %s" name e) ;
-                Ok None)
-           | Ok on_disk -> Ok (Some on_disk)) >>= fun on_disk ->
-          maybe repo pp_error rel
-            (validate_package repo ?on_disk auth rel >>= fun ok ->
-             L.debug (fun m -> m "%a" pp_ok ok) ;
-             Ok rel)) >>= fun rel ->
-       foldM (fun () n ->
-           if release n then
-             verify_single_release io repo auth rel n
-           else
-             Ok ())
-         ()
-         (S.elements rel.Package.releases)
-     else
-       (L.debug (fun m -> m "ignoring %s" name) ; Ok ())) >>= fun () ->
-    Ok repo
+  let verify_package ?(authorised = fun _authorised -> true) ?(release = fun _release -> true) io repo name =
+    to_str IO.pp_r_err (IO.read_authorisation io name) >>= fun auth ->
+    L.debug (fun m ->m "%a" Authorisation.pp auth) ;
+    (* need to load indexes before verifying! *)
+    verify_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
+    to_str pp_error (validate_authorisation repo auth) >>= fun ok ->
+    L.debug (fun m -> m "validated %a %a" pp_ok ok Authorisation.pp auth) ;
+    if authorised auth.Authorisation.authorised then
+      match IO.read_package io name with
+      | Error e -> L.warn (fun m -> m "%a" IO.pp_r_err e) ; Ok repo
+      | Ok rel ->
+        L.debug (fun m -> m "%a" Package.pp rel) ;
+        IO.compute_package io Uint.zero name >>= fun on_disk ->
+        to_str pp_error (validate_package repo ~on_disk auth rel) >>= fun ok ->
+        L.debug (fun m -> m "validated %a %a" pp_ok ok Package.pp rel) ;
+        foldM (fun () n ->
+            if release n then
+              verify_single_release io repo auth rel n
+            else
+              Ok ())
+          ()
+          (S.elements rel.Package.releases) >>= fun () ->
+        Ok repo
+    else
+      (L.debug (fun m -> m "ignoring %s" name) ; Ok repo)
 
     (* we could try to be more smart:
        - only check all modified authorisations, releases, packages
@@ -222,7 +167,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
        id/foo <- keys = [] resources = [], signed by quorum of janitors
 
      removal of a release:
-       packages/foo/releases <- remove item from list
+       packages/foo/releases <- remove package from list
        packages/foo/foo.0.2.3 <- remove directory
 
      removal of a package:
@@ -234,7 +179,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
                 (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
     (* all public keys of janitors in repo are valid. *)
-    load_janitors ~valid:(fun _ _ -> true) io repo >>= fun repo ->
+    verify_janitors ~valid:(fun _ _ -> true) io repo >>= fun repo ->
     let janitor_keys =
       S.fold (fun id acc ->
           match IO.read_author io id with
@@ -247,15 +192,15 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     in
     (* load all those janitors in newrepo which are valid (and verify janitors team) *)
     let valid _id key = List.exists (fun k -> Digest.equal k key) janitor_keys in
-    let fresh_repo = repository ~quorum:(quorum repo) ~strict:(strict repo) (digestf repo) () in
-    load_janitors ~valid newio fresh_repo >>= fun newrepo ->
+    let fresh_repo = repository ~quorum:(quorum repo) (digestf repo) () in
+    verify_janitors ~valid newio fresh_repo >>= fun newrepo ->
     (* now we do a full verification of the new repository *)
-    load_ids newio newrepo >>= fun newrepo ->
-    IO.items newio >>= fun items ->
-    foldS (verify_item newio) newrepo items >>= fun newrepo ->
+    verify_ids newio newrepo >>= fun newrepo ->
+    IO.packages newio >>= fun packages ->
+    foldS (verify_package newio) newrepo packages >>= fun newrepo ->
 
-    (* foreach changed item, we need to ensure monotonicity (counter incremented) *)
-    let maybe_m = maybe repo pp_m_err () in
+    (* foreach changed resource, we need to ensure monotonicity (counter incremented) *)
+    let maybe_m = to_str pp_m_err in
     foldS (fun () id ->
         match IO.read_id io id, IO.read_id newio id with
         | Ok (`Author old), Ok (`Author now) -> maybe_m (monoton_author ~old ~now repo)

@@ -102,7 +102,7 @@ let rel =
   let module M = struct
     type t = Release.t
     let pp = Release.pp
-    let equal a b = match Release.compare_checksums a b with Ok () -> true | _ -> false
+    let equal a b = match Release.compare_t a b with Ok () -> true | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 

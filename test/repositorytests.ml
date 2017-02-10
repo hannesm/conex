@@ -201,10 +201,10 @@ let empty_r () =
   let io = Mem.mem_provider () in
   Alcotest.check (result sset str_err) "empty repo errors on ids"
     (Error "") (Conex_io.ids io) ;
-  Alcotest.check (result sset str_err) "empty repo errors on authorisations"
-    (Error "") (Conex_io.items io) ;
-  Alcotest.check (result sset str_err) "empty repo errors on subitems"
-    (Error "") (Conex_io.subitems io "foo") ;
+  Alcotest.check (result sset str_err) "empty repo errors on packages"
+    (Error "") (Conex_io.packages io) ;
+  Alcotest.check (result sset str_err) "empty repo errors on releases"
+    (Error "") (Conex_io.releases io "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
     (Error (`NotFound (`Authorisation, "foo"))) (Conex_io.read_authorisation io "foo") ;
   Alcotest.check (result package re) "reading releases foo in empty repo fails"
@@ -617,19 +617,23 @@ let conf =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let r_ok =
+let r_fake =
   let module M = struct
-    type t = Conex_repository.t * Conex_repository.conflict list
-    let pp ppf (_, ws) = Format.fprintf ppf "%a" (pp_list Conex_repository.pp_conflict) ws
-    let equal (_, w) (_, w') = List.length w = List.length w'
+    type t = Conex_repository.t
+    let pp ppf _ = Format.fprintf ppf "repository"
+    let equal _ _ = true
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let a_err =
   let module M = struct
-    type t = [ Conex_repository.base_error | `InsufficientQuorum of name * typ * S.t | `AuthorWithoutKeys of identifier  ]
-    let pp = Conex_repository.pp_error
+    type t = [ Conex_repository.base_error | Conex_repository.conflict | `InsufficientQuorum of name * typ * S.t | `AuthorWithoutKeys of identifier  ]
+    let pp ppf = function
+      | #Conex_repository.conflict as c -> Conex_repository.pp_conflict ppf c
+      | e -> Conex_repository.pp_error ppf e
     let equal a b = match a, b with
+      | `NameConflict (n, _), `NameConflict (n', _) -> name_equal n n'
+      | `TypConflict (n, _), `TypConflict (n', _) -> typ_equal n n'
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
       | `InvalidResource (n, w, h), `InvalidResource (n', w', h') -> name_equal n n' && typ_equal w w' && typ_equal h h'
       | `NotApproved (n, r, js), `NotApproved (n', r', js') -> name_equal n n' && typ_equal r r' && S.equal js js'
@@ -644,30 +648,22 @@ let idx_sign () =
   let id = "foo" in
   let pub, priv = gen_pub () in
   let idx = Author.t Uint.zero id in
-  Alcotest.check (result r_ok a_err)
+  Alcotest.check (result r_fake a_err)
     "empty index signed properly (no resources, quorum 0)"
-    (Ok (r, [])) (Conex_repository.validate_author r idx) ;
+    (Ok r) (Conex_repository.validate_author r idx) ;
   let pubenc = Key.wire id pub in
   let idx = Author.(add_resource idx (r (next_id idx) id  `Key (V.digest pubenc))) in
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result Alcotest.unit verr) "idx digitally signed properly"
     (Ok ()) (V.verify signed_idx) ;
-  Alcotest.check (result r_ok a_err) "signed_idx signed properly (1 resource, quorum 0)"
-    (Ok (r, [])) (Conex_repository.validate_author r signed_idx) ;
-  Alcotest.check (result r_ok a_err) "idx signed properly (0 resources, 1 queued, quorum 0)"
-    (Ok (r, [])) (Conex_repository.validate_author r idx) ;
+  Alcotest.check (result r_fake a_err) "signed_idx signed properly (1 resource, quorum 0)"
+    (Ok r) (Conex_repository.validate_author r signed_idx) ;
+  Alcotest.check (result r_fake a_err) "idx signed properly (0 resources, 1 queued, quorum 0)"
+    (Ok r) (Conex_repository.validate_author r idx) ;
   let idx, _ = Author.prep_sig idx in
-  Alcotest.check (result r_ok a_err) "idx not signed properly (1 resource, quorum 0)"
+  Alcotest.check (result r_fake a_err) "idx not signed properly (1 resource, quorum 0)"
     (Error (`AuthorWithoutKeys "foo"))
     (Conex_repository.validate_author r idx)
-
-let r_fake =
-  let module M = struct
-    type t = Conex_repository.t
-    let pp ppf _ = Format.fprintf ppf "repository"
-    let equal _ _ = true
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
 
 let idx_sign_verify () =
   let r = Conex_repository.repository ~quorum:0 V.digest () in
@@ -680,8 +676,8 @@ let idx_sign_verify () =
   Alcotest.check (result Alcotest.unit verr) "idx not digitally signed"
     (Error `NoSignature) (V.verify idx) ;
   let signed_idx = sign_idx idx priv in
-  Alcotest.check (result r_ok a_err) "idx signed properly"
-    (Ok (r, [])) (Conex_repository.validate_author r signed_idx) ;
+  Alcotest.check (result r_fake a_err) "idx signed properly"
+    (Ok r) (Conex_repository.validate_author r signed_idx) ;
   Alcotest.check (result Alcotest.unit verr) "idx digitally signed properly"
     (Ok ()) (V.verify signed_idx) ;
   let idx' = Author.t Uint.zero id in
@@ -691,22 +687,22 @@ let idx_sign_verify () =
   let idx'' = Author.t ~keys:signed_idx.Author.keys ~resources ~queued ~counter:Uint.(of_int_exn 1) Uint.zero id in
   Alcotest.check (result Alcotest.unit verr) "idx'' digitally signed properly"
     (Ok ()) (V.verify idx'') ;
-  Alcotest.check (result r_ok a_err) "idx'' properly signed (queue)"
-    (Ok (r, [])) (Conex_repository.validate_author r idx'') ;
+  Alcotest.check (result r_fake a_err) "idx'' properly signed (queue)"
+    (Ok r) (Conex_repository.validate_author r idx'') ;
   let idx' = Author.add_resource idx' res in
   let signed_idx' = sign_idx idx' priv in
   Alcotest.check (result Alcotest.unit verr) "signed_idx' digitally signed properly"
     (Ok ()) (V.verify signed_idx') ;
-  Alcotest.check (result r_ok a_err) "signed_idx' signed properly"
-    (Ok (r, [])) (Conex_repository.validate_author r signed_idx') ;
-  match Conex_repository.add_valid_resource r id (List.hd resources) with
+  Alcotest.check (result r_fake a_err) "signed_idx' signed properly"
+    (Ok r) (Conex_repository.validate_author r signed_idx') ;
+  match Conex_repository.add_valid_resource id r (List.hd resources) with
   | Ok r ->
     Alcotest.check (result r_fake conf) "add errors on wrong name"
       (Error (`NameConflict ("foo", res)))
-      (Conex_repository.add_valid_resource r id (Author.r Uint.zero "barf" `Key d)) ;
+      (Conex_repository.add_valid_resource id r (Author.r Uint.zero "barf" `Key d)) ;
     Alcotest.check (result r_fake conf) "add errors on wrong resource"
       (Error (`TypConflict (`Key, res)))
-      (Conex_repository.add_valid_resource r id (Author.r Uint.zero id `Team d))
+      (Conex_repository.add_valid_resource id r (Author.r Uint.zero id `Team d))
   | Error _ -> Alcotest.fail "wrong"
 
 let idx_s_v_dupl () =
@@ -718,8 +714,8 @@ let idx_s_v_dupl () =
   let resources = [ res ; Author.r (Uint.of_int_exn 1) id `Team d ] in
   let idx = Author.t ~resources Uint.zero id in
   let signed_idx = sign_idx idx priv in
-  Alcotest.check (result r_ok a_err) "idx signed properly, but one resource ignored"
-    (Ok (r, [`NameConflict ("fpp", res)]))
+  Alcotest.check (result r_fake a_err) "idx signed properly, but one resource ignored"
+    (Error (`TypConflict (`Key, res)))
     (Conex_repository.validate_author r signed_idx)
 
 let k_ok =
@@ -747,7 +743,7 @@ let k_err =
 
 let add_rs repo id rs =
   List.fold_left (fun repo res ->
-      match Conex_repository.add_valid_resource repo id res with
+      match Conex_repository.add_valid_resource id repo res with
       | Ok r -> r
       | Error _ -> Alcotest.fail "should not fail")
     repo rs
@@ -1021,7 +1017,7 @@ let team_dyn () =
   let signed = sign_idx idx priv in
   let r' = match Conex_repository.validate_author r' signed with
     | Error _ -> Alcotest.fail "should not fail"
-    | Ok (r, _) -> r
+    | Ok r -> r
   in
     Alcotest.check (result t_ok a_err) "team properly signed, but missing member"
       (Error (`MemberNotPresent ("foop", S.singleton "foobar")))
@@ -1182,7 +1178,7 @@ let auth_dyn () =
   let signed = sign_idx idx priv in
   let r' = match Conex_repository.validate_author r' signed with
     | Error _ -> Alcotest.fail "should not fail"
-    | Ok (r, _) -> r
+    | Ok r -> r
   in
   let auth = Authorisation.remove auth "foo" in
   Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"

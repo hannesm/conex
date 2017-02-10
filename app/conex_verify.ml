@@ -115,16 +115,16 @@ let verify_full io repo anchors =
     else
       (Log.debug (fun m -> m "rejecting ta %s" id) ; false)
   in
-  C.load_janitors ~valid io repo >>= fun repo ->
-  C.load_ids io repo >>= fun repo ->
-  IO.items io >>= fun items ->
-  foldS (C.verify_item io) repo items
+  C.verify_janitors ~valid io repo >>= fun repo ->
+  C.verify_ids io repo >>= fun repo ->
+  IO.packages io >>= fun packages ->
+  foldS (C.verify_package io) repo packages
 
 let err_to_cmdliner = function
   | Ok _ -> `Ok ()
   | Error m -> `Error (false, m)
 
-let verify_it repodir quorum anchors incremental dir patch verbose quiet strict no_c =
+let verify_it repodir quorum anchors incremental dir patch verbose quiet _strict no_c =
   let level = match verbose, quiet with
     | true, false -> `Debug
     | false, true -> `Warn
@@ -136,7 +136,7 @@ let verify_it repodir quorum anchors incremental dir patch verbose quiet strict 
   Log.set_styled styled ;
   let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
   err_to_cmdliner
-    (let repo = Conex_repository.repository ~strict ?quorum Conex_nocrypto.NC_V.digest () in
+    (let repo = Conex_repository.repository ?quorum Conex_nocrypto.NC_V.digest () in
      match incremental, patch, dir with
      | true, Some p, None ->
        Conex_unix_provider.fs_ro_provider repodir >>= fun io ->

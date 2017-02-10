@@ -68,9 +68,9 @@ module OpamMaintainer = struct
     | Error _ -> Log.err (fun m -> m "couldn't read opam file: %s/%s" p r) ; S.empty
 
   let infer io =
-    let packages = match Conex_io.items io with Error e -> invalid_arg e | Ok xs -> xs in
+    let packages = match Conex_io.packages io with Error e -> invalid_arg e | Ok xs -> xs in
     List.fold_left (fun map p ->
-        let rels = match Conex_io.subitems io p with
+        let rels = match Conex_io.releases io p with
           | Error _ -> []
           | Ok s -> S.elements s
         in

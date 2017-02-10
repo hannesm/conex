@@ -61,9 +61,9 @@ let setup_log style_renderer level =
   Logs.set_level level;
   Logs.set_reporter (Logs_fmt.reporter ~dst:Format.std_formatter ())
 
-let init_repo ?quorum ?strict dry path =
+let init_repo ?quorum dry path =
   str_to_msg (Conex_unix_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
-  Ok (Conex_repository.repository ?quorum ?strict V.digest (), prov)
+  Ok (Conex_repository.repository ?quorum V.digest (), prov)
 
 let help _ _ _ _ _ _ man_format cmds = function
   | None -> `Help (`Pager, None)
@@ -84,16 +84,14 @@ let self io id =
   id
 
 let load_self_queued io r id =
-  match C.load_id io r id with
+  match C.verify_id io r id with
   | Ok r -> r
   | Error e ->
-    Logs.warn (fun m -> m "error while loading id %s" e) ;
+    Logs.warn (fun m -> m "error while loading id %s: %s, loading manually" id e) ;
     let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
-    let r, warns = Conex_repository.add_index r idx in
-    List.iter (fun msg -> Logs.warn (fun m -> m "%a" Conex_repository.pp_conflict msg)) warns ;
-    match foldM (fun repo r -> Conex_repository.add_valid_resource repo id r) r idx.Author.queued with
+    match Conex_repository.add_index r idx with
     | Ok r -> r
-    | Error e -> Logs.warn (fun m -> m "while adding %a" Conex_repository.pp_conflict e) ; r
+    | Error c -> Logs.warn (fun m -> m "conflict %a" Conex_repository.pp_conflict c) ; r
 
 let status_all io r id no_team =
   R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
@@ -113,30 +111,30 @@ let status_all io r id no_team =
        in
        Ok (s_of_list (id :: List.map (fun t -> t.Team.name) teams))
      end) >>= fun me ->
-    str_to_msg (C.load_ids ~ids:me io r) >>= fun r ->
+    str_to_msg (C.verify_ids ~ids:me io r) >>= fun r ->
     let authorised auth = not (S.is_empty (S.inter me auth)) in
-    str_to_msg (IO.items io) >>= fun items ->
-    str_to_msg (foldS (C.verify_item io ~authorised) r items)
+    str_to_msg (IO.packages io) >>= fun packagess ->
+    str_to_msg (foldS (C.verify_package io ~authorised) r packagess)
   | `Team t ->
     Logs.info (fun m -> m "%a" Conex_resource.Team.pp t) ;
-    str_to_msg (C.load_ids ~ids:t.Team.members io r) >>= fun r ->
+    str_to_msg (C.verify_ids ~ids:t.Team.members io r) >>= fun r ->
     let authorised auth = S.mem t.Team.name auth in
-    str_to_msg (IO.items io) >>= fun items ->
-    str_to_msg (foldS (C.verify_item io ~authorised) r items)
+    str_to_msg (IO.packages io) >>= fun packages ->
+    str_to_msg (foldS (C.verify_package io ~authorised) r packages)
 
 let status_single io r name =
   Logs.info (fun m -> m "information on package %s" name) ;
-  let pn, release = match Conex_opam_repository_layout.authorisation_of_item name with
+  let pn, release = match Conex_opam_repository_layout.authorisation_of_package name with
     | None -> name, (fun _ -> true)
     | Some pn -> pn, (fun nam -> name_equal nam name)
   in
-  C.verify_item ~release io r pn
+  C.verify_package ~release io r pn
 
-let status _ dry path quorum strict id name no_rec =
+let status _ dry path quorum _strict id name no_rec =
   msg_to_cmdliner
-    (init_repo ?quorum ~strict dry path >>= fun (r, io) ->
+    (init_repo ?quorum dry path >>= fun (r, io) ->
      Logs.info (fun m -> m "repository %a" Conex_io.pp io) ;
-     str_to_msg (C.load_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
+     str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
      self io id >>= fun id ->
      let r = load_self_queued io r id in
      if name = "" then
@@ -148,7 +146,7 @@ let add_r idx name typ data =
   let counter = Author.next_id idx in
   let digest = V.digest data in
   let res = Author.r counter name typ digest in
-  Logs.info (fun m -> m "added %a to change queue" Author.pp_resource res) ;
+  Logs.info (fun m -> m "added %a to change queue" Author.pp_r res) ;
   Author.add_resource idx res
 
 let init _ dry path id email =
@@ -219,7 +217,7 @@ let sign _ dry path id =
      | [] -> Logs.app (fun m -> m "nothing changed") ; Ok ()
      | els ->
        List.iter (fun r ->
-           Logs.app (fun m -> m "adding %a" Author.pp_resource r))
+           Logs.app (fun m -> m "adding %a" Author.pp_r r))
          els ;
        (* XXX: PROMPT HERE *)
        Nocrypto_entropy_unix.initialize () ;
@@ -234,7 +232,7 @@ let reset _ dry path id =
      self io id >>= fun id ->
      let idx = find_idx io id in
      List.iter
-       (fun r -> Logs.app (fun m -> m "dropping %a" Author.pp_resource r))
+       (fun r -> Logs.app (fun m -> m "dropping %a" Author.pp_r r))
        idx.Author.queued ;
      let idx = Author.reset idx in
      str_to_msg (IO.write_author io idx) >>| fun () ->
@@ -283,12 +281,12 @@ let release _ dry path id remove p =
   msg_to_cmdliner
     (init_repo dry path >>= fun (r, io) ->
      self io id >>= fun id ->
-     (match Conex_opam_repository_layout.authorisation_of_item p with
+     (match Conex_opam_repository_layout.authorisation_of_package p with
       | Some n -> Ok (n, S.singleton p)
-      | None -> str_to_msg (IO.subitems io p) >>= fun rels -> Ok (p, rels))
+      | None -> str_to_msg (IO.releases io p) >>= fun rels -> Ok (p, rels))
      >>= fun (pn, releases) ->
      let auth = find_auth io pn in
-     str_to_msg (C.load_ids ~ids:auth.Authorisation.authorised io r) >>= fun r ->
+     str_to_msg (C.verify_ids ~ids:auth.Authorisation.authorised io r) >>= fun r ->
      if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
      let rel =

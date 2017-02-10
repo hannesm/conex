@@ -387,7 +387,7 @@ module Author = struct
     Digest.equal a.digest b.digest
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_resource ppf { index ; rname ; rtyp ; digest } =
+  let pp_r ppf { index ; rname ; rtyp ; digest } =
     Format.fprintf ppf "%a #%s %a@ %a"
       pp_typ rtyp
       (Uint.decimal index)
@@ -543,8 +543,8 @@ module Author = struct
       (pp_list pp_account) i.accounts
       (pp_list Key.pp) (List.map fst i.keys)
       (pp_list Signature.pp) (List.map snd i.keys)
-      (pp_list pp_resource) i.resources
-      (pp_list pp_resource) i.queued
+      (pp_list pp_r) i.resources
+      (pp_list pp_r) i.queued
   (*BISECT-IGNORE-END*)
 
   let prep_sig i =
@@ -730,7 +730,7 @@ module Release = struct
   }
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_checksum ppf c =
+  let pp_c ppf c =
     Format.fprintf ppf "%a: %a"
       pp_name c.filename Digest.pp c.digest
   (*BISECT-IGNORE-END*)
@@ -759,7 +759,7 @@ module Release = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_checksum_map ppf cs =
-    pp_list pp_checksum ppf
+    pp_list pp_c ppf
       (List.sort (fun a b -> String.compare a.filename b.filename)
          (snd (List.split (M.bindings cs))))
   (*BISECT-IGNORE-END*)
@@ -809,7 +809,7 @@ module Release = struct
 
   let set_counter cs counter = { cs with counter }
 
-  let compare_checksums a b =
+  let compare_t a b =
     guard (name_equal a.name b.name) (`InvalidName (a.name, b.name)) >>= fun () ->
     if M.equal checksum_equal a.files b.files then
       Ok ()
@@ -831,7 +831,7 @@ module Release = struct
       Error (`ChecksumsDiff (a.name, missing, toomany, invalid))
 
   let equal a b =
-    match compare_checksums a b with
+    match compare_t a b with
     | Ok () -> true
     | _ -> false
 

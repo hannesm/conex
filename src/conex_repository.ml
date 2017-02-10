@@ -7,19 +7,16 @@ type teams = S.t M.t
 
 type t = {
   quorum : int ;
-  strict : bool ;
   valid : valid_resources ;
   teams : teams ;
   ids : S.t ;
   digestf : (Wire.t -> Digest.t);
 }
 
-let repository ?(quorum = 3) ?(strict = false) digestf () =
-  { quorum ; strict ; valid = M.empty ; teams = M.empty ; ids = S.empty ; digestf }
+let repository ?(quorum = 3) digestf () =
+  { quorum ; valid = M.empty ; teams = M.empty ; ids = S.empty ; digestf }
 
 let quorum t = t.quorum
-
-let strict t = t.strict
 
 let digestf t = t.digestf
 
@@ -48,11 +45,11 @@ type conflict = [
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_conflict ppf = function
-  | `NameConflict (have, inmem) -> Format.fprintf ppf "resource name conflict %a vs %a" pp_name have Author.pp_resource inmem
-  | `TypConflict (have, inmem) -> Format.fprintf ppf "resource type conflict %a vs %a" pp_typ have Author.pp_resource inmem
+  | `NameConflict (have, inmem) -> Format.fprintf ppf "resource name conflict %a vs %a" pp_name have Author.pp_r inmem
+  | `TypConflict (have, inmem) -> Format.fprintf ppf "resource type conflict %a vs %a" pp_typ have Author.pp_r inmem
 (*BISECT-IGNORE-END*)
 
-let add_valid_resource repo id res =
+let add_valid_resource id repo res =
   let open Author in
   let t = repo.valid in
   let dgst_str = Digest.to_string res.digest in
@@ -68,11 +65,9 @@ let add_valid_resource repo id res =
     Ok ({ repo with valid = M.add dgst_str (res.rname, res.rtyp, S.singleton id) t})
 
 let add_index repo idx =
-  List.fold_left (fun (repo, warn) res ->
-      match add_valid_resource repo idx.Author.name res with
-      | Ok r -> r, warn
-      | Error msg -> repo, msg :: warn)
-    (repo, [])
+  foldM
+    (add_valid_resource idx.Author.name)
+    repo
     idx.Author.resources
 
 let add_team repo team =
@@ -93,9 +88,10 @@ type base_error = [
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_cs ppf (a, b) =
-  Format.fprintf ppf "have %a want %a" Release.pp_checksum a Release.pp_checksum b
+  Format.fprintf ppf "have %a want %a" Release.pp_c a Release.pp_c b
 
 let pp_error ppf = function
+  | #conflict as e -> pp_conflict ppf e
   | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
   | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_typ w pp_typ h
   | `NotApproved (n, r, _) -> Format.fprintf ppf "not approved %a %a" pp_typ r pp_name n
@@ -154,7 +150,7 @@ let validate_account repo author a =
   and wired = Author.wire_account a
   in
   validate_resource repo (S.singleton name) name `Account wired >>= function
-  | `Both _ -> Ok (`Approved name)
+  | `Both x -> Ok (`Both x)
   | `Quorum _ -> Error (`NotApproved (name, `Account, S.empty)) (* TODO: loses account *)
   | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Account, js))
 
@@ -163,11 +159,11 @@ let validate_author repo author =
   match author.Author.keys, author.Author.resources with
   | [], [] ->
     (match validate_resource repo S.empty id `Author (Author.wire_raw author) with
-     | Ok (`Quorum _) -> Ok (add_id repo id, [])
+     | Ok (`Quorum _) -> Ok (add_id repo id)
      | _ -> Error (`AuthorWithoutKeys id))
   | [], _ -> Error (`AuthorWithoutKeys id)
   | _k :: _keys, _rs ->
-    let repo', warnings = add_index repo author in
+    add_index repo author >>= fun repo' ->
     List.fold_left (fun r (k, _) ->
         match r, validate_key repo' id k with
         | Ok (), _ -> Ok ()
@@ -175,7 +171,7 @@ let validate_author repo author =
         | Error _, Error e -> Error e)
       (Error (`NotApproved (id, `Key, S.empty)))
       author.Author.keys >>= fun () ->
-    Ok (repo', warnings)
+    Ok repo'
 
 let validate_team repo team =
   let id = team.Team.name in
@@ -215,7 +211,7 @@ let ensure_releases rel disk =
     Error (have, want)
 
 let is_release name a =
-  match Conex_opam_repository_layout.authorisation_of_item a with
+  match Conex_opam_repository_layout.authorisation_of_package a with
   | Some x -> name_equal name x
   | _ -> false
 
@@ -250,7 +246,7 @@ let validate_release repo ?on_disk a r cs =
   in
   match on_disk with
   | None -> res
-  | Some css -> Release.compare_checksums cs css >>= fun () -> res
+  | Some css -> Release.compare_t cs css >>= fun () -> res
 
 type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
 

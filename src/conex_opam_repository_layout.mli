@@ -15,10 +15,10 @@ val valid_id : identifier -> bool
     or {{!Conex_utils.String.is_ascii}String.is_ascii} [name]. *)
 val valid_name : identifier -> bool
 
-(** [authorisation_of_item n] returns either [Some n'], where [n'] is the prefix
-    of [n] up until the first '.' (which separates package name from version
-    suffix), or [None]. *)
-val authorisation_of_item : name -> name option
+(** [authorisation_of_package n] returns either [Some n'], where [n'] is the
+    prefix of [n] up until the first '.' (which separates package name from
+    version suffix), or [None]. *)
+val authorisation_of_package : name -> name option
 
 (** [data_path] is the path from repository root to packages, "packages". *)
 val data_path : path
@@ -41,7 +41,7 @@ val package_path : name -> path
 (** [release_filename] is "release". *)
 val release_filename : name
 
-(** [release_dir name] is [data_dir;] {!authorisation_of_item} (if [None],
+(** [release_dir name] is [data_dir;] {!authorisation_of_package} (if [None],
     [name]), followed by [name]. *)
 val release_dir : name -> path
 
