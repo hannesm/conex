@@ -84,16 +84,16 @@ let self io id =
   id
 
 let load_self_queued io r id =
-  match C.verify_id io r id with
-  | Ok r -> r
-  | Error e ->
-    Logs.warn (fun m -> m "error while loading id %s: %s, loading manually" id e) ;
-    let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
-    match Conex_repository.add_index r idx with
+  let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
+  let r = match C.verify_id io r id with
     | Ok r -> r
-    | Error c -> Logs.warn (fun m -> m "conflict %a" Conex_repository.pp_conflict c) ; r
+    | Error e -> Logs.err (fun m -> m "error while loading %s: %s" id e) ; r
+  in
+  List.iter (fun (k, _) -> Logs.app (fun m -> m "key %a fingerprint %a" Key.pp k Digest.pp (V.keyid k))) idx.Author.keys ;
+  List.iter (fun r -> Logs.app (fun m -> m "queued %a" Author.pp_r r)) idx.Author.queued ;
+  r
 
-let status_all io r id no_team =
+let verify_all io r id no_team =
   R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
   | `Author _ ->
     (if no_team then
@@ -122,7 +122,7 @@ let status_all io r id no_team =
     str_to_msg (IO.packages io) >>= fun packages ->
     str_to_msg (foldS (C.verify_package io ~authorised) r packages)
 
-let status_single io r name =
+let verify_single io r name =
   Logs.info (fun m -> m "information on package %s" name) ;
   let pn, release = match Conex_opam_repository_layout.authorisation_of_package name with
     | None -> name, (fun _ -> true)
@@ -130,17 +130,25 @@ let status_single io r name =
   in
   C.verify_package ~release io r pn
 
-let status _ dry path quorum _strict id name no_rec =
+let verify _ dry path quorum _strict id name no_rec =
   msg_to_cmdliner
     (init_repo ?quorum dry path >>= fun (r, io) ->
-     Logs.info (fun m -> m "repository %a" Conex_io.pp io) ;
+     Logs.info (fun m -> m "%a" Conex_io.pp io) ;
+     str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
+     self io id >>= fun id ->
+     if name = "" then
+       verify_all io r id no_rec >>| fun _r -> ()
+     else
+       let _ = verify_single io r name in Ok ())
+
+let status _ path quorum id no_rec =
+  msg_to_cmdliner
+    (init_repo ?quorum true path >>= fun (r, io) ->
+     Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
      self io id >>= fun id ->
      let r = load_self_queued io r id in
-     if name = "" then
-       status_all io r id no_rec >>| fun _r -> ()
-     else
-       let _ = status_single io r name in Ok ())
+     verify_all io r id no_rec >>| fun _r -> ())
 
 let add_r idx name typ data =
   let counter = Author.next_id idx in
@@ -156,7 +164,7 @@ let init _ dry path id email =
      | Some id ->
        Nocrypto_entropy_unix.initialize () ;
        init_repo ~quorum:0 dry path >>= fun (_, io) ->
-       Logs.info (fun m -> m "repository %a" Conex_io.pp io) ;
+       Logs.info (fun m -> m "%a" Conex_io.pp io) ;
        (match IO.read_id io id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
         | Ok (`Author idx) when List.length idx.Author.keys > 0 ->
@@ -231,12 +239,15 @@ let reset _ dry path id =
     (init_repo dry path >>= fun (_r, io) ->
      self io id >>= fun id ->
      let idx = find_idx io id in
-     List.iter
-       (fun r -> Logs.app (fun m -> m "dropping %a" Author.pp_r r))
-       idx.Author.queued ;
-     let idx = Author.reset idx in
-     str_to_msg (IO.write_author io idx) >>| fun () ->
-     Logs.app (fun m -> m "wrote %s to disk" id))
+     match idx.Author.queued with
+     | [] -> Logs.app (fun m -> m "nothing changed") ; Ok ()
+     | qs ->
+       List.iter
+         (fun r -> Logs.app (fun m -> m "dropping %a" Author.pp_r r))
+         qs ;
+       let idx = Author.reset idx in
+       str_to_msg (IO.write_author io idx) >>| fun () ->
+       Logs.app (fun m -> m "wrote %s to disk" id))
 
 let find_auth io name =
   let use e =
@@ -414,18 +425,27 @@ let team_a =
   let doc = "Team" in
   Arg.(value & pos 0 Conex_opts.id_c "" & info [] ~docv:"TEAM" ~doc)
 
+let noteam =
+  let doc = "Do not transitively use teams" in
+  Arg.(value & flag & info ["noteam"] ~docs ~doc)
+
 let status_cmd =
-  let noteam =
-    let doc = "Do not transitively use teams" in
-    Arg.(value & flag & info ["noteam"] ~docs ~doc)
-  in
   let doc = "information about yourself" in
   let man =
     [`S "DESCRIPTION";
      `P "Shows information about yourself."]
   in
-  Term.(ret Conex_opts.(const status $ setup_log $ dry $ repo $ quorum $ strict $ id $ package $ noteam)),
+  Term.(ret Conex_opts.(const status $ setup_log $ repo $ quorum $ id $ noteam)),
   Term.info "status" ~doc ~man
+
+let verify_cmd =
+  let doc = "verification" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Shows verification status."]
+  in
+  Term.(ret Conex_opts.(const verify $ setup_log $ dry $ repo $ quorum $ strict $ id $ package $ noteam)),
+  Term.info "verify" ~doc ~man
 
 let package_cmd =
   let doc = "modify authorisation of a package" in
@@ -506,6 +526,7 @@ let default_cmd =
 
 let cmds = [ help_cmd ; status_cmd ;
              init_cmd ; sign_cmd ; reset_cmd ;
+             verify_cmd ;
              package_cmd ; team_cmd ; release_cmd ]
 
 let () =
