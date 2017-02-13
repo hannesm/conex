@@ -6,8 +6,9 @@ true : warn(+A-4-33-44-48-58)
 <src/conex_opam_encoding.{ml,mli}>: package(opam-file-format)
 
 "src/nocrypto" : include
+"src/openssl" : include
 <app/*.{ml,native}>: package(cmdliner opam-file-format)
-<app/conex_verify.{ml,native}>: package(cstruct nocrypto x509)
+<app/conex_verify.{ml,native}>: package(unix)
 <app/conex_author.{ml,native}>: package(cstruct nocrypto nocrypto.unix x509 logs fmt.tty logs.fmt logs.cli fmt.cli rresult)
 
 <test/*.{ml,byte,native}>: package(alcotest)

@@ -1,7 +1,7 @@
-open Conex_crypto
+(** Verification crypto provided by the OpenSSL command line tool *)
 
 module V : sig
-  include VERIFY
+  include Conex_crypto.VERIFY_BACK
 end
 
-module NC_R : (Conex_repository.S)
+module O_V : (Conex_crypto.VERIFY)

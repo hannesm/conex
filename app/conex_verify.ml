@@ -71,7 +71,7 @@ module Log : EXTLOGS = struct
   let err ?src:_ msgf = kmsg kunit `Error msgf
 end
 
-module C = Conex.Make(Log)(Conex_nocrypto.NC_V)
+module C = Conex.Make(Log)(Conex_openssl.O_V)
 
 (* to be called by opam (see http://opam.ocaml.org/doc/2.0/Manual.html#configfield-repository-validation-command, https://github.com/ocaml/opam/pull/2754/files#diff-5f9ccd1bb288197c5cf2b18366a73363R312):
 
@@ -136,7 +136,7 @@ let verify_it repodir quorum anchors incremental dir patch verbose quiet _strict
   Log.set_styled styled ;
   let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
   err_to_cmdliner
-    (let repo = Conex_repository.repository ?quorum Conex_nocrypto.NC_V.digest () in
+    (let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
      match incremental, patch, dir with
      | true, Some p, None ->
        Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
