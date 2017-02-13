@@ -740,17 +740,15 @@ module Release = struct
 
   let checksum_of_wire data =
     let open Wire in
-    map data >>= fun map ->
-    Header.keys ~header:false ["filename" ; "digest"] map >>= fun () ->
-    opt_err (search map "filename") >>= string >>= fun filename ->
-    opt_err (search map "digest") >>= Digest.of_wire >>= function digest ->
-    Ok ({ filename ; digest })
+    list data >>= function
+    | [ String filename ; digest ] ->
+      Digest.of_wire digest >>= fun digest ->
+      Ok ({ filename ; digest })
+    | _ -> Error "cannot parse checksum"
 
   let wire_checksum c =
     let open Wire in
-    M.add "filename" (String c.filename)
-      (M.add "digest" (Digest.wire_raw c.digest)
-         M.empty)
+    List [ String c.filename ; Digest.wire_raw c.digest ]
 
   type checksum_map = c M.t
 
@@ -804,7 +802,7 @@ module Release = struct
     and typ = `Release
     in
     let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
-    let csums = fold (fun c acc -> Map (wire_checksum c) :: acc) cs.files [] in
+    let csums = fold (fun c acc -> wire_checksum c :: acc) cs.files [] in
     M.add "files" (List csums) (Header.wire header)
 
   let set_counter cs counter = { cs with counter }

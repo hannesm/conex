@@ -396,9 +396,8 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "could unparse/parse team"
     (Ok t) (Conex_opam_encoding.decode (Conex_opam_encoding.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
-    M.add "filename" (String "foo")
-      (M.add "digest" (List [ String "SHA256" ; String "4iXNO+tNmqMwIad8bpmlw4hZRMURDLEQcQddlxwRTc8=" ])
-         M.empty)
+    List [ String "foo" ;
+           List [ String "SHA256" ; String "zWPsX4M9Gk2uvY0Jg1hASQa9yiCDU5/GkTJk7wbqE6Y=" ] ]
   in
   let css =
     M.add "name" (String "foo")
@@ -407,7 +406,7 @@ let basic_persistency () =
             (M.add "created" (Int Uint.zero)
                (M.add "version" (Int Uint.zero)
                   (M.add "typ" (String "release")
-                     (M.add "files" (List [Map checksum]) M.empty))))))
+                     (M.add "files" (List [checksum]) M.empty))))))
   in
   let csum =
     let digest = V.digest Author.(wire (t Uint.zero "bar")) in
