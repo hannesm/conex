@@ -31,13 +31,14 @@ module Wire = struct
     | List xs -> "[" ^ String.concat "; " (List.map s_to_string xs) ^ "]"
     | Map m ->
       let strs =
-        M.fold (fun k v acc -> (k ^ ": " ^ s_to_string v) :: acc) m []
+        let bindings = M.bindings m in
+        let sorted = List.sort (fun (a, _) (b, _) -> String.compare a b) bindings in
+        List.map (fun (k, v) -> k ^ ": " ^ s_to_string v) sorted
       in
       "{" ^ String.concat "KEY" strs ^ "}"
 
   type t = s M.t
 
-  (* TODO: should we sort lists somehow, and maps lexical? *)
   let to_string t = s_to_string (Map t)
 
   let search t k =
@@ -75,7 +76,8 @@ module Wire = struct
       [] els >>= fun els ->
     Ok (s_of_list els)
 
-  let wire_string_set s = List (List.map (fun s -> String s) (S.elements s))
+  let wire_string_set s =
+    List (List.map (fun s -> String s) (List.sort String.compare (S.elements s)))
 
   let opt_list = function
     | None -> Ok []
@@ -425,11 +427,19 @@ module Author = struct
 
   let wire_account a = wire_account_raw M.empty a
 
-  let account_equal a b = match a, b with
-    | `Email a, `Email b -> id_equal a b
-    | `GitHub a, `GitHub b -> id_equal a b
-    | `Other (a, b), `Other (c, d) -> id_equal a c && String.compare b d = 0
-    | _ -> false
+  let compare_account (a : account) (b : account) = match a, b with
+    | `Email a, `Email b -> String.compare_insensitive a b
+    | `GitHub a, `GitHub b -> String.compare_insensitive a b
+    | `Other (a, v), `Other (a', v') ->
+      let r = String.compare_insensitive a a' in
+      if r = 0 then String.compare_insensitive v v'
+      else r
+    | `Email _, _ -> 1
+    | _, `Email _ -> -1
+    | `GitHub _, _ -> 1
+    | _, `GitHub _ -> -1
+
+  let account_equal a b = compare_account a b = 0
 
   (*BISECT-IGNORE-BEGIN*)
   let pp_account ppf = function
@@ -500,14 +510,15 @@ module Author = struct
     and typ = `Author
     in
     let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
-    let resources = List.map (fun r -> Map (wire_resource r)) t.resources in
+    let resources = List.map (fun r -> Map (wire_resource r)) (List.sort (fun a b -> Uint.compare a.index b.index) t.resources) in
     M.add "resources" (List resources) (Header.wire header)
 
   let wire i =
     let open Wire in
-    M.add "keys" (List (List.map (fun (k, s) -> List [ Key.wire_raw k ; Signature.wire_raw s ]) i.keys))
-      (M.add "accounts" (Map (List.fold_left wire_account_raw M.empty i.accounts))
-         (M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) i.queued))
+    M.add "keys" (List (List.map (fun (k, s) -> List [ Key.wire_raw k ; Signature.wire_raw s ])
+                          (List.sort (fun ((_, _, c), _) ((_, _, c'), _) -> Uint.compare c c') i.keys)))
+      (M.add "accounts" (Map (List.fold_left wire_account_raw M.empty (List.sort compare_account i.accounts)))
+         (M.add "queued" (List (List.map (fun r -> Map (wire_resource r)) (List.sort (fun a b -> Uint.compare a.index b.index) i.queued)))
             (M.add "signed" (Map (wire_raw i))
                M.empty)))
 
@@ -604,7 +615,7 @@ module Team = struct
     { t with counter }, carry
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
+  let pp_mems ppf x = pp_list pp_id ppf (List.sort String.compare_insensitive (S.elements x))
 
   let pp ppf x =
     Format.fprintf ppf "team %a %s (created %s)@ %a"
@@ -659,7 +670,7 @@ module Authorisation = struct
     { t with counter }, carry
 
   (*BISECT-IGNORE-BEGIN*)
-  let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare (S.elements x))
+  let pp_authorised ppf x = pp_list pp_id ppf (List.sort String.compare_insensitive (S.elements x))
 
   let pp ppf d =
     Format.fprintf ppf "authorisation %a %s (created %s)@ %a"
@@ -719,7 +730,7 @@ module Package = struct
       pp_name r.name
       (Header.counter r.counter r.wraps)
       (Header.timestamp r.created)
-      (pp_list pp_name) (S.elements r.releases)
+      (pp_list pp_name) (List.sort String.compare_insensitive (S.elements r.releases))
   (*BISECT-IGNORE-END*)
 end
 
