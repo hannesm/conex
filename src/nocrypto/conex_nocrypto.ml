@@ -76,9 +76,7 @@ module C = struct
 
   let sign_rsa_pss ~key data =
     match decode_priv key with
-    | Some key ->
-      let sigval = primitive_sign key data in
-      Ok sigval
+    | Some key -> Ok (primitive_sign key data)
     | None -> Error "couldn't decode private key"
 end
 
