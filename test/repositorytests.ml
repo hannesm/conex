@@ -4,8 +4,6 @@ open Conex_io
 
 open Common
 
-module V = Conex_nocrypto.NC_V
-(*module V = Conex_openssl.O_V*)
 module CS = Conex_nocrypto.NC_S
 
 module Mem = struct
@@ -197,6 +195,7 @@ let ch_err =
 
 let io_ex f = match f with Error e -> Alcotest.fail e | Ok x -> x
 
+module RTest (V : Conex_crypto.VERIFY) = struct
 (* basic operations work, and we have an in-memory data provider!  let the games begin *)
 let empty_r () =
   let io = Mem.mem_provider () in
@@ -1678,12 +1677,17 @@ let cs_repo_tests = [
   "wrong checksum resource", `Quick, cs_wrong_resource ;
 ]
 
-let tests = [
-  "MemoryProvider", mem_provider_tests ;
-  "RepositoryBasics", basic_repo_tests ;
-  "RepositoryKeys", key_repo_tests ;
-  "RepositoryTeam", team_repo_tests ;
-  "RepositoryAuthorisation", auth_repo_tests ;
-  "RepositoryPackage", rel_repo_tests ;
-  "RepositoryRelease", cs_repo_tests ;
+let tests prefix = [
+  prefix ^ "RepositoryBasics", basic_repo_tests ;
+  prefix ^ "RepositoryKeys", key_repo_tests ;
+  prefix ^ "RepositoryTeam", team_repo_tests ;
+  prefix ^ "RepositoryAuthorisation", auth_repo_tests ;
+  prefix ^ "RepositoryPackage", rel_repo_tests ;
+  prefix ^ "RepositoryRelease", cs_repo_tests ;
 ]
+end
+
+module O = RTest (Conex_openssl.O_V)
+module N = RTest (Conex_nocrypto.NC_V)
+
+let tests = ("MemoryProvider", mem_provider_tests) :: N.tests "Nocrypto"

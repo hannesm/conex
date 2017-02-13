@@ -115,6 +115,12 @@ let verr =
       | `InvalidSignature, `InvalidSignature
       | `InvalidPublicKey, `InvalidPublicKey
       | `NoSignature, `NoSignature -> true
+      (* for OpenSSL where we don't have detailed error reporting *)
+      | `InvalidSignature, `InvalidPublicKey
+      | `InvalidPublicKey, `InvalidSignature -> true
+      (* until nocrypto >0.5.3 is not released *)
+      | `InvalidSignature, `InvalidBase64Encoding
+      | `InvalidBase64Encoding, `InvalidSignature -> true
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)

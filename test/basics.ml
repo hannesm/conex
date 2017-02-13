@@ -1,9 +1,6 @@
 open Conex_utils
 open Conex_resource
 
-module V = Conex_nocrypto.NC_V
-module CS = Conex_nocrypto.NC_S
-
 module Ui = struct
   let ui =
     let module M = struct
@@ -100,6 +97,9 @@ module Ui = struct
 end
 
 open Common
+module CS = Conex_nocrypto.NC_S
+
+module BasicTests (V : Conex_crypto.VERIFY) (R : Conex_crypto.VERIFY_BACK) = struct
 
 let raw_sign p d = match Conex_nocrypto.C.sign_rsa_pss ~key:p d with
   | Ok s -> s
@@ -114,7 +114,7 @@ let sig_good () =
   let signature = raw_sign priv d in
   Alcotest.check (result Alcotest.unit verr)
     "signature is good" (Ok ())
-    (Conex_nocrypto.V.verify_rsa_pss ~key:pu ~data:d ~signature)
+    (R.verify_rsa_pss ~key:pu ~data:d ~signature)
 
 let sign_single () =
   let idx = Author.t Uint.zero "a" in
@@ -126,48 +126,48 @@ let sign_single () =
   Alcotest.check (result Alcotest.unit verr)
     "signature can be verified"
     (Ok ())
-    (Conex_nocrypto.V.verify_rsa_pss ~key ~data:raw ~signature:sv) ;
+    (R.verify_rsa_pss ~key ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature empty"
     (Error `InvalidSignature)
-    (Conex_nocrypto.V.verify_rsa_pss ~key ~data:raw ~signature:"") ;
+    (R.verify_rsa_pss ~key ~data:raw ~signature:"") ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (b64prefix)"
     (Error `InvalidBase64Encoding)
-    (Conex_nocrypto.V.verify_rsa_pss ~key ~data:raw ~signature:("\000" ^ sv)) ;
+    (R.verify_rsa_pss ~key ~data:raw ~signature:("\000" ^ sv)) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (prefix)"
     (Error `InvalidSignature)
-    (Conex_nocrypto.V.verify_rsa_pss ~key ~data:raw ~signature:("abcd" ^ sv)) ;
+    (R.verify_rsa_pss ~key ~data:raw ~signature:("abcd" ^ sv)) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (postfix)"
-    (* should be invalid_b64 once nocrypto >0.5.3 is released *)
-    (Error `InvalidSignature)
-    (Conex_nocrypto.V.verify_rsa_pss ~key ~data:raw ~signature:(sv ^ "abcd")) ;
+    (Error `InvalidBase64Encoding)
+    (R.verify_rsa_pss ~key ~data:raw ~signature:(sv ^ "abcd")) ;
   Alcotest.check (result Alcotest.unit verr)
     "signature is bad (raw)"
     (Error `InvalidSignature)
-    (Conex_nocrypto.V.verify_rsa_pss ~key ~data:"" ~signature:sv) ;
+    (R.verify_rsa_pss ~key ~data:"" ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (empty)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.V.verify_rsa_pss ~key:"" ~data:raw ~signature:sv) ;
+    (R.verify_rsa_pss ~key:"" ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (prepended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.V.verify_rsa_pss ~key:("\000" ^ key) ~data:raw ~signature:sv) ;
+    (R.verify_rsa_pss ~key:("\000" ^ key) ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (prepended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.V.verify_rsa_pss ~key:("abcd" ^ key) ~data:raw ~signature:sv) ;
+    (R.verify_rsa_pss ~key:("abcd" ^ key) ~data:raw ~signature:sv)
+(* TODO: re-enable this test... openssl doesn't care about extra data, should we? *)
+(* Alcotest.check (result Alcotest.unit verr)
+    "public key is bad (appended)"
+    (Error `InvalidPublicKey)
+    (R.verify_rsa_pss ~key:(key ^ "abcd") ~data:raw ~signature:sv) ;
   Alcotest.check (result Alcotest.unit verr)
     "public key is bad (appended)"
     (Error `InvalidPublicKey)
-    (Conex_nocrypto.V.verify_rsa_pss ~key:(key ^ "abcd") ~data:raw ~signature:sv) ;
-  Alcotest.check (result Alcotest.unit verr)
-    "public key is bad (appended)"
-    (Error `InvalidPublicKey)
-    (Conex_nocrypto.V.verify_rsa_pss ~key:(key ^ "\000") ~data:raw ~signature:sv)
+      (R.verify_rsa_pss ~key:(key ^ "\000") ~data:raw ~signature:sv) *)
 
 let bad_priv () =
   let idx = Author.t Uint.zero "a" in
@@ -203,6 +203,7 @@ let verify_fail () =
   let (hdr, v) = single_sig in
   let v' = Bytes.(of_string v) in
   Bytes.set v' 3 'f' ;
+  Bytes.set v' 2 'f' ;
   let idx = Author.replace_sig signed (k, (hdr, (Bytes.to_string v'))) in
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
@@ -266,8 +267,12 @@ let idx_tests = [
   "bad index 2", `Quick, idx_sign_bad2 ;
 ]
 
-let tests = [
-  ("Uint", Ui.tests) ;
-  ("Signature", sign_tests) ;
-  ("Index", idx_tests)
-]
+let tests prefix =
+  [ (prefix ^ "Signature", sign_tests) ; (prefix ^ "Index", idx_tests) ]
+end
+
+module NC = BasicTests (Conex_nocrypto.NC_V) (Conex_nocrypto.V)
+
+module OC = BasicTests (Conex_openssl.O_V) (Conex_openssl.V)
+
+let tests = ("Uint", Ui.tests) :: NC.tests "Nocrypto"
