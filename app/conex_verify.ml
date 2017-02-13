@@ -136,7 +136,8 @@ let verify_it repodir quorum anchors incremental dir patch verbose quiet _strict
   Log.set_styled styled ;
   let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
   err_to_cmdliner
-    (let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
+    (Conex_openssl.V.check_version () >>= fun () ->
+     let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
      match incremental, patch, dir with
      | true, Some p, None ->
        Conex_unix_provider.fs_ro_provider repodir >>= fun io ->

@@ -1,6 +1,27 @@
 open Conex_utils
 
 module V = struct
+
+  (* good OpenSSL versions:
+     "OpenSSL 1.0.2g  1 Mar 2016" ; Ubuntu at cl.cam
+     "OpenSSL 1.0.2j-freebsd  26 Sep 2016" ; FreeBSD 11 & -CURRENT
+     "OpenSSL 1.0.1e 11 Feb 2013" ; debian 7.11
+
+     bad ones (no PSS):
+     "OpenSSL 0.9.8zh-freebsd 3 Dec 2015" ; FreeBSD 9.3
+     "OpenSSL 0.9.8o 01 Jun 2010" ; debian 6.0.10
+  *)
+
+  let check_version () =
+    let cmd = "openssl version" in
+    let input = Unix.open_process_in cmd in
+    let output = input_line input in
+    let _ = Unix.close_process_in input in
+    if String.is_prefix ~prefix:"OpenSSL 0." output then
+      Error ("need at least OpenSSL 1, found: " ^ output)
+    else
+      Ok ()
+
   let verify_rsa_pss ~key ~data ~signature =
     match
       let filename = Filename.temp_file "conex" "sig" in
@@ -30,6 +51,7 @@ module V = struct
       let input = Unix.open_process_in cmd in
       let output = input_line input in
       let _ = Unix.close_process_in input in
+      let _ = Conex_unix_persistency.remove filename in
       Ok output
     with
     | Ok s -> s
