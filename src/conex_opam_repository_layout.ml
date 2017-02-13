@@ -42,7 +42,7 @@ let categorise = function
   | dd :: id :: dfn :: _ when dd = data_dir ->
     (* current: packages/foo/foo.0.0.1 *)
     (match authorisation_of_package dfn with
-     | Some x when String.compare_insensitive x id -> `Release (id, dfn)
+     | Some x when String.compare_insensitive x id = 0 -> `Release (id, dfn)
      | _ ->
        (* earlier: packages/foo.0.0.1 *)
        match authorisation_of_package id with

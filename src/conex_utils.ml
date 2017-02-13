@@ -104,7 +104,7 @@ module String = struct
   let length = String.length
 
   let compare_insensitive a b =
-    compare (to_lower a) (to_lower b) = 0
+    compare (to_lower a) (to_lower b)
 end
 
 module Uint = struct

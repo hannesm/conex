@@ -7,7 +7,7 @@ type name = string
 let pp_name ppf x = Format.pp_print_string ppf x
 (*BISECT-IGNORE-END*)
 
-let name_equal a b = String.compare_insensitive a b
+let name_equal a b = String.compare_insensitive a b = 0
 
 
 type identifier = string
@@ -16,7 +16,7 @@ type identifier = string
 let pp_id ppf x = Format.pp_print_string ppf x
 (*BISECT-IGNORE-END*)
 
-let id_equal a b = String.compare_insensitive a b
+let id_equal a b = String.compare_insensitive a b = 0
 
 module Wire = struct
   type s =
