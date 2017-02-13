@@ -1019,25 +1019,34 @@ let team_dyn () =
     | Error _ -> Alcotest.fail "should not fail"
     | Ok r -> r
   in
-    Alcotest.check (result t_ok a_err) "team properly signed, but missing member"
-      (Error (`MemberNotPresent ("foop", S.singleton "foobar")))
-      (Conex_repository.validate_team r' team) ;
-    let r' = Conex_repository.add_id r' "foobar" in
-    Alcotest.check (result t_ok a_err) "team properly signed"
-      (Ok (r', `Quorum (S.singleton jid)))
-      (Conex_repository.validate_team r' team) ;
-    let team = Team.remove team "foo" in
-    Alcotest.check (result t_ok a_err) "team properly signed (nothing changed)"
-      (Ok (r', `Quorum (S.singleton jid)))
-      (Conex_repository.validate_team r' team) ;
-    let team = Team.add team "foobar" in
-    Alcotest.check (result t_ok a_err) "team properly signed (nothing changed)"
-      (Ok (r', `Quorum (S.singleton jid)))
-      (Conex_repository.validate_team r' team) ;
-    let team = Team.remove team "foobar" in
-    Alcotest.check (result t_ok a_err) "team not properly signed (rm'ed, counter incr)"
-      (Error (`InsufficientQuorum (pname, `Team, S.empty)))
-      (Conex_repository.validate_team r' team)
+  Alcotest.check (result t_ok a_err) "team properly signed"
+    (Ok (r', `Quorum (S.singleton jid)))
+    (Conex_repository.validate_team r' team) ;
+  let team = Team.remove team "foo" in
+  Alcotest.check (result t_ok a_err) "team properly signed (nothing changed)"
+    (Ok (r', `Quorum (S.singleton jid)))
+    (Conex_repository.validate_team r' team) ;
+  let team = Team.add team "foobar" in
+  Alcotest.check (result t_ok a_err) "team properly signed (nothing changed)"
+    (Ok (r', `Quorum (S.singleton jid)))
+    (Conex_repository.validate_team r' team) ;
+  let team = Team.add team "foobar42" in
+  let resources =
+    let d = V.digest (Team.wire team) in
+    [ Author.r Uint.zero pname `Team d ]
+  in
+  let r' = add_rs r' jid resources in
+  Alcotest.check (result t_ok a_err) "team properly signed, but missing member"
+    (Error (`MemberNotPresent ("foop", S.singleton "foobar42")))
+    (Conex_repository.validate_team r' team) ;
+  let r' = Conex_repository.add_id r' "foobar42" in
+  Alcotest.check (result t_ok a_err) "team properly signed"
+    (Ok (r', `Quorum (S.singleton jid)))
+    (Conex_repository.validate_team r' team) ;
+  let team = Team.remove team "foobar" in
+  Alcotest.check (result t_ok a_err) "team not properly signed (rm'ed, counter incr)"
+    (Error (`InsufficientQuorum (pname, `Team, S.empty)))
+    (Conex_repository.validate_team r' team)
 
 let team_repo_tests = [
   "basic team", `Quick, team ;
@@ -1182,16 +1191,22 @@ let auth_dyn () =
   in
   let auth = Authorisation.remove auth "foo" in
   Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
-    (Error (`IdNotPresent ("foop", S.singleton "foobar")))
-    (Conex_repository.validate_authorisation r' auth) ;
-  let r' = Conex_repository.add_id r' "foobar" in
-  Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
     (Conex_repository.validate_authorisation r' auth) ;
   let auth = Authorisation.add auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
     (Ok (`Quorum (S.singleton jid)))
     (Conex_repository.validate_authorisation r' auth) ;
+  let auth = Authorisation.add auth "foobar42" in
+  let resources =
+    let d = V.digest (Authorisation.wire auth) in
+    [ Author.r Uint.zero pname `Authorisation d ]
+  in
+  let r' = add_rs r' jid resources in
+  Alcotest.check (result a_ok a_err) "authorisation properly signed (nothing changed)"
+    (Error (`IdNotPresent ("foop", S.singleton "foobar42")))
+    (Conex_repository.validate_authorisation r' auth) ;
+  let r' = Conex_repository.add_id r' "foobar" in
   let auth = Authorisation.remove auth "foobar" in
   Alcotest.check (result a_ok a_err) "authorisation not properly signed (rm'ed, counter incr)"
     (Error (`InsufficientQuorum (pname, `Authorisation, S.empty)))

@@ -171,7 +171,7 @@ let validate_author repo author =
         | Error _, Error e -> Error e)
       (Error (`NotApproved (id, `Key, S.empty)))
       author.Author.keys >>= fun () ->
-    Ok repo'
+    Ok (add_id repo' id)
 
 let validate_team repo team =
   let id = team.Team.name in
