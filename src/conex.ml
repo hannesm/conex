@@ -90,13 +90,17 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     let good, others =
       List.fold_left (fun (v, i) author ->
           match validate_author jrepo author with
-          | Ok _ -> (author :: v, i)
-          | Error _ -> (v, author :: i))
+          | Ok _ -> L.debug (fun m -> m "author %s is valid" author.Author.name) ; (author :: v, i)
+          | Error e -> L.debug (fun m -> m "author %s invalid: %a" author.Author.name pp_error e) ; (v, author :: i))
         ([], []) approved
     in
 
+    let add_author repo author =
+      add_index repo author >>= fun r ->
+      Ok (add_id r author.Author.name)
+    in
     (* verify the team janitor *)
-    to_str pp_conflict (foldM add_index repo good) >>= fun good_j_repo ->
+    to_str pp_conflict (foldM add_author repo good) >>= fun good_j_repo ->
     to_str pp_error (validate_team good_j_repo team) >>= fun (repo, ok) ->
     L.info (fun m -> m "team janitors verified %a" pp_ok ok) ;
     (* team is good, there may be more janitors: esp notyet and others *)
@@ -108,7 +112,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     to_str pp_conflict (foldM add_index repo rest) >>= fun jrepo' ->
     to_str pp_error (foldM (fun repo author ->
         validate_author repo author >>= fun repo ->
-        L.info (fun m -> m "validated janitor %a" Author.pp author) ;
+        L.info (fun m -> m "successfully verified janitor %a" Author.pp author) ;
         Ok repo) jrepo' rest)
 
   let verify_single_release io repo auth rel version =
