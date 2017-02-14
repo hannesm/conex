@@ -86,10 +86,12 @@ module V = struct
      "OpenSSL 1.0.2j-fips  26 Sep 2016" ; fedora qubes vm
      "OpenSSL 1.0.0u-dev" ; ln5
      "OpenSSL 1.0.1 14 Mar 2012" ; Travis CI
+     "OpenSSL 1.0.0g" ; reynir
 
      bad ones (no PSS):
      "OpenSSL 0.9.8zh-freebsd 3 Dec 2015" ; FreeBSD 9.3
      "OpenSSL 0.9.8o 01 Jun 2010" ; debian 6.0.10
+     "OpenSSL 0.9.8k" ; reynir
   *)
 
   let check_version () =
