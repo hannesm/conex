@@ -84,6 +84,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     in
 
     to_str pp_conflict (foldM add_index repo approved) >>= fun jrepo ->
+    let jrepo = add_team jrepo team in
 
     (* jrepo is full with all good indexes! *)
     (* validate all the authors! *)
