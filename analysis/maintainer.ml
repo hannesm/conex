@@ -275,7 +275,7 @@ let to_cmd = function
 let infer_maintainers base lvl =
   to_cmd
     (Logs.set_level lvl ;
-     Logs.set_reporter (Logs_fmt.reporter ()) ;
+     Logs.set_reporter (Logs_fmt.reporter ~dst:Format.std_formatter ()) ;
      Conex_unix_provider.fs_provider base >>= fun io ->
      PR.handle_prs base PR.github_mail (M.empty, M.empty) >>= fun (github_mail, _mail_github) ->
      Logs.info (fun m -> m "github-email %a" pp_map github_mail) ;
