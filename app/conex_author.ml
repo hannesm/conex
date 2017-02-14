@@ -183,8 +183,11 @@ let init _ dry path id email =
           Ok priv
         | Error _ ->
           let p = SIGN.generate now () in
-          str_to_msg (Conex_unix_private_key.write io id p) >>| fun () ->
-          Logs.info (fun m -> m "generated and wrote private key %s" id) ;
+          (if dry then
+             str_to_msg (Conex_unix_private_key.write io id p) >>| fun () ->
+             Logs.info (fun m -> m "generated and wrote private key %s" id) ;
+           else
+             Ok ()) >>| fun () ->
           p) >>= fun priv ->
        str_to_msg (SIGN.pub_of_priv priv) >>= fun public ->
        let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts
