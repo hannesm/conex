@@ -15,7 +15,7 @@ let rec encode_s = function
       OpamParserTypes.List (np, data)
   | Wire.List l -> OpamParserTypes.List (np, List.map encode_s l)
   | Wire.String s -> OpamParserTypes.String (np, s)
-  | Wire.Int i -> OpamParserTypes.Ident (np, "UINT" ^ Uint.to_string i)
+  | Wire.Int i -> OpamParserTypes.Ident (np, "0x" ^ Uint.to_string i)
 
 let encode t =
   let file_contents =
@@ -30,8 +30,8 @@ let encode t =
 
 let rec decode_s = function
   | OpamParserTypes.Ident (_, data) ->
-    if String.is_prefix ~prefix:"UINT" data then
-      match Uint.of_string (String.slice ~start:4 data) with
+    if String.is_prefix ~prefix:"0x" data then
+      match Uint.of_string (String.slice ~start:2 data) with
       | None -> Error "cannot parse unsigned integer"
       | Some x -> Ok (Wire.Int x)
     else if data = "emptymap" then
