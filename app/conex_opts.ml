@@ -69,3 +69,15 @@ let terminal () =
     | Unix.Unix_error _ -> false
   in
   if not dumb && isatty then `Ansi_tty else `None
+
+let incremental =
+  let doc = "do incremental verification" in
+  Arg.(value & flag & info [ "incremental" ] ~doc)
+
+let dir =
+    let doc = "To be verified directory" in
+    Arg.(value & opt (some dir) None & info [ "dir" ] ~doc)
+
+let patch =
+    let doc = "To be verified patch file" in
+    Arg.(value & opt (some file) None & info [ "patch" ] ~doc)

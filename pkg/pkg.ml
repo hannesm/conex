@@ -14,6 +14,7 @@ let () =
     Pkg.bin "analysis/maintainer" ;
     Pkg.bin "analysis/opam_repo_stats" ;
     Pkg.bin "app/conex_author" ;
-    Pkg.bin "app/conex_verify" ;
+    Pkg.bin "app/conex_verify_openssl" ;
+    Pkg.bin "app/conex_verify_nocrypto" ;
     Pkg.test "test/tests"
   ]
