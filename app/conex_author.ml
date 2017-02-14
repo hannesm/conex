@@ -93,16 +93,6 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let load_self_queued io r id =
-  let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
-  let r = match C.verify_id io r id with
-    | Ok r -> r
-    | Error e -> Logs.err (fun m -> m "error while loading %s: %s" id e) ; r
-  in
-  List.iter (fun (k, _) -> Logs.app (fun m -> m "key %a fingerprint %a" Key.pp k Digest.pp (V.keyid k))) idx.Author.keys ;
-  List.iter (fun r -> Logs.app (fun m -> m "queued %a" Author.pp_r r)) idx.Author.queued ;
-  r
-
 let verify_all io r id no_team =
   R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
   | `Author _ ->
@@ -157,8 +147,23 @@ let status _ path quorum id no_rec =
      str_to_msg (init_repo ?quorum true basedir) >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
-     let r = load_self_queued io r id in
-     verify_all io r id no_rec >>| fun _r -> ())
+     let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
+     let _r = match C.verify_id io r id with
+       | Ok r -> r
+       | Error e -> Logs.err (fun m -> m "error while loading %s: %s" id e) ; r
+     in
+     List.iter (fun ((t, d, c) as key, _) ->
+         let bits = match SIGN.bits key with
+           | Error e -> Logs.err (fun m -> m "error while decoding key %s" e) ; 0
+           | Ok bits -> bits
+         in
+         let id = V.keyid key in
+         Logs.app (fun m -> m "%d bit %s key created %s %a"
+                      bits (Key.alg_to_string t) (Uint.decimal c) Digest.pp id))
+       idx.Author.keys ;
+     List.iter (fun r -> Logs.app (fun m -> m "queued %a" Author.pp_r r))
+       idx.Author.queued ;
+     Ok ())
 
 let add_r idx name typ data =
   let counter = Author.next_id idx in

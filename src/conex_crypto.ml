@@ -61,6 +61,8 @@ end
 module type SIGN_BACK = sig
   val pub_of_priv_rsa : string -> (string, string) result
 
+  val bits_rsa : string -> (int, string) result
+
   val generate_rsa : ?bits:int -> unit -> string
 
   val sign_rsa_pss : key:string -> string -> (string, string) result
@@ -70,6 +72,8 @@ module type SIGN = sig
   val generate : ?bits:int -> Uint.t -> unit -> Key.priv
 
   val pub_of_priv : Key.priv -> (Key.t, string) result
+
+  val bits : Key.t -> (int, string) result
 
   val sign : Uint.t -> Author.t -> Key.priv -> (Author.t, string) result
 end
@@ -83,6 +87,9 @@ module Make_sign (C : SIGN_BACK) = struct
     | `Priv (`RSA, key, created) ->
       C.pub_of_priv_rsa key >>= fun pub ->
       Ok (`RSA, pub, created)
+
+  let bits = function
+    | `RSA, key, _ -> C.bits_rsa key
 
   let sign now idx priv =
     let idx, _overflow = Author.prep_sig idx in

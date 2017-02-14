@@ -52,6 +52,11 @@ module C = struct
     let key = RSA_priv (Nocrypto.Rsa.generate bits) in
     encode_priv key
 
+  let bits_rsa k =
+    match V.decode_key k with
+    | None -> Error "couldn't decode key"
+    | Some (V.RSA_pub pub) -> Ok (Nocrypto.Rsa.pub_bits pub)
+
   let pub_of_priv_rsa k =
     match decode_priv k with
     | Some (RSA_priv k) ->

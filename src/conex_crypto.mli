@@ -64,6 +64,9 @@ module type SIGN = sig
   (** [pub_of_priv priv] extracts the public key from the private. *)
   val pub_of_priv : Key.priv -> (Key.t, string) result
 
+  (** [bits pub] returns the bit size of the public key. *)
+  val bits : Key.t -> (int, string) result
+
   (** [sign created author priv] uses {!Conex_resource.Author.prep_sig} to
       prepare [author] (incrementing counter, moving queued resource to signed).
       {!Conex_resource.Signature.wire} is used to produce the to-be-signed
@@ -78,6 +81,9 @@ module type SIGN_BACK = sig
   (** [pub_of_priv_rsa priv] is either [Ok pub] or [Error str].  The encoding is
       left to the provider, usual PKCS8 PEM encoding works fine. *)
   val pub_of_priv_rsa : string -> (string, string) result
+
+  (** [bits_rsa pub] is the number of bits in [pub]. *)
+  val bits_rsa : string -> (int, string) result
 
   (** [generate_rsa ~bits ()] generates an RSA private key with [bits] size. *)
   val generate_rsa : ?bits:int -> unit -> string
