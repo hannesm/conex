@@ -157,8 +157,8 @@ let status _ path quorum id no_rec =
            | Error e -> Logs.err (fun m -> m "error while decoding key %s" e) ; 0
            | Ok bits -> bits
          in
-         let id = V.keyid key in
-         Logs.app (fun m -> m "%d bit %s key created %s %a"
+         let id = V.keyid id key in
+         Logs.app (fun m -> m "%d bit %s key created %s, %a"
                       bits (Key.alg_to_string t) (Uint.decimal c) Digest.pp id))
        idx.Author.keys ;
      List.iter (fun r -> Logs.app (fun m -> m "queued %a" Author.pp_r r))

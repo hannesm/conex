@@ -28,8 +28,8 @@ module type VERIFY = sig
       encoding} of [wire]. *)
   val digest : Wire.t -> Digest.t
 
-  (** [keyid key] is the unique fingerprint of [key]. *)
-  val keyid : Key.t -> Digest.t
+  (** [keyid id key] is the unique fingerprint of [key]. *)
+  val keyid : identifier -> Key.t -> Digest.t
 
   (** [verify author] verifies all signatures of [author]: they have to sign
       the current resource list. *)

@@ -27,7 +27,7 @@ module type VERIFY = sig
 
   val digest : Wire.t -> Digest.t
 
-  val keyid : Key.t -> Digest.t
+  val keyid : identifier -> Key.t -> Digest.t
 
   val verify : Author.t -> (unit, [> verification_error ]) result
 end
@@ -40,8 +40,7 @@ module Make_verify (C : VERIFY_BACK) = struct
   let digest data =
     raw_digest (Wire.to_string data)
 
-  let keyid key = match key with
-    | `RSA, key, _ -> raw_digest key
+  let keyid id k = digest (Key.wire id k)
 
   let verify_signature data name key (hdr, sigval) =
     let data = Signature.wire name hdr data in

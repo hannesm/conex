@@ -72,7 +72,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       List.fold_left (fun (v, i) author ->
           let id = author.Author.name in
           match
-            List.filter (fun (k, _) -> valid id (C.keyid k)) author.Author.keys
+            List.filter (fun (k, _) -> valid id (C.keyid id k)) author.Author.keys
           with
           | [] ->
             L.debug (fun m -> m "ignoring janitor %s: missing valid fingerprint" id) ;
@@ -189,7 +189,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       S.fold (fun id acc ->
           match IO.read_author io id with
           | Ok idx ->
-            let id (k, _) = C.keyid k in
+            let id (k, _) = C.keyid id k in
             List.map id idx.Author.keys @ acc
           | Error _ -> acc)
         (match find_team repo "janitors" with None -> S.empty | Some x -> x)
