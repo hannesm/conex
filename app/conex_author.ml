@@ -61,9 +61,27 @@ let setup_log style_renderer level =
   Logs.set_level level;
   Logs.set_reporter (Logs_fmt.reporter ~dst:Format.std_formatter ())
 
-let init_repo ?quorum dry path =
-  str_to_msg (Conex_unix_provider.(if dry then fs_ro_provider path else fs_provider path)) >>= fun prov ->
-  Ok (Conex_repository.repository ?quorum V.digest (), prov)
+let find_basedir_id path id =
+  Conex_unix_private_key.find_ids () >>= fun ids ->
+  match path, id, ids with
+  | _, _, [] -> Error "no private key found, use init"
+  | None, None, [id, basedir] -> Ok (id, basedir)
+  | None, None, _ -> Error "multiple private keys found, use --repo/--id"
+  | None, Some id, ids ->
+    (match List.filter (fun (id', _) -> id_equal id id') ids with
+     | [id, basedir] -> Ok (id, basedir)
+     | [] -> Error "no private key found for repo and id"
+     | _ -> Error "multiple private keys found")
+  | Some p, id, ids ->
+    let id = match id with None -> (fun _ -> true) | Some x -> (fun y -> id_equal x y) in
+    match List.filter (fun (id', dir) -> String.compare p dir = 0 && id id') ids with
+    | [id, basedir] -> Ok (id, basedir)
+    | [] -> Error "no private key found for repo and id"
+    | _ -> Error "multiple private keys found"
+
+let init_repo ?quorum dry basedir =
+  Conex_unix_provider.(if dry then fs_ro_provider basedir else fs_provider basedir) >>= fun io ->
+  Ok (Conex_repository.repository ?quorum V.digest (), io)
 
 let help _ _ _ _ _ _ man_format cmds = function
   | None -> `Help (`Pager, None)
@@ -74,14 +92,6 @@ let w pp a = Logs.warn (fun m -> m "%a" pp a)
 let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
-
-let self io id =
-  R.error_to_msg ~pp_error:Conex_unix_private_key.pp_err
-    (match id with
-     | None -> Conex_unix_private_key.read io >>| fst
-     | Some id -> Ok id) >>| fun id ->
-  Logs.debug (fun m -> m "using identifier %s" id);
-  id
 
 let load_self_queued io r id =
   let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
@@ -132,10 +142,10 @@ let verify_single io r name =
 
 let verify _ dry path quorum _strict id name no_rec =
   msg_to_cmdliner
-    (init_repo ?quorum dry path >>= fun (r, io) ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo ?quorum dry basedir) >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
-     self io id >>= fun id ->
      if name = "" then
        verify_all io r id no_rec >>| fun _r -> ()
      else
@@ -143,10 +153,10 @@ let verify _ dry path quorum _strict id name no_rec =
 
 let status _ path quorum id no_rec =
   msg_to_cmdliner
-    (init_repo ?quorum true path >>= fun (r, io) ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo ?quorum true basedir) >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
-     self io id >>= fun id ->
      let r = load_self_queued io r id in
      verify_all io r id no_rec >>| fun _r -> ())
 
@@ -159,11 +169,12 @@ let add_r idx name typ data =
 
 let init _ dry path id email =
   msg_to_cmdliner
-    (match id with
-     | None -> Error (`Msg "please provide '--id'")
-     | Some id ->
+    (match id, path with
+     | None, _ -> Error (`Msg "please provide '--id'")
+     | _, None -> Error (`Msg "please provide '--repo'")
+     | Some id, Some path ->
        Nocrypto_entropy_unix.initialize () ;
-       init_repo ~quorum:0 dry path >>= fun (_, io) ->
+       str_to_msg (init_repo ~quorum:0 dry path) >>= fun (_, io) ->
        Logs.info (fun m -> m "%a" Conex_io.pp io) ;
        (match IO.read_id io id with
         | Ok (`Team _) -> Error (`Msg ("team " ^ id ^ " exists"))
@@ -176,8 +187,8 @@ let init _ dry path id email =
           Logs.info (fun m -> m "error reading author %s %a, creating a fresh one"
                          id Conex_io.pp_r_err err) ;
           Ok (Author.t now id)) >>= fun idx ->
-       (match Conex_unix_private_key.read ~id io with
-        | Ok (_, priv) ->
+       (match Conex_unix_private_key.read io id with
+        | Ok priv ->
           let created = match priv with `Priv (_, _, c) -> c in
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
@@ -219,9 +230,10 @@ let find_idx io name =
 
 let sign _ dry path id =
   msg_to_cmdliner
-    (init_repo dry path >>= fun (_r, io) ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo dry basedir) >>= fun (_r, io) ->
      R.error_to_msg ~pp_error:Conex_unix_private_key.pp_err
-       (Conex_unix_private_key.read ?id io) >>= fun (id, priv) ->
+       (Conex_unix_private_key.read io id) >>= fun priv ->
      Logs.info (fun m -> m "using private key %s" id) ;
      let idx = find_idx io id in
      match idx.Author.queued with
@@ -239,8 +251,8 @@ let sign _ dry path id =
 
 let reset _ dry path id =
   msg_to_cmdliner
-    (init_repo dry path >>= fun (_r, io) ->
-     self io id >>= fun id ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo dry basedir) >>= fun (_r, io) ->
      let idx = find_idx io id in
      match idx.Author.queued with
      | [] -> Logs.app (fun m -> m "nothing changed") ; Ok ()
@@ -266,8 +278,8 @@ let find_auth io name =
 
 let auth _ dry path id remove members p =
   msg_to_cmdliner
-    (init_repo dry path >>= fun (r, io) ->
-     self io id >>= fun id ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      let auth = find_auth io p in
      let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
@@ -293,8 +305,8 @@ let auth _ dry path id remove members p =
 
 let release _ dry path id remove p =
   msg_to_cmdliner
-    (init_repo dry path >>= fun (r, io) ->
-     self io id >>= fun id ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      (match Conex_opam_repository_layout.authorisation_of_package p with
       | Some n -> Ok (n, S.singleton p)
       | None -> str_to_msg (IO.releases io p) >>= fun rels -> Ok (p, rels))
@@ -362,10 +374,10 @@ let release _ dry path id remove p =
      end else
        Ok (Logs.app (fun m -> m "nothing happened")))
 
-let team _ dry repo id remove members tid =
+let team _ dry path id remove members tid =
   msg_to_cmdliner
-    (init_repo dry repo >>= fun (r, io) ->
-     self io id >>= fun id ->
+    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      let team =
        let use e =
          w IO.pp_r_err e ;

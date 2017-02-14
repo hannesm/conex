@@ -65,15 +65,16 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
     err_to_cmdliner
       (Conex_openssl.V.check_version () >>= fun () ->
        let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
-       match incremental, patch, dir with
-       | true, Some p, None ->
+       match repodir, incremental, patch, dir with
+       | Some repodir, true, Some p, None ->
          Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
          L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
          verify_patch io repo p
-       | false, None, Some d ->
+       | _, false, None, Some d ->
          Conex_unix_provider.fs_ro_provider d >>= fun io ->
          L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
          verify_full io repo ta
+       | None, _, _, _ -> Error "--repo is required"
        | _ -> Error "invalid combination of incremental, patch and dir")
 
 end

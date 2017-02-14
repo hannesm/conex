@@ -8,13 +8,15 @@ open Conex_resource
 val write : Conex_io.t -> string -> Key.priv -> (unit, string) result
 
 (** Potential read errors *)
-type err = [ `NotFound of string | `NoPrivateKey | `MultiplePrivateKeys of string list | `Msg of string ]
+type err = [ `NotFound of string | `Msg of string ]
 
 (** [pp_err err] pretty prints [err]. *)
 val pp_err : err fmt
 
-(** [read_private_key ~id prov] is either [Ok (identifier, priv)] or an [Error].
-    If [id] is provided, the private key corresponding to [prov] and [id] is
-    loaded.  If no [id] is provided, and there is only one private key for the
-    given [prov], it is loaded and [identifier] is returned. *)
-val read : ?id:string -> Conex_io.t -> ((string * Key.priv), err) result
+(** [read_private_key prov id] is either [Ok priv] or an [Error].
+    The private key corresponding to [prov] and [id] is
+    loaded. *)
+val read : Conex_io.t -> string -> (Key.priv, err) result
+
+(** [find_ids ()] is a [(id, path)] list of private keys present. *)
+val find_ids : unit -> ((string * string) list, string) result

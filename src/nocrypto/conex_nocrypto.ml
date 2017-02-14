@@ -9,12 +9,7 @@ module V = struct
 
   let decode_key data =
     match X509.Encoding.Pem.Public_key.of_pem_cstruct (Cstruct.of_string data) with
-    | [ `RSA pub ] ->
-      let enc = encode_key (RSA_pub pub) in
-      if enc = data then
-        Some (RSA_pub pub)
-      else
-        None
+    | [ `RSA pub ] -> Some (RSA_pub pub)
     | _ -> None
 
   module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)

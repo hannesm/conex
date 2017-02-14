@@ -35,7 +35,7 @@ let quorum =
 
 let repo =
     let doc = "Repository base directory" in
-    Arg.(value & opt dir "/tmp/conex" & info [ "repository" ] ~doc)
+    Arg.(value & opt (some dir) None & info [ "repository" ] ~doc)
 
 let anchors =
   let doc = "Trust anchors" in
