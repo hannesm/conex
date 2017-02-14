@@ -38,7 +38,7 @@ let rec decode_s = function
       Ok (Wire.Map M.empty)
     else
       Error "unexpected ident"
-  | OpamParserTypes.String (_, s) -> Ok (Wire.String s)
+  | OpamParserTypes.String (_, s) -> Ok (Wire.String (String.trim s))
   | OpamParserTypes.List (_, []) -> Ok (Wire.List [])
   | OpamParserTypes.List (_, l) ->
     let is_pair = function
@@ -50,7 +50,7 @@ let rec decode_s = function
           m >>= fun m ->
           match xs with
             OpamParserTypes.List (_, [ OpamParserTypes.String (_, k) ; v ]) ->
-            (decode_s v >>= fun v -> Ok (M.add k v m))
+            (decode_s v >>= fun v -> Ok (M.add (String.trim k) v m))
           | _ -> Error "can not happen")
         (Ok M.empty) l >>= fun map ->
       Ok (Wire.Map map)

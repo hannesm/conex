@@ -5,7 +5,7 @@ module V = struct
   let good_rsa p = Nocrypto.Rsa.pub_bits p >= 2048
 
   let encode_key = function
-    | RSA_pub pub -> Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub))
+    | RSA_pub pub -> String.trim (Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub)))
 
   let decode_key data =
     match X509.Encoding.Pem.Public_key.of_pem_cstruct (Cstruct.of_string data) with

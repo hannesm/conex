@@ -546,14 +546,16 @@ module Author = struct
   let reset t = { t with queued = [] }
 
   (*BISECT-IGNORE-BEGIN*)
+  let pp_ks ppf (k, s) =
+    Format.fprintf ppf "key %a sig %a" Key.pp k Signature.pp s
+
   let pp ppf i =
-    Format.fprintf ppf "author %a %s (created %s)@ accounts %a@ keys %a %a@ resources %a@ queued %a"
+    Format.fprintf ppf "author %a %s (created %s)@ accounts %a@ crypto %a@ resources %a@ queued %a"
       pp_id i.name
       (Header.counter i.counter i.wraps)
       (Header.timestamp i.created)
       (pp_list pp_account) i.accounts
-      (pp_list Key.pp) (List.map fst i.keys)
-      (pp_list Signature.pp) (List.map snd i.keys)
+      (pp_list pp_ks) i.keys
       (pp_list pp_r) i.resources
       (pp_list pp_r) i.queued
   (*BISECT-IGNORE-END*)
