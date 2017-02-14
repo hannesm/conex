@@ -24,7 +24,9 @@ let encode t =
       t []
   in
   let file = { OpamParserTypes.file_contents ; file_name = "" } in
-  OpamPrinter.Normalise.opamfile file
+  OpamPrinter.format_opamfile Format.str_formatter file ;
+  Format.flush_str_formatter ()
+  (* OpamPrinter.Normalise.opamfile file *)
 
 let rec decode_s = function
   | OpamParserTypes.Ident (_, data) ->
