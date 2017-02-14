@@ -52,7 +52,7 @@ let pp_conflict ppf = function
 let add_valid_resource id repo res =
   let open Author in
   let t = repo.valid in
-  let dgst_str = Digest.to_string res.digest in
+  let dgst_str = snd res.digest in
   try
     let n, r, ids = M.find dgst_str t in
     if not (name_equal n res.rname) then
@@ -110,7 +110,7 @@ let pp_error ppf = function
 
 let validate_resource repo owners name resource wire =
   let digest = repo.digestf wire in
-  let csum_str = Digest.to_string digest in
+  let csum_str = snd digest in
   let n, r, ids =
     if M.mem csum_str repo.valid then
       M.find csum_str repo.valid
