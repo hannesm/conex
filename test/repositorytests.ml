@@ -396,8 +396,10 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "could unparse/parse team"
     (Ok t) (Conex_opam_encoding.decode (Conex_opam_encoding.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
-    List [ String "foo" ;
-           List [ String "SHA256" ; String "zWPsX4M9Gk2uvY0Jg1hASQa9yiCDU5/GkTJk7wbqE6Y=" ] ]
+    List [
+      List [ String "SHA256" ; String "zWPsX4M9Gk2uvY0Jg1hASQa9yiCDU5/GkTJk7wbqE6Y=" ] ;
+      String "foo"
+    ]
   in
   let css =
     M.add "name" (String "foo")

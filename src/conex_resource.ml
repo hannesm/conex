@@ -764,14 +764,14 @@ module Release = struct
   let checksum_of_wire data =
     let open Wire in
     list data >>= function
-    | [ String filename ; digest ] ->
+    | [ digest ; String filename ] ->
       Digest.of_wire digest >>= fun digest ->
       Ok ({ filename ; digest })
     | _ -> Error "cannot parse checksum"
 
   let wire_checksum c =
     let open Wire in
-    List [ String c.filename ; Digest.wire_raw c.digest ]
+    List [ Digest.wire_raw c.digest ; String c.filename ]
 
   type checksum_map = c M.t
 
