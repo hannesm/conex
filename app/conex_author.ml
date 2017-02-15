@@ -198,7 +198,9 @@ let init _ dry path id email =
              Ok ()) >>| fun () ->
           p) >>= fun priv ->
        str_to_msg (SIGN.pub_of_priv priv) >>= fun public ->
-       let accounts = `GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts
+       let accounts =
+         List.sort_uniq Author.compare_account
+           (`GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts)
        and counter = idx.Author.counter
        and wraps = idx.Author.wraps
        and queued = idx.Author.queued
@@ -207,7 +209,10 @@ let init _ dry path id email =
        in
        let idx = Author.t ~accounts ~counter ~wraps ~resources ~queued created id in
        let idx = add_r idx id `Key (Key.wire id public) in
-       (* add accounts here as well! *)
+       let idx =
+         List.fold_left (fun idx a -> add_r idx id `Account (Author.wire_account id a))
+           idx accounts
+       in
        str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
        str_to_msg (IO.write_author io idx) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;

@@ -258,11 +258,14 @@ module Author : sig
     | `Other of identifier * string
   ]
 
+  (** [compare_account a b] compares accounts [a] and [b]. *)
+  val compare_account : account -> account -> int
+
   (** [pp_account a] is a pretty printer. *)
   val pp_account : account fmt
 
-  (** [wire_account a] is the wire representation of [a]. *)
-  val wire_account : account -> Wire.t
+  (** [wire_account id a] is the wire representation of [a]. *)
+  val wire_account : identifier -> account -> Wire.t
 
   (** The record of an author: name, key/signature pairs, created, counter,
       approved and queued resource lists. *)

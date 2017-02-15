@@ -146,9 +146,8 @@ let contains ?queued repo idx name typ data =
   Author.contains ?queued idx r
 
 let validate_account repo author a =
-  let name = author.Author.name
-  and wired = Author.wire_account a
-  in
+  let name = author.Author.name in
+  let wired = Author.wire_account name a in
   validate_resource repo (S.singleton name) name `Account wired >>= function
   | `Both x -> Ok (`Both x)
   | `Quorum _ -> Error (`NotApproved (name, `Account, S.empty)) (* TODO: loses account *)

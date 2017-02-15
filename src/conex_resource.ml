@@ -425,7 +425,7 @@ module Author = struct
     | `GitHub g -> M.add "github" (String g) m
     | `Other (k, v) -> M.add k (String v) m
 
-  let wire_account a = wire_account_raw M.empty a
+  let wire_account name a = wire_account_raw (M.add "name" (Wire.String name) M.empty) a
 
   let compare_account (a : account) (b : account) = match a, b with
     | `Email a, `Email b -> String.compare_insensitive a b
