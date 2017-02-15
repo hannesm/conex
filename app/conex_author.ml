@@ -340,7 +340,6 @@ let auth _ dry path id remove members p =
      str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      let auth = find_auth io p in
-     let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Authorisation.remove else Authorisation.add in
      let auth' = List.fold_left f auth members in
      let idx = find_idx io id in
@@ -459,7 +458,6 @@ let team _ dry path id remove members tid =
           Logs.debug (fun m -> m "read %a" Team.pp team) ;
           team)
      in
-     let members = match members with [] -> [id] | xs -> xs in
      let f = if remove then Team.remove else Team.add in
      let team' = List.fold_left f team members in
      let idx = find_idx io id in
