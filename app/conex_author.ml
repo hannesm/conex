@@ -178,29 +178,32 @@ let status _ path quorum id no_rec package =
                | Ok od -> Some od
                | Error e -> Logs.err (fun m -> m "couldn't compute package %s: %s" name e) ; None
              in
-             let pkg = match IO.read_package io name with
-               | Error e -> Logs.err (fun m -> m "%a" IO.pp_r_err e) ; Package.t Uint.zero name
-               | Ok pkg -> pkg
-             in
-             Logs.app (fun m -> m "package %a authorisation %a package index %a"
-                          pp_name name
-                          to_st_txt (Conex_repository.validate_authorisation r auth)
-                          to_st_txt (Conex_repository.validate_package r ?on_disk auth pkg)) ;
-             (* now all the releases *)
-             (match on_disk with
-              | None -> Logs.app (fun m -> m "no releases")
-              | Some pkg ->
-                S.iter (fun release -> match IO.read_release io release with
-                    | Error e -> Logs.err (fun m -> m "couldn't read release %s: %a" release IO.pp_r_err e)
-                    | Ok rel ->
-                      let on_disk =
-                        match IO.compute_release V.raw_digest io Uint.zero release with
-                        | Ok rel -> Some rel
-                        | Error e -> Logs.err (fun m -> m "couldn't compute release %s: %a" release IO.pp_cc_err e) ; None
-                      in
-                      Logs.app (fun m -> m "release %s: %a" release to_st_txt
-                                   (Conex_repository.validate_release r ?on_disk auth pkg rel)))
-                  pkg.Package.releases);
+             (match IO.read_package io name with
+              | Error e ->
+                Logs.app (fun m -> m "package %a authorisation %a"
+                             pp_name name
+                             to_st_txt (Conex_repository.validate_authorisation r auth)) ;
+                Logs.err (fun m -> m "%a" IO.pp_r_err e)
+               | Ok pkg ->
+                 Logs.app (fun m -> m "package %a authorisation %a package index %a"
+                              pp_name name
+                              to_st_txt (Conex_repository.validate_authorisation r auth)
+                              to_st_txt (Conex_repository.validate_package r ?on_disk auth pkg)) ;
+                 (* now all the releases *)
+                 (match on_disk with
+                  | None -> Logs.app (fun m -> m "no releases")
+                  | Some pkg ->
+                    S.iter (fun release -> match IO.read_release io release with
+                        | Error e -> Logs.err (fun m -> m "couldn't read release %s: %a" release IO.pp_r_err e)
+                        | Ok rel ->
+                          let on_disk =
+                            match IO.compute_release V.raw_digest io Uint.zero release with
+                            | Ok rel -> Some rel
+                            | Error e -> Logs.err (fun m -> m "couldn't compute release %s: %a" release IO.pp_cc_err e) ; None
+                          in
+                          Logs.app (fun m -> m "release %s: %a" release to_st_txt
+                                       (Conex_repository.validate_release r ?on_disk auth pkg rel)))
+                      pkg.Package.releases));
              r)
          packages r
      in
