@@ -43,14 +43,11 @@ module Make (L : LOGS) (C : VERIFY): sig
     Conex_io.t -> Conex_repository.t ->
     (Conex_repository.t, string) result
 
-  (** [verify_package ~authorised ~release io repo name] reads and verifies the
-      authorisation of the package [name].  All [ids] who are authorised are
-      loaded into the repository (using {!verify_ids}).  If [authorised] is
-      [true], the package data for [name] is read and verified, followed by all
-      releases (filtered with [release]).  Each release is read and verified. *)
-  val verify_package :
-    ?authorised:(S.t -> bool) -> ?release:(name -> bool) ->
-    Conex_io.t -> Conex_repository.t -> name ->
+  (** [verify_package io repo name] reads and verifies the authorisation of the
+      package [name].  All [ids] who are authorised are loaded into the
+      repository (using {!verify_ids}).  The package data for [name] is read and
+      verified, followed by all releases.  Each release is read and verified. *)
+  val verify_package : Conex_io.t -> Conex_repository.t -> name ->
     (Conex_repository.t, string) result
 
   (** [verify_diff io repository patch] first parses the [patch] and applies it.

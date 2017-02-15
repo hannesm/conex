@@ -139,11 +139,12 @@ let status _ path quorum id no_rec package =
          (S.singleton id) teams
      in
      let members = List.fold_left S.union S.empty (List.map (fun t -> t.Team.members) teams) in
-     let r = S.fold (fun id repo ->
-         R.ignore_error
-           ~use:(fun e -> Logs.warn (fun m -> m "ignoring id %s error %s" id e) ; repo)
-           (C.verify_id io repo id))
-       members r
+     let r =
+       S.fold (fun id repo ->
+           R.ignore_error
+             ~use:(fun e -> Logs.warn (fun m -> m "ignoring id %s error %s" id e) ; repo)
+             (C.verify_id io repo id))
+         members r
      in
      List.iter (fun t ->
          Logs.app (fun m -> m "team %a (%d members) %a"
@@ -152,10 +153,9 @@ let status _ path quorum id no_rec package =
            teams ;
      (* load all ids (well, all team members!) *)
      let r = List.fold_left Conex_repository.add_team r teams in
-     (* find_all_packages and print info about authorised ones *)
-     let authorised auth = not (S.is_empty (S.inter me auth)) in
+     (* find_all_packages and print info about our ones (filtered by name) *)
      str_to_msg (IO.packages io) >>= fun packages ->
-     let packages, release =
+     let packages, _release =
        let prefix, rel =
          match Conex_opam_repository_layout.authorisation_of_package package with
          | None -> package, (fun _ -> true)
@@ -163,7 +163,48 @@ let status _ path quorum id no_rec package =
        in
        S.filter (String.is_prefix ~prefix) packages, rel
      in
-     str_to_msg (foldS (C.verify_package io ~authorised ~release) r packages) >>= fun _ ->
+     let _repo =
+       S.fold (fun name r ->
+           match IO.read_authorisation io name with
+           | Error _ -> Logs.err (fun m -> m "missing authorisation for %a" pp_name name) ; r
+           | Ok auth when S.cardinal (S.inter auth.Authorisation.authorised me) = 0 ->
+             r
+           | Ok auth ->
+             let r = match C.verify_ids ~ids:auth.Authorisation.authorised io r with
+               | Error _ -> r
+               | Ok r -> r
+             in
+             let on_disk = match IO.compute_package io Uint.zero name with
+               | Ok od -> Some od
+               | Error e -> Logs.err (fun m -> m "couldn't compute package %s: %s" name e) ; None
+             in
+             let pkg = match IO.read_package io name with
+               | Error e -> Logs.err (fun m -> m "%a" IO.pp_r_err e) ; Package.t Uint.zero name
+               | Ok pkg -> pkg
+             in
+             Logs.app (fun m -> m "package %a authorisation %a package index %a"
+                          pp_name name
+                          to_st_txt (Conex_repository.validate_authorisation r auth)
+                          to_st_txt (Conex_repository.validate_package r ?on_disk auth pkg)) ;
+             (* now all the releases *)
+             (match on_disk with
+              | None -> Logs.app (fun m -> m "no releases")
+              | Some pkg ->
+                S.iter (fun release -> match IO.read_release io release with
+                    | Error e -> Logs.err (fun m -> m "couldn't read release %s: %a" release IO.pp_r_err e)
+                    | Ok rel ->
+                      let on_disk =
+                        match IO.compute_release V.raw_digest io Uint.zero release with
+                        | Ok rel -> Some rel
+                        | Error e -> Logs.err (fun m -> m "couldn't compute release %s: %a" release IO.pp_cc_err e) ; None
+                      in
+                      Logs.app (fun m -> m "release %s: %a" release to_st_txt
+                                   (Conex_repository.validate_release r ?on_disk auth pkg rel)))
+                  pkg.Package.releases);
+             r)
+         packages r
+     in
+     (* validate *)
      List.iteri (fun i r -> Logs.app (fun m -> m "queue %d: %a@ " i Author.pp_r r))
        idx.Author.queued ;
      Ok ())
@@ -326,7 +367,15 @@ let release _ dry path id remove p =
       | None -> str_to_msg (IO.releases io p) >>= fun rels -> Ok (p, rels))
      >>= fun (pn, releases) ->
      let auth = find_auth io pn in
-     str_to_msg (C.verify_ids ~ids:auth.Authorisation.authorised io r) >>= fun r ->
+     (* need to load team information *)
+     let r =
+       S.fold (fun id repo ->
+           match IO.read_id io id with
+           | Ok (`Author _) -> repo
+           | Ok (`Team t) -> Conex_repository.add_team repo t
+           | Error _ -> repo)
+         auth.Authorisation.authorised r
+     in
      if not (Conex_repository.authorised r auth id) then
        Logs.warn (fun m -> m "not authorised to modify package %s, PR will require approval" p) ;
      let rel =
