@@ -41,6 +41,9 @@ let anchors =
   let doc = "Trust anchors" in
   Arg.(value & opt_all string [] & info [ "trust-anchors" ] ~doc)
 
+let convert_anchors a = Conex_utils.s_of_list
+    (List.flatten (List.map (Conex_utils.String.cuts ',') a))
+
 let dry =
   let doc = "Try run. Do not write anything." in
   Arg.(value & flag & info ["dry-run"] ~docs ~doc)

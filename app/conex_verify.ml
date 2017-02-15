@@ -61,9 +61,9 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
     foldS (C.verify_package io) repo packages
 
   let verify_it repodir quorum anchors incremental dir patch _strict =
-    let ta = s_of_list (List.flatten (List.map (Conex_utils.String.cuts ',') anchors)) in
     err_to_cmdliner
-      (Conex_openssl.V.check_version () >>= fun () ->
+      (let ta = Conex_opts.convert_anchors anchors in
+       Conex_openssl.V.check_version () >>= fun () ->
        let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
        match repodir, incremental, patch, dir with
        | Some repodir, true, Some p, None ->

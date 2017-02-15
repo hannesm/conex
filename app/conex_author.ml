@@ -93,12 +93,20 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let verify _ path quorum _strict id =
+let verify _ path quorum _strict id anchors =
   msg_to_cmdliner @@ str_to_msg
     (find_basedir_id path id >>= fun (_id, basedir) ->
      init_repo ?quorum true basedir >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
-     C.verify_janitors ~valid:(fun _ _ -> true) io r >>= fun r ->
+     let valid =
+       let v = Conex_opts.convert_anchors anchors in
+       if S.is_empty v then
+         (Logs.info (fun m -> m "treating all on disk janitors as trusted") ;
+          (fun _ _ -> true))
+       else
+         (fun _ (_, dg) -> S.mem dg v)
+     in
+     C.verify_janitors ~valid io r >>= fun r ->
      C.verify_ids io r >>= fun repo ->
      IO.packages io >>= fun packages ->
      foldS (C.verify_package io) repo packages >>= fun _ ->
@@ -486,7 +494,7 @@ let verify_cmd =
     [`S "DESCRIPTION";
      `P "Shows verification status."]
   in
-  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ strict $ id)),
+  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ strict $ id $ anchors)),
   Term.info "verify" ~doc ~man
 
 let package_cmd =
