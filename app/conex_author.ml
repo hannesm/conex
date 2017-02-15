@@ -529,14 +529,14 @@ let verify_cmd =
   Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ strict $ id $ anchors)),
   Term.info "verify" ~doc ~man
 
-let package_cmd =
+let authorisation_cmd =
   let doc = "modify authorisation of a package" in
   let man =
     [`S "DESCRIPTION";
      `P "Modifies authorisaton of a package."]
   in
   Term.(ret Conex_opts.(const auth $ setup_log $ dry $ repo $ id $ remove $ members $ package)),
-  Term.info "package" ~doc ~man
+  Term.info "authorisation" ~doc ~man
 
 let release_cmd =
   let doc = "modify releases of a package" in
@@ -609,7 +609,7 @@ let default_cmd =
 let cmds = [ help_cmd ; status_cmd ;
              init_cmd ; sign_cmd ; reset_cmd ;
              verify_cmd ;
-             package_cmd ; team_cmd ; release_cmd ]
+             authorisation_cmd ; team_cmd ; release_cmd ]
 
 let () =
   match Term.eval_choice default_cmd cmds
