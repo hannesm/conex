@@ -81,7 +81,18 @@ let to_st_txt ppf = function
 
 let status _ path quorum id no_rec package =
   msg_to_cmdliner
-    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+    (str_to_msg
+       (match path, id with
+        | Some p, Some id -> Ok (p, id)
+        | None, Some id ->
+          (match find_basedir_id None None with
+           | Ok (_, basedir) -> Ok (id, basedir)
+           | Error e -> Error e)
+        | Some p, None ->
+          (match find_basedir_id None None with
+           | Ok (id, _) -> Ok (id, p)
+           | Error e -> Error e)
+        | None, None -> find_basedir_id None None) >>= fun (id, basedir) ->
      str_to_msg (init_repo ?quorum true basedir) >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
@@ -113,8 +124,6 @@ let status _ path quorum id no_rec package =
                       Author.pp_account a
                       to_st_txt (Conex_repository.validate_account r idx a)))
        idx.Author.accounts ;
-     List.iteri (fun i r -> Logs.app (fun m -> m "queue %d: %a@ " i Author.pp_r r))
-       idx.Author.queued ;
      str_to_msg (IO.ids io) >>= fun ids ->
      let teams =
        S.fold (fun id' teams ->
@@ -155,6 +164,8 @@ let status _ path quorum id no_rec package =
        S.filter (String.is_prefix ~prefix) packages, rel
      in
      str_to_msg (foldS (C.verify_package io ~authorised ~release) r packages) >>= fun _ ->
+     List.iteri (fun i r -> Logs.app (fun m -> m "queue %d: %a@ " i Author.pp_r r))
+       idx.Author.queued ;
      Ok ())
 
 let add_r idx name typ data =
