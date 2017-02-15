@@ -141,6 +141,10 @@ let verify _ dry path quorum _strict id name no_rec =
      else
        let _ = verify_single io r name in Ok ())
 
+let to_st_txt = function
+  | Ok _ -> Fmt.(styled `Green string), "validated"
+  | Error e -> Fmt.(styled `Red string), Fmt.to_to_string Conex_repository.pp_error e
+
 let status _ path quorum id no_rec =
   msg_to_cmdliner
     (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
@@ -148,21 +152,52 @@ let status _ path quorum id no_rec =
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
      let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
-     let _r = match C.verify_id io r id with
-       | Ok r -> r
-       | Error e -> Logs.err (fun m -> m "error while loading %s: %s" id e) ; r
+     let r, style, txt = match C.verify_id io r id with
+       | Ok r -> r, `Green, "verified"
+       | Error e -> r, `Red, "verification error: " ^ e
      in
-     List.iter (fun ((t, d, c) as key, _) ->
+     Logs.app (fun m -> m "author %a %s (created %s) %a %d resources, %d queued"
+                  Fmt.(styled `Bold pp_id) idx.Author.name
+                  (Header.counter idx.Author.counter idx.Author.wraps)
+                  (Header.timestamp idx.Author.created)
+                  Fmt.(styled style string) txt
+                  (List.length idx.Author.resources)
+                  (List.length idx.Author.queued) ) ;
+     List.iter (fun ((t, _, c) as key, _) ->
          let bits = match SIGN.bits key with
            | Error e -> Logs.err (fun m -> m "error while decoding key %s" e) ; 0
            | Ok bits -> bits
          in
-         let id = V.keyid id key in
-         Logs.app (fun m -> m "%d bit %s key created %s, %a"
-                      bits (Key.alg_to_string t) (Uint.decimal c) Digest.pp id))
+         let kid = V.keyid id key in
+         let st, txt = to_st_txt (Conex_repository.validate_key r id key) in
+         Logs.app (fun m -> m "%d bit %s key created %s %a, %a"
+                      bits (Key.alg_to_string t) (Uint.decimal c)
+                      st txt
+                      Digest.pp kid))
        idx.Author.keys ;
+     List.iter (fun a ->
+         let st, txt = to_st_txt (Conex_repository.validate_account r idx a) in
+         Logs.app (fun m -> m "account %a %a" Author.pp_account a st txt))
+       idx.Author.accounts ;
      List.iter (fun r -> Logs.app (fun m -> m "queued %a" Author.pp_r r))
        idx.Author.queued ;
+     str_to_msg (IO.ids io) >>= fun ids ->
+     let teams =
+       S.fold (fun id' teams ->
+           R.ignore_error
+             ~use:(fun e -> w IO.pp_r_err e ; teams)
+             (IO.read_id io id' >>| function
+               | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp t) ; t :: teams
+               | `Team _ | `Author _ -> teams))
+         ids []
+     in
+     List.iter (fun t ->
+         let st, txt = to_st_txt (Conex_repository.validate_team r t) in
+         Logs.app (fun m -> m "member of team %s %a" t.Team.name st txt))
+       teams ;
+     (* load all ids (well, all team members!) *)
+
+     (* find_all_packages and print info about authorised ones *)
      Ok ())
 
 let add_r idx name typ data =
@@ -215,6 +250,7 @@ let init _ dry path id email =
        in
        let idx = Author.t ~accounts ~counter ~wraps ~resources ~queued created id in
        let idx = add_r idx id `Key (Key.wire id public) in
+       (* add accounts here as well! *)
        str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
        str_to_msg (IO.write_author io idx) >>= fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;

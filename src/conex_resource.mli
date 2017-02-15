@@ -258,6 +258,9 @@ module Author : sig
     | `Other of identifier * string
   ]
 
+  (** [pp_account a] is a pretty printer. *)
+  val pp_account : account fmt
+
   (** [wire_account a] is the wire representation of [a]. *)
   val wire_account : account -> Wire.t
 
