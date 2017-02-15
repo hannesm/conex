@@ -3,7 +3,6 @@ open Conex_resource
 
 open Rresult
 
-(* this should likely be elsewhere (conex-bells&whistles) *)
 module V = Conex_nocrypto.NC_V
 module C = Conex.Make(Logs)(V)
 module SIGN = Conex_nocrypto.NC_S
@@ -19,42 +18,6 @@ let msg_to_cmdliner = function
 let now = match Uint.of_float (Unix.time ()) with
   | None -> invalid_arg "cannot convert now to unsigned integer"
   | Some x -> x
-
-(* WORKFLOW:
-  init -- to get private key, public key entry
-
-  status <package> (staged index, missing entries [for id + teams])
-
-  staging operations [clear with "reset"]:
-   team <id> [--remove] [-m (defaults to self)]
-   package <name> [--remove] [-m (defaults to self)]
-   release <name> [--remove]
-   rollover (+change metadata) -- TODO
-
-  sign
-  --> show queued pieces
-  --> show changes (using git diff!?), prompt (unless -y)
-  --> instruct git add&commit && open PR
-
-  TODO:
-   - command listing all violations (which some might record into their index)
-   - where to get the quorum from?
-
-  ASSUMPTIONS
-  - the local repo is a good one! (id is the one where we also trust queued)
-  - local janitors team is good (no external TA)
-  - only status does some verification, other commands ignore validity (but may warn)
-   -- release actually checks whether id is authorised
-
-  STATUS
-  - load janitor team
-  - load+verify own id (add resources + queued)
-  - iterates over packages (either authorised (+team/--noteam) for, or given on command line)
-  -- read auth, load authorised ids (as above), verify auth
-  -- read releases, verify releases
-  -- read checksums, verify checksum (includes computing it)
-
-*)
 
 let setup_log style_renderer level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
