@@ -113,7 +113,7 @@ let verify _ path quorum _strict id anchors =
      Ok ())
 
 let to_st_txt ppf = function
-  | Ok _ -> Fmt.(pf ppf "%a" (styled `Green string) "validated")
+  | Ok _ -> Fmt.(pf ppf "%a" (styled `Green string) "approved")
   | Error e -> Fmt.(pf ppf "%a" (styled `Red Conex_repository.pp_error) e)
 
 let status _ path quorum id no_rec package =
