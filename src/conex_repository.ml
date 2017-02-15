@@ -95,7 +95,7 @@ let pp_error ppf = function
   | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
   | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_typ w pp_typ h
   | `NotApproved (n, r, _) -> Format.fprintf ppf "not approved %a %a" pp_typ r pp_name n
-  | `InsufficientQuorum (name, r, goods) -> Format.fprintf ppf "quorum for %a %a insufficient: %a" pp_typ r pp_name name (pp_list pp_id) (S.elements goods)
+  | `InsufficientQuorum (name, r, goods, req) -> Format.fprintf ppf "quorum for %a %a insufficient: %d/%d %a" pp_typ r pp_name name (S.cardinal goods) req (pp_list pp_id) (S.elements goods)
   | `AuthorWithoutKeys id -> Format.fprintf ppf "author %a does not have any public keys" pp_id id
   | `IdNotPresent (n, s) -> Format.fprintf ppf "packages %a, authorised ids %a missing" pp_name n (pp_list pp_id) (S.elements s)
   | `MemberNotPresent (n, s) -> Format.fprintf ppf "team %a, members %a missing" pp_id n (pp_list pp_id) (S.elements s)
@@ -138,7 +138,7 @@ let validate_key repo id key =
   validate_resource repo (S.singleton id) id `Key (Key.wire id key) >>= function
   | `Both b -> Ok (`Both b)
   | `Quorum _ -> Error (`NotApproved (id, `Key, S.empty))
-  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Key, js))
+  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Key, js, repo.quorum))
 
 let contains ?queued repo idx name typ data =
   let digest = repo.digestf data in
@@ -152,7 +152,7 @@ let validate_account repo author a =
   validate_resource repo (S.singleton name) name `Account wired >>= function
   | `Both x -> Ok (`Both x)
   | `Quorum _ -> Error (`NotApproved (name, `Account, S.empty)) (* TODO: loses account *)
-  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Account, js))
+  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Account, js, repo.quorum))
 
 let validate_author repo author =
   let id = author.Author.name in
@@ -176,7 +176,7 @@ let validate_author repo author =
 let validate_team repo team =
   let id = team.Team.name in
   match validate_resource repo S.empty id `Team (Team.wire team) with
-  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js))
+  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js, repo.quorum))
   | Error e -> Error e
   | Ok (`Quorum js) ->
     guard (S.subset team.Team.members repo.ids)
@@ -188,7 +188,7 @@ let validate_team repo team =
 let validate_authorisation repo auth =
   let name = auth.Authorisation.name in
   match validate_resource repo S.empty name `Authorisation (Authorisation.wire auth) with
-  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js))
+  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js, repo.quorum))
   | Error e -> Error e
   | Ok (`Quorum js) ->
     let all = auth.Authorisation.authorised in

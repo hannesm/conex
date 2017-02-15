@@ -105,7 +105,7 @@ type base_error = [
 val pp_error :
   [< base_error
   | conflict
-  | `InsufficientQuorum of name * typ * S.t
+  | `InsufficientQuorum of name * typ * S.t * int
   | `AuthorWithoutKeys of identifier
   | `IdNotPresent of name * S.t
   | `MemberNotPresent of identifier * S.t
@@ -125,20 +125,20 @@ val validate_author :
   (t,
    [> base_error
    | conflict
-   | `InsufficientQuorum of name * typ * S.t
+   | `InsufficientQuorum of name * typ * S.t * int
    | `AuthorWithoutKeys of identifier ]) result
 
 (** [validate_account repo author account] validates [account] of [author]: a
     quorum of janitors have to approve an account. *)
 val validate_account : t -> Author.t -> Author.account ->
   ([ `Both of identifier * S.t ],
-   [> base_error | `InsufficientQuorum of name * typ * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * typ * S.t * int ]) result
 
 (** [validate_key repo id key] validates [key] of [id]: a quorum of janitors
     have to approve a key. *)
 val validate_key : t -> identifier -> Key.t ->
   ([ `Both of identifier * S.t ],
-   [> base_error | `InsufficientQuorum of name * typ * S.t ]) result
+   [> base_error | `InsufficientQuorum of name * typ * S.t * int ]) result
 
 (** [validate_team repo team] validates [team]: a quorum of janitors have to
     approve a team, and all team members must be in the repository.  If valid,
@@ -146,7 +146,7 @@ val validate_key : t -> identifier -> Key.t ->
 val validate_team : t -> Team.t ->
   (t * [ `Quorum of S.t ],
    [> base_error
-   | `InsufficientQuorum of name * typ * S.t
+   | `InsufficientQuorum of name * typ * S.t * int
    | `MemberNotPresent of identifier * S.t ]) result
 
 (** [validate_authorisation repo auth] validates [auth]: a quorum of janitors
@@ -155,7 +155,7 @@ val validate_team : t -> Team.t ->
 val validate_authorisation : t -> Authorisation.t ->
   ([ `Quorum of S.t ],
    [> base_error
-   | `InsufficientQuorum of name * typ * S.t
+   | `InsufficientQuorum of name * typ * S.t * int
    | `IdNotPresent of name * S.t ]) result
 
 (** [validate_package repo ~on_disk auth package] validates [package]: an
