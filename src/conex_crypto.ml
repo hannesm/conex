@@ -5,7 +5,6 @@ type verification_error = [
   | `InvalidBase64Encoding
   | `InvalidSignature
   | `InvalidPublicKey
-  | `NoSignature
 ]
 
 (*BISECT-IGNORE-BEGIN*)
@@ -13,7 +12,6 @@ let pp_verification_error ppf = function
   | `InvalidBase64Encoding -> Format.fprintf ppf "signature: no valid base64 encoding"
   | `InvalidSignature -> Format.fprintf ppf "signature: invalid"
   | `InvalidPublicKey -> Format.fprintf ppf "invalid public key"
-  | `NoSignature -> Format.fprintf ppf "no signature found"
 (*BISECT-IGNORE-END*)
 
 module type VERIFY_BACK = sig
@@ -49,12 +47,9 @@ module Make_verify (C : VERIFY_BACK) = struct
 
   let verify author =
     let tbv = Wire.to_string (Author.wire_raw author) in
-    match author.Author.keys with
-    | [] -> Error `NoSignature
-    | _ ->
-      foldM
-        (fun () (k, s) -> verify_signature tbv author.Author.name k s)
-        () author.Author.keys
+    foldM
+      (fun () (k, s) -> verify_signature tbv author.Author.name k s)
+      () author.Author.keys
 end
 
 module type SIGN_BACK = sig

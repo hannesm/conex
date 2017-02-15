@@ -672,23 +672,18 @@ let idx_sign_verify () =
   let res = Author.r Uint.zero id `Key d in
   let resources = [ res ] in
   let idx = Author.t ~resources Uint.zero id in
-  Alcotest.check (result Alcotest.unit verr) "idx not digitally signed"
-    (Error `NoSignature) (V.verify idx) ;
   let signed_idx = sign_idx idx priv in
   Alcotest.check (result r_fake a_err) "idx signed properly"
     (Ok r) (Conex_repository.validate_author r signed_idx) ;
   Alcotest.check (result Alcotest.unit verr) "idx digitally signed properly"
     (Ok ()) (V.verify signed_idx) ;
-  let idx' = Author.t Uint.zero id in
-  Alcotest.check (result Alcotest.unit verr) "idx' not digitally signed properly"
-    (Error `NoSignature) (V.verify idx') ;
   let queued = [ Author.r Uint.zero id `Team d ] in
   let idx'' = Author.t ~keys:signed_idx.Author.keys ~resources ~queued ~counter:Uint.(of_int_exn 1) Uint.zero id in
   Alcotest.check (result Alcotest.unit verr) "idx'' digitally signed properly"
     (Ok ()) (V.verify idx'') ;
   Alcotest.check (result r_fake a_err) "idx'' properly signed (queue)"
     (Ok r) (Conex_repository.validate_author r idx'') ;
-  let idx' = Author.add_resource idx' res in
+  let idx' = Author.t ~resources Uint.zero id in
   let signed_idx' = sign_idx idx' priv in
   Alcotest.check (result Alcotest.unit verr) "signed_idx' digitally signed properly"
     (Ok ()) (V.verify signed_idx') ;

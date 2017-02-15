@@ -113,8 +113,7 @@ let verr =
     let equal a b = match a, b with
       | `InvalidBase64Encoding, `InvalidBase64Encoding
       | `InvalidSignature, `InvalidSignature
-      | `InvalidPublicKey, `InvalidPublicKey
-      | `NoSignature, `NoSignature -> true
+      | `InvalidPublicKey, `InvalidPublicKey -> true
       (* for OpenSSL where we don't have detailed error reporting *)
       | `InvalidSignature, `InvalidPublicKey
       | `InvalidPublicKey, `InvalidSignature -> true

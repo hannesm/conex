@@ -12,7 +12,6 @@ type verification_error = [
   | `InvalidBase64Encoding
   | `InvalidSignature
   | `InvalidPublicKey
-  | `NoSignature
 ]
 
 (** [pp_verification_error] is a pretty printer for [verification_error]. *)
