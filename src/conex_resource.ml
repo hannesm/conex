@@ -142,7 +142,17 @@ let string_to_typ = function
   | _ -> None
 
 (*BISECT-IGNORE-BEGIN*)
-let pp_typ ppf typ = Format.pp_print_string ppf (typ_to_string typ)
+let pp_typ ppf typ =
+  Format.fprintf ppf (match typ with
+      | `Signature -> "signature"
+      | `Key -> "key"
+      | `Account -> "account"
+      | `Author -> "author"
+      | `Wrap -> "wrap"
+      | `Team -> "team"
+      | `Authorisation -> "authorisation"
+      | `Package -> "package index"
+      | `Release -> "release")
 (*BISECT-IGNORE-END*)
 
 let wire_typ typ = Wire.String (typ_to_string typ)
