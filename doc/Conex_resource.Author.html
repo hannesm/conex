@@ -104,8 +104,16 @@ Variant of accounts<br>
 </div>
 
 
-<pre><span id="VALwire_account"><span class="keyword">val</span> wire_account</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
-<code class="code">wire_account&nbsp;a</code> is the wire representation of <code class="code">a</code>.<br>
+<pre><span id="VALcompare_account"><span class="keyword">val</span> compare_account</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> -> <a href="Conex_resource.Author.html#TYPEaccount">account</a> -> int</code></pre><div class="info ">
+<code class="code">compare_account&nbsp;a&nbsp;b</code> compares accounts <code class="code">a</code> and <code class="code">b</code>.<br>
+</div>
+
+<pre><span id="VALpp_account"><span class="keyword">val</span> pp_account</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEaccount">account</a> <a href="Conex_utils.html#TYPEfmt">Conex_utils.fmt</a></code></pre><div class="info ">
+<code class="code">pp_account&nbsp;a</code> is a pretty printer.<br>
+</div>
+
+<pre><span id="VALwire_account"><span class="keyword">val</span> wire_account</span> : <code class="type"><a href="Conex_resource.html#TYPEidentifier">Conex_resource.identifier</a> -><br>       <a href="Conex_resource.Author.html#TYPEaccount">account</a> -> <a href="Conex_resource.Wire.html#TYPEt">Conex_resource.Wire.t</a></code></pre><div class="info ">
+<code class="code">wire_account&nbsp;id&nbsp;a</code> is the wire representation of <code class="code">a</code>.<br>
 </div>
 
 <pre><code><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> = private {</code></pre><table class="typetable">

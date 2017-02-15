@@ -71,12 +71,11 @@
       followed by verification of the janitor team.<br>
 </div>
 
-<pre><span id="VALverify_package"><span class="keyword">val</span> verify_package</span> : <code class="type">?authorised:(Conex_utils.S.t -> bool) -><br>       ?release:(<a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> bool) -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">verify_package&nbsp;~authorised&nbsp;~release&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the
-      authorisation of the package <code class="code">name</code>.  All <code class="code">ids</code> who are authorised are
-      loaded into the repository (using <code class="code">verify_ids</code>).  If <code class="code">authorised</code> is
-      <code class="code"><span class="keyword">true</span></code>, the package data for <code class="code">name</code> is read and verified, followed by all
-      releases (filtered with <code class="code">release</code>).  Each release is read and verified.<br>
+<pre><span id="VALverify_package"><span class="keyword">val</span> verify_package</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_package&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the authorisation of the
+      package <code class="code">name</code>.  All <code class="code">ids</code> who are authorised are loaded into the
+      repository (using <code class="code">verify_ids</code>).  The package data for <code class="code">name</code> is read and
+      verified, followed by all releases.  Each release is read and verified.<br>
 </div>
 
 <pre><span id="VALverify_diff"><span class="keyword">val</span> verify_diff</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       string -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">

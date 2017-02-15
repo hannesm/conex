@@ -26,7 +26,9 @@
 <code class="code"><span class="keyword">sig</span><br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;raw_digest&nbsp;:&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;digest&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Wire</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t<br>
-&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;keyid&nbsp;:&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;keyid&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.identifier&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Digest</span>.t<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;verify&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;(unit,&nbsp;[&gt;&nbsp;<span class="constructor">Conex_crypto</span>.verification_error&nbsp;])&nbsp;<span class="constructor">Pervasives</span>.result<br>

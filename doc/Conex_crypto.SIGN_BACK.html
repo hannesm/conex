@@ -42,6 +42,10 @@ The signing backend, to be implemented by a crypto provider.<br>
       left to the provider, usual PKCS8 PEM encoding works fine.<br>
 </div>
 
+<pre><span id="VALbits_rsa"><span class="keyword">val</span> bits_rsa</span> : <code class="type">string -> (int, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">bits_rsa&nbsp;pub</code> is the number of bits in <code class="code">pub</code>.<br>
+</div>
+
 <pre><span id="VALgenerate_rsa"><span class="keyword">val</span> generate_rsa</span> : <code class="type">?bits:int -> unit -> string</code></pre><div class="info ">
 <code class="code">generate_rsa&nbsp;~bits&nbsp;()</code> generates an RSA private key with <code class="code">bits</code> size.<br>
 </div>

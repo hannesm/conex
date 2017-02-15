@@ -27,15 +27,11 @@
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;write&nbsp;:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.priv&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unit,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
-&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;err&nbsp;=<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">Msg</span>&nbsp;<span class="keyword">of</span>&nbsp;string<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">MultiplePrivateKeys</span>&nbsp;<span class="keyword">of</span>&nbsp;string&nbsp;list<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NoPrivateKey</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NotFound</span>&nbsp;<span class="keyword">of</span>&nbsp;string&nbsp;]<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;err&nbsp;=&nbsp;[&nbsp;<span class="keywordsign">`</span><span class="constructor">Msg</span>&nbsp;<span class="keyword">of</span>&nbsp;string&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="keywordsign">`</span><span class="constructor">NotFound</span>&nbsp;<span class="keyword">of</span>&nbsp;string&nbsp;]<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_err&nbsp;:&nbsp;<span class="constructor">Conex_unix_private_key</span>.err&nbsp;<span class="constructor">Conex_utils</span>.fmt<br>
 &nbsp;&nbsp;<span class="keyword">val</span>&nbsp;read&nbsp;:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;?id:string&nbsp;<span class="keywordsign">-&gt;</span><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Conex_io</span>.t&nbsp;<span class="keywordsign">-&gt;</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;(string&nbsp;*&nbsp;<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.priv,&nbsp;<span class="constructor">Conex_unix_private_key</span>.err)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;&nbsp;&nbsp;string&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Conex_resource</span>.<span class="constructor">Key</span>.priv,&nbsp;<span class="constructor">Conex_unix_private_key</span>.err)&nbsp;<span class="constructor">Pervasives</span>.result<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;find_ids&nbsp;:&nbsp;unit&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;((string&nbsp;*&nbsp;string)&nbsp;list,&nbsp;string)&nbsp;<span class="constructor">Pervasives</span>.result<br>
 <span class="keyword">end</span></code></body></html>

@@ -44,6 +44,10 @@
 <code class="code">pub_of_priv&nbsp;priv</code> extracts the public key from the private.<br>
 </div>
 
+<pre><span id="VALbits"><span class="keyword">val</span> bits</span> : <code class="type"><a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> -> (int, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">bits&nbsp;pub</code> returns the bit size of the public key.<br>
+</div>
+
 <pre><span id="VALsign"><span class="keyword">val</span> sign</span> : <code class="type"><a href="Conex_utils.Uint.html#TYPEt">Conex_utils.Uint.t</a> -><br>       <a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a> -><br>       <a href="Conex_resource.Key.html#TYPEpriv">Conex_resource.Key.priv</a> -><br>       (<a href="Conex_resource.Author.html#TYPEt">Conex_resource.Author.t</a>, string) Pervasives.result</code></pre><div class="info ">
 <code class="code">sign&nbsp;created&nbsp;author&nbsp;priv</code> uses <a href="Conex_resource.Author.html#VALprep_sig"><code class="code"><span class="constructor">Conex_resource</span>.<span class="constructor">Author</span>.prep_sig</code></a> to
       prepare <code class="code">author</code> (incrementing counter, moving queued resource to signed).

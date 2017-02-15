@@ -120,6 +120,16 @@
       base64.
 </div>
 </td></tr>
+<tr><td><a href="Conex_crypto.SIGN.html#VALbits">bits</a> [<a href="Conex_crypto.SIGN.html">Conex_crypto.SIGN</a>]</td>
+<td><div class="info">
+<code class="code">bits&nbsp;pub</code> returns the bit size of the public key.
+</div>
+</td></tr>
+<tr><td><a href="Conex_crypto.SIGN_BACK.html#VALbits_rsa">bits_rsa</a> [<a href="Conex_crypto.SIGN_BACK.html">Conex_crypto.SIGN_BACK</a>]</td>
+<td><div class="info">
+<code class="code">bits_rsa&nbsp;pub</code> is the number of bits in <code class="code">pub</code>.
+</div>
+</td></tr>
 <tr><td align="left"><br>C</td></tr>
 <tr><td><a href="Conex_opam_repository_layout.html#VALcategorise">categorise</a> [<a href="Conex_opam_repository_layout.html">Conex_opam_repository_layout</a>]</td>
 <td><div class="info">
@@ -145,6 +155,11 @@
 <tr><td><a href="Conex_utils.String.html#VALcompare">compare</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
 <td><div class="info">
 <code class="code">compare&nbsp;a&nbsp;b</code> compares <code class="code">a</code> with <code class="code">b</code> using <code class="code"><span class="constructor">String</span>.compare</code>.
+</div>
+</td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALcompare_account">compare_account</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td><div class="info">
+<code class="code">compare_account&nbsp;a&nbsp;b</code> compares accounts <code class="code">a</code> and <code class="code">b</code>.
 </div>
 </td></tr>
 <tr><td><a href="Conex_utils.String.html#VALcompare_insensitive">compare_insensitive</a> [<a href="Conex_utils.String.html">Conex_utils.String</a>]</td>
@@ -324,6 +339,11 @@
 <code class="code">find&nbsp;m&nbsp;k</code> looks <code class="code">k</code> up in <code class="code">m</code>.
 </div>
 </td></tr>
+<tr><td><a href="Conex_unix_private_key.html#VALfind_ids">find_ids</a> [<a href="Conex_unix_private_key.html">Conex_unix_private_key</a>]</td>
+<td><div class="info">
+<code class="code">find_ids&nbsp;()</code> is a <code class="code">(id,&nbsp;path)</code> list of private keys present.
+</div>
+</td></tr>
 <tr><td><a href="Conex_repository.html#VALfind_team">find_team</a> [<a href="Conex_repository.html">Conex_repository</a>]</td>
 <td><div class="info">
 <code class="code">find_team&nbsp;repo&nbsp;id</code> returns the members of the team <code class="code">id</code> or <code class="code"><span class="constructor">None</span></code> if there
@@ -432,7 +452,7 @@
 <tr><td align="left"><br>K</td></tr>
 <tr><td><a href="Conex_crypto.VERIFY.html#VALkeyid">keyid</a> [<a href="Conex_crypto.VERIFY.html">Conex_crypto.VERIFY</a>]</td>
 <td><div class="info">
-<code class="code">keyid&nbsp;key</code> is the unique fingerprint of <code class="code">key</code>.
+<code class="code">keyid&nbsp;id&nbsp;key</code> is the unique fingerprint of <code class="code">key</code>.
 </div>
 </td></tr>
 <tr><td align="left"><br>L</td></tr>
@@ -625,6 +645,11 @@
 <code class="code">pp</code> is a pretty printer.
 </div>
 </td></tr>
+<tr><td><a href="Conex_resource.Author.html#VALpp_account">pp_account</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
+<td><div class="info">
+<code class="code">pp_account&nbsp;a</code> is a pretty printer.
+</div>
+</td></tr>
 <tr><td><a href="Conex_resource.Release.html#VALpp_c">pp_c</a> [<a href="Conex_resource.Release.html">Conex_resource.Release</a>]</td>
 <td><div class="info">
 <code class="code">pp_c</code> is a pretty printer.
@@ -759,7 +784,7 @@
 </td></tr>
 <tr><td><a href="Conex_unix_private_key.html#VALread">read</a> [<a href="Conex_unix_private_key.html">Conex_unix_private_key</a>]</td>
 <td><div class="info">
-<code class="code">read_private_key&nbsp;~id&nbsp;prov</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;(identifier,&nbsp;priv)</code> or an <code class="code"><span class="constructor">Error</span></code>.
+<code class="code">read_private_key&nbsp;prov&nbsp;id</code> is either <code class="code"><span class="constructor">Ok</span>&nbsp;priv</code> or an <code class="code"><span class="constructor">Error</span></code>.
 </div>
 </td></tr>
 <tr><td><a href="Conex_io.html#VALread_author">read_author</a> [<a href="Conex_io.html">Conex_io</a>]</td>
@@ -1088,8 +1113,8 @@
 </td></tr>
 <tr><td><a href="Conex.Make.html#VALverify_package">verify_package</a> [<a href="Conex.Make.html">Conex.Make</a>]</td>
 <td><div class="info">
-<code class="code">verify_package&nbsp;~authorised&nbsp;~release&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the
-      authorisation of the package <code class="code">name</code>.
+<code class="code">verify_package&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the authorisation of the
+      package <code class="code">name</code>.
 </div>
 </td></tr>
 <tr><td><a href="Conex_crypto.VERIFY_BACK.html#VALverify_rsa_pss">verify_rsa_pss</a> [<a href="Conex_crypto.VERIFY_BACK.html">Conex_crypto.VERIFY_BACK</a>]</td>
@@ -1147,7 +1172,7 @@
 </td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALwire_account">wire_account</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
 <td><div class="info">
-<code class="code">wire_account&nbsp;a</code> is the wire representation of <code class="code">a</code>.
+<code class="code">wire_account&nbsp;id&nbsp;a</code> is the wire representation of <code class="code">a</code>.
 </div>
 </td></tr>
 <tr><td><a href="Conex_resource.Author.html#VALwire_raw">wire_raw</a> [<a href="Conex_resource.Author.html">Conex_resource.Author</a>]</td>
