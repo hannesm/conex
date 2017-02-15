@@ -141,9 +141,9 @@ let verify _ dry path quorum _strict id name no_rec =
      else
        let _ = verify_single io r name in Ok ())
 
-let to_st_txt = function
-  | Ok _ -> Fmt.(styled `Green string), "validated"
-  | Error e -> Fmt.(styled `Red string), Fmt.to_to_string Conex_repository.pp_error e
+let to_st_txt ppf = function
+  | Ok _ -> Fmt.(pf ppf "%a" (styled `Green string) "validated")
+  | Error e -> Fmt.(pf ppf "%a" (styled `Red Conex_repository.pp_error) e)
 
 let status _ path quorum id no_rec =
   msg_to_cmdliner
@@ -169,17 +169,17 @@ let status _ path quorum id no_rec =
            | Ok bits -> bits
          in
          let kid = V.keyid id key in
-         let st, txt = to_st_txt (Conex_repository.validate_key r id key) in
          Logs.app (fun m -> m "%d bit %s key created %s %a, %a"
                       bits (Key.alg_to_string t) (Uint.decimal c)
-                      st txt
+                      to_st_txt (Conex_repository.validate_key r id key)
                       Digest.pp kid))
        idx.Author.keys ;
      List.iter (fun a ->
-         let st, txt = to_st_txt (Conex_repository.validate_account r idx a) in
-         Logs.app (fun m -> m "account %a %a" Author.pp_account a st txt))
+         Logs.app (fun m -> m "account %a %a"
+                      Author.pp_account a
+                      to_st_txt (Conex_repository.validate_account r idx a)))
        idx.Author.accounts ;
-     List.iter (fun r -> Logs.app (fun m -> m "queued %a" Author.pp_r r))
+     List.iteri (fun i r -> Logs.app (fun m -> m "queue %d: %a@ " i Author.pp_r r))
        idx.Author.queued ;
      str_to_msg (IO.ids io) >>= fun ids ->
      let teams =
@@ -187,17 +187,32 @@ let status _ path quorum id no_rec =
            R.ignore_error
              ~use:(fun e -> w IO.pp_r_err e ; teams)
              (IO.read_id io id' >>| function
-               | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp t) ; t :: teams
+               | `Team t when S.mem id t.Team.members -> t :: teams
                | `Team _ | `Author _ -> teams))
          ids []
      in
+     let me = List.fold_left
+         (fun acc t -> if no_rec then acc else S.add t.Team.name acc)
+         (S.singleton id) teams
+     in
+     let members = List.fold_left S.union S.empty (List.map (fun t -> t.Team.members) teams) in
+     let r = S.fold (fun id repo ->
+         R.ignore_error
+           ~use:(fun e -> Logs.warn (fun m -> m "ignoring id %s error %s" id e) ; repo)
+           (C.verify_id io repo id))
+       members r
+     in
      List.iter (fun t ->
-         let st, txt = to_st_txt (Conex_repository.validate_team r t) in
-         Logs.app (fun m -> m "member of team %s %a" t.Team.name st txt))
-       teams ;
+         Logs.app (fun m -> m "team %a (%d members) %a"
+                      pp_id t.Team.name (S.cardinal t.Team.members)
+                      to_st_txt (Conex_repository.validate_team r t)))
+           teams ;
      (* load all ids (well, all team members!) *)
-
+     let r = List.fold_left Conex_repository.add_team r teams in
      (* find_all_packages and print info about authorised ones *)
+     let authorised auth = not (S.is_empty (S.inter me auth)) in
+     str_to_msg (IO.packages io) >>= fun packages ->
+     str_to_msg (foldS (C.verify_package io ~authorised) r packages) >>= fun _ ->
      Ok ())
 
 let add_r idx name typ data =
