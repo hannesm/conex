@@ -96,61 +96,91 @@ let status _ path quorum id no_rec package =
      str_to_msg (init_repo ?quorum true basedir) >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
-     let idx = R.ignore_error ~use:(fun _ -> Author.t Uint.zero id) (IO.read_author io id) in
-     let r, style, txt = match C.verify_id io r id with
-       | Ok r -> r, `Green, "verified"
-       | Error e -> r, `Red, "verification error: " ^ e
-     in
-     Logs.app (fun m -> m "author %a %s (created %s) %a %d resources, %d queued"
-                  Fmt.(styled `Bold pp_id) idx.Author.name
-                  (Header.counter idx.Author.counter idx.Author.wraps)
-                  (Header.timestamp idx.Author.created)
-                  Fmt.(styled style string) txt
-                  (List.length idx.Author.resources)
-                  (List.length idx.Author.queued) ) ;
-     List.iter (fun ((t, _, c) as key, _) ->
-         let bits = match SIGN.bits key with
-           | Error e -> Logs.err (fun m -> m "error while decoding key %s" e) ; 0
-           | Ok bits -> bits
-         in
-         let kid = V.keyid id key in
-         Logs.app (fun m -> m "%d bit %s key created %s %a, %a"
-                      bits (Key.alg_to_string t) (Uint.decimal c)
-                      to_st_txt (Conex_repository.validate_key r id key)
-                      Digest.pp kid))
-       idx.Author.keys ;
-     List.iter (fun a ->
-         Logs.app (fun m -> m "account %a %a"
-                      Author.pp_account a
-                      to_st_txt (Conex_repository.validate_account r idx a)))
-       idx.Author.accounts ;
-     str_to_msg (IO.ids io) >>= fun ids ->
-     let teams =
-       S.fold (fun id' teams ->
-           R.ignore_error
-             ~use:(fun e -> w IO.pp_r_err e ; teams)
-             (IO.read_id io id' >>| function
-               | `Team t when S.mem id t.Team.members -> t :: teams
-               | `Team _ | `Author _ -> teams))
-         ids []
-     in
-     let me = List.fold_left
-         (fun acc t -> if no_rec then acc else S.add t.Team.name acc)
-         (S.singleton id) teams
-     in
-     let members = List.fold_left S.union S.empty (List.map (fun t -> t.Team.members) teams) in
-     let r =
-       S.fold (fun id repo ->
-           R.ignore_error
-             ~use:(fun e -> Logs.warn (fun m -> m "ignoring id %s error %s" id e) ; repo)
-             (C.verify_id io repo id))
-         members r
-     in
-     List.iter (fun t ->
-         Logs.app (fun m -> m "team %a (%d members) %a"
-                      pp_id t.Team.name (S.cardinal t.Team.members)
-                      to_st_txt (Conex_repository.validate_team r t)))
-           teams ;
+     (match IO.read_id io id with
+      | Ok (`Author idx) ->
+        let r, style, txt = match C.verify_id io r id with
+          | Ok r -> r, `Green, "verified"
+          | Error e -> r, `Red, "verification error: " ^ e
+        in
+        Logs.app (fun m -> m "author %a %s (created %s) %a %d resources, %d queued"
+                     Fmt.(styled `Bold pp_id) idx.Author.name
+                     (Header.counter idx.Author.counter idx.Author.wraps)
+                     (Header.timestamp idx.Author.created)
+                     Fmt.(styled style string) txt
+                     (List.length idx.Author.resources)
+                     (List.length idx.Author.queued) ) ;
+        List.iter (fun ((t, _, c) as key, _) ->
+            let bits = match SIGN.bits key with
+              | Error e -> Logs.err (fun m -> m "error while decoding key %s" e) ; 0
+              | Ok bits -> bits
+            in
+            let kid = V.keyid id key in
+            Logs.app (fun m -> m "%d bit %s key created %s %a, %a"
+                         bits (Key.alg_to_string t) (Uint.decimal c)
+                         to_st_txt (Conex_repository.validate_key r id key)
+                         Digest.pp kid))
+          idx.Author.keys ;
+        List.iter (fun a ->
+            Logs.app (fun m -> m "account %a %a"
+                         Author.pp_account a
+                         to_st_txt (Conex_repository.validate_account r idx a)))
+          idx.Author.accounts ;
+        List.iteri (fun i r -> Logs.app (fun m -> m "queue %d: %a@ " i Author.pp_r r))
+          idx.Author.queued ;
+        str_to_msg (IO.ids io) >>= fun ids ->
+        let teams =
+          S.fold (fun id' teams ->
+              R.ignore_error
+                ~use:(fun e -> w IO.pp_r_err e ; teams)
+                (IO.read_id io id' >>| function
+                  | `Team t when S.mem id t.Team.members -> t :: teams
+                  | `Team _ | `Author _ -> teams))
+            ids []
+        in
+        let me = List.fold_left
+            (fun acc t -> if no_rec then acc else S.add t.Team.name acc)
+            (S.singleton id) teams
+        in
+        let members = List.fold_left S.union S.empty (List.map (fun t -> t.Team.members) teams) in
+        let r =
+          S.fold (fun id repo ->
+              R.ignore_error
+                ~use:(fun e -> Logs.warn (fun m -> m "ignoring id %s error %s" id e) ; repo)
+                (C.verify_id io repo id))
+            members r
+        in
+        List.iter (fun t ->
+            Logs.app (fun m -> m "team %a (%d members) %a"
+                         Fmt.(styled `Bold pp_id) t.Team.name (S.cardinal t.Team.members)
+                         to_st_txt (Conex_repository.validate_team r t)))
+          teams ;
+        Ok (r, me, teams)
+      | Ok (`Team t) ->
+        let r, mems =
+          S.fold (fun id (repo, res) ->
+              match C.verify_id io repo id with
+              | Ok repo -> (repo, (id, Ok ()) :: res)
+              | Error e -> (repo, (id, Error e) :: res))
+            t.Team.members (r, [])
+        in
+        Logs.app (fun m -> m "team %a (%d members) %a"
+                     Fmt.(styled `Bold pp_id) t.Team.name (S.cardinal t.Team.members)
+                     to_st_txt (Conex_repository.validate_team r t)) ;
+        List.iter (fun (id, res) ->
+            let idx = match IO.read_author io id with
+              | Ok idx -> idx | Error _ -> Author.t Uint.zero id
+            in
+            let pp ppf = function
+              | Ok () -> Fmt.(pf ppf "%a" (styled `Green string) "approved")
+              | Error e -> Fmt.(pf ppf "%a" (styled `Red string) e)
+            in
+            Logs.app (fun m -> m "member %a %a %d resources %d keys"
+                         pp_id id pp res (List.length idx.Author.resources) (List.length idx.Author.keys)))
+          mems ;
+        Ok (r, S.singleton id, [t])
+      | Error e ->
+        Logs.err (fun m -> m "couldn't read id %s: %a" id Conex_io.pp_r_err e) ;
+        Ok (r, S.singleton id, [])) >>= fun (r, me, teams) ->
      (* load all ids (well, all team members!) *)
      let r = List.fold_left Conex_repository.add_team r teams in
      (* find_all_packages and print info about our ones (filtered by name) *)
@@ -207,9 +237,6 @@ let status _ path quorum id no_rec package =
              r)
          packages r
      in
-     (* validate *)
-     List.iteri (fun i r -> Logs.app (fun m -> m "queue %d: %a@ " i Author.pp_r r))
-       idx.Author.queued ;
      Ok ())
 
 let add_r idx name typ data =
