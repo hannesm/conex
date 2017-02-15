@@ -93,59 +93,22 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let verify_all io r id no_team =
-  R.error_to_msg ~pp_error:IO.pp_r_err (IO.read_id io id) >>= function
-  | `Author _ ->
-    (if no_team then
-       Ok (S.singleton id)
-     else begin
-       str_to_msg (IO.ids io) >>= fun ids ->
-       let teams =
-         S.fold (fun id' teams ->
-             R.ignore_error
-               ~use:(fun e -> w IO.pp_r_err e ; teams)
-               (IO.read_id io id' >>| function
-                 | `Team t when S.mem id t.Team.members -> Logs.info (fun m -> m "member of %a" Team.pp t) ; t :: teams
-                 | `Team _ | `Author _ -> teams))
-           ids []
-       in
-       Ok (s_of_list (id :: List.map (fun t -> t.Team.name) teams))
-     end) >>= fun me ->
-    str_to_msg (C.verify_ids ~ids:me io r) >>= fun r ->
-    let authorised auth = not (S.is_empty (S.inter me auth)) in
-    str_to_msg (IO.packages io) >>= fun packagess ->
-    str_to_msg (foldS (C.verify_package io ~authorised) r packagess)
-  | `Team t ->
-    Logs.info (fun m -> m "%a" Conex_resource.Team.pp t) ;
-    str_to_msg (C.verify_ids ~ids:t.Team.members io r) >>= fun r ->
-    let authorised auth = S.mem t.Team.name auth in
-    str_to_msg (IO.packages io) >>= fun packages ->
-    str_to_msg (foldS (C.verify_package io ~authorised) r packages)
-
-let verify_single io r name =
-  Logs.info (fun m -> m "information on package %s" name) ;
-  let pn, release = match Conex_opam_repository_layout.authorisation_of_package name with
-    | None -> name, (fun _ -> true)
-    | Some pn -> pn, (fun nam -> name_equal nam name)
-  in
-  C.verify_package ~release io r pn
-
-let verify _ dry path quorum _strict id name no_rec =
-  msg_to_cmdliner
-    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
-     str_to_msg (init_repo ?quorum dry basedir) >>= fun (r, io) ->
+let verify _ path quorum _strict id =
+  msg_to_cmdliner @@ str_to_msg
+    (find_basedir_id path id >>= fun (_id, basedir) ->
+     init_repo ?quorum true basedir >>= fun (r, io) ->
      Logs.info (fun m -> m "%a" Conex_io.pp io) ;
-     str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
-     if name = "" then
-       verify_all io r id no_rec >>| fun _r -> ()
-     else
-       let _ = verify_single io r name in Ok ())
+     C.verify_janitors ~valid:(fun _ _ -> true) io r >>= fun r ->
+     C.verify_ids io r >>= fun repo ->
+     IO.packages io >>= fun packages ->
+     foldS (C.verify_package io) repo packages >>= fun _ ->
+     Ok ())
 
 let to_st_txt ppf = function
   | Ok _ -> Fmt.(pf ppf "%a" (styled `Green string) "validated")
   | Error e -> Fmt.(pf ppf "%a" (styled `Red Conex_repository.pp_error) e)
 
-let status _ path quorum id no_rec =
+let status _ path quorum id no_rec package =
   msg_to_cmdliner
     (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo ?quorum true basedir) >>= fun (r, io) ->
@@ -212,7 +175,15 @@ let status _ path quorum id no_rec =
      (* find_all_packages and print info about authorised ones *)
      let authorised auth = not (S.is_empty (S.inter me auth)) in
      str_to_msg (IO.packages io) >>= fun packages ->
-     str_to_msg (foldS (C.verify_package io ~authorised) r packages) >>= fun _ ->
+     let packages, release =
+       let prefix, rel =
+         match Conex_opam_repository_layout.authorisation_of_package package with
+         | None -> package, (fun _ -> true)
+         | Some pn -> pn, (fun name -> name_equal name package)
+       in
+       S.filter (String.is_prefix ~prefix) packages, rel
+     in
+     str_to_msg (foldS (C.verify_package io ~authorised ~release) r packages) >>= fun _ ->
      Ok ())
 
 let add_r idx name typ data =
@@ -506,7 +477,7 @@ let status_cmd =
     [`S "DESCRIPTION";
      `P "Shows information about yourself."]
   in
-  Term.(ret Conex_opts.(const status $ setup_log $ repo $ quorum $ id $ noteam)),
+  Term.(ret Conex_opts.(const status $ setup_log $ repo $ quorum $ id $ noteam $ package)),
   Term.info "status" ~doc ~man
 
 let verify_cmd =
@@ -515,7 +486,7 @@ let verify_cmd =
     [`S "DESCRIPTION";
      `P "Shows verification status."]
   in
-  Term.(ret Conex_opts.(const verify $ setup_log $ dry $ repo $ quorum $ strict $ id $ package $ noteam)),
+  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ strict $ id)),
   Term.info "verify" ~doc ~man
 
 let package_cmd =
