@@ -336,7 +336,8 @@ let find_auth io name =
 
 let auth _ dry path id remove members p =
   msg_to_cmdliner
-    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+    (if p = "" then Error (`Msg "missing package argument") else
+     str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      let auth = find_auth io p in
      let members = match members with [] -> [id] | xs -> xs in
@@ -363,7 +364,8 @@ let auth _ dry path id remove members p =
 
 let release _ dry path id remove p =
   msg_to_cmdliner
-    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+    (if p = "" then Error (`Msg "missing package argument") else
+     str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      (match Conex_opam_repository_layout.authorisation_of_package p with
       | Some n -> Ok (n, S.singleton p)
@@ -442,7 +444,8 @@ let release _ dry path id remove p =
 
 let team _ dry path id remove members tid =
   msg_to_cmdliner
-    (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+    (if tid = "" then Error (`Msg "missing team argument") else
+     str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
      let team =
        let use e =
