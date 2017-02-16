@@ -56,7 +56,7 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let verify _ path quorum strict id anchors =
+let verify _ path quorum ignore_missing id anchors =
   msg_to_cmdliner @@ str_to_msg
     (find_basedir_id path id >>= fun (_id, basedir) ->
      init_repo ?quorum true basedir >>= fun (r, io) ->
@@ -72,7 +72,7 @@ let verify _ path quorum strict id anchors =
      C.verify_janitors ~valid io r >>= fun r ->
      C.verify_ids io r >>= fun repo ->
      IO.packages io >>= fun packages ->
-     foldS (C.verify_package ~ignore_missing:strict io) repo packages >>= fun _ ->
+     foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
      Ok ())
 
 let to_st_txt ppf = function
@@ -692,12 +692,10 @@ let setup_log =
 
 let help_secs = [
  `S "GENERAL";
- `P "Conex is a tool suite to manage and verify cryptographically signed data repositories.";
- `S "KEYS";
- `P "Public keys contain a unique identifier.  They are distributed with the repository itself.";
- `P "Your private keys are stored PEM-encoded in ~/.conex.  You can select which key to use by passing --id to conex.";
- `S "PACKAGE";
- `P "A package is an opam package, and can either be the package name or the package name and version number.";
+ `P "$(mname) is a tool for managing cryptographically signed community repositories.";
+ `P "The signing metadata is kept in the same repository: identities (authors and teams), authorisations, release information.";
+ `P "After initial enrollment $(b,conex_author init --id <id> --repo <dir>), each subcommand approves resources of that kind in the repository";
+ `P "Approval is done in a staging area (the queue), use $(b,conex_author sign) to cryptographically sign (or $(b,conex_author reset) to reset).";
  `S docs;
  `P "These options are common to all commands.";
  `S "SEE ALSO";
@@ -725,16 +723,16 @@ let verify_cmd =
   let doc = "verification" in
   let man =
     [`S "DESCRIPTION";
-     `P "Shows verification status."]
+     `P "Shows verification status of the repository."]
   in
-  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ strict $ id $ anchors)),
+  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ no_strict $ id $ anchors)),
   Term.info "verify" ~doc ~man
 
 let authorisation_cmd =
   let doc = "modify authorisation of a package" in
   let man =
     [`S "DESCRIPTION";
-     `P "Modifies authorisaton of a package."]
+     `P "Modifies the set of authorised ids for the given package."]
   in
   Term.(ret Conex_opts.(const auth $ setup_log $ dry $ repo $ id $ remove $ members $ package)),
   Term.info "authorisation" ~doc ~man
@@ -743,7 +741,7 @@ let release_cmd =
   let doc = "modify releases of a package" in
   let man =
     [`S "DESCRIPTION";
-     `P "Modifies releases of a package."]
+     `P "Modifies the set of releases of the given package."]
   in
   Term.(ret Conex_opts.(const release $ setup_log $ dry $ repo $ id $ remove $ package)),
   Term.info "release" ~doc ~man
@@ -752,20 +750,20 @@ let team_cmd =
   let doc = "modify members of a team" in
   let man =
     [`S "DESCRIPTION";
-     `P "Modifies members of a team."]
+     `P "Modifies members of the given team."]
   in
   Term.(ret Conex_opts.(const team $ setup_log $ dry $ repo $ id $ remove $ members $ team_a)),
   Term.info "team" ~doc ~man
 
 let key_cmd =
   let author_a =
-    let doc = "The author to approve." in
+    let doc = "approve an author" in
     Arg.(value & pos 0 Conex_opts.id_c "" & info [] ~doc)
   in
-  let doc = "approves an author" in
+  let doc = "Approves a given author" in
   let man =
     [`S "DESCRIPTION";
-     `P "Approves an author."]
+     `P "Approves the given author."]
   in
   Term.(ret Conex_opts.(const key $ setup_log $ dry $ repo $ id $ author_a)),
   Term.info "key" ~doc ~man

@@ -106,7 +106,7 @@ let no_color =
     Arg.(value & flag & info [ "no-color" ] ~doc)
 
 let cmd =
-  Term.(ret (const setup $ repo $ quorum $ anchors $ incremental $ dir $ patch $ verbose $ quiet $ strict $ no_color)),
+  Term.(ret (const setup $ repo $ quorum $ anchors $ incremental $ dir $ patch $ verbose $ quiet $ no_strict $ no_color)),
   Term.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
     ~doc:Conex_verify.doc ~man:Conex_verify.man
 

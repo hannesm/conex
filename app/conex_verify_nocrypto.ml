@@ -18,7 +18,7 @@ let setup_log =
         $ Logs_cli.level ~docs ())
 
 let cmd =
-  Term.(ret (const jump $ setup_log $ repo $ quorum $ anchors $ incremental $ dir $ patch $ strict)),
+  Term.(ret (const jump $ setup_log $ repo $ quorum $ anchors $ incremental $ dir $ patch $ no_strict)),
   Term.info "conex_verify_nocrypto" ~version:"%%VERSION_NUM%%"
     ~doc:Conex_verify.doc ~man:Conex_verify.man
 
