@@ -27,7 +27,6 @@ depends: [
   "nocrypto"   {>= "0.5.3"}
   "x509"       {>= "0.4.0"}
   "alcotest"   {test}
-  "opam-format"
   "logs" "fmt" "rresult" "astring"
 ]
-available: [ ocaml-version >= "4.01.0" ]
+available: [ ocaml-version >= "4.03.0" ]
