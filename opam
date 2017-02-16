@@ -9,7 +9,8 @@ maintainer:   ["Hannes Mehnert <hannes@mehnert.org>"]
 license:      "BSD2"
 
 build: [
-  [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "false" ]
+  [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "false"
+    "--with-format" "%{opam-format:installed}%" ]
 ]
 
 build-test: [
@@ -28,5 +29,9 @@ depends: [
   "x509"       {>= "0.4.0"}
   "alcotest"   {test}
   "logs" "fmt" "rresult" "astring"
+]
+
+depopts: [
+  "opam-format"
 ]
 available: [ ocaml-version >= "4.03.0" ]
