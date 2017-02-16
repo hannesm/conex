@@ -2,11 +2,13 @@
 
 %%VERSION%%
 
+[Conex](https://github.com/hannesm/conex) is a library to verify and attest release integrity and
+authenticity of a community repository through the use of cryptographic signatures.
+
 NOTE: This is still work in progress, to be deployed with opam 2.0 and the [opam
 repository](https://github.com/ocaml/opam-repository).
 
-[Conex](https://github.com/hannesm/conex) is a library to verify and attest release integrity and
-authenticity of a community repository through the use of cryptographic signatures.
+![screenshot](https://berlin.ccc.de/~hannes/conex.png)
 
 Packages are collected in a community repository to provide an index and
 allowing cross-references.  Authors submit their packages to the repository. which
