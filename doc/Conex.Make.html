@@ -71,18 +71,22 @@
       followed by verification of the janitor team.<br>
 </div>
 
-<pre><span id="VALverify_package"><span class="keyword">val</span> verify_package</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">verify_package&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the authorisation of the
-      package <code class="code">name</code>.  All <code class="code">ids</code> who are authorised are loaded into the
-      repository (using <code class="code">verify_ids</code>).  The package data for <code class="code">name</code> is read and
-      verified, followed by all releases.  Each release is read and verified.<br>
+<pre><span id="VALverify_package"><span class="keyword">val</span> verify_package</span> : <code class="type">?ignore_missing:bool -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       <a href="Conex_resource.html#TYPEname">Conex_resource.name</a> -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_package&nbsp;~ignore_missing&nbsp;io&nbsp;repo&nbsp;name</code> reads and verifies the
+      authorisation of the package <code class="code">name</code>.  All <code class="code">ids</code> who are authorised are
+      loaded into the repository (using <code class="code">verify_ids</code>).  The package data for
+      <code class="code">name</code> is read and verified, followed by all releases.  Each release is
+      read and verified. If <code class="code">ignore_missing</code> is true, packages with missing
+      authorisations or package indexes are ignored.<br>
 </div>
 
-<pre><span id="VALverify_diff"><span class="keyword">val</span> verify_diff</span> : <code class="type"><a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       string -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
-<code class="code">verify_diff&nbsp;io&nbsp;repository&nbsp;patch</code> first parses the <code class="code">patch</code> and applies it.
-      The key fingerprints ofjanitors in <code class="code">repository</code> are used to validate the
-      janitors team of the repository with applied <code class="code">patch</code>.  All identifiers and
-      packages of the repository with <code class="code">patch</code> applied are verified, and
-      additionally all modified resources have their monotonicity verified.<br>
+<pre><span id="VALverify_diff"><span class="keyword">val</span> verify_diff</span> : <code class="type">?ignore_missing:bool -><br>       <a href="Conex_io.html#TYPEt">Conex_io.t</a> -><br>       <a href="Conex_repository.html#TYPEt">Conex_repository.t</a> -><br>       string -> (<a href="Conex_repository.html#TYPEt">Conex_repository.t</a>, string) Pervasives.result</code></pre><div class="info ">
+<code class="code">verify_diff&nbsp;~ignore_missing&nbsp;io&nbsp;repository&nbsp;patch</code> first parses the <code class="code">patch</code>
+      and applies it.  The key fingerprints ofjanitors in <code class="code">repository</code> are used
+      to validate the janitors team of the repository with applied <code class="code">patch</code>.  All
+      identifiers and packages of the repository with <code class="code">patch</code> applied are
+      verified, and additionally all modified resources have their monotonicity
+      verified.  If <code class="code">ignore_missing</code> is true, packages with missing
+      authorisations and package indexes are ignored.<br>
 </div>
 </body></html>

@@ -213,8 +213,13 @@ The record of an author: name, key/signature pairs, created, counter,
 <code class="code">next_id&nbsp;t</code> is the next free identitifer of the resource list index.<br>
 </div>
 
-<pre><span id="VALadd_resource"><span class="keyword">val</span> add_resource</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">add_resource&nbsp;t&nbsp;r</code> adds <code class="code">r</code> to <code class="code">t.queued</code>.<br>
+<pre><span id="VALqueue"><span class="keyword">val</span> queue</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">queue&nbsp;t&nbsp;r</code> adds <code class="code">r</code> to <code class="code">t.queued</code>.<br>
+</div>
+
+<pre><span id="VALapprove"><span class="keyword">val</span> approve</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEr">r</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">approve&nbsp;t&nbsp;r</code> adds <code class="code">r</code> to <code class="code">t.resources</code>, and removes <code class="code">r</code> from
+      <code class="code">t.queued</code>.<br>
 </div>
 
 <pre><span id="VALequal"><span class="keyword">val</span> equal</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> -> bool</code></pre><div class="info ">
@@ -227,8 +232,8 @@ The record of an author: name, key/signature pairs, created, counter,
 </div>
 
 <pre><span id="VALprep_sig"><span class="keyword">val</span> prep_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a> * bool</code></pre><div class="info ">
-<code class="code">prep_sig&nbsp;t</code> appends <code class="code">t.queued</code> to <code class="code">t.resources</code> and increments
-      <code class="code">t.counter</code>.  Returns the carry bit as second component.<br>
+<code class="code">prep_sig&nbsp;t</code> increments <code class="code">t.counter</code>.  Returns the carry bit as second
+      component.<br>
 </div>
 
 <pre><span id="VALreplace_sig"><span class="keyword">val</span> replace_sig</span> : <code class="type"><a href="Conex_resource.Author.html#TYPEt">t</a> -><br>       <a href="Conex_resource.Key.html#TYPEt">Conex_resource.Key.t</a> * <a href="Conex_resource.Signature.html#TYPEt">Conex_resource.Signature.t</a> -> <a href="Conex_resource.Author.html#TYPEt">t</a></code></pre><div class="info ">
