@@ -366,27 +366,46 @@ let auth _ dry path id remove members p =
     (if p = "" then Error (`Msg "missing package argument") else
      str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
-     let auth = find_auth io p in
-     let f = if remove then Authorisation.remove else Authorisation.add in
-     let auth' = List.fold_left f auth members in
      let idx = find_idx io id in
-     if not (Authorisation.equal auth auth') then begin
-       let auth, overflow = Authorisation.prep auth' in
-       if overflow then
-         Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
-       str_to_msg (IO.write_authorisation io auth) >>= fun () ->
-       Logs.info (fun m -> m "wrote %a" Authorisation.pp auth) ;
-       let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
-       str_to_msg (IO.write_author io idx) >>| fun () ->
-       Logs.app (fun m -> m "modified authorisation and added resource to your list.")
-     end else if not (Conex_repository.contains ~queued:true r idx p `Authorisation (Authorisation.wire auth)) then begin
-       let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
-       str_to_msg (IO.write_author io idx) >>| fun () ->
-       Logs.app (fun m -> m "added resource to your list.")
-     end else begin
-       Logs.app (fun m -> m "nothing changed.") ;
-       Ok ()
-     end)
+     if p = "all" then begin
+       str_to_msg (IO.packages io) >>= fun ps ->
+       let count = ref 0 in
+       let idx =
+         S.fold (fun n idx ->
+             match IO.read_authorisation io n with
+             | Ok auth when not (Conex_repository.contains ~queued:true r idx n `Authorisation (Authorisation.wire auth)) ->
+               incr count ; add_r idx n `Authorisation (Authorisation.wire auth)
+             | Ok _ -> idx
+             | Error e ->
+               Logs.warn (fun m -> m "couldn't read authorisation %a: %a" pp_name n IO.pp_r_err e) ;
+               idx) ps idx
+       in
+       if !count = 0 then begin
+         Logs.app (fun m -> m "nothing changed") ; Ok ()
+       end else
+         (str_to_msg (IO.write_author io idx) >>| fun () ->
+          Logs.app (fun m -> m "added %d authorisations to your list." !count))
+     end else
+       let auth = find_auth io p in
+       let f = if remove then Authorisation.remove else Authorisation.add in
+       let auth' = List.fold_left f auth members in
+       if not (Authorisation.equal auth auth') then begin
+         let auth, overflow = Authorisation.prep auth' in
+         if overflow then
+           Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
+         str_to_msg (IO.write_authorisation io auth) >>= fun () ->
+         Logs.info (fun m -> m "wrote %a" Authorisation.pp auth) ;
+         let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
+         str_to_msg (IO.write_author io idx) >>| fun () ->
+         Logs.app (fun m -> m "modified authorisation and added resource to your list.")
+       end else if not (Conex_repository.contains ~queued:true r idx p `Authorisation (Authorisation.wire auth)) then begin
+         let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
+         str_to_msg (IO.write_author io idx) >>| fun () ->
+         Logs.app (fun m -> m "added resource to your list.")
+       end else begin
+         Logs.app (fun m -> m "nothing changed.") ;
+         Ok ()
+       end)
 
 let release _ dry path id remove p =
   msg_to_cmdliner
@@ -473,39 +492,112 @@ let team _ dry path id remove members tid =
     (if tid = "" then Error (`Msg "missing team argument") else
      str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
      str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
-     let team =
-       let use e =
-         w IO.pp_r_err e ;
-         let team = Team.t now tid in
-         Logs.info (fun m -> m "fresh %a" Team.pp team) ;
-         team
-       in
-       R.ignore_error ~use
-         (IO.read_team io tid >>| fun team ->
-          Logs.debug (fun m -> m "read %a" Team.pp team) ;
-          team)
-     in
-     let f = if remove then Team.remove else Team.add in
-     let team' = List.fold_left f team members in
      let idx = find_idx io id in
-     if not (Team.equal team team') then begin
-       let team, overflow = Team.prep team' in
-       if overflow then
-         Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
-       str_to_msg (IO.write_team io team) >>= fun () ->
-       Logs.info (fun m -> m "wrote %a" Team.pp team) ;
-       let idx = add_r idx tid `Team (Team.wire team) in
-       str_to_msg (IO.write_author io idx) >>| fun () ->
-       Logs.app (fun m -> m "modified team and added resource to your resource list.")
-     end else if not (Conex_repository.contains ~queued:true r idx tid `Team (Team.wire team)) then begin
-       let idx = add_r idx tid `Team (Team.wire team) in
-       str_to_msg (IO.write_author io idx) >>| fun () ->
-       Logs.app (fun m -> m "added resource to your resource list.")
-     end else begin
-       Logs.app (fun m -> m "nothing changed.") ;
-       Ok ()
-     end)
+     if tid = "all" then begin
+       let count = ref 0 in
+       str_to_msg (IO.ids io) >>= fun ids ->
+       let idx =
+         S.fold (fun id idx -> match IO.read_team io id with
+             | Error _ -> idx
+             | Ok t when not (Conex_repository.contains ~queued:true r idx id `Team (Team.wire t)) ->
+               incr count ; add_r idx id `Team (Team.wire t)
+             | Ok _ -> idx) ids idx
+       in
+       if !count = 0 then begin
+         Logs.app (fun m -> m "nothing changed") ; Ok ()
+       end else
+         (str_to_msg (IO.write_author io idx) >>| fun () ->
+          Logs.app (fun m -> m "added %d teams to your list." !count))
+     end else
+       let team =
+         let use e =
+           w IO.pp_r_err e ;
+           let team = Team.t now tid in
+           Logs.info (fun m -> m "fresh %a" Team.pp team) ;
+           team
+         in
+         R.ignore_error ~use
+           (IO.read_team io tid >>| fun team ->
+            Logs.debug (fun m -> m "read %a" Team.pp team) ;
+            team)
+       in
+       let f = if remove then Team.remove else Team.add in
+       let team' = List.fold_left f team members in
+       if not (Team.equal team team') then begin
+         let team, overflow = Team.prep team' in
+         if overflow then
+           Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
+         str_to_msg (IO.write_team io team) >>= fun () ->
+         Logs.info (fun m -> m "wrote %a" Team.pp team) ;
+         let idx = add_r idx tid `Team (Team.wire team) in
+         str_to_msg (IO.write_author io idx) >>| fun () ->
+         Logs.app (fun m -> m "modified team and added resource to your resource list.")
+       end else if not (Conex_repository.contains ~queued:true r idx tid `Team (Team.wire team)) then begin
+         let idx = add_r idx tid `Team (Team.wire team) in
+         str_to_msg (IO.write_author io idx) >>| fun () ->
+         Logs.app (fun m -> m "added resource to your resource list.")
+       end else begin
+         Logs.app (fun m -> m "nothing changed.") ;
+         Ok ()
+       end)
 
+let key _ dry path id aid =
+  msg_to_cmdliner
+    (if aid = "" then Error (`Msg "missing author argument") else
+     str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
+     str_to_msg (init_repo dry basedir) >>= fun (r, io) ->
+     let idx = find_idx io id in
+     if aid = "all" then begin
+       let count = ref 0 in
+       str_to_msg (IO.ids io) >>= fun ids ->
+       let idx =
+         S.fold (fun id idx -> match IO.read_author io id with
+             | Error _ -> idx
+             | Ok author ->
+               let idx' = List.fold_left
+                   (fun idx (key, _) ->
+                      if not (Conex_repository.contains ~queued:true r idx aid `Key (Key.wire aid key)) then
+                        add_r idx aid `Key (Key.wire aid key)
+                      else
+                        idx) idx author.Author.keys
+               in
+               let idx' = List.fold_left (fun idx a ->
+                   if not (Conex_repository.contains ~queued:true r idx aid `Account (Author.wire_account aid a)) then
+                     add_r idx aid `Account (Author.wire_account aid a)
+                   else
+                     idx) idx' author.Author.accounts
+               in
+               if Author.equal idx idx' then idx else (incr count ; idx'))
+           ids idx
+       in
+       if !count = 0 then begin
+         Logs.app (fun m -> m "nothing changed") ; Ok ()
+       end else
+         (str_to_msg (IO.write_author io idx) >>| fun () ->
+          Logs.app (fun m -> m "added %d authors to your list." !count))
+     end else
+       match IO.read_author io aid with
+       | Error e -> Error (`Msg (Fmt.to_to_string IO.pp_r_err e))
+       | Ok author ->
+         Logs.debug (fun m -> m "read %a" Author.pp author) ;
+         let idx' = List.fold_left
+             (fun idx (key, _) ->
+                if not (Conex_repository.contains ~queued:true r idx aid `Key (Key.wire aid key)) then
+                  add_r idx aid `Key (Key.wire aid key)
+                else
+                  idx) idx author.Author.keys
+         in
+         let idx' = List.fold_left (fun idx a ->
+             if not (Conex_repository.contains ~queued:true r idx aid `Account (Author.wire_account aid a)) then
+               add_r idx aid `Account (Author.wire_account aid a)
+             else
+               idx) idx' author.Author.accounts
+         in
+         if Author.equal idx idx' then begin
+           Logs.app (fun m -> m "nothing changed.") ; Ok ()
+         end else
+           str_to_msg (IO.write_author io idx') >>| fun () ->
+           Logs.app (fun m -> m "added keys and accounts to your resource list."))
 
 open Cmdliner
 
@@ -532,7 +624,7 @@ let help_secs = [
 
 let team_a =
   let doc = "Team" in
-  Arg.(value & pos 0 Conex_opts.id_c "" & info [] ~docv:"TEAM" ~doc)
+  Arg.(value & pos 0 Conex_opts.id_c "" & info [] ~doc)
 
 let noteam =
   let doc = "Do not transitively use teams" in
@@ -582,6 +674,19 @@ let team_cmd =
   in
   Term.(ret Conex_opts.(const team $ setup_log $ dry $ repo $ id $ remove $ members $ team_a)),
   Term.info "team" ~doc ~man
+
+let key_cmd =
+  let author_a =
+    let doc = "The author to approve." in
+    Arg.(value & pos 0 Conex_opts.id_c "" & info [] ~doc)
+  in
+  let doc = "approves an author" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Approves an author."]
+  in
+  Term.(ret Conex_opts.(const key $ setup_log $ dry $ repo $ id $ author_a)),
+  Term.info "key" ~doc ~man
 
 let reset_cmd =
   let doc = "reset staged changes" in
@@ -636,7 +741,9 @@ let default_cmd =
 let cmds = [ help_cmd ; status_cmd ;
              init_cmd ; sign_cmd ; reset_cmd ;
              verify_cmd ;
-             authorisation_cmd ; team_cmd ; release_cmd ]
+             authorisation_cmd ; team_cmd ; release_cmd ;
+             key_cmd
+           ]
 
 let () =
   match Term.eval_choice default_cmd cmds
