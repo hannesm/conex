@@ -98,8 +98,10 @@ let status _ path quorum id no_rec package =
      str_to_msg (C.verify_janitors ~valid:(fun _ _ -> true) io r) >>= fun r ->
      (match IO.read_id io id with
       | Ok (`Author idx) ->
+        let has_keys = List.length idx.Author.keys > 0 in
         let r, style, txt = match C.verify_id io r id with
-          | Ok r -> r, `Green, "verified"
+          | Ok r when has_keys -> r, `Green, "verified"
+          | Ok r -> r, `Red, "no public key"
           | Error e -> r, `Red, "verification error: " ^ e
         in
         Logs.app (fun m -> m "author %a %s (created %s) %a %d resources, %d queued"
@@ -171,7 +173,8 @@ let status _ path quorum id no_rec package =
               | Ok idx -> idx | Error _ -> Author.t Uint.zero id
             in
             let pp ppf = function
-              | Ok () -> Fmt.(pf ppf "%a" (styled `Green string) "approved")
+              | Ok () when List.length idx.Author.keys > 0 -> Fmt.(pf ppf "%a" (styled `Green string) "approved")
+              | Ok () -> Fmt.(pf ppf "%a" (styled `Red string) "no public key")
               | Error e -> Fmt.(pf ppf "%a" (styled `Red string) e)
             in
             Logs.app (fun m -> m "member %a %a %d resources %d keys"
@@ -290,9 +293,16 @@ let init _ dry path id email =
        and created = idx.Author.created
        in
        let idx = Author.t ~accounts ~counter ~wraps ~resources ~queued created id in
-       let idx = queue_r idx id `Key (Key.wire id public) in
+       let approve idx typ wire =
+         let counter = Author.next_id idx in
+         let digest = V.digest wire in
+         let res = Author.r counter id typ digest in
+         Logs.info (fun m -> m "approved %a" Author.pp_r res) ;
+         Author.approve idx res
+       in
+       let idx = approve idx `Key (Key.wire id public) in
        let idx =
-         List.fold_left (fun idx a -> queue_r idx id `Account (Author.wire_account id a))
+         List.fold_left (fun idx a -> approve idx `Account (Author.wire_account id a))
            idx accounts
        in
        str_to_msg (IO.write_author io idx) >>| fun () ->
