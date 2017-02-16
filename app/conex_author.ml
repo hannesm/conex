@@ -313,6 +313,66 @@ let find_idx io name =
      Logs.debug (fun m -> m "read %a" Author.pp idx) ;
      idx)
 
+let check io { Author.rname ; rtyp ; digest ; _ } =
+  match rtyp with
+  | `Key -> (match IO.read_author io rname with
+      | Error _ -> false
+      | Ok author ->
+        match
+          List.filter (fun (key, _) ->
+              Digest.equal (V.digest (Key.wire rname key)) digest)
+            author.Author.keys
+        with
+        | [(x,_)] -> Logs.app (fun m -> m "key %a: %a" pp_id rname Key.pp x) ; true
+        | _ -> false)
+  | `Account -> (match IO.read_author io rname with
+      | Error _ -> false
+      | Ok author ->
+        match
+          List.filter (fun a ->
+              Digest.equal (V.digest (Author.wire_account rname a)) digest)
+            author.Author.accounts
+        with
+        | [a] -> Logs.app (fun m -> m "account %a: %a" pp_id rname Author.pp_account a) ; true
+        | _ -> false)
+  | `Team -> (match IO.read_team io rname with
+      | Error _ -> false
+      | Ok team ->
+        if Digest.equal (V.digest (Team.wire team)) digest then
+          (Logs.app (fun m -> m "%a" Team.pp team) ; true)
+        else
+          false)
+  | `Authorisation -> (match IO.read_authorisation io rname with
+      | Error _ -> false
+      | Ok auth ->
+        if Digest.equal (V.digest (Authorisation.wire auth)) digest then
+          (Logs.app (fun m -> m "%a" Authorisation.pp auth) ; true)
+        else
+          false)
+  | `Package -> (match IO.read_package io rname with
+      | Error _ -> false
+      | Ok pack ->
+        if Digest.equal (V.digest (Package.wire pack)) digest then
+          (Logs.app (fun m -> m "%a" Package.pp pack) ; true)
+        else
+          false)
+  | `Release -> (match IO.read_release io rname with
+      | Error _ -> false
+      | Ok rel ->
+        if Digest.equal (V.digest (Release.wire rel)) digest then
+          (Logs.app (fun m -> m "%a" Release.pp rel) ; true)
+        else
+          false)
+  | `Author -> (match IO.read_author io rname with
+      | Error _ -> false
+      | Ok author ->
+        if Digest.equal (V.digest (Author.wire author)) digest then
+          (Logs.app (fun m -> m "%a" Author.pp author) ; true)
+        else
+          false)
+  | _ -> false
+
+
 let sign _ dry path id =
   msg_to_cmdliner
     (str_to_msg (find_basedir_id path id) >>= fun (id, basedir) ->
@@ -324,15 +384,29 @@ let sign _ dry path id =
      match idx.Author.queued with
      | [] -> Logs.app (fun m -> m "nothing changed") ; Ok ()
      | els ->
-       List.iter (fun r ->
-           Logs.app (fun m -> m "adding %a" Author.pp_r r))
-         els ;
-       (* XXX: PROMPT HERE *)
-       Nocrypto_entropy_unix.initialize () ;
-       str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
-       Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
-       str_to_msg (IO.write_author io idx) >>| fun () ->
-       Logs.app (fun m -> m "wrote %s to disk" id))
+       let idx' =
+         List.fold_left (fun idx res ->
+             if check io res then begin
+               Printf.printf "approved (yes/No)?" ;
+               let yes = s_of_list [ "y" ; "yes" ; "Y" ; "Yes" ; "YES" ; "YEs" ; "YeS" ] in
+               match try Some (read_line ()) with _ -> None with
+               | Some x when S.mem x yes -> Author.approve idx res
+               | _ -> idx
+             end else begin
+               Logs.info (fun m -> m "ignoring %a (not on disk or different checksum)" Author.pp_r res) ;
+               idx
+             end)
+           idx els
+       in
+       if Author.equal idx idx' then begin
+         Logs.app (fun m -> m "nothing was approved") ; Ok ()
+       end else begin
+         Nocrypto_entropy_unix.initialize () ;
+         str_to_msg (SIGN.sign now idx' priv) >>= fun idx' ->
+         Logs.info (fun m -> m "signed author %a" Author.pp idx') ;
+         str_to_msg (IO.write_author io idx') >>| fun () ->
+         Logs.app (fun m -> m "wrote %s to disk" id)
+       end)
 
 let reset _ dry path id =
   msg_to_cmdliner
