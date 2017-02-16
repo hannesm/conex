@@ -69,14 +69,23 @@ end
 
 module V = Conex_verify.VERIFY (Log) (Conex_openssl.O_V)
 
+let terminal () =
+  let dumb = try Sys.getenv "TERM" = "dumb" with
+    | Not_found -> true
+  in
+  let isatty = try Unix.(isatty (descr_of_out_channel Pervasives.stdout)) with
+    | Unix.Unix_error _ -> false
+  in
+  if not dumb && isatty then `Ansi_tty else `None
+
 let setup repo quorum anchors incremental dir patch verbose quiet strict no_c =
-  let level = match verbose, quiet with
-    | true, false -> `Debug
-    | false, true -> `Warn
-    | _ -> `Info
+  let level =
+    if quiet then `Warn
+    else if verbose then `Debug
+    else `Info
   in
   Log.set_level level ;
-  let styled = if no_c then false else match Conex_opts.terminal () with `Ansi_tty -> true | `None -> false
+  let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
   V.verify_it repo quorum anchors incremental dir patch strict
@@ -85,15 +94,15 @@ open Conex_opts
 open Cmdliner
 
 let quiet =
-    let doc = "Be quiet" in
+    let doc = "Be quiet.  Takes over $(b,--verbose)" in
     Arg.(value & flag & info [ "quiet" ] ~doc)
 
 let verbose =
-    let doc = "Increase verbosity" in
+    let doc = "Be more verbose." in
     Arg.(value & flag & info [ "verbose" ] ~doc)
 
 let no_color =
-    let doc = "No colored output" in
+    let doc = "Don't colourise the output.  Default is to colourise unless the output is not a terminal (or a dumb one)." in
     Arg.(value & flag & info [ "no-color" ] ~doc)
 
 let cmd =

@@ -79,9 +79,11 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
 
 end
 
-let doc = "Verify a signed repository"
+let doc = "Verify a signed community repository"
 and man = [
   `S "DESCRIPTION" ;
-  `P "$(tname) verifies a digitally signed repository" ;
-  `P "Both an incremental mode (receiving a repository and a patch file, and a full mode are available."
+  `P "$(tname) verifies a cryptographically signed community repository" ;
+  `P "Two verification modes are supported: $(b,initial) and $(b,incremental)." ;
+  `P "During $(b,initial) verification, the trust is rooted in $(b,--anchors), and the repository $(b,--dir) is verified." ;
+  `P "In $(b,incremental) mode, an existing trusted repository is used as trust root, and a provided $(b,--patch) is verified: signed and monotonicity is preserved.";
 ]

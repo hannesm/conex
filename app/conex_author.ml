@@ -46,7 +46,7 @@ let init_repo ?quorum dry basedir =
   Conex_unix_provider.(if dry then fs_ro_provider basedir else fs_provider basedir) >>= fun io ->
   Ok (Conex_repository.repository ?quorum V.digest (), io)
 
-let help _ _ _ _ _ _ man_format cmds = function
+let help _ _ _ _ man_format cmds = function
   | None -> `Help (`Pager, None)
   | Some t when List.mem t cmds -> `Help (man_format, Some t)
   | Some _ -> List.iter print_endline cmds; `Ok ()
@@ -624,14 +624,14 @@ let help_cmd =
     [`S "DESCRIPTION";
      `P "Prints help about conex commands and subcommands"] @ help_secs
   in
-  Term.(ret Conex_opts.(const help $ setup_log $ dry $ repo $ quorum $ strict $ id $ Term.man_format $ Term.choice_names $ topic)),
+  Term.(ret Conex_opts.(const help $ setup_log $ dry $ repo $ id $ Term.man_format $ Term.choice_names $ topic)),
   Term.info "help" ~doc ~man
 
 let default_cmd =
   let doc = "cryptographically sign your released packages" in
   let man = help_secs in
-  Term.(ret Conex_opts.(const help $ setup_log $ dry $ repo $ quorum $ strict $ id $ Term.man_format $ Term.choice_names $ Term.pure None)),
-  Term.info "conex_author" ~version:"0.42.0" ~sdocs:docs ~doc ~man
+  Term.(ret Conex_opts.(const help $ setup_log $ dry $ repo $ id $ Term.man_format $ Term.choice_names $ Term.pure None)),
+  Term.info "conex_author" ~version:"%%VERSION_NUM%%" ~sdocs:docs ~doc ~man
 
 let cmds = [ help_cmd ; status_cmd ;
              init_cmd ; sign_cmd ; reset_cmd ;

@@ -26,61 +26,52 @@ let name_c =
   (parse, fun ppf s -> Format.pp_print_string ppf s)
 
 let strict =
-    let doc = "Strict verification" in
+    let doc = "Strict verification mode.  Every package must have a signed releases." in
     Arg.(value & flag & info [ "strict" ] ~doc)
 
 let quorum =
-  let doc = "Pass the quorum for the repository" in
+  let doc = "The quorum of janitors used for verification of the repository" in
   Arg.(value & opt (some int) None & info [ "quorum" ] ~doc)
 
 let repo =
-    let doc = "Repository base directory" in
-    Arg.(value & opt (some dir) None & info [ "repository" ] ~doc)
+  let doc = "Repository base directory" in
+  Arg.(value & opt (some dir) None & info [ "r" ; "repository" ] ~docs ~doc)
 
 let anchors =
-  let doc = "Trust anchors" in
-  Arg.(value & opt_all string [] & info [ "trust-anchors" ] ~doc)
+  let doc = "Trust anchors (Base64 encoded SHA256 hashes, seperated by ',').  Can be repeated." in
+  Arg.(value & opt_all string [] & info [ "t" ; "trust-anchors" ] ~doc)
 
 let convert_anchors a = Conex_utils.s_of_list
     (List.flatten (List.map (Conex_utils.String.cuts ',') a))
 
 let dry =
-  let doc = "Try run. Do not write anything." in
+  let doc = "Dry run. Do not write anything to persistent storage." in
   Arg.(value & flag & info ["dry-run"] ~docs ~doc)
 
 let id =
-  let doc = "Use specified identity" in
+  let doc = "Use a specific identity (rather than autodiscovery)." in
   Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
 
 let remove =
-  let doc = "Remove" in
-  Arg.(value & flag & info ["remove"] ~docs ~doc)
+  let doc = "Remove members from resource" in
+  Arg.(value & flag & info ["remove"] ~doc)
 
 let members =
-  let doc = "Members" in
-  Arg.(value & opt_all id_c [] & info ["members"; "m"] ~docs ~doc)
+  let doc = "Members to include.  May be repeated." in
+  Arg.(value & opt_all id_c [] & info ["members"; "m"] ~doc)
 
 let package =
-  let doc = "Package" in
-  Arg.(value & pos 0 name_c "" & info [] ~docv:"PACKAGE" ~doc)
-
-let terminal () =
-  let dumb = try Sys.getenv "TERM" = "dumb" with
-    | Not_found -> true
-  in
-  let isatty = try Unix.(isatty (descr_of_out_channel Pervasives.stdout)) with
-    | Unix.Unix_error _ -> false
-  in
-  if not dumb && isatty then `Ansi_tty else `None
+  let doc = "Package name" in
+  Arg.(value & pos 0 name_c "" & info [] ~doc)
 
 let incremental =
-  let doc = "do incremental verification" in
+  let doc = "Incremental verification mode" in
   Arg.(value & flag & info [ "incremental" ] ~doc)
 
 let dir =
-    let doc = "To be verified directory" in
+    let doc = "Directory which is verified." in
     Arg.(value & opt (some dir) None & info [ "dir" ] ~doc)
 
 let patch =
-    let doc = "To be verified patch file" in
+    let doc = "Patch file which is verified." in
     Arg.(value & opt (some file) None & info [ "patch" ] ~doc)
