@@ -248,7 +248,7 @@ let queue_r idx name typ data =
   let counter = Author.next_id idx in
   let digest = V.digest data in
   let res = Author.r counter name typ digest in
-  Logs.info (fun m -> m "added %a to change queue" Author.pp_r res) ;
+  Logs.info (fun m -> m "added %a to queue" Author.pp_r res) ;
   Author.queue idx res
 
 let init _ dry path id email =
@@ -468,7 +468,7 @@ let auth _ dry path id remove members p =
          Logs.app (fun m -> m "nothing changed") ; Ok ()
        end else
          (str_to_msg (IO.write_author io idx) >>| fun () ->
-          Logs.app (fun m -> m "added %d authorisations to your list." !count))
+          Logs.app (fun m -> m "added %d authorisations to your queue." !count))
      end else
        let auth = find_auth io p in
        let f = if remove then Authorisation.remove else Authorisation.add in
@@ -481,11 +481,11 @@ let auth _ dry path id remove members p =
          Logs.info (fun m -> m "wrote %a" Authorisation.pp auth) ;
          let idx = queue_r idx p `Authorisation (Authorisation.wire auth) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
-         Logs.app (fun m -> m "modified authorisation and added resource to your list.")
+         Logs.app (fun m -> m "modified authorisation and added resource to your queue.")
        end else if not (Conex_repository.contains ~queued:true r idx p `Authorisation (Authorisation.wire auth)) then begin
          let idx = queue_r idx p `Authorisation (Authorisation.wire auth) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
-         Logs.app (fun m -> m "added resource to your list.")
+         Logs.app (fun m -> m "added resource to your queue.")
        end else begin
          Logs.app (fun m -> m "nothing changed.") ;
          Ok ()
@@ -567,7 +567,7 @@ let release _ dry path id remove p =
      if not (Author.equal idx idx') then begin
        str_to_msg (IO.write_author io idx') >>| fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx') ;
-       Logs.app (fun m -> m "released and added resources to your resource list.")
+       Logs.app (fun m -> m "wrote release and added resources to your queue.")
      end else
        Ok (Logs.app (fun m -> m "nothing happened")))
 
@@ -591,7 +591,7 @@ let team _ dry path id remove members tid =
          Logs.app (fun m -> m "nothing changed") ; Ok ()
        end else
          (str_to_msg (IO.write_author io idx) >>| fun () ->
-          Logs.app (fun m -> m "added %d teams to your list." !count))
+          Logs.app (fun m -> m "added %d teams to your queue." !count))
      end else
        let team =
          let use e =
@@ -615,11 +615,11 @@ let team _ dry path id remove members tid =
          Logs.info (fun m -> m "wrote %a" Team.pp team) ;
          let idx = queue_r idx tid `Team (Team.wire team) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
-         Logs.app (fun m -> m "modified team and added resource to your resource list.")
+         Logs.app (fun m -> m "modified team and added resource to your queue.")
        end else if not (Conex_repository.contains ~queued:true r idx tid `Team (Team.wire team)) then begin
          let idx = queue_r idx tid `Team (Team.wire team) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
-         Logs.app (fun m -> m "added resource to your resource list.")
+         Logs.app (fun m -> m "added resource to your queue.")
        end else begin
          Logs.app (fun m -> m "nothing changed.") ;
          Ok ()
@@ -658,7 +658,7 @@ let key _ dry path id aid =
          Logs.app (fun m -> m "nothing changed") ; Ok ()
        end else
          (str_to_msg (IO.write_author io idx) >>| fun () ->
-          Logs.app (fun m -> m "added %d authors to your list." !count))
+          Logs.app (fun m -> m "added %d authors to your queue." !count))
      end else
        match IO.read_author io aid with
        | Error e -> Error (`Msg (Fmt.to_to_string IO.pp_r_err e))
@@ -681,7 +681,7 @@ let key _ dry path id aid =
            Logs.app (fun m -> m "nothing changed.") ; Ok ()
          end else
            str_to_msg (IO.write_author io idx') >>| fun () ->
-           Logs.app (fun m -> m "added keys and accounts to your resource list."))
+           Logs.app (fun m -> m "added keys and accounts to your queue."))
 
 open Cmdliner
 
