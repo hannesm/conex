@@ -26,8 +26,8 @@ let name_c =
   (parse, fun ppf s -> Format.pp_print_string ppf s)
 
 let strict =
-    let doc = "Strict verification mode.  Every package must have a signed releases." in
-    Arg.(value & flag & info [ "strict" ] ~doc)
+  let doc = "Strict verification mode.  Every package must have an authorisation and a package index." in
+  Arg.(value & flag & info [ "strict" ] ~doc)
 
 let quorum =
   let doc = "The quorum of janitors used for verification of the repository" in

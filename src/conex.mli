@@ -43,18 +43,18 @@ module Make (L : LOGS) (C : VERIFY): sig
     Conex_io.t -> Conex_repository.t ->
     (Conex_repository.t, string) result
 
-  (** [verify_package io repo name] reads and verifies the authorisation of the
+  (** [verify_package strict io repo name] reads and verifies the authorisation of the
       package [name].  All [ids] who are authorised are loaded into the
       repository (using {!verify_ids}).  The package data for [name] is read and
       verified, followed by all releases.  Each release is read and verified. *)
-  val verify_package : Conex_io.t -> Conex_repository.t -> name ->
+  val verify_package : bool -> Conex_io.t -> Conex_repository.t -> name ->
     (Conex_repository.t, string) result
 
-  (** [verify_diff io repository patch] first parses the [patch] and applies it.
+  (** [verify_diff strict io repository patch] first parses the [patch] and applies it.
       The key fingerprints ofjanitors in [repository] are used to validate the
       janitors team of the repository with applied [patch].  All identifiers and
       packages of the repository with [patch] applied are verified, and
       additionally all modified resources have their monotonicity verified. *)
-  val verify_diff : Conex_io.t -> Conex_repository.t -> string ->
+  val verify_diff : bool -> Conex_io.t -> Conex_repository.t -> string ->
     (Conex_repository.t, string) result
 end

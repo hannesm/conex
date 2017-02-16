@@ -56,7 +56,7 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let verify _ path quorum _strict id anchors =
+let verify _ path quorum strict id anchors =
   msg_to_cmdliner @@ str_to_msg
     (find_basedir_id path id >>= fun (_id, basedir) ->
      init_repo ?quorum true basedir >>= fun (r, io) ->
@@ -72,7 +72,7 @@ let verify _ path quorum _strict id anchors =
      C.verify_janitors ~valid io r >>= fun r ->
      C.verify_ids io r >>= fun repo ->
      IO.packages io >>= fun packages ->
-     foldS (C.verify_package io) repo packages >>= fun _ ->
+     foldS (C.verify_package strict io) repo packages >>= fun _ ->
      Ok ())
 
 let to_st_txt ppf = function

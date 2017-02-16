@@ -45,10 +45,10 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
 
   module C = Conex.Make(L)(V)
 
-  let verify_patch io repo patch =
-    Conex_unix_persistency.read_file patch >>= C.verify_diff io repo
+  let verify_patch io repo patch strict =
+    Conex_unix_persistency.read_file patch >>= C.verify_diff strict io repo
 
-  let verify_full io repo anchors =
+  let verify_full io repo anchors strict =
     let valid id (_, digest) =
       if S.mem digest anchors then
         (L.debug (fun m -> m "accepting ta %s" id) ; true)
@@ -58,9 +58,9 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
     C.verify_janitors ~valid io repo >>= fun repo ->
     C.verify_ids io repo >>= fun repo ->
     IO.packages io >>= fun packages ->
-    foldS (C.verify_package io) repo packages
+    foldS (C.verify_package strict io) repo packages
 
-  let verify_it repodir quorum anchors incremental dir patch _strict =
+  let verify_it repodir quorum anchors incremental dir patch strict =
     err_to_cmdliner
       (let ta = Conex_opts.convert_anchors anchors in
        Conex_openssl.V.check_version () >>= fun () ->
@@ -69,11 +69,11 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
        | Some repodir, true, Some p, None ->
          Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
          L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-         verify_patch io repo p
+         verify_patch io repo p strict
        | _, false, None, Some d ->
          Conex_unix_provider.fs_ro_provider d >>= fun io ->
          L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-         verify_full io repo ta
+         verify_full io repo ta strict
        | None, _, _, _ -> Error "--repo is required"
        | _ -> Error "invalid combination of incremental, patch and dir")
 

@@ -125,25 +125,37 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     L.debug (fun m -> m "%a" pp_ok ok) ;
     Ok ()
 
-  let verify_package io repo name =
-    to_str IO.pp_r_err (IO.read_authorisation io name) >>= fun auth ->
-    L.debug (fun m ->m "%a" Authorisation.pp auth) ;
-    (* need to load indexes before verifying! *)
-    verify_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
-    to_str pp_error (validate_authorisation repo auth) >>= fun ok ->
-    L.debug (fun m -> m "validated %a %a" pp_ok ok Authorisation.pp auth) ;
-    match IO.read_package io name with
-    | Error e -> L.warn (fun m -> m "ignoring package index %a %a" pp_name name IO.pp_r_err e) ; Ok repo (* TODO: strict vs non-strict: this is atm a soft error, should maybe be a hard failure! *)
-    | Ok rel ->
-      L.debug (fun m -> m "%a" Package.pp rel) ;
-      IO.compute_package io Uint.zero name >>= fun on_disk ->
-      to_str pp_error (validate_package repo ~on_disk auth rel) >>= fun ok ->
-      L.debug (fun m -> m "validated %a %a" pp_ok ok Package.pp rel) ;
-      foldM
-        (fun () n -> verify_single_release io repo auth rel n)
-        ()
-        (S.elements rel.Package.releases) >>= fun () ->
-      Ok repo
+  let verify_package strict io repo name =
+    match IO.read_authorisation io name with
+    | Error e ->
+      if strict then
+        Error (str IO.pp_r_err e)
+      else
+        (L.warn (fun m -> m "ignoring %a %a" pp_name name IO.pp_r_err e) ;
+         Ok repo)
+    | Ok auth ->
+      L.debug (fun m ->m "%a" Authorisation.pp auth) ;
+      (* need to load indexes before verifying! *)
+      verify_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
+      to_str pp_error (validate_authorisation repo auth) >>= fun ok ->
+      L.debug (fun m -> m "validated %a %a" pp_ok ok Authorisation.pp auth) ;
+      match IO.read_package io name with
+      | Error e ->
+        if strict then
+          Error (str IO.pp_r_err e)
+        else
+          (L.warn (fun m -> m "ignoring package index %a %a" pp_name name IO.pp_r_err e) ;
+           Ok repo)
+      | Ok rel ->
+        L.debug (fun m -> m "%a" Package.pp rel) ;
+        IO.compute_package io Uint.zero name >>= fun on_disk ->
+        to_str pp_error (validate_package repo ~on_disk auth rel) >>= fun ok ->
+        L.debug (fun m -> m "validated %a %a" pp_ok ok Package.pp rel) ;
+        foldM
+          (fun () n -> verify_single_release io repo auth rel n)
+          ()
+          (S.elements rel.Package.releases) >>= fun () ->
+        Ok repo
 
     (* we could try to be more smart:
        - only check all modified authorisations, releases, packages
@@ -172,7 +184,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
        packages/foo/authorisation (maybe empty)
        packages/foo/releases <- empty
 *)
-  let verify_patch repo io newio (ids, auths, pkgs, rels) =
+  let verify_patch strict repo io newio (ids, auths, pkgs, rels) =
     let releases = M.fold (fun _name versions acc -> S.union versions acc) rels S.empty in
     L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
                 (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
@@ -195,7 +207,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     (* now we do a full verification of the new repository *)
     verify_ids newio newrepo >>= fun newrepo ->
     IO.packages newio >>= fun packages ->
-    foldS (verify_package newio) newrepo packages >>= fun newrepo ->
+    foldS (verify_package strict newio) newrepo packages >>= fun newrepo ->
 
     (* foreach changed resource, we need to ensure monotonicity (counter incremented) *)
     let maybe_m = to_str pp_m_err in
@@ -234,9 +246,9 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       () releases >>= fun () ->
     Ok newrepo
 
-  let verify_diff io repo data =
+  let verify_diff strict io repo data =
     let diffs = Conex_diff.to_diffs data in
     let comp = Conex_diff.diffs_to_components diffs in
     let newio = List.fold_left Conex_diff_provider.apply io diffs in
-    verify_patch repo io newio comp
+    verify_patch strict repo io newio comp
 end
