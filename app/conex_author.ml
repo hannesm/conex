@@ -295,11 +295,9 @@ let init _ dry path id email =
          List.fold_left (fun idx a -> queue_r idx id `Account (Author.wire_account id a))
            idx accounts
        in
-       str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
-       str_to_msg (IO.write_author io idx) >>= fun () ->
+       str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;
-       R.error_to_msg ~pp_error:Conex_crypto.pp_verification_error (V.verify idx) >>| fun () ->
-       Logs.app (fun m -> m "Created keypair.  Please 'git add id/%s', and submit a PR.  Join teams and claim your packages." id))
+       Logs.app (fun m -> m "Created keypair %a.  Join teams, claim your packages, sign your approved resources and open a PR :)" pp_id id))
 
 let find_idx io name =
   let use e =
