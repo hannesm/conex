@@ -312,8 +312,12 @@ module Author : sig
   (** [next_id t] is the next free identitifer of the resource list index. *)
   val next_id : t -> Uint.t
 
-  (** [add_resource t r] adds [r] to [t.queued]. *)
-  val add_resource : t -> r -> t
+  (** [queue t r] adds [r] to [t.queued]. *)
+  val queue : t -> r -> t
+
+  (** [approve t r] adds [r] to [t.resources], and removes [r] from
+      [t.queued]. *)
+  val approve : t -> r -> t
 
   (** [equal t t'] is true if name, keys, accounts, resource lists, and queued
       are equal. *)
@@ -322,8 +326,8 @@ module Author : sig
   (** [reset t] drops [t.queued]. *)
   val reset : t -> t
 
-  (** [prep_sig t] appends [t.queued] to [t.resources] and increments
-      [t.counter].  Returns the carry bit as second component. *)
+  (** [prep_sig t] increments [t.counter].  Returns the carry bit as second
+      component. *)
   val prep_sig : t -> t * bool
 
   (** [replace_sig t (k, s)] adds [k,s] to [t.keys], filtering existing pairs

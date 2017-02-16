@@ -236,7 +236,7 @@ let idx_sign () =
   Alcotest.check (result Alcotest.unit verr) "signed index verifies"
     (Ok ()) (V.verify signed) ;
   let r = Author.r (Author.next_id idx) "foo" `Key (`SHA256, "2342") in
-  let idx' = Author.add_resource signed r in
+  let idx' = Author.queue signed r in
   Alcotest.check (result Alcotest.unit verr) "signed modified index does verify (no commit)"
     (Ok ())
     (V.verify idx') ;

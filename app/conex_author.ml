@@ -239,12 +239,12 @@ let status _ path quorum id no_rec package =
      in
      Ok ())
 
-let add_r idx name typ data =
+let queue_r idx name typ data =
   let counter = Author.next_id idx in
   let digest = V.digest data in
   let res = Author.r counter name typ digest in
   Logs.info (fun m -> m "added %a to change queue" Author.pp_r res) ;
-  Author.add_resource idx res
+  Author.queue idx res
 
 let init _ dry path id email =
   msg_to_cmdliner
@@ -290,9 +290,9 @@ let init _ dry path id email =
        and created = idx.Author.created
        in
        let idx = Author.t ~accounts ~counter ~wraps ~resources ~queued created id in
-       let idx = add_r idx id `Key (Key.wire id public) in
+       let idx = queue_r idx id `Key (Key.wire id public) in
        let idx =
-         List.fold_left (fun idx a -> add_r idx id `Account (Author.wire_account id a))
+         List.fold_left (fun idx a -> queue_r idx id `Account (Author.wire_account id a))
            idx accounts
        in
        str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
@@ -374,7 +374,7 @@ let auth _ dry path id remove members p =
          S.fold (fun n idx ->
              match IO.read_authorisation io n with
              | Ok auth when not (Conex_repository.contains ~queued:true r idx n `Authorisation (Authorisation.wire auth)) ->
-               incr count ; add_r idx n `Authorisation (Authorisation.wire auth)
+               incr count ; queue_r idx n `Authorisation (Authorisation.wire auth)
              | Ok _ -> idx
              | Error e ->
                Logs.warn (fun m -> m "couldn't read authorisation %a: %a" pp_name n IO.pp_r_err e) ;
@@ -395,11 +395,11 @@ let auth _ dry path id remove members p =
            Logs.warn (fun m -> m "counter overflow in authorisation %s, needs approval" p) ;
          str_to_msg (IO.write_authorisation io auth) >>= fun () ->
          Logs.info (fun m -> m "wrote %a" Authorisation.pp auth) ;
-         let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
+         let idx = queue_r idx p `Authorisation (Authorisation.wire auth) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
          Logs.app (fun m -> m "modified authorisation and added resource to your list.")
        end else if not (Conex_repository.contains ~queued:true r idx p `Authorisation (Authorisation.wire auth)) then begin
-         let idx = add_r idx p `Authorisation (Authorisation.wire auth) in
+         let idx = queue_r idx p `Authorisation (Authorisation.wire auth) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
          Logs.app (fun m -> m "added resource to your list.")
        end else begin
@@ -447,9 +447,9 @@ let release _ dry path id remove p =
           Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
         str_to_msg (IO.write_package io rel) >>| fun () ->
         Logs.info (fun m -> m "wrote %a" Package.pp rel) ;
-        add_r idx pn `Package (Package.wire rel)
+        queue_r idx pn `Package (Package.wire rel)
        end else if not (Conex_repository.contains ~queued:true r idx pn `Package (Package.wire rel')) then begin
-        Ok (add_r idx pn `Package (Package.wire rel))
+        Ok (queue_r idx pn `Package (Package.wire rel))
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
        acc >>= fun idx ->
@@ -473,9 +473,9 @@ let release _ dry path id remove p =
          if overflow then Logs.warn (fun m -> m "counter overflow in checksum %s, needs approval" name) ;
          str_to_msg (IO.write_release io cs') >>| fun () ->
          Logs.info (fun m -> m "wrote %a" Release.pp cs') ;
-         add_r idx name `Release (Release.wire cs')
+         queue_r idx name `Release (Release.wire cs')
        else if not (Conex_repository.contains ~queued:true r idx name `Release (Release.wire cs)) then
-         Ok (add_r idx name `Release (Release.wire cs))
+         Ok (queue_r idx name `Release (Release.wire cs))
        else
          Ok idx
      in
@@ -500,7 +500,7 @@ let team _ dry path id remove members tid =
          S.fold (fun id idx -> match IO.read_team io id with
              | Error _ -> idx
              | Ok t when not (Conex_repository.contains ~queued:true r idx id `Team (Team.wire t)) ->
-               incr count ; add_r idx id `Team (Team.wire t)
+               incr count ; queue_r idx id `Team (Team.wire t)
              | Ok _ -> idx) ids idx
        in
        if !count = 0 then begin
@@ -529,11 +529,11 @@ let team _ dry path id remove members tid =
            Logs.warn (fun m -> m "counter overflow in team %s, needs approval" tid) ;
          str_to_msg (IO.write_team io team) >>= fun () ->
          Logs.info (fun m -> m "wrote %a" Team.pp team) ;
-         let idx = add_r idx tid `Team (Team.wire team) in
+         let idx = queue_r idx tid `Team (Team.wire team) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
          Logs.app (fun m -> m "modified team and added resource to your resource list.")
        end else if not (Conex_repository.contains ~queued:true r idx tid `Team (Team.wire team)) then begin
-         let idx = add_r idx tid `Team (Team.wire team) in
+         let idx = queue_r idx tid `Team (Team.wire team) in
          str_to_msg (IO.write_author io idx) >>| fun () ->
          Logs.app (fun m -> m "added resource to your resource list.")
        end else begin
@@ -557,13 +557,13 @@ let key _ dry path id aid =
                let idx' = List.fold_left
                    (fun idx (key, _) ->
                       if not (Conex_repository.contains ~queued:true r idx aid `Key (Key.wire aid key)) then
-                        add_r idx aid `Key (Key.wire aid key)
+                        queue_r idx aid `Key (Key.wire aid key)
                       else
                         idx) idx author.Author.keys
                in
                let idx' = List.fold_left (fun idx a ->
                    if not (Conex_repository.contains ~queued:true r idx aid `Account (Author.wire_account aid a)) then
-                     add_r idx aid `Account (Author.wire_account aid a)
+                     queue_r idx aid `Account (Author.wire_account aid a)
                    else
                      idx) idx' author.Author.accounts
                in
@@ -583,13 +583,13 @@ let key _ dry path id aid =
          let idx' = List.fold_left
              (fun idx (key, _) ->
                 if not (Conex_repository.contains ~queued:true r idx aid `Key (Key.wire aid key)) then
-                  add_r idx aid `Key (Key.wire aid key)
+                  queue_r idx aid `Key (Key.wire aid key)
                 else
                   idx) idx author.Author.keys
          in
          let idx' = List.fold_left (fun idx a ->
              if not (Conex_repository.contains ~queued:true r idx aid `Account (Author.wire_account aid a)) then
-               add_r idx aid `Account (Author.wire_account aid a)
+               queue_r idx aid `Account (Author.wire_account aid a)
              else
                idx) idx' author.Author.accounts
          in

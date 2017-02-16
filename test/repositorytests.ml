@@ -653,18 +653,18 @@ let idx_sign () =
     "empty index signed properly (no resources, quorum 0)"
     (Ok r) (Conex_repository.validate_author r idx) ;
   let pubenc = Key.wire id pub in
-  let idx = Author.(add_resource idx (r (next_id idx) id  `Key (V.digest pubenc))) in
-  let signed_idx = sign_idx idx priv in
+  let res = Author.r (Author.next_id idx) id `Key (V.digest pubenc) in
+  let idx' = Author.queue idx res in
+  let signed_idx = sign_idx idx' priv in
   Alcotest.check (result Alcotest.unit verr) "idx digitally signed properly"
     (Ok ()) (V.verify signed_idx) ;
   Alcotest.check (result r_fake a_err) "signed_idx signed properly (1 resource, quorum 0)"
     (Ok r) (Conex_repository.validate_author r signed_idx) ;
   Alcotest.check (result r_fake a_err) "idx signed properly (0 resources, 1 queued, quorum 0)"
     (Ok r) (Conex_repository.validate_author r idx) ;
-  let idx, _ = Author.prep_sig idx in
   Alcotest.check (result r_fake a_err) "idx not signed properly (1 resource, quorum 0)"
     (Error (`AuthorWithoutKeys "foo"))
-    (Conex_repository.validate_author r idx)
+    (Conex_repository.validate_author r (Author.approve idx' res))
 
 let idx_sign_verify () =
   let r = Conex_repository.repository ~quorum:0 V.digest () in

@@ -125,6 +125,7 @@ let verr =
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
+  let idx = List.fold_left Author.approve idx idx.Author.queued in
   match SIGN.sign Uint.zero idx p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

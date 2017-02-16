@@ -547,7 +547,11 @@ module Author = struct
     let _c, counter = Uint.succ max in
     counter
 
-  let add_resource t r = { t with queued = r :: t.queued }
+  let queue t r = { t with queued = r :: t.queued }
+
+  let approve t r =
+    let queued = List.filter (fun r' -> not (r_equal r r')) t.queued in
+    { t with resources = r :: t.resources ; queued }
 
   let reset t = { t with queued = [] }
 
@@ -567,11 +571,8 @@ module Author = struct
   (*BISECT-IGNORE-END*)
 
   let prep_sig i =
-    let resources = i.resources @ i.queued
-    and queued = []
-    and carry, counter = Uint.succ i.counter
-    in
-    { i with resources ; queued ; counter }, carry
+    let carry, counter = Uint.succ i.counter in
+    { i with counter }, carry
 
   let replace_sig i (k, s) =
     let keys = List.filter (fun (k', _) -> not (Key.equal k k')) i.keys in
