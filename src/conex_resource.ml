@@ -437,17 +437,13 @@ module Author = struct
 
   let wire_account name a = wire_account_raw (M.add "name" (Wire.String name) M.empty) a
 
-  let compare_account (a : account) (b : account) = match a, b with
-    | `Email a, `Email b -> String.compare_insensitive a b
-    | `GitHub a, `GitHub b -> String.compare_insensitive a b
-    | `Other (a, v), `Other (a', v') ->
-      let r = String.compare_insensitive a a' in
-      if r = 0 then String.compare_insensitive v v'
-      else r
-    | `Email _, _ -> 1
-    | _, `Email _ -> -1
-    | `GitHub _, _ -> 1
-    | _, `GitHub _ -> -1
+  let compare_account (a : account) (b : account) =
+    let to_str = function
+      | `Email e -> "email: " ^ e
+      | `GitHub g -> "github: " ^ g
+      | `Other (a, b) -> a ^ ": " ^ b
+    in
+    String.compare_insensitive (to_str a) (to_str b)
 
   let account_equal a b = compare_account a b = 0
 
