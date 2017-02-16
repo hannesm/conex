@@ -273,7 +273,7 @@ let init _ dry path id email =
           Ok priv
         | Error _ ->
           let p = SIGN.generate now () in
-          (if dry then
+          (if not dry then
              str_to_msg (Conex_unix_private_key.write io id p) >>| fun () ->
              Logs.info (fun m -> m "generated and wrote private key %s" id) ;
            else
