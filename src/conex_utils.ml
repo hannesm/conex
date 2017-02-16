@@ -171,10 +171,11 @@ module type LOGS = sig
 
   type src
 
+  val warn_count : unit -> int
+
   val debug : ?src:src -> 'a log
   val info : ?src:src -> 'a log
   val warn : ?src:src -> 'a log
-  val err : ?src:src -> 'a log
 end
 
 

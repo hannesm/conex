@@ -46,7 +46,11 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
   module C = Conex.Make(L)(V)
 
   let verify_patch io repo patch ignore_missing =
-    Conex_unix_persistency.read_file patch >>= C.verify_diff ~ignore_missing io repo
+    Conex_unix_persistency.read_file patch >>= fun x ->
+    C.verify_diff ~ignore_missing io repo x >>= fun _ ->
+    let ws = L.warn_count () in
+    Printf.printf "verification successfull with %d warnings\n" ws ;
+    Ok ()
 
   let verify_full io repo anchors ignore_missing =
     let valid id (_, digest) =
@@ -58,7 +62,12 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
     C.verify_janitors ~valid io repo >>= fun repo ->
     C.verify_ids io repo >>= fun repo ->
     IO.packages io >>= fun packages ->
-    foldS (C.verify_package ~ignore_missing io) repo packages
+    foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
+    let ws = L.warn_count () in
+    Printf.printf "verification of %d packages successfull with %d warnings\n"
+      (S.cardinal packages - ws) ws ;
+    Ok ()
+
 
   let verify_it repodir quorum anchors incremental dir patch nostrict =
     err_to_cmdliner
@@ -76,7 +85,6 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
          verify_full io repo ta nostrict
        | None, _, _, _ -> Error "--repo is required"
        | _ -> Error "invalid combination of incremental, patch and dir")
-
 end
 
 let doc = "Verify a signed community repository"

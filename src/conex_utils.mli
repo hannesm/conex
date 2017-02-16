@@ -149,6 +149,9 @@ module type LOGS = sig
 
   type src
 
+  (** [warn_count ()] is the number of warning messages. *)
+  val warn_count : unit -> int
+
   (** [debug k] logs [k], a to the debug stream *)
   val debug : ?src:src -> 'a log
 
@@ -157,9 +160,6 @@ module type LOGS = sig
 
   (** [warn k] logs [k], a to the warning stream *)
   val warn : ?src:src -> 'a log
-
-  (** [err k] logs [k], a to the error stream *)
-  val err : ?src:src -> 'a log
 end
 
 (** {1 Format} *)

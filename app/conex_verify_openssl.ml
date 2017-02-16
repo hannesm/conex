@@ -3,7 +3,7 @@ open Conex_utils
 module type EXTLOGS = sig
   include LOGS
 
-  type level = [ `Debug | `Info | `Warn | `Error ]
+  type level = [ `Debug | `Info | `Warn ]
   val set_level : level -> unit
   val set_styled : bool -> unit
 end
@@ -20,14 +20,13 @@ module Log : EXTLOGS = struct
 
   type src
 
-  type level = [ `Debug | `Info | `Warn | `Error ]
+  type level = [ `Debug | `Info | `Warn ]
   let curr_level = ref `Warn
   let set_level lvl = curr_level := lvl
   let level_to_string = function
     | `Debug -> "DEBUG"
     | `Info -> "INFO"
     | `Warn -> "WARN"
-    | `Error -> "ERROR"
 
   let curr_styled = ref true
   let set_styled b = curr_styled := b
@@ -38,7 +37,6 @@ module Log : EXTLOGS = struct
       | `Debug -> "\027[32m" ^ txt ^ rst
       | `Info -> "\027[34m" ^ txt ^ rst
       | `Warn -> "\027[33m" ^ txt ^ rst
-      | `Error -> "\027[31m" ^ txt ^ rst
     else
       txt
 
@@ -48,14 +46,17 @@ module Log : EXTLOGS = struct
     let hdr = match header with None -> "" | Some s -> s ^ " " in
     Format.kfprintf k Format.std_formatter ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
 
+  let wcount = ref 0
+
+  let warn_count () = !wcount
+
   let kunit _ = ()
   let kmsg : type a b. (unit -> b) -> level -> (a, b) msgf -> b =
     fun k level msgf ->
       let doit =
         match level, !curr_level with
-        | `Info, `Debug | `Info, `Info | `Info, `Error -> true
-        | `Warn, `Warn | `Warn, `Error -> true
-        | `Error, _ -> true
+        | `Info, `Debug | `Info, `Info -> true
+        | `Warn, `Warn -> true
         | `Debug, `Debug -> true
         | _ -> false
       in
@@ -63,8 +64,7 @@ module Log : EXTLOGS = struct
 
   let debug ?src:_ msgf = kmsg kunit `Debug msgf
   let info ?src:_ msgf = kmsg kunit `Info msgf
-  let warn ?src:_ msgf = kmsg kunit `Warn msgf
-  let err ?src:_ msgf = kmsg kunit `Error msgf
+  let warn ?src:_ msgf = incr wcount ; kmsg kunit `Warn msgf
 end
 
 module V = Conex_verify.VERIFY (Log) (Conex_openssl.O_V)

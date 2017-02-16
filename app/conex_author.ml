@@ -73,6 +73,8 @@ let verify _ path quorum ignore_missing id anchors =
      C.verify_ids io r >>= fun repo ->
      IO.packages io >>= fun packages ->
      foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
+     let ws = Logs.warn_count () in
+     Logs.app (fun m -> m "verified %d packages, %d warnings" (S.cardinal packages - ws) ws) ;
      Ok ())
 
 let to_st_txt ppf = function
