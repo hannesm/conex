@@ -72,7 +72,7 @@ let verify _ path quorum strict id anchors =
      C.verify_janitors ~valid io r >>= fun r ->
      C.verify_ids io r >>= fun repo ->
      IO.packages io >>= fun packages ->
-     foldS (C.verify_package strict io) repo packages >>= fun _ ->
+     foldS (C.verify_package ~ignore_missing:strict io) repo packages >>= fun _ ->
      Ok ())
 
 let to_st_txt ppf = function

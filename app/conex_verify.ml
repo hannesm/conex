@@ -46,7 +46,7 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
   module C = Conex.Make(L)(V)
 
   let verify_patch io repo patch strict =
-    Conex_unix_persistency.read_file patch >>= C.verify_diff strict io repo
+    Conex_unix_persistency.read_file patch >>= C.verify_diff ~ignore_missing:strict io repo
 
   let verify_full io repo anchors strict =
     let valid id (_, digest) =
@@ -58,7 +58,7 @@ module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
     C.verify_janitors ~valid io repo >>= fun repo ->
     C.verify_ids io repo >>= fun repo ->
     IO.packages io >>= fun packages ->
-    foldS (C.verify_package strict io) repo packages
+    foldS (C.verify_package ~ignore_missing:strict io) repo packages
 
   let verify_it repodir quorum anchors incremental dir patch strict =
     err_to_cmdliner

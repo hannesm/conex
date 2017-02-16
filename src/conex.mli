@@ -43,18 +43,22 @@ module Make (L : LOGS) (C : VERIFY): sig
     Conex_io.t -> Conex_repository.t ->
     (Conex_repository.t, string) result
 
-  (** [verify_package strict io repo name] reads and verifies the authorisation of the
-      package [name].  All [ids] who are authorised are loaded into the
-      repository (using {!verify_ids}).  The package data for [name] is read and
-      verified, followed by all releases.  Each release is read and verified. *)
-  val verify_package : bool -> Conex_io.t -> Conex_repository.t -> name ->
+  (** [verify_package ~ignore_missing io repo name] reads and verifies the
+      authorisation of the package [name].  All [ids] who are authorised are
+      loaded into the repository (using {!verify_ids}).  The package data for
+      [name] is read and verified, followed by all releases.  Each release is
+      read and verified. If [ignore_missing] is true, packages with missing
+      authorisations or package indexes are ignored. *)
+  val verify_package : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t -> name ->
     (Conex_repository.t, string) result
 
-  (** [verify_diff strict io repository patch] first parses the [patch] and applies it.
-      The key fingerprints ofjanitors in [repository] are used to validate the
-      janitors team of the repository with applied [patch].  All identifiers and
-      packages of the repository with [patch] applied are verified, and
-      additionally all modified resources have their monotonicity verified. *)
-  val verify_diff : bool -> Conex_io.t -> Conex_repository.t -> string ->
+  (** [verify_diff ~ignore_missing io repository patch] first parses the [patch]
+      and applies it.  The key fingerprints ofjanitors in [repository] are used
+      to validate the janitors team of the repository with applied [patch].  All
+      identifiers and packages of the repository with [patch] applied are
+      verified, and additionally all modified resources have their monotonicity
+      verified.  If [ignore_missing] is true, packages with missing
+      authorisations and package indexes are ignored. *)
+  val verify_diff : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t -> string ->
     (Conex_repository.t, string) result
 end

@@ -125,14 +125,14 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     L.debug (fun m -> m "%a" pp_ok ok) ;
     Ok ()
 
-  let verify_package strict io repo name =
+  let verify_package ?(ignore_missing = false) io repo name =
     match IO.read_authorisation io name with
     | Error e ->
-      if strict then
-        Error (str IO.pp_r_err e)
-      else
+      if ignore_missing then
         (L.warn (fun m -> m "ignoring %a %a" pp_name name IO.pp_r_err e) ;
          Ok repo)
+      else
+        Error (str IO.pp_r_err e)
     | Ok auth ->
       L.debug (fun m ->m "%a" Authorisation.pp auth) ;
       (* need to load indexes before verifying! *)
@@ -141,11 +141,11 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       L.debug (fun m -> m "validated %a %a" pp_ok ok Authorisation.pp auth) ;
       match IO.read_package io name with
       | Error e ->
-        if strict then
-          Error (str IO.pp_r_err e)
-        else
+        if ignore_missing then
           (L.warn (fun m -> m "ignoring package index %a %a" pp_name name IO.pp_r_err e) ;
            Ok repo)
+        else
+          Error (str IO.pp_r_err e)
       | Ok rel ->
         L.debug (fun m -> m "%a" Package.pp rel) ;
         IO.compute_package io Uint.zero name >>= fun on_disk ->
@@ -184,7 +184,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
        packages/foo/authorisation (maybe empty)
        packages/foo/releases <- empty
 *)
-  let verify_patch strict repo io newio (ids, auths, pkgs, rels) =
+  let verify_patch ?ignore_missing repo io newio (ids, auths, pkgs, rels) =
     let releases = M.fold (fun _name versions acc -> S.union versions acc) rels S.empty in
     L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
                 (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
@@ -207,7 +207,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
     (* now we do a full verification of the new repository *)
     verify_ids newio newrepo >>= fun newrepo ->
     IO.packages newio >>= fun packages ->
-    foldS (verify_package strict newio) newrepo packages >>= fun newrepo ->
+    foldS (verify_package ?ignore_missing newio) newrepo packages >>= fun newrepo ->
 
     (* foreach changed resource, we need to ensure monotonicity (counter incremented) *)
     let maybe_m = to_str pp_m_err in
@@ -246,9 +246,9 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       () releases >>= fun () ->
     Ok newrepo
 
-  let verify_diff strict io repo data =
+  let verify_diff ?ignore_missing io repo data =
     let diffs = Conex_diff.to_diffs data in
     let comp = Conex_diff.diffs_to_components diffs in
     let newio = List.fold_left Conex_diff_provider.apply io diffs in
-    verify_patch strict repo io newio comp
+    verify_patch ?ignore_missing repo io newio comp
 end
