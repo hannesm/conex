@@ -6,7 +6,8 @@
 authenticity of a community repository through the use of cryptographic signatures.
 
 NOTE: This is still work in progress, to be deployed with opam 2.0 and the [opam
-repository](https://github.com/ocaml/opam-repository).
+repository](https://github.com/ocaml/opam-repository).  A [getting started
+with conex article](https://hannes.nqsb.io/Posts/Conex) is online.
 
 ![screenshot](https://berlin.ccc.de/~hannes/conex.png)
 
