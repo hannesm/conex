@@ -640,14 +640,14 @@ let key _ dry path id aid =
              | Ok author ->
                let idx' = List.fold_left
                    (fun idx (key, _) ->
-                      if not (Conex_repository.contains ~queued:true r idx aid `Key (Key.wire aid key)) then
-                        queue_r idx aid `Key (Key.wire aid key)
+                      if not (Conex_repository.contains ~queued:true r idx id `Key (Key.wire id key)) then
+                        queue_r idx id `Key (Key.wire id key)
                       else
                         idx) idx author.Author.keys
                in
                let idx' = List.fold_left (fun idx a ->
-                   if not (Conex_repository.contains ~queued:true r idx aid `Account (Author.wire_account aid a)) then
-                     queue_r idx aid `Account (Author.wire_account aid a)
+                   if not (Conex_repository.contains ~queued:true r idx id `Account (Author.wire_account id a)) then
+                     queue_r idx id `Account (Author.wire_account id a)
                    else
                      idx) idx' author.Author.accounts
                in
