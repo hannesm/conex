@@ -80,7 +80,7 @@ module Make_sign (C : SIGN_BACK) = struct
   let pub_of_priv key = match key with
     | `Priv (`RSA, key, created) ->
       C.pub_of_priv_rsa key >>= fun pub ->
-      Ok (`RSA, pub, created)
+      Ok (`RSA, String.trim pub, created)
 
   let bits = function
     | `RSA, key, _ -> C.bits_rsa key
