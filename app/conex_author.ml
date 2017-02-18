@@ -307,6 +307,8 @@ let init _ dry path id email =
          List.fold_left (fun idx a -> approve idx `Account (Author.wire_account id a))
            idx accounts
        in
+       str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
+       Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;
        Logs.app (fun m -> m "Created keypair %a.  Join teams, claim your packages, sign your approved resources and open a PR :)" pp_id id))
