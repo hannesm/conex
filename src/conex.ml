@@ -101,7 +101,8 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       Ok (add_id r author.Author.name)
     in
     (* verify the team janitor *)
-    to_str pp_conflict (foldM add_author repo good) >>= fun good_j_repo ->
+    let trepo = add_team repo team in
+    to_str pp_conflict (foldM add_author trepo good) >>= fun good_j_repo ->
     to_str pp_error (validate_team good_j_repo team) >>= fun (repo, ok) ->
     L.info (fun m -> m "team janitors verified %a" pp_ok ok) ;
     (* team is good, there may be more janitors: esp notyet and others *)
