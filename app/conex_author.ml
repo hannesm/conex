@@ -89,7 +89,7 @@ let status _ path quorum id no_rec package =
        (match path, id with
         | Some p, Some id -> Ok (id, p)
         | None, Some id ->
-          (match find_basedir_id None None with
+          (match find_basedir_id None (Some id) with
            | Ok (_, basedir) -> Ok (id, basedir)
            | Error e -> Error e)
         | Some p, None ->
