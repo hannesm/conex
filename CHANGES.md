@@ -1,3 +1,7 @@
+## 0.9.2 (2017-02-18)
+
+* conex_author: status subcommand: handle id argument properly
+
 ## 0.9.1 (2017-02-18)
 
 * conex_author:
