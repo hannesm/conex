@@ -85,7 +85,7 @@ let status _ path quorum id no_rec package =
   msg_to_cmdliner
     (str_to_msg
        (match path, id with
-        | Some p, Some id -> Ok (p, id)
+        | Some p, Some id -> Ok (id, p)
         | None, Some id ->
           (match find_basedir_id None None with
            | Ok (_, basedir) -> Ok (id, basedir)
