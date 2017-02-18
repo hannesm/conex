@@ -56,26 +56,28 @@ let warn_e pp = R.ignore_error ~use:(w pp)
 
 module IO = Conex_io
 
-let verify _ path quorum ignore_missing id anchors =
+let verify _ path quorum ignore_missing anchors =
   msg_to_cmdliner @@ str_to_msg
-    (find_basedir_id path id >>= fun (_id, basedir) ->
-     init_repo ?quorum true basedir >>= fun (r, io) ->
-     Logs.info (fun m -> m "%a" Conex_io.pp io) ;
-     let valid =
-       let v = Conex_opts.convert_anchors anchors in
-       if S.is_empty v then
-         (Logs.info (fun m -> m "treating all on disk janitors as trusted") ;
-          (fun _ _ -> true))
-       else
-         (fun _ (_, dg) -> S.mem dg v)
-     in
-     C.verify_janitors ~valid io r >>= fun r ->
-     C.verify_ids io r >>= fun repo ->
-     IO.packages io >>= fun packages ->
-     foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
-     let ws = Logs.warn_count () in
-     Logs.app (fun m -> m "verified %d packages, %d warnings" (S.cardinal packages - ws) ws) ;
-     Ok ())
+    (match path with
+     | None -> Error "--repo must be provided"
+     | Some basedir ->
+       init_repo ?quorum true basedir >>= fun (r, io) ->
+       Logs.info (fun m -> m "%a" Conex_io.pp io) ;
+       let valid =
+         let v = Conex_opts.convert_anchors anchors in
+         if S.is_empty v then
+           (Logs.info (fun m -> m "treating all on disk janitors as trusted") ;
+            (fun _ _ -> true))
+         else
+           (fun _ (_, dg) -> S.mem dg v)
+       in
+       C.verify_janitors ~valid io r >>= fun r ->
+       C.verify_ids io r >>= fun repo ->
+       IO.packages io >>= fun packages ->
+       foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
+       let ws = Logs.warn_count () in
+       Logs.app (fun m -> m "verified %d packages, %d warnings" (S.cardinal packages - ws) ws) ;
+       Ok ())
 
 let to_st_txt ppf = function
   | Ok _ -> Fmt.(pf ppf "%a" (styled `Green string) "approved")
@@ -729,7 +731,7 @@ let verify_cmd =
     [`S "DESCRIPTION";
      `P "Shows verification status of the repository."]
   in
-  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ no_strict $ id $ anchors)),
+  Term.(ret Conex_opts.(const verify $ setup_log $ repo $ quorum $ no_strict $ anchors)),
   Term.info "verify" ~doc ~man
 
 let authorisation_cmd =
