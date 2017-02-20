@@ -94,5 +94,5 @@ has a good overview of attacks and threat model, both of which are shared by con
 
 ## Installation
 
-`opam pin add conex https://github.com/hannesm/conex.git` will install this binary,
+`opam instal conex` will install this library and tool,
 once you have installed OCaml (>= 4.03.0) and opam (>= 2.0.0beta).
