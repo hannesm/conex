@@ -96,3 +96,8 @@ has a good overview of attacks and threat model, both of which are shared by con
 
 `opam instal conex` will install this library and tool,
 once you have installed OCaml (>= 4.03.0) and opam (>= 2.0.0beta).
+
+A small test repository with two janitors (their private keys), an empty package
+`foo` owned by `c` and valid signatures is
+[here](https://github.com/hannesm/testrepo) including transcripts of how it was
+setup, and how to setup opams `repo validation hook`.
