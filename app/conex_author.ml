@@ -37,7 +37,8 @@ let find_basedir_id path id =
      | _ -> Error "multiple private keys found")
   | Some p, id, ids ->
     let id = match id with None -> (fun _ -> true) | Some x -> (fun y -> id_equal x y) in
-    match List.filter (fun (id', dir) -> String.compare p dir = 0 && id id') ids with
+    let p = string_to_path p in
+    match List.filter (fun (id', dir) -> path_equal p (string_to_path dir) && id id') ids with
     | [id, basedir] -> Ok (id, basedir)
     | [] -> Error "no private key found for repo and id"
     | _ -> Error "multiple private keys found"

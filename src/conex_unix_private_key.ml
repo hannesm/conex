@@ -3,22 +3,16 @@ open Conex_unix_persistency
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
-let all_privs f =
+let find_ids () =
   collect_dir private_dir >>= fun files ->
   Ok (List.fold_left
         (fun acc s ->
            match List.rev (String.cuts '.' s) with
            | p::id::path when p = "private" ->
-             let basedir = "/" ^ path_to_string (List.rev path) in
-             if f id basedir then
-               (id, basedir) :: acc
-             else
-               acc
+             (id, "/" ^ (path_to_string (List.rev path))) :: acc
            | _ -> acc)
         []
         files)
-
-let find_ids () = all_privs (fun _ _ -> true)
 
 let private_key_path path id =
   let filename =

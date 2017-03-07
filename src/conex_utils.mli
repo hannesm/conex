@@ -189,5 +189,8 @@ val path_to_string : path -> string
     str]. *)
 val string_to_path : string -> path
 
+(** [path_equal p p'] is [true] if [p] and [p'] are equal. *)
+val path_equal : path -> path -> bool
+
 (** An [item] is a type and its payload *)
 type item = file_type * string

@@ -212,4 +212,8 @@ let path_to_string path =
 
 let string_to_path str = String.cuts '/' str
 
+let path_equal a b =
+  List.length a = List.length b &&
+  List.for_all2 (fun s s' -> String.compare s s' = 0) a b
+
 type item = file_type * string
