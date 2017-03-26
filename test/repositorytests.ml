@@ -261,12 +261,12 @@ let checks_r () =
     (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "files"; "patch1"] "p1") ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'p2' to 'packages/foo/foo.0/files/patch2'"
     (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "files"; "patch2"] "p2") ;
-  (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
+  (* manually crafted using echo -n XXX | openssl dgst -sha256 -hex *)
   let csums = [
-    { Release.filename = "bar" ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
-    { Release.filename = "foo" ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
-    { Release.filename = "files/patch1" ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
-    { Release.filename = "files/patch2" ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
+    { Release.filename = "bar" ; digest = (`SHA256, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae") } ;
+    { Release.filename = "foo" ; digest = (`SHA256, "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9") } ;
+    { Release.filename = "files/patch1" ; digest = (`SHA256, "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a") } ;
+    { Release.filename = "files/patch2" ; digest = (`SHA256, "3946ca64ff78d93ca61090a437cbb6b3d2ca0d488f5f9ccf3059608368b27693") }
   ]
   in
   let css = Release.t Uint.zero "foo.0" csums in
@@ -1527,10 +1527,10 @@ let cs_bad () =
     (Ok ()) (io.write ["packages"; pname; v; "files"; "patch2"] "p2") ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
-    { Release.filename = "bar" ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
-    { Release.filename = "foo" ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
-    { Release.filename = "files/patch1" ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
-    { Release.filename = "files/patch2" ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
+    { Release.filename = "bar" ; digest = (`SHA256, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae") } ;
+    { Release.filename = "foo" ; digest = (`SHA256, "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9") } ;
+    { Release.filename = "files/patch1" ; digest = (`SHA256, "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a") } ;
+    { Release.filename = "files/patch2" ; digest = (`SHA256, "3946ca64ff78d93ca61090a437cbb6b3d2ca0d488f5f9ccf3059608368b27693") }
   ]
   in
   let css = Release.t Uint.zero v csums in

@@ -17,7 +17,7 @@ let pp_verification_error ppf = function
 module type VERIFY_BACK = sig
   val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> verification_error ]) result
 
-  val b64sha256 : string -> string
+  val sha256 : string -> string
 end
 
 module type VERIFY = sig
@@ -33,10 +33,9 @@ end
 (** Instantiation. *)
 module Make_verify (C : VERIFY_BACK) = struct
 
-  let raw_digest data = `SHA256, C.b64sha256 data
+  let raw_digest data = `SHA256, C.sha256 data
 
-  let digest data =
-    raw_digest (Wire.to_string data)
+  let digest data = raw_digest (Wire.to_string data)
 
   let keyid id k = digest (Key.wire id k)
 
