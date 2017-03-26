@@ -329,7 +329,7 @@ let basic_persistency () =
   Alcotest.check (result digest str_err) "couldn't parse digest"
     (Error "") (Digest.of_wire (List [ String "bar" ; Int Uint.zero ])) ;
   Alcotest.check (result digest str_err) "could parse digest"
-    (Ok (`SHA256, "1234")) (Digest.of_wire (List [ String "SHA256" ; String "1234" ])) ;
+    (Ok (`SHA256, "1234")) (Digest.of_wire (String "sha256=1234")) ;
   let bad_key = List [Int Uint.zero ; String "foo" ; String "bar"] in
   Alcotest.check (result key str_err) "couldn't parse key"
     (Error "") (Key.of_wire bad_key) ;
@@ -397,7 +397,7 @@ let basic_persistency () =
     (Ok t) (Conex_opam_encoding.decode (Conex_opam_encoding.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     List [
-      List [ String "SHA256" ; String "zWPsX4M9Gk2uvY0Jg1hASQa9yiCDU5/GkTJk7wbqE6Y=" ] ;
+      String "sha256=cd63ec5f833d1a4daebd8d098358404906bdca2083539fc6913264ef06ea13a6" ;
       String "foo"
     ]
   in
@@ -447,7 +447,8 @@ let basic_persistency () =
     M.add "index" (Int Uint.zero)
       (M.add "name" (String "foobar")
          (M.add "typ" (String "team")
-            (M.add "digest" (List [ String "SHA256" ; String "01234567890123456789012345678901234567890123" ]) M.empty)))
+            (M.add "digest" (String "sha256=01234567890123456789012345678901234567890123")
+               M.empty)))
   in
   let r' = Author.r Uint.zero "foobar" `Team (`SHA256, "01234567890123456789012345678901234567890123") in
   let idx = M.add "resources" (List [ Map r ]) idx in

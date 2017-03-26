@@ -336,9 +336,9 @@ end
 
 module Digest = struct
   type alg = [ `SHA256 ]
-  let alg_to_string = function `SHA256 -> "SHA256"
+  let alg_to_string = function `SHA256 -> "sha256"
   let string_to_alg = function
-    | "SHA256" -> Some `SHA256
+    | "sha256" -> Some `SHA256
     | _ -> None
 
   type t = alg * string
@@ -352,16 +352,19 @@ module Digest = struct
 
   let of_wire data =
     let open Wire in
-    list data >>= function
-    | [ String typ ; String data ] ->
-      (match string_to_alg typ with
-       | Some `SHA256 -> Ok (`SHA256, data)
-       | None -> Error ("unknown digest typ " ^ typ))
+    match data with
+    | String dgst ->
+      (match String.cut '=' dgst with
+       | Some (alg, data) ->
+         (match string_to_alg alg with
+          | Some `SHA256 -> Ok (`SHA256, data)
+          | None -> Error ("unknown digest typ " ^ alg))
+       | None -> Error "couldn't cut digest")
     | _ -> Error "couldn't parse digest"
 
   let wire_raw (typ, data) =
     let open Wire in
-    List [ String (alg_to_string typ) ; String data ]
+    String (alg_to_string typ ^ "=" ^ data)
 end
 
 module Author = struct
