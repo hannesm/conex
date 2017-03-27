@@ -88,10 +88,10 @@ end
 
 (* they're by no means equal:
 
-  - `Author, `Team, `Authorisation, `Package, `Release are written to individual files
+  - `Author, `Team, `Authorisation, `Releases, `Checksums are written to individual files
   - `Account, `Signature, and `Key are persistent via `Author
   - `Expoch is writen implicitly with Header.t
-  - `Key, `Account, `Author, `Epoch, `Team, `Authorisation, `Package, `Release can be part of resource lists
+  - `Key, `Account, `Author, `Epoch, `Team, `Authorisation, `Releases, `Checksums can be part of resource lists
   - `Signature is never part of any resource list!
  *)
 type typ = [
@@ -102,8 +102,8 @@ type typ = [
   | `Epoch
   | `Team
   | `Authorisation
-  | `Package
-  | `Release
+  | `Releases
+  | `Checksums
 ]
 
 let typ_equal a b = match a, b with
@@ -114,8 +114,8 @@ let typ_equal a b = match a, b with
   | `Epoch, `Epoch
   | `Team, `Team
   | `Authorisation, `Authorisation
-  | `Package, `Package
-  | `Release, `Release -> true
+  | `Releases, `Releases
+  | `Checksums, `Checksums -> true
   | _ -> false
 
 let typ_to_string = function
@@ -126,8 +126,8 @@ let typ_to_string = function
   | `Epoch -> "epoch"
   | `Team -> "team"
   | `Authorisation -> "authorisation"
-  | `Package -> "package"
-  | `Release -> "release"
+  | `Releases -> "releases"
+  | `Checksums -> "checksums"
 
 let string_to_typ = function
   (*  | "signature" -> Some `Signature -- as mentioned earlier, we'll never read a signature *)
@@ -137,8 +137,8 @@ let string_to_typ = function
   | "epoch" -> Some `Epoch
   | "team" -> Some `Team
   | "authorisation" -> Some `Authorisation
-  | "package" -> Some `Package
-  | "release" -> Some `Release
+  | "releases" -> Some `Releases
+  | "checksums" -> Some `Checksums
   | _ -> None
 
 (*BISECT-IGNORE-BEGIN*)
@@ -151,8 +151,8 @@ let pp_typ ppf typ =
       | `Epoch -> "epoch"
       | `Team -> "team"
       | `Authorisation -> "authorisation"
-      | `Package -> "package index"
-      | `Release -> "release")
+      | `Releases -> "released versions"
+      | `Checksums -> "checksums")
 (*BISECT-IGNORE-END*)
 
 let wire_typ typ = Wire.String (typ_to_string typ)
@@ -693,44 +693,44 @@ module Authorisation = struct
   (*BISECT-IGNORE-END*)
 end
 
-module Package = struct
+module Releases = struct
   let version = Uint.zero
   type t = {
     created : Uint.t ;
     counter : Uint.t ;
     epoch : Uint.t ;
     name : name ;
-    releases : S.t ;
+    versions : S.t ;
   }
 
-  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(releases = S.empty) created name =
-    { created ; counter ; epoch ; name ; releases }
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(versions = S.empty) created name =
+    { created ; counter ; epoch ; name ; versions }
 
   let of_wire data =
     let open Wire in
-    Header.keys ["releases"] data >>= fun () ->
+    Header.keys ["versions"] data >>= fun () ->
     Header.of_wire data >>= fun h ->
-    Header.check `Package version h >>= fun () ->
-    opt_string_set (search data "releases") >>= fun rels ->
-    Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch ~releases:rels h.Header.created h.Header.name)
+    Header.check `Releases version h >>= fun () ->
+    opt_string_set (search data "versions") >>= fun versions ->
+    Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch ~versions h.Header.created h.Header.name)
 
   let wire r =
     let open Wire in
     let counter = r.counter
     and epoch = r.epoch
     and created = r.created
-    and typ = `Package
+    and typ = `Releases
     and name = r.name
     in
     let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
-    M.add "releases" (wire_string_set r.releases) (Header.wire header)
+    M.add "versions" (wire_string_set r.versions) (Header.wire header)
 
   let equal a b =
-    name_equal a.name b.name && S.equal a.releases b.releases
+    name_equal a.name b.name && S.equal a.versions b.versions
 
-  let add t i = { t with releases = S.add i t.releases }
+  let add t i = { t with versions = S.add i t.versions }
 
-  let remove t i = { t with releases = S.remove i t.releases }
+  let remove t i = { t with versions = S.remove i t.versions }
 
   let prep t =
     let carry, counter = Uint.succ t.counter in
@@ -738,15 +738,15 @@ module Package = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp ppf r =
-    Format.fprintf ppf "package %a %s (created %s)@ %a"
+    Format.fprintf ppf "package releases %a %s (created %s)@ %a"
       pp_name r.name
       (Header.counter r.counter r.epoch)
       (Header.timestamp r.created)
-      (pp_list pp_name) (List.sort String.compare_insensitive (S.elements r.releases))
+      (pp_list pp_name) (List.sort String.compare_insensitive (S.elements r.versions))
   (*BISECT-IGNORE-END*)
 end
 
-module Release = struct
+module Checksums = struct
   type c = {
     filename : name ;
     digest   : Digest.t ;
@@ -796,7 +796,7 @@ module Release = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp ppf c =
-    Format.fprintf ppf "release %a %s (created %s)@ %a"
+    Format.fprintf ppf "checksums %a %s (created %s)@ %a"
       pp_name c.name
       (Header.counter c.counter c.epoch)
       (Header.timestamp c.created)
@@ -811,7 +811,7 @@ module Release = struct
     let open Wire in
     Header.keys ["files"] data >>= fun () ->
     Header.of_wire data >>= fun h ->
-    Header.check `Release version h >>= fun () ->
+    Header.check `Checksums version h >>= fun () ->
     opt_list (search data "files") >>= fun sums ->
     foldM (fun acc v -> checksum_of_wire v >>= fun cs -> Ok (cs :: acc)) [] sums >>= fun files ->
     Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch h.Header.created h.Header.name files)
@@ -822,7 +822,7 @@ module Release = struct
     and epoch = cs.epoch
     and created = cs.created
     and name = cs.name
-    and typ = `Release
+    and typ = `Checksums
     in
     let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
     let csums = fold (fun c acc -> wire_checksum c :: acc) cs.files [] in

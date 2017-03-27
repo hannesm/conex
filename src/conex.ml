@@ -118,11 +118,11 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
         Ok repo) jrepo' rest)
 
   let verify_single_release io repo auth rel version =
-    to_str IO.pp_r_err (IO.read_release io version) >>= fun cs ->
-    L.debug (fun m -> m "%a" Release.pp cs) ;
+    to_str IO.pp_r_err (IO.read_checksums io version) >>= fun cs ->
+    L.debug (fun m -> m "%a" Checksums.pp cs) ;
     to_str Conex_io.pp_cc_err
-      (IO.compute_release C.raw_digest io Uint.zero version) >>= fun on_disk ->
-    to_str pp_error (validate_release repo ~on_disk auth rel cs) >>= fun ok ->
+      (IO.compute_checksums C.raw_digest io Uint.zero version) >>= fun on_disk ->
+    to_str pp_error (validate_checksums repo ~on_disk auth rel cs) >>= fun ok ->
     L.debug (fun m -> m "%a" pp_ok ok) ;
     Ok ()
 
@@ -140,7 +140,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
       verify_ids ~ids:auth.Authorisation.authorised io repo >>= fun repo ->
       to_str pp_error (validate_authorisation repo auth) >>= fun ok ->
       L.debug (fun m -> m "validated %a %a" pp_ok ok Authorisation.pp auth) ;
-      match IO.read_package io name with
+      match IO.read_releases io name with
       | Error e ->
         if ignore_missing then
           (L.warn (fun m -> m "ignoring package index %a %a" pp_name name IO.pp_r_err e) ;
@@ -148,14 +148,14 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
         else
           Error (str IO.pp_r_err e)
       | Ok rel ->
-        L.debug (fun m -> m "%a" Package.pp rel) ;
-        IO.compute_package io Uint.zero name >>= fun on_disk ->
-        to_str pp_error (validate_package repo ~on_disk auth rel) >>= fun ok ->
-        L.debug (fun m -> m "validated %a %a" pp_ok ok Package.pp rel) ;
+        L.debug (fun m -> m "%a" Releases.pp rel) ;
+        IO.compute_releases io Uint.zero name >>= fun on_disk ->
+        to_str pp_error (validate_releases repo ~on_disk auth rel) >>= fun ok ->
+        L.debug (fun m -> m "validated %a %a" pp_ok ok Releases.pp rel) ;
         foldM
           (fun () n -> verify_single_release io repo auth rel n)
           ()
-          (S.elements rel.Package.releases) >>= fun () ->
+          (S.elements rel.Releases.versions) >>= fun () ->
         Ok repo
 
     (* we could try to be more smart:
@@ -232,18 +232,18 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
         | Error _, Error _ -> maybe_m (monoton_authorisation repo))
       () auths >>= fun () ->
     foldS (fun () id ->
-        match IO.read_package io id, IO.read_package newio id with
-        | Ok old, Ok now -> maybe_m (monoton_package ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_package ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_package ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_package repo))
+        match IO.read_releases io id, IO.read_releases newio id with
+        | Ok old, Ok now -> maybe_m (monoton_releases ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_releases ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_releases ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_releases repo))
       () pkgs >>= fun () ->
     foldS (fun () id ->
-        match IO.read_release io id, IO.read_release newio id with
-        | Ok old, Ok now -> maybe_m (monoton_release ~old ~now repo)
-        | Ok old, Error _ -> maybe_m (monoton_release ~old repo)
-        | Error _, Ok now -> maybe_m (monoton_release ~now repo)
-        | Error _, Error _ -> maybe_m (monoton_release repo))
+        match IO.read_checksums io id, IO.read_checksums newio id with
+        | Ok old, Ok now -> maybe_m (monoton_checksums ~old ~now repo)
+        | Ok old, Error _ -> maybe_m (monoton_checksums ~old repo)
+        | Error _, Ok now -> maybe_m (monoton_checksums ~now repo)
+        | Error _, Error _ -> maybe_m (monoton_checksums repo))
       () releases >>= fun () ->
     Ok newrepo
 

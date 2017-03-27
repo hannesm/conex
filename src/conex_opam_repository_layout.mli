@@ -34,19 +34,19 @@ val id_file : identifier -> path
     for [name] is stored.  Currently [data_dir; name; "authorisation"]. *)
 val authorisation_path : name -> path
 
-(** [package_path name] is the full path where the "package" file for [name] is
-    stored.  Currently [data_dir; name; "package"]. *)
+(** [package_path name] is the full path where the "releases" file for [name] is
+    stored.  Currently [data_dir; name; "releases"]. *)
 val package_path : name -> path
 
-(** [release_filename] is "release". *)
-val release_filename : name
+(** [checksums_filename] is "checksums". *)
+val checksums_filename : name
 
 (** [release_dir name] is [data_dir;] {!authorisation_of_package} (if [None],
     [name]), followed by [name]. *)
 val release_dir : name -> path
 
-(** [release_path name] is [release_dir @ release_filename]. *)
-val release_path : name -> path
+(** [checksums_path name] is [release_dir @ checksums_filename]. *)
+val checksums_path : name -> path
 
 (** [categorise path] identifies which resource owns the given [path]. *)
 val categorise : path -> [ `Id of identifier

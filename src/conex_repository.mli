@@ -22,9 +22,9 @@
     {- {!validate_team} is successful if approved by a quorum of janitors}
     {- {!validate_authorisation} is successful if approved by a quorum of
        janitors}
-    {- {!validate_package} is successful if approved by an authorised author OR
+    {- {!validate_releases} is successful if approved by an authorised author OR
        a quorum of janitors}
-    {- {!validate_release} is successful if approved by an authorised author OR a
+    {- {!validate_checksums} is successful if approved by an authorised author OR a
        quorum of janitors}}
 
     Monotonicity requirements are as follows:
@@ -35,9 +35,9 @@
        supported (a team may have no members)}
     {- {!monoton_authorisation} requires the counter to increase, deletion is
        not supported}
-    {- {!monoton_package} requires the counter to increase, deletion is not
+    {- {!monoton_releases} requires the counter to increase, deletion is not
        supported (the list of releases can be empty)}
-    {- {!monoton_release} requires the counter to increase}}
+    {- {!monoton_checksums} requires the counter to increase}}
 
 *)
 
@@ -113,7 +113,7 @@ val pp_error :
   | `InvalidReleases of name * S.t * S.t
   | `NoSharedPrefix of name * S.t
   | `NotInReleases of name * S.t
-  | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]
+  | `ChecksumsDiff of name * name list * name list * (Checksums.c * Checksums.c) list ]
     fmt
 
 (** [validate_author repo author] validates [author]: at least one public key
@@ -158,27 +158,27 @@ val validate_authorisation : t -> Authorisation.t ->
    | `InsufficientQuorum of name * typ * S.t * int
    | `IdNotPresent of name * S.t ]) result
 
-(** [validate_package repo ~on_disk auth package] validates [package]: an
+(** [validate_releases repo ~on_disk auth releases] validates [releases]: an
     {!authorised} identity must approve the package in [repo], all releases must
     be prefixed with the package name, and if [on_disk] is given, the list of
     releases have to be identical. *)
-val validate_package : t -> ?on_disk:Package.t -> Authorisation.t -> Package.t ->
+val validate_releases : t -> ?on_disk:Releases.t -> Authorisation.t -> Releases.t ->
   ([ `Approved of identifier | `Quorum of S.t | `Both of identifier * S.t ],
    [> base_error
    | `AuthRelMismatch of name * name
    | `InvalidReleases of name * S.t * S.t
    | `NoSharedPrefix of name * S.t ]) result
 
-(** [validate_release repo ~on_disk auth package release] validates [release]:
+(** [validate_checksums repo ~on_disk auth releases checksums] validates [checksums]:
     an {!authorised} (using [auth]) identity must approve the release in [repo],
     it must be part of the releases of [package], and if [on_disk] is given,
     the files listed must be equal, as well as their checksums.  *)
-val validate_release : t -> ?on_disk:Release.t -> Authorisation.t -> Package.t -> Release.t ->
+val validate_checksums : t -> ?on_disk:Checksums.t -> Authorisation.t -> Releases.t -> Checksums.t ->
   ([ `Approved of identifier | `Quorum of S.t | `Both of identifier * S.t ],
    [> base_error
    | `AuthRelMismatch of name * name
    | `NotInReleases of name * S.t
-   | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]) result
+   | `ChecksumsDiff of name * name list * name list * (Checksums.c * Checksums.c) list ]) result
 
 (** {1 Monotonicity} *)
 
@@ -201,11 +201,11 @@ val monoton_team : ?old:Team.t -> ?now:Team.t -> t -> (unit, m_err) result
 (** [monoton_authorisation ~old ~now repo] checks that the counter increased. *)
 val monoton_authorisation : ?old:Authorisation.t -> ?now:Authorisation.t -> t -> (unit, m_err) result
 
-(** [monoton_package ~old ~now repo] checks that the counter increased. *)
-val monoton_package : ?old:Package.t -> ?now:Package.t -> t -> (unit, m_err) result
+(** [monoton_releases ~old ~now repo] checks that the counter increased. *)
+val monoton_releases : ?old:Releases.t -> ?now:Releases.t -> t -> (unit, m_err) result
 
-(** [monoton_release ~old ~now repo] checks that the counter increased. *)
-val monoton_release : ?old:Release.t -> ?now:Release.t -> t -> (unit, m_err) result
+(** [monoton_checksums ~old ~now repo] checks that the counter increased. *)
+val monoton_checksums : ?old:Checksums.t -> ?now:Checksums.t -> t -> (unit, m_err) result
 
 (** {1 Unsafe operations} *)
 

@@ -31,7 +31,7 @@ let checksum_files t pv =
    | Some de -> Ok (data_path@[ de ; pv ])
    | None -> Error (`FileNotFound pv )) >>= fun st ->
   let rec collect1 acc d = function
-    | File, f when d = [] && f = release_filename -> acc
+    | File, f when d = [] && f = checksums_filename -> acc
     | File, f -> (d@[f]) :: acc
     | Directory, dir ->
       let sub = d @ [ dir ] in
@@ -44,10 +44,10 @@ let checksum_files t pv =
   | Ok data ->
     Ok (List.fold_left (fun acc x -> collect1 [] [] x @ acc) [] data)
 
-let compute_release digest t now name =
+let compute_checksums digest t now name =
   let checksum filename data =
     let digest = digest data in
-    { Release.filename ; digest }
+    { Checksums.filename ; digest }
   in
   match t.file_type (release_dir name) with
   | Error _ -> Error (`FileNotFound name)
@@ -60,7 +60,7 @@ let compute_release digest t now name =
         | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
         | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
     let r = List.(map2 checksum (map path_to_string fs) (rev ds)) in
-    Ok (Release.t now name r)
+    Ok (Checksums.t now name r)
 
 let read_dir f t path =
   t.read_dir path >>= fun data ->
@@ -73,9 +73,9 @@ let dirs = (function Directory, d -> Some d | _ -> None)
 let packages t = read_dir dirs t data_path
 let releases t name = read_dir dirs t (data_path@[name])
 
-let compute_package t now name =
-  releases t name >>= fun releases ->
-  Ok (Package.t ~releases now name)
+let compute_releases t now name =
+  releases t name >>= fun versions ->
+  Ok (Releases.t ~versions now name)
 
 
 type r_err = [ `NotFound of typ * name | `ParseError of typ * name * string | `NameMismatch of typ * name * name ]
@@ -142,34 +142,34 @@ let write_authorisation t a =
   t.write (authorisation_path a.Authorisation.name)
     (encode (Authorisation.wire a))
 
-let read_package t name =
+let read_releases t name =
   match t.read (package_path name) with
-  | Error _ -> Error (`NotFound (`Package, name))
+  | Error _ -> Error (`NotFound (`Releases, name))
   | Ok data ->
-    match decode data >>= Package.of_wire with
-    | Error p -> Error (`ParseError (`Package, name, p))
+    match decode data >>= Releases.of_wire with
+    | Error p -> Error (`ParseError (`Releases, name, p))
     | Ok r ->
-      if name_equal r.Package.name name then
+      if name_equal r.Releases.name name then
         Ok r
       else
-        Error (`NameMismatch (`Package, name, r.Package.name))
+        Error (`NameMismatch (`Releases, name, r.Releases.name))
 
-let write_package t r =
-  let name = package_path r.Package.name in
-  t.write name (encode (Package.wire r))
+let write_releases t r =
+  let name = package_path r.Releases.name in
+  t.write name (encode (Releases.wire r))
 
-let read_release t name =
-  match t.read (release_path name) with
-  | Error _ -> Error (`NotFound (`Release, name))
+let read_checksums t name =
+  match t.read (checksums_path name) with
+  | Error _ -> Error (`NotFound (`Checksums, name))
   | Ok data ->
-    match decode data >>= Release.of_wire with
-    | Error p -> Error (`ParseError (`Release, name, p))
+    match decode data >>= Checksums.of_wire with
+    | Error p -> Error (`ParseError (`Checksums, name, p))
     | Ok csum ->
-      if name_equal csum.Release.name name then
+      if name_equal csum.Checksums.name name then
         Ok csum
       else
-        Error (`NameMismatch (`Release, name, csum.Release.name))
+        Error (`NameMismatch (`Checksums, name, csum.Checksums.name))
 
-let write_release t csum =
-  let name = release_path csum.Release.name in
-  t.write name (encode (Release.wire csum))
+let write_checksums t csum =
+  let name = checksums_path csum.Checksums.name in
+  t.write name (encode (Checksums.wire csum))

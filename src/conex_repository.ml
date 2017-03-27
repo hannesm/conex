@@ -88,7 +88,7 @@ type base_error = [
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_cs ppf (a, b) =
-  Format.fprintf ppf "have %a want %a" Release.pp_c a Release.pp_c b
+  Format.fprintf ppf "have %a want %a" Checksums.pp_c a Checksums.pp_c b
 
 let pp_error ppf = function
   | #conflict as e -> pp_conflict ppf e
@@ -198,8 +198,8 @@ let validate_authorisation repo auth =
   | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
 
 let ensure_releases rel disk =
-  let rels = rel.Package.releases
-  and dirs = disk.Package.releases
+  let rels = rel.Releases.versions
+  and dirs = disk.Releases.versions
   in
   if S.equal rels dirs then
     Ok ()
@@ -214,12 +214,12 @@ let is_release name a =
   | Some x -> name_equal name x
   | _ -> false
 
-let validate_package repo ?on_disk a r =
-  guard (name_equal a.Authorisation.name r.Package.name)
-    (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
-  guard (S.for_all (is_release r.Package.name) r.Package.releases)
-    (`NoSharedPrefix (r.Package.name, r.Package.releases)) >>= fun () ->
-  validate_resource repo a.Authorisation.authorised r.Package.name `Package (Package.wire r) >>= fun res ->
+let validate_releases repo ?on_disk a r =
+  guard (name_equal a.Authorisation.name r.Releases.name)
+    (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
+  guard (S.for_all (is_release r.Releases.name) r.Releases.versions)
+    (`NoSharedPrefix (r.Releases.name, r.Releases.versions)) >>= fun () ->
+  validate_resource repo a.Authorisation.authorised r.Releases.name `Releases (Releases.wire r) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
@@ -229,15 +229,15 @@ let validate_package repo ?on_disk a r =
   | None -> res
   | Some rels ->
     match ensure_releases r rels with
-    | Error (h, w) -> Error (`InvalidReleases (r.Package.name, h, w))
+    | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
     | Ok () -> res
 
-let validate_release repo ?on_disk a r cs =
-  guard (name_equal a.Authorisation.name r.Package.name)
-    (`AuthRelMismatch (a.Authorisation.name, r.Package.name)) >>= fun () ->
-  guard (S.mem cs.Release.name r.Package.releases)
-    (`NotInReleases (cs.Release.name, r.Package.releases)) >>= fun () ->
-  validate_resource repo a.Authorisation.authorised cs.Release.name `Release (Release.wire cs) >>= fun res ->
+let validate_checksums repo ?on_disk a r cs =
+  guard (name_equal a.Authorisation.name r.Releases.name)
+    (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
+  guard (S.mem cs.Checksums.name r.Releases.versions)
+    (`NotInReleases (cs.Checksums.name, r.Releases.versions)) >>= fun () ->
+  validate_resource repo a.Authorisation.authorised cs.Checksums.name `Checksums (Checksums.wire cs) >>= fun res ->
   let res = match res with
     | `Both b -> Ok (`Both b)
     | `Quorum js -> Ok (`Quorum js)
@@ -245,7 +245,7 @@ let validate_release repo ?on_disk a r cs =
   in
   match on_disk with
   | None -> res
-  | Some css -> Release.compare_t cs css >>= fun () -> res
+  | Some css -> Checksums.compare_t cs css >>= fun () -> res
 
 type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
 
@@ -277,16 +277,16 @@ let monoton_authorisation ?old ?now _t =
   | Some a, None -> Error (`Deleted (`Authorisation, a.Authorisation.name)) (* DO NOT allow deletion of authorsations *)
   | None, None -> Error (`Msg (`Authorisation, "both are none"))
 
-let monoton_package ?old ?now _t =
+let monoton_releases ?old ?now _t =
   match old, now with
-  | Some rel, Some rel' -> increased rel.Package.counter rel'.Package.counter `Package rel.Package.name
+  | Some rel, Some rel' -> increased rel.Releases.counter rel'.Releases.counter `Releases rel.Releases.name
   | None, Some _ -> Ok () (* allow creation *)
-  | Some rel, None -> Error (`Deleted (`Package, rel.Package.name)) (* DO NOT allow deletion of packages *)
-  | None, None -> Error (`Msg (`Package, "both are none"))
+  | Some rel, None -> Error (`Deleted (`Releases, rel.Releases.name)) (* DO NOT allow deletion of packages *)
+  | None, None -> Error (`Msg (`Releases, "both are none"))
 
-let monoton_release ?old ?now _t =
+let monoton_checksums ?old ?now _t =
   match old, now with
-  | Some cs, Some cs' -> increased cs.Release.counter cs'.Release.counter `Release cs.Release.name
+  | Some cs, Some cs' -> increased cs.Checksums.counter cs'.Checksums.counter `Checksums cs.Checksums.name
   | None, Some _ -> Ok () (* allow creation *)
   | Some _, None -> Ok () (* allow deletion of releases *)
-  | None, None -> Error (`Msg (`Release, "both are none"))
+  | None, None -> Error (`Msg (`Checksums, "both are none"))

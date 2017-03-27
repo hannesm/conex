@@ -212,11 +212,11 @@ let status _ path quorum id no_rec package =
                | Error _ -> r
                | Ok r -> r
              in
-             let on_disk = match IO.compute_package io Uint.zero name with
+             let on_disk = match IO.compute_releases io Uint.zero name with
                | Ok od -> Some od
                | Error e -> Logs.err (fun m -> m "couldn't compute package %s: %s" name e) ; None
              in
-             (match IO.read_package io name with
+             (match IO.read_releases io name with
               | Error e ->
                 Logs.app (fun m -> m "package %a authorisation %a"
                              pp_name name
@@ -226,22 +226,22 @@ let status _ path quorum id no_rec package =
                  Logs.app (fun m -> m "package %a authorisation %a package index %a"
                               pp_name name
                               to_st_txt (Conex_repository.validate_authorisation r auth)
-                              to_st_txt (Conex_repository.validate_package r ?on_disk auth pkg)) ;
+                              to_st_txt (Conex_repository.validate_releases r ?on_disk auth pkg)) ;
                  (* now all the releases *)
                  (match on_disk with
                   | None -> Logs.app (fun m -> m "no releases")
                   | Some pkg ->
-                    S.iter (fun release -> match IO.read_release io release with
-                        | Error e -> Logs.err (fun m -> m "couldn't read release %s: %a" release IO.pp_r_err e)
+                    S.iter (fun release -> match IO.read_checksums io release with
+                        | Error e -> Logs.err (fun m -> m "couldn't read checksums %s: %a" release IO.pp_r_err e)
                         | Ok rel ->
                           let on_disk =
-                            match IO.compute_release V.raw_digest io Uint.zero release with
+                            match IO.compute_checksums V.raw_digest io Uint.zero release with
                             | Ok rel -> Some rel
                             | Error e -> Logs.err (fun m -> m "couldn't compute release %s: %a" release IO.pp_cc_err e) ; None
                           in
                           Logs.app (fun m -> m "release %s: %a" release to_st_txt
-                                       (Conex_repository.validate_release r ?on_disk auth pkg rel)))
-                      pkg.Package.releases));
+                                       (Conex_repository.validate_checksums r ?on_disk auth pkg rel)))
+                      pkg.Releases.versions));
              r)
          packages r
      in
@@ -364,18 +364,18 @@ let check io { Author.rname ; rtyp ; digest ; _ } =
           (Logs.app (fun m -> m "%a" Authorisation.pp auth) ; true)
         else
           false)
-  | `Package -> (match IO.read_package io rname with
+  | `Releases -> (match IO.read_releases io rname with
       | Error _ -> false
       | Ok pack ->
-        if Digest.equal (V.digest (Package.wire pack)) digest then
-          (Logs.app (fun m -> m "%a" Package.pp pack) ; true)
+        if Digest.equal (V.digest (Releases.wire pack)) digest then
+          (Logs.app (fun m -> m "%a" Releases.pp pack) ; true)
         else
           false)
-  | `Release -> (match IO.read_release io rname with
+  | `Checksums -> (match IO.read_checksums io rname with
       | Error _ -> false
       | Ok rel ->
-        if Digest.equal (V.digest (Release.wire rel)) digest then
-          (Logs.app (fun m -> m "%a" Release.pp rel) ; true)
+        if Digest.equal (V.digest (Checksums.wire rel)) digest then
+          (Logs.app (fun m -> m "%a" Checksums.pp rel) ; true)
         else
           false)
   | `Author -> (match IO.read_author io rname with
@@ -520,51 +520,51 @@ let release _ dry path id remove p =
      let rel =
        let use e =
          w IO.pp_r_err e ;
-         Package.t now pn
+         Releases.t now pn
        in
        R.ignore_error ~use
-         (IO.read_package io pn >>| fun rel ->
-          Logs.debug (fun m -> m "read %a" Package.pp rel) ;
+         (IO.read_releases io pn >>| fun rel ->
+          Logs.debug (fun m -> m "read %a" Releases.pp rel) ;
           rel)
      in
-     let f m t = if remove then Package.remove t m else Package.add t m in
+     let f m t = if remove then Releases.remove t m else Releases.add t m in
      let rel' = S.fold f releases rel in
      let idx = find_idx io id in
-     (if not (Package.equal rel rel') then begin
-        let rel, overflow = Package.prep rel' in
+     (if not (Releases.equal rel rel') then begin
+        let rel, overflow = Releases.prep rel' in
         if overflow then
           Logs.warn (fun m -> m "counter overflow in releases %s, needs approval" pn) ;
-        str_to_msg (IO.write_package io rel) >>| fun () ->
-        Logs.info (fun m -> m "wrote %a" Package.pp rel) ;
-        queue_r idx pn `Package (Package.wire rel)
-       end else if not (Conex_repository.contains ~queued:true r idx pn `Package (Package.wire rel')) then begin
-        Ok (queue_r idx pn `Package (Package.wire rel))
+        str_to_msg (IO.write_releases io rel) >>| fun () ->
+        Logs.info (fun m -> m "wrote %a" Releases.pp rel) ;
+        queue_r idx pn `Releases (Releases.wire rel)
+       end else if not (Conex_repository.contains ~queued:true r idx pn `Releases (Releases.wire rel')) then begin
+        Ok (queue_r idx pn `Releases (Releases.wire rel))
        end else Ok idx) >>= fun idx' ->
      let add_cs name acc =
        acc >>= fun idx ->
        let cs =
          let use e =
            w IO.pp_r_err e ;
-           let c = Release.t now name [] in
-           Logs.info (fun m -> m "fresh %a" Release.pp c);
+           let c = Checksums.t now name [] in
+           Logs.info (fun m -> m "fresh %a" Checksums.pp c);
            c
          in
          R.ignore_error ~use
-           (IO.read_release io name >>| fun cs ->
-            Logs.debug (fun m -> m "read %a" Release.pp cs) ;
+           (IO.read_checksums io name >>| fun cs ->
+            Logs.debug (fun m -> m "read %a" Checksums.pp cs) ;
             cs)
        in
        R.error_to_msg ~pp_error:IO.pp_cc_err
-         (IO.compute_release V.raw_digest io now name) >>= fun cs' ->
-       if not (Release.equal cs cs') then
-         let cs' = Release.set_counter cs' cs'.Release.counter in
-         let cs', overflow = Release.prep cs' in
+         (IO.compute_checksums V.raw_digest io now name) >>= fun cs' ->
+       if not (Checksums.equal cs cs') then
+         let cs' = Checksums.set_counter cs' cs'.Checksums.counter in
+         let cs', overflow = Checksums.prep cs' in
          if overflow then Logs.warn (fun m -> m "counter overflow in checksum %s, needs approval" name) ;
-         str_to_msg (IO.write_release io cs') >>| fun () ->
-         Logs.info (fun m -> m "wrote %a" Release.pp cs') ;
-         queue_r idx name `Release (Release.wire cs')
-       else if not (Conex_repository.contains ~queued:true r idx name `Release (Release.wire cs)) then
-         Ok (queue_r idx name `Release (Release.wire cs))
+         str_to_msg (IO.write_checksums io cs') >>| fun () ->
+         Logs.info (fun m -> m "wrote %a" Checksums.pp cs') ;
+         queue_r idx name `Checksums (Checksums.wire cs')
+       else if not (Conex_repository.contains ~queued:true r idx name `Checksums (Checksums.wire cs)) then
+         Ok (queue_r idx name `Checksums (Checksums.wire cs))
        else
          Ok idx
      in
