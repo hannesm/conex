@@ -350,20 +350,20 @@ let basic_persistency () =
   let bad_n =
     M.add "name" (String "foo") bad_n
   in
-  Alcotest.check (result team str_err) "couldn't parse team (type, wraps missing)"
+  Alcotest.check (result team str_err) "couldn't parse team (type, epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
     M.add "typ" (Int Uint.zero) bad_n
   in
-  Alcotest.check (result team str_err) "couldn't parse team (bad type, wraps missing)"
+  Alcotest.check (result team str_err) "couldn't parse team (bad type, epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
     M.add "typ" (String "team") bad_n
   in
-  Alcotest.check (result team str_err) "couldn't parse team (wraps missing)"
+  Alcotest.check (result team str_err) "couldn't parse team (epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let good_n =
-    M.add "wraps" (Int Uint.zero) (M.add "created" (Int Uint.zero) bad_n)
+    M.add "epoch" (Int Uint.zero) (M.add "created" (Int Uint.zero) bad_n)
   in
   let t = Team.t Uint.zero "foo" in
   Alcotest.check (result team str_err) "could parse team"
@@ -397,14 +397,14 @@ let basic_persistency () =
     (Ok t) (Conex_opam_encoding.decode (Conex_opam_encoding.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     List [
-      String "sha256=cd63ec5f833d1a4daebd8d098358404906bdca2083539fc6913264ef06ea13a6" ;
-      String "foo"
+      String "foo" ;
+      String "sha256=16fb0f83c716a73bb95a726e414408510a5e1de5673c9a44f9032655fd865daf"
     ]
   in
   let css =
     M.add "name" (String "foo")
       (M.add "counter" (Int Uint.zero)
-         (M.add "wraps" (Int Uint.zero)
+         (M.add "epoch" (Int Uint.zero)
             (M.add "created" (Int Uint.zero)
                (M.add "version" (Int Uint.zero)
                   (M.add "typ" (String "release")
@@ -426,7 +426,7 @@ let basic_persistency () =
     M.add "name" (String "foo")
       (M.add "counter" (Int Uint.zero)
          (M.add "created" (Int Uint.zero)
-            (M.add "wraps" (Int Uint.zero)
+            (M.add "epoch" (Int Uint.zero)
                (M.add "typ" (String "author")
                   (M.add "version" (Int Uint.zero) M.empty)))))
   in

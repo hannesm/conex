@@ -111,7 +111,7 @@ let status _ path quorum id no_rec package =
         in
         Logs.app (fun m -> m "author %a %s (created %s) %a %d resources, %d queued"
                      Fmt.(styled `Bold pp_id) idx.Author.name
-                     (Header.counter idx.Author.counter idx.Author.wraps)
+                     (Header.counter idx.Author.counter idx.Author.epoch)
                      (Header.timestamp idx.Author.created)
                      Fmt.(styled style string) txt
                      (List.length idx.Author.resources)
@@ -292,12 +292,12 @@ let init _ dry path id email =
          List.sort_uniq Author.compare_account
            (`GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts)
        and counter = idx.Author.counter
-       and wraps = idx.Author.wraps
+       and epoch = idx.Author.epoch
        and queued = idx.Author.queued
        and resources = idx.Author.resources
        and created = idx.Author.created
        in
-       let idx = Author.t ~accounts ~counter ~wraps ~resources ~queued created id in
+       let idx = Author.t ~accounts ~counter ~epoch ~resources ~queued created id in
        let approve idx typ wire =
          let counter = Author.next_id idx in
          let digest = V.digest wire in

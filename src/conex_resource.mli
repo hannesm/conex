@@ -2,7 +2,7 @@
 
     Every resource in conex is a piece of data (or metadata), and has its own
     purpose.  Resources stored on disk consists of a common header: a name, a
-    type, a counter, a wraparound counter, and a creation timestamp.  There are
+    type, a counter, an epoch, and a creation timestamp.  There are
     broadly three kinds of resources: those containing identities ({!Team} and
     {!Author}), those regulating access to packages ({!Authorisation}), and
     those with the digests of the opam repository data ({!Package} and
@@ -64,7 +64,7 @@ type typ = [
   | `Key
   | `Account
   | `Author
-  | `Wrap
+  | `Epoch
   | `Team
   | `Authorisation
   | `Package
@@ -89,12 +89,12 @@ val typ_of_wire : Wire.s -> (typ, string) result
 (** Common header on disk *)
 module Header : sig
 
-  (** The header consists of version, created, counter, wraps, a name, and a typ. *)
+  (** The header consists of version, created, counter, epoch, a name, and a typ. *)
   type t = {
     version : Uint.t ;
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     typ : typ
   }
@@ -112,8 +112,8 @@ module Header : sig
       seconds since UNIX epoch). *)
   val timestamp : Uint.t -> string
 
-  (** [counter ctr wrap] prints [ctr, wrap] to a string containing the counter
-      and wraps (unless zero). *)
+  (** [counter ctr epoch] prints [ctr, epoch] to a string containing the counter
+      and epoch (unless zero). *)
   val counter : Uint.t -> Uint.t -> string
 end
 
@@ -273,7 +273,7 @@ module Author : sig
     (* signed part *)
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : identifier ;
     resources : r list ;
     (* unsigned part *)
@@ -285,9 +285,9 @@ module Author : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~accounts ~keys ~resources ~queued created name] is a
+  (** [t ~counter ~epoch ~accounts ~keys ~resources ~queued created name] is a
       constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?accounts:(account list) ->
     ?keys:((Key.t * Signature.t) list) ->
     ?resources:(r list) ->
@@ -346,7 +346,7 @@ module Team : sig
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : identifier ;
     members : S.t
   }
@@ -354,8 +354,8 @@ module Team : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~members created id] is a constructor for a team. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  (** [t ~counter ~epoch ~members created id] is a constructor for a team. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?members:S.t -> Uint.t -> identifier -> t
 
   (** [equal t t'] is true if the set of members is equal and the name is
@@ -390,7 +390,7 @@ module Authorisation : sig
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     authorised : S.t ;
   }
@@ -398,8 +398,8 @@ module Authorisation : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~authorised created name] is a constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  (** [t ~counter ~epoch ~authorised created name] is a constructor. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?authorised:S.t -> Uint.t -> name -> t
 
   (** [equal t t'] is true if the names are equal and the set of authorised ids
@@ -433,7 +433,7 @@ module Package : sig
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     releases : S.t ;
   }
@@ -441,8 +441,8 @@ module Package : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~releases created name] is a constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  (** [t ~counter ~epoch ~releases created name] is a constructor. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?releases:S.t -> Uint.t -> name -> t
 
   (** [equal t t'] is true if the names are equal and the set of releases. *)
@@ -491,7 +491,7 @@ module Release : sig
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     files : checksum_map ;
   }
@@ -499,8 +499,8 @@ module Release : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps created name checksums] is a constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> Uint.t -> string -> c list -> t
+  (** [t ~counter ~epoch created name checksums] is a constructor. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t -> Uint.t -> string -> c list -> t
 
   (** [of_wire w] converts [w] to a release or error. *)
   val of_wire : Wire.t -> (t, string) result
