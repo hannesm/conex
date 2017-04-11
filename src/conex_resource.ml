@@ -22,12 +22,14 @@ module Wire = struct
   type s =
     | Map of s M.t
     | List of s list
-    | String of string
+    | Identifier of identifier
+    | Data of string
     | Int of Uint.t
 
   let rec s_to_string = function
     | Int x -> "0x" ^ Uint.to_string x
-    | String s -> "'"^s^"'"
+    | Data s -> "'"^s^"'"
+    | Identifier i -> i
     | List xs -> "[" ^ String.concat "; " (List.map s_to_string xs) ^ "]"
     | Map m ->
       let strs =
@@ -48,40 +50,40 @@ module Wire = struct
     | Some x -> Ok x
     | None -> Error "expected some, got none"
 
-  let string = function
-    | String x -> Ok x
-    | _ -> Error "couldn't find string"
+  let pdata = function
+    | Data x -> Ok x
+    | _ -> Error "couldn't find data"
 
-  let int = function
+  let pint = function
     | Int x -> Ok x
     | _ -> Error "couldn't find int"
 
-  let list = function
+  let plist = function
     | List x -> Ok x
     | _ -> Error "couldn't find list"
 
-  let map = function
+  let pmap = function
     | Map m -> Ok m
     | _ -> Error "couldn't find map"
 
   let opt_map = function
     | None -> Ok M.empty
-    | Some x -> map x
+    | Some x -> pmap x
 
   let string_set els =
     foldM (fun acc e ->
-        match string e with
+        match pdata e with
         | Ok s -> Ok (s :: acc)
-        | _ -> Error ("not a string while parsing list"))
+        | _ -> Error ("not a string while parsing set"))
       [] els >>= fun els ->
     Ok (s_of_list els)
 
   let wire_string_set s =
-    List (List.map (fun s -> String s) (List.sort String.compare (S.elements s)))
+    List (List.map (fun x -> Data x) (List.sort String.compare (S.elements s)))
 
   let opt_list = function
     | None -> Ok []
-    | Some xs -> list xs
+    | Some xs -> plist xs
 
   let opt_string_set x = opt_list x >>= string_set
 end
@@ -155,9 +157,9 @@ let pp_typ ppf typ =
       | `Checksums -> "checksums")
 (*BISECT-IGNORE-END*)
 
-let wire_typ typ = Wire.String (typ_to_string typ)
+let wire_typ typ = Wire.Identifier (typ_to_string typ)
 let typ_of_wire = function
-  | Wire.String str ->
+  | Wire.Identifier str ->
     (match string_to_typ str with
      | None -> Error "unknown resource type"
      | Some x -> Ok x)
@@ -176,11 +178,11 @@ module Header = struct
 
   let of_wire data =
     let open Wire in
-    opt_err (search data "version") >>= int >>= fun version ->
-    opt_err (search data "created") >>= int >>= fun created ->
-    opt_err (search data "counter") >>= int >>= fun counter ->
-    opt_err (search data "epoch") >>= int >>= fun epoch ->
-    opt_err (search data "name") >>= string >>= fun name ->
+    opt_err (search data "version") >>= pint >>= fun version ->
+    opt_err (search data "created") >>= pint >>= fun created ->
+    opt_err (search data "counter") >>= pint >>= fun counter ->
+    opt_err (search data "epoch") >>= pint >>= fun epoch ->
+    opt_err (search data "name") >>= pdata >>= fun name ->
     opt_err (search data "typ") >>= typ_of_wire >>= fun typ ->
     Ok { version ; created ; counter ; epoch ; name ; typ }
 
@@ -206,7 +208,7 @@ module Header = struct
       (M.add "created" (Int t.created)
          (M.add "counter" (Int t.counter)
             (M.add "epoch" (Int t.epoch)
-               (M.add "name" (String t.name)
+               (M.add "name" (Data t.name)
                   (M.add "typ" (wire_typ t.typ) M.empty)))))
 
   let keys ?(header = true) additional map =
@@ -231,7 +233,6 @@ module Header = struct
     | _, true ->
       Error (Printf.sprintf "expected data version #%s, found #%s"
                (Uint.decimal v) (Uint.decimal hdr.version))
-
 end
 
 
@@ -260,8 +261,8 @@ module Key = struct
   (* stored persistently on disk in an author file containing a list of keys *)
   let of_wire data =
     let open Wire in
-    list data >>= function
-    | [ String typ ; String data ; Int created ] ->
+    plist data >>= function
+    | [ Identifier typ ; Data data ; Int created ] ->
       (match string_to_alg typ with
        | Some `RSA -> Ok (`RSA, data, created)
        | _ -> Error "unknown key type")
@@ -270,7 +271,7 @@ module Key = struct
   let wire_raw (a, k, created) =
     let open Wire in
     let typ = alg_to_string a in
-    List [ String typ ; String k ; Int created ]
+    List [ Identifier typ ; Data k ; Int created ]
 
   (* this is exposed, used for signing *)
   let wire name (a, k, created) =
@@ -280,8 +281,8 @@ module Key = struct
     and typ = `Key
     in
     let header = { Header.created ; counter ; version ; epoch ; name ; typ } in
-    M.add "keytype" (String (alg_to_string a))
-      (M.add "keydata" (String k)
+    M.add "keytype" (Identifier (alg_to_string a))
+      (M.add "keydata" (Data k)
          (Header.wire header))
 end
 
@@ -307,8 +308,8 @@ module Signature = struct
     in
     let header = { Header.created ; counter ; version ; epoch ; name ; typ }
     in
-    M.add "sigtype" (String (alg_to_string alg))
-      (M.add "data" (String data)
+    M.add "sigtype" (Identifier (alg_to_string alg))
+      (M.add "data" (Data data)
          (Header.wire header))
 
   type t = hdr * string
@@ -322,8 +323,8 @@ module Signature = struct
   (* again stored on disk as part of author file *)
   let of_wire data =
     let open Wire in
-    list data >>= function
-    | [ Int created ; String typ ; String s ] ->
+    plist data >>= function
+    | [ Int created ; Identifier typ ; Data s ] ->
       (match string_to_alg typ with
        | Some alg -> Ok ((alg, created), s)
        | None -> Error "couldn't parse signature type")
@@ -331,7 +332,7 @@ module Signature = struct
 
   let wire_raw ((alg, created), s) =
     let open Wire in
-    List [ Int created ; String (alg_to_string alg) ; String s ]
+    List [ Int created ; Identifier (alg_to_string alg) ; Data s ]
 end
 
 module Digest = struct
@@ -353,7 +354,7 @@ module Digest = struct
   let of_wire data =
     let open Wire in
     match data with
-    | String dgst ->
+    | Data dgst ->
       (match String.cut '=' dgst with
        | Some (alg, data) ->
          (match string_to_alg alg with
@@ -364,7 +365,7 @@ module Digest = struct
 
   let wire_raw (typ, data) =
     let open Wire in
-    String (alg_to_string typ ^ "=" ^ data)
+    Data (alg_to_string typ ^ "=" ^ data)
 end
 
 module Author = struct
@@ -380,10 +381,10 @@ module Author = struct
 
   let resource_of_wire data =
     let open Wire in
-    map data >>= fun map ->
+    pmap data >>= fun map ->
     Header.keys ~header:false ["index" ; "name" ; "typ" ; "digest" ] map >>= fun () ->
-    opt_err (search map "index") >>= int >>= fun index ->
-    opt_err (search map "name") >>= string >>= fun rname ->
+    opt_err (search map "index") >>= pint >>= fun index ->
+    opt_err (search map "name") >>= pdata >>= fun rname ->
     opt_err (search map "typ") >>= typ_of_wire >>= fun rtyp ->
     opt_err (search map "digest") >>= Digest.of_wire >>= fun digest ->
     Ok (r index rname rtyp digest)
@@ -391,7 +392,7 @@ module Author = struct
   let wire_resource r =
     let open Wire in
     M.add "index" (Int r.index)
-      (M.add "name" (String r.rname)
+      (M.add "name" (Data r.rname)
          (M.add "typ" (wire_typ r.rtyp)
             (M.add "digest" (Digest.wire_raw r.digest)
                M.empty)))
@@ -421,7 +422,7 @@ module Author = struct
   let accounts_of_wire map =
     M.fold (fun k v acc ->
         acc >>= fun xs ->
-        Wire.string v >>= fun s ->
+        Wire.pdata v >>= fun s ->
         let data =
           match k with
           | "email" -> `Email s
@@ -434,11 +435,12 @@ module Author = struct
   let wire_account_raw m =
     let open Wire in
     function
-    | `Email e -> M.add "email" (String e) m
-    | `GitHub g -> M.add "github" (String g) m
-    | `Other (k, v) -> M.add k (String v) m
+    | `Email e -> M.add "email" (Data e) m
+    | `GitHub g -> M.add "github" (Data g) m
+    | `Other (k, v) -> M.add k (Data v) m
 
-  let wire_account name a = wire_account_raw (M.add "name" (Wire.String name) M.empty) a
+  let wire_account name a =
+    wire_account_raw (M.add "name" (Wire.Data name) M.empty) a
 
   let compare_account (a : account) (b : account) =
     let to_str = function
@@ -491,7 +493,7 @@ module Author = struct
     Header.keys ~header:false ["signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
     opt_list (search data "keys") >>= fun keys ->
     foldM (fun acc d ->
-        list d >>= function
+        plist d >>= function
         | [ key ; signature ] ->
           Key.of_wire key >>= fun key ->
           Signature.of_wire signature >>= fun signature ->
@@ -499,7 +501,7 @@ module Author = struct
         | _ -> Error "expected a key signature pair!")
       []
       keys >>= fun keys ->
-    opt_err (search data "signed") >>= map >>= fun signed ->
+    opt_err (search data "signed") >>= pmap >>= fun signed ->
     Header.keys ["resources"] signed >>= fun () ->
     Header.of_wire signed >>= fun h ->
     Header.check `Author version h >>= fun () ->
@@ -763,15 +765,15 @@ module Checksums = struct
 
   let checksum_of_wire data =
     let open Wire in
-    list data >>= function
-    | [ String filename ; digest ] ->
+    plist data >>= function
+    | [ Data filename ; digest ] ->
       Digest.of_wire digest >>= fun digest ->
       Ok ({ filename ; digest })
     | _ -> Error "cannot parse checksum"
 
   let wire_checksum c =
     let open Wire in
-    List [ String c.filename ; Digest.wire_raw c.digest ]
+    List [ Data c.filename ; Digest.wire_raw c.digest ]
 
   type checksum_map = c M.t
 

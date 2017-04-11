@@ -39,12 +39,13 @@ val id_equal : identifier -> identifier -> bool
     computations, and persistent storage on disk. *)
 module Wire : sig
 
-  (** The values in the key value store: either a map, a list, a string, or an
-      unsigned integer. *)
+  (** The values in the key value store: either a map, a list, an identifier,
+      data (represented as string), or an unsigned integer. *)
   type s =
     | Map of s M.t
     | List of s list
-    | String of string
+    | Identifier of identifier
+    | Data of string
     | Int of Uint.t
 
   (** The toplevel node, a Map *)
@@ -89,7 +90,7 @@ val typ_of_wire : Wire.s -> (typ, string) result
 (** Common header on disk *)
 module Header : sig
 
-  (** The header consists of version, created, counter, epoch, a name, and a typ. *)
+  (** The header consists of version, created, counter, epoch, name, and typ. *)
   type t = {
     version : Uint.t ;
     created : Uint.t ;

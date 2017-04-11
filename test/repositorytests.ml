@@ -310,33 +310,41 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "couldn't parse team"
     (Error "") (Team.of_wire M.empty) ;
   Alcotest.check (result typ str_err) "couldn't parse typ"
-    (Error "") (typ_of_wire (String "frabs")) ;
+    (Error "") (typ_of_wire (Identifier "frabs")) ;
+  Alcotest.check (result typ str_err) "couldn't parse typ"
+    (Error "") (typ_of_wire (Data "key")) ;
   Alcotest.check (result typ str_err) "couldn't parse typ"
     (Error "") (typ_of_wire (Int Uint.zero)) ;
   Alcotest.check (result signature str_err) "couldn't parse signature"
-    (Error "") (Signature.of_wire (List [ Int Uint.zero ; String "foo" ; String "baz" ])) ;
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Data "foo" ; Data "baz" ])) ;
   Alcotest.check (result signature str_err) "couldn't parse signature"
-    (Error "") (Signature.of_wire (List [ String "foo" ; String "foo" ; Int Uint.zero ])) ;
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Identifier "foo" ; Data "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Data "foo" ; Identifier "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Identifier "foo" ; Identifier "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Data "foo" ; Identifier "foo" ; Int Uint.zero ])) ;
   Alcotest.check (result signature str_err) "couldn't parse signature"
     (Error "") (Signature.of_wire (List [ Int Uint.zero ; Int Uint.zero ; Int Uint.zero ])) ;
   Alcotest.check (result signature str_err) "could parse signature"
     (Ok ((`RSA_PSS_SHA256, Uint.zero), "frab"))
-    (Signature.of_wire (List [ Int Uint.zero ; String "RSA-PSS-SHA256" ; String "frab" ])) ;
+    (Signature.of_wire (List [ Int Uint.zero ; Identifier "RSA-PSS-SHA256" ; Data "frab" ])) ;
   Alcotest.check (result digest str_err) "couldn't parse digest"
-    (Error "") (Digest.of_wire (List [ Int Uint.zero ; String "foobar" ])) ;
+    (Error "") (Digest.of_wire (List [ Int Uint.zero ; Data "foobar" ])) ;
   Alcotest.check (result digest str_err) "couldn't parse digest"
-    (Error "") (Digest.of_wire (List [ String "bar" ; String "foobar" ])) ;
+    (Error "") (Digest.of_wire (List [ Data "bar" ; Data "foobar" ])) ;
   Alcotest.check (result digest str_err) "couldn't parse digest"
-    (Error "") (Digest.of_wire (List [ String "bar" ; Int Uint.zero ])) ;
+    (Error "") (Digest.of_wire (List [ Data "bar" ; Int Uint.zero ])) ;
   Alcotest.check (result digest str_err) "could parse digest"
-    (Ok (`SHA256, "1234")) (Digest.of_wire (String "sha256=1234")) ;
-  let bad_key = List [Int Uint.zero ; String "foo" ; String "bar"] in
+    (Ok (`SHA256, "1234")) (Digest.of_wire (Data "sha256=1234")) ;
+  let bad_key = List [Int Uint.zero ; Data "foo" ; Data "bar"] in
   Alcotest.check (result key str_err) "couldn't parse key"
     (Error "") (Key.of_wire bad_key) ;
-  let bad_key = List [String "foobar" ; String "foo" ; Int Uint.zero] in
+  let bad_key = List [Data "foobar" ; Data "foo" ; Int Uint.zero] in
   Alcotest.check (result key str_err) "couldn't parse key (bad typ)"
     (Error "") (Key.of_wire bad_key) ;
-  let bad_c = M.add "counter" (String "foo") M.empty in
+  let bad_c = M.add "counter" (Data "foo") M.empty in
   Alcotest.check (result team str_err) "couldn't parse team counter"
     (Error "") (Team.of_wire bad_c) ;
   let bad_n =
@@ -348,7 +356,7 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "couldn't parse team name"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
-    M.add "name" (String "foo") bad_n
+    M.add "name" (Data "foo") bad_n
   in
   Alcotest.check (result team str_err) "couldn't parse team (type, epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
@@ -358,7 +366,7 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "couldn't parse team (bad type, epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
-    M.add "typ" (String "team") bad_n
+    M.add "typ" (Identifier "team") bad_n
   in
   Alcotest.check (result team str_err) "couldn't parse team (epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
@@ -368,25 +376,25 @@ let basic_persistency () =
   let t = Team.t Uint.zero "foo" in
   Alcotest.check (result team str_err) "could parse team"
     (Ok t) (Team.of_wire good_n) ;
-  let bad_n = M.add "typ" (String "author") good_n in
+  let bad_n = M.add "typ" (Identifier "author") good_n in
   Alcotest.check (result team str_err) "couldn't parse team (wrong typ)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n = M.add "version" (Int Uint.(of_int_exn 23)) good_n in
   Alcotest.check (result team str_err) "couldn't parse team (wrong version)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_m =
-    M.add "members" (String "bl") good_n
+    M.add "members" (Data "bl") good_n
   in
   Alcotest.check (result team str_err) "couldn't parse team members"
     (Error "") (Team.of_wire bad_m) ;
   let bad_m =
     M.add "members" (List [ Int Uint.zero ])
-      (M.add "name" (String "foo") good_n)
+      (M.add "name" (Identifier "foo") good_n)
   in
   Alcotest.check (result team str_err) "couldn't parse team members (not a set)"
     (Error "") (Team.of_wire bad_m) ;
   let good_t =
-    M.add "members" (List [ String "foo" ]) good_n
+    M.add "members" (List [ Data "foo" ]) good_n
   in
   let t = Team.t ~members:(S.singleton "foo") Uint.zero "foo" in
   Alcotest.check (result team str_err) "could parse team"
@@ -397,17 +405,17 @@ let basic_persistency () =
     (Ok t) (Conex_opam_encoding.decode (Conex_opam_encoding.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     List [
-      String "foo" ;
-      String "sha256=16fb0f83c716a73bb95a726e414408510a5e1de5673c9a44f9032655fd865daf"
+      Data "foo" ;
+      Data "sha256=3234c3275955af97d5def935a26098933c303f02813497d6b96d6aef9afe362f"
     ]
   in
   let css' =
-    M.add "name" (String "foo")
+    M.add "name" (Data "foo")
       (M.add "counter" (Int Uint.zero)
          (M.add "epoch" (Int Uint.zero)
             (M.add "created" (Int Uint.zero)
                (M.add "version" (Int Uint.zero)
-                  (M.add "typ" (String "checksums")
+                  (M.add "typ" (Identifier "checksums")
                      (M.add "files" (List [checksum]) M.empty))))))
   in
   let csum =
@@ -418,16 +426,16 @@ let basic_persistency () =
   Alcotest.check (result css str_err) "can parse checksum"
     (Ok csums) (Checksums.of_wire css') ;
 
-  let s = List [ Int Uint.zero ; String (Signature.alg_to_string `RSA_PSS_SHA256) ; String "barf" ] in
-  let pub = List [ String "RSA" ; String "data" ; Int Uint.zero ] in
+  let s = List [ Int Uint.zero ; Identifier (Signature.alg_to_string `RSA_PSS_SHA256) ; Data "barf" ] in
+  let pub = List [ Identifier "RSA" ; Data "data" ; Int Uint.zero ] in
   let pub' = (`RSA, "data", Uint.zero) in
   let s' = ((`RSA_PSS_SHA256, Uint.zero), "frab") in
   let idx =
-    M.add "name" (String "foo")
+    M.add "name" (Data "foo")
       (M.add "counter" (Int Uint.zero)
          (M.add "created" (Int Uint.zero)
             (M.add "epoch" (Int Uint.zero)
-               (M.add "typ" (String "author")
+               (M.add "typ" (Identifier "author")
                   (M.add "version" (Int Uint.zero) M.empty)))))
   in
   let empty_idx =
@@ -445,9 +453,9 @@ let basic_persistency () =
     (Ok idx') (Author.of_wire (Author.wire idx')) ;
   let r =
     M.add "index" (Int Uint.zero)
-      (M.add "name" (String "foobar")
-         (M.add "typ" (String "team")
-            (M.add "digest" (String "sha256=01234567890123456789012345678901234567890123")
+      (M.add "name" (Data "foobar")
+         (M.add "typ" (Identifier "team")
+            (M.add "digest" (Data "sha256=01234567890123456789012345678901234567890123")
                M.empty)))
   in
   let r' = Author.r Uint.zero "foobar" `Team (`SHA256, "01234567890123456789012345678901234567890123") in
@@ -460,7 +468,7 @@ let basic_persistency () =
     (Ok idx') (Author.of_wire idxs) ;
   Alcotest.check (result ji str_err) "can unparse/parse index"
     (Ok idx') (Author.of_wire (Author.wire idx')) ;
-  let bad_r = M.add "typ" (String "teamfoo") r in
+  let bad_r = M.add "typ" (Identifier "teamfoo") r in
   let idx = M.add "resources" (List [ Map bad_r ]) idx in
   let idxs =
     M.add "signed" (Map idx) empty_idx

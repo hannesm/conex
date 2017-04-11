@@ -14,7 +14,8 @@ let rec encode_s = function
       in
       OpamParserTypes.List (np, data)
   | Wire.List l -> OpamParserTypes.List (np, List.map encode_s l)
-  | Wire.String s -> OpamParserTypes.String (np, s)
+  | Wire.Identifier i -> OpamParserTypes.Ident (np, i)
+  | Wire.Data s -> OpamParserTypes.String (np, s)
   | Wire.Int i -> OpamParserTypes.Ident (np, "0x" ^ Uint.to_string i)
 
 let encode t =
@@ -37,8 +38,8 @@ let rec decode_s = function
     else if data = "emptymap" then
       Ok (Wire.Map M.empty)
     else
-      Error "unexpected ident"
-  | OpamParserTypes.String (_, s) -> Ok (Wire.String (String.trim s))
+      Ok (Wire.Identifier data)
+  | OpamParserTypes.String (_, s) -> Ok (Wire.Data (String.trim s))
   | OpamParserTypes.List (_, []) -> Ok (Wire.List [])
   | OpamParserTypes.List (_, l) ->
     let is_pair = function
