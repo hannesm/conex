@@ -22,12 +22,14 @@ module Wire = struct
   type s =
     | Map of s M.t
     | List of s list
-    | String of string
+    | Identifier of identifier
+    | Data of string
     | Int of Uint.t
 
   let rec s_to_string = function
     | Int x -> "0x" ^ Uint.to_string x
-    | String s -> "'"^s^"'"
+    | Data s -> "'"^s^"'"
+    | Identifier i -> i
     | List xs -> "[" ^ String.concat "; " (List.map s_to_string xs) ^ "]"
     | Map m ->
       let strs =
@@ -48,50 +50,50 @@ module Wire = struct
     | Some x -> Ok x
     | None -> Error "expected some, got none"
 
-  let string = function
-    | String x -> Ok x
-    | _ -> Error "couldn't find string"
+  let pdata = function
+    | Data x -> Ok x
+    | _ -> Error "couldn't find data"
 
-  let int = function
+  let pint = function
     | Int x -> Ok x
     | _ -> Error "couldn't find int"
 
-  let list = function
+  let plist = function
     | List x -> Ok x
     | _ -> Error "couldn't find list"
 
-  let map = function
+  let pmap = function
     | Map m -> Ok m
     | _ -> Error "couldn't find map"
 
   let opt_map = function
     | None -> Ok M.empty
-    | Some x -> map x
+    | Some x -> pmap x
 
   let string_set els =
     foldM (fun acc e ->
-        match string e with
+        match pdata e with
         | Ok s -> Ok (s :: acc)
-        | _ -> Error ("not a string while parsing list"))
+        | _ -> Error ("not a string while parsing set"))
       [] els >>= fun els ->
     Ok (s_of_list els)
 
   let wire_string_set s =
-    List (List.map (fun s -> String s) (List.sort String.compare (S.elements s)))
+    List (List.map (fun x -> Data x) (List.sort String.compare (S.elements s)))
 
   let opt_list = function
     | None -> Ok []
-    | Some xs -> list xs
+    | Some xs -> plist xs
 
   let opt_string_set x = opt_list x >>= string_set
 end
 
 (* they're by no means equal:
 
-  - `Author, `Team, `Authorisation, `Package, `Release are written to individual files
+  - `Author, `Team, `Authorisation, `Releases, `Checksums are written to individual files
   - `Account, `Signature, and `Key are persistent via `Author
-  - `Wrap is writen implicitly with Header.t
-  - `Key, `Account, `Author, `Wrap, `Team, `Authorisation, `Package, `Release can be part of resource lists
+  - `Expoch is writen implicitly with Header.t
+  - `Key, `Account, `Author, `Epoch, `Team, `Authorisation, `Releases, `Checksums can be part of resource lists
   - `Signature is never part of any resource list!
  *)
 type typ = [
@@ -99,11 +101,11 @@ type typ = [
   | `Key
   | `Account
   | `Author
-  | `Wrap
+  | `Epoch
   | `Team
   | `Authorisation
-  | `Package
-  | `Release
+  | `Releases
+  | `Checksums
 ]
 
 let typ_equal a b = match a, b with
@@ -111,11 +113,11 @@ let typ_equal a b = match a, b with
   | `Key, `Key
   | `Account, `Account
   | `Author, `Author
-  | `Wrap, `Wrap
+  | `Epoch, `Epoch
   | `Team, `Team
   | `Authorisation, `Authorisation
-  | `Package, `Package
-  | `Release, `Release -> true
+  | `Releases, `Releases
+  | `Checksums, `Checksums -> true
   | _ -> false
 
 let typ_to_string = function
@@ -123,22 +125,22 @@ let typ_to_string = function
   | `Key -> "key"
   | `Account -> "account"
   | `Author -> "author"
-  | `Wrap -> "wrap"
+  | `Epoch -> "epoch"
   | `Team -> "team"
   | `Authorisation -> "authorisation"
-  | `Package -> "package"
-  | `Release -> "release"
+  | `Releases -> "releases"
+  | `Checksums -> "checksums"
 
 let string_to_typ = function
   (*  | "signature" -> Some `Signature -- as mentioned earlier, we'll never read a signature *)
   | "key" -> Some `Key
   | "account" -> Some `Account
   | "author" -> Some `Author
-  | "wrap" -> Some `Wrap
+  | "epoch" -> Some `Epoch
   | "team" -> Some `Team
   | "authorisation" -> Some `Authorisation
-  | "package" -> Some `Package
-  | "release" -> Some `Release
+  | "releases" -> Some `Releases
+  | "checksums" -> Some `Checksums
   | _ -> None
 
 (*BISECT-IGNORE-BEGIN*)
@@ -148,16 +150,16 @@ let pp_typ ppf typ =
       | `Key -> "key"
       | `Account -> "account"
       | `Author -> "author"
-      | `Wrap -> "wrap"
+      | `Epoch -> "epoch"
       | `Team -> "team"
       | `Authorisation -> "authorisation"
-      | `Package -> "package index"
-      | `Release -> "release")
+      | `Releases -> "released versions"
+      | `Checksums -> "checksums")
 (*BISECT-IGNORE-END*)
 
-let wire_typ typ = Wire.String (typ_to_string typ)
+let wire_typ typ = Wire.Identifier (typ_to_string typ)
 let typ_of_wire = function
-  | Wire.String str ->
+  | Wire.Identifier str ->
     (match string_to_typ str with
      | None -> Error "unknown resource type"
      | Some x -> Ok x)
@@ -169,34 +171,34 @@ module Header = struct
     version : Uint.t ;
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     typ : typ
   }
 
   let of_wire data =
     let open Wire in
-    opt_err (search data "version") >>= int >>= fun version ->
-    opt_err (search data "created") >>= int >>= fun created ->
-    opt_err (search data "counter") >>= int >>= fun counter ->
-    opt_err (search data "wraps") >>= int >>= fun wraps ->
-    opt_err (search data "name") >>= string >>= fun name ->
+    opt_err (search data "version") >>= pint >>= fun version ->
+    opt_err (search data "created") >>= pint >>= fun created ->
+    opt_err (search data "counter") >>= pint >>= fun counter ->
+    opt_err (search data "epoch") >>= pint >>= fun epoch ->
+    opt_err (search data "name") >>= pdata >>= fun name ->
     opt_err (search data "typ") >>= typ_of_wire >>= fun typ ->
-    Ok { version ; created ; counter ; wraps ; name ; typ }
+    Ok { version ; created ; counter ; epoch ; name ; typ }
 
   (*BISECT-IGNORE-BEGIN*)
   let timestamp x = Uint.decimal x
 
-  let counter x wrap =
+  let counter x epoch =
     "#" ^ (Uint.decimal x) ^
-    (if Uint.compare wrap Uint.zero = 0 then ""
-     else "[" ^ (Uint.decimal wrap) ^ "]")
+    (if Uint.compare epoch Uint.zero = 0 then ""
+     else "[" ^ (Uint.decimal epoch) ^ "]")
 
   let pp ppf hdr =
     Format.fprintf ppf "%a %a %s created %s"
       pp_typ hdr.typ
       pp_name hdr.name
-      (counter hdr.counter hdr.wraps)
+      (counter hdr.counter hdr.epoch)
       (timestamp hdr.created)
   (*BISECT-IGNORE-END*)
 
@@ -205,14 +207,14 @@ module Header = struct
     M.add "version" (Int t.version)
       (M.add "created" (Int t.created)
          (M.add "counter" (Int t.counter)
-            (M.add "wraps" (Int t.wraps)
-               (M.add "name" (String t.name)
+            (M.add "epoch" (Int t.epoch)
+               (M.add "name" (Data t.name)
                   (M.add "typ" (wire_typ t.typ) M.empty)))))
 
   let keys ?(header = true) additional map =
     let wanted =
       if header then
-        "created" :: "counter" :: "version" :: "wraps" :: "name" :: "typ" :: additional
+        "created" :: "counter" :: "version" :: "epoch" :: "name" :: "typ" :: additional
       else
         additional
     in
@@ -231,7 +233,6 @@ module Header = struct
     | _, true ->
       Error (Printf.sprintf "expected data version #%s, found #%s"
                (Uint.decimal v) (Uint.decimal hdr.version))
-
 end
 
 
@@ -260,8 +261,8 @@ module Key = struct
   (* stored persistently on disk in an author file containing a list of keys *)
   let of_wire data =
     let open Wire in
-    list data >>= function
-    | [ String typ ; String data ; Int created ] ->
+    plist data >>= function
+    | [ Identifier typ ; Data data ; Int created ] ->
       (match string_to_alg typ with
        | Some `RSA -> Ok (`RSA, data, created)
        | _ -> Error "unknown key type")
@@ -270,18 +271,18 @@ module Key = struct
   let wire_raw (a, k, created) =
     let open Wire in
     let typ = alg_to_string a in
-    List [ String typ ; String k ; Int created ]
+    List [ Identifier typ ; Data k ; Int created ]
 
   (* this is exposed, used for signing *)
   let wire name (a, k, created) =
     let open Wire in
     let counter = Uint.zero
-    and wraps = Uint.zero
+    and epoch = Uint.zero
     and typ = `Key
     in
-    let header = { Header.created ; counter ; version ; wraps ; name ; typ } in
-    M.add "keytype" (String (alg_to_string a))
-      (M.add "keydata" (String k)
+    let header = { Header.created ; counter ; version ; epoch ; name ; typ } in
+    M.add "keytype" (Identifier (alg_to_string a))
+      (M.add "keydata" (Data k)
          (Header.wire header))
 end
 
@@ -302,13 +303,13 @@ module Signature = struct
   let wire name (alg, created) data =
     let open Wire in
     let counter = Uint.zero
-    and wraps = Uint.zero
+    and epoch = Uint.zero
     and typ = `Signature
     in
-    let header = { Header.created ; counter ; version ; wraps ; name ; typ }
+    let header = { Header.created ; counter ; version ; epoch ; name ; typ }
     in
-    M.add "sigtype" (String (alg_to_string alg))
-      (M.add "data" (String data)
+    M.add "sigtype" (Identifier (alg_to_string alg))
+      (M.add "data" (Data data)
          (Header.wire header))
 
   type t = hdr * string
@@ -322,8 +323,8 @@ module Signature = struct
   (* again stored on disk as part of author file *)
   let of_wire data =
     let open Wire in
-    list data >>= function
-    | [ Int created ; String typ ; String s ] ->
+    plist data >>= function
+    | [ Int created ; Identifier typ ; Data s ] ->
       (match string_to_alg typ with
        | Some alg -> Ok ((alg, created), s)
        | None -> Error "couldn't parse signature type")
@@ -331,14 +332,14 @@ module Signature = struct
 
   let wire_raw ((alg, created), s) =
     let open Wire in
-    List [ Int created ; String (alg_to_string alg) ; String s ]
+    List [ Int created ; Identifier (alg_to_string alg) ; Data s ]
 end
 
 module Digest = struct
   type alg = [ `SHA256 ]
-  let alg_to_string = function `SHA256 -> "SHA256"
+  let alg_to_string = function `SHA256 -> "sha256"
   let string_to_alg = function
-    | "SHA256" -> Some `SHA256
+    | "sha256" -> Some `SHA256
     | _ -> None
 
   type t = alg * string
@@ -352,16 +353,19 @@ module Digest = struct
 
   let of_wire data =
     let open Wire in
-    list data >>= function
-    | [ String typ ; String data ] ->
-      (match string_to_alg typ with
-       | Some `SHA256 -> Ok (`SHA256, data)
-       | None -> Error ("unknown digest typ " ^ typ))
+    match data with
+    | Data dgst ->
+      (match String.cut '=' dgst with
+       | Some (alg, data) ->
+         (match string_to_alg alg with
+          | Some `SHA256 -> Ok (`SHA256, data)
+          | None -> Error ("unknown digest typ " ^ alg))
+       | None -> Error "couldn't cut digest")
     | _ -> Error "couldn't parse digest"
 
   let wire_raw (typ, data) =
     let open Wire in
-    List [ String (alg_to_string typ) ; String data ]
+    Data (alg_to_string typ ^ "=" ^ data)
 end
 
 module Author = struct
@@ -377,10 +381,10 @@ module Author = struct
 
   let resource_of_wire data =
     let open Wire in
-    map data >>= fun map ->
+    pmap data >>= fun map ->
     Header.keys ~header:false ["index" ; "name" ; "typ" ; "digest" ] map >>= fun () ->
-    opt_err (search map "index") >>= int >>= fun index ->
-    opt_err (search map "name") >>= string >>= fun rname ->
+    opt_err (search map "index") >>= pint >>= fun index ->
+    opt_err (search map "name") >>= pdata >>= fun rname ->
     opt_err (search map "typ") >>= typ_of_wire >>= fun rtyp ->
     opt_err (search map "digest") >>= Digest.of_wire >>= fun digest ->
     Ok (r index rname rtyp digest)
@@ -388,7 +392,7 @@ module Author = struct
   let wire_resource r =
     let open Wire in
     M.add "index" (Int r.index)
-      (M.add "name" (String r.rname)
+      (M.add "name" (Data r.rname)
          (M.add "typ" (wire_typ r.rtyp)
             (M.add "digest" (Digest.wire_raw r.digest)
                M.empty)))
@@ -418,7 +422,7 @@ module Author = struct
   let accounts_of_wire map =
     M.fold (fun k v acc ->
         acc >>= fun xs ->
-        Wire.string v >>= fun s ->
+        Wire.pdata v >>= fun s ->
         let data =
           match k with
           | "email" -> `Email s
@@ -431,11 +435,12 @@ module Author = struct
   let wire_account_raw m =
     let open Wire in
     function
-    | `Email e -> M.add "email" (String e) m
-    | `GitHub g -> M.add "github" (String g) m
-    | `Other (k, v) -> M.add k (String v) m
+    | `Email e -> M.add "email" (Data e) m
+    | `GitHub g -> M.add "github" (Data g) m
+    | `Other (k, v) -> M.add k (Data v) m
 
-  let wire_account name a = wire_account_raw (M.add "name" (Wire.String name) M.empty) a
+  let wire_account name a =
+    wire_account_raw (M.add "name" (Wire.Data name) M.empty) a
 
   let compare_account (a : account) (b : account) =
     let to_str = function
@@ -459,7 +464,7 @@ module Author = struct
     (* signed part *)
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : identifier ;
     resources : r list ;
     (* in raw outer shield *)
@@ -468,8 +473,8 @@ module Author = struct
     queued : r list ;
   }
 
-  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(accounts = []) ?(keys = []) ?(resources = []) ?(queued = []) created name =
-    { created ; counter ; wraps ; name ; accounts ; keys ; resources ; queued }
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(accounts = []) ?(keys = []) ?(resources = []) ?(queued = []) created name =
+    { created ; counter ; epoch ; name ; accounts ; keys ; resources ; queued }
 
   let contains ?(queued = false) author r =
     let xs = if queued then author.resources @ author.queued else author.resources in
@@ -488,7 +493,7 @@ module Author = struct
     Header.keys ~header:false ["signed" ; "queued" ; "keys" ; "accounts" ] data >>= fun () ->
     opt_list (search data "keys") >>= fun keys ->
     foldM (fun acc d ->
-        list d >>= function
+        plist d >>= function
         | [ key ; signature ] ->
           Key.of_wire key >>= fun key ->
           Signature.of_wire signature >>= fun signature ->
@@ -496,7 +501,7 @@ module Author = struct
         | _ -> Error "expected a key signature pair!")
       []
       keys >>= fun keys ->
-    opt_err (search data "signed") >>= map >>= fun signed ->
+    opt_err (search data "signed") >>= pmap >>= fun signed ->
     Header.keys ["resources"] signed >>= fun () ->
     Header.of_wire signed >>= fun h ->
     Header.check `Author version h >>= fun () ->
@@ -505,17 +510,17 @@ module Author = struct
     opt_list (search data "queued") >>= fun qs ->
     foldM (fun acc v -> resource_of_wire v >>= fun r -> Ok (r :: acc)) [] qs >>= fun queued ->
     opt_map (search data "accounts") >>= accounts_of_wire >>= fun accounts ->
-    Ok (t ~keys ~accounts ~counter:h.Header.counter ~wraps:h.Header.wraps ~resources ~queued h.Header.created h.Header.name)
+    Ok (t ~keys ~accounts ~counter:h.Header.counter ~epoch:h.Header.epoch ~resources ~queued h.Header.created h.Header.name)
 
   let wire_raw t =
     let open Wire in
     let created = t.created
     and counter = t.counter
-    and wraps = t.wraps
+    and epoch = t.epoch
     and name = t.name
     and typ = `Author
     in
-    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
     let resources = List.map (fun r -> Map (wire_resource r)) (List.sort (fun a b -> Uint.compare a.index b.index) t.resources) in
     M.add "resources" (List resources) (Header.wire header)
 
@@ -562,7 +567,7 @@ module Author = struct
   let pp ppf i =
     Format.fprintf ppf "author %a %s (created %s)@ accounts %a@ crypto %a@ resources %a@ queued %a"
       pp_id i.name
-      (Header.counter i.counter i.wraps)
+      (Header.counter i.counter i.epoch)
       (Header.timestamp i.created)
       (pp_list pp_account) i.accounts
       (pp_list pp_ks) i.keys
@@ -585,13 +590,13 @@ module Team = struct
   type t = {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : identifier ;
     members : S.t
   }
 
-  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(members = S.empty) created name =
-    { created ; counter ; wraps ; members ; name }
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(members = S.empty) created name =
+    { created ; counter ; epoch ; members ; name }
 
   let of_wire data =
     let open Wire in
@@ -599,17 +604,17 @@ module Team = struct
     Header.of_wire data >>= fun h ->
     Header.check `Team version h >>= fun () ->
     opt_string_set (search data "members") >>= fun members ->
-    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps ~members h.Header.created h.Header.name)
+    Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch ~members h.Header.created h.Header.name)
 
   let wire t =
     let open Wire in
     let counter = t.counter
-    and wraps = t.wraps
+    and epoch = t.epoch
     and created = t.created
     and typ = `Team
     and name = t.name
     in
-    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
     M.add "members" (wire_string_set t.members) (Header.wire header)
 
   let equal a b =
@@ -629,7 +634,7 @@ module Team = struct
   let pp ppf x =
     Format.fprintf ppf "team %a %s (created %s)@ %a"
       pp_id x.name
-      (Header.counter x.counter x.wraps)
+      (Header.counter x.counter x.epoch)
       (Header.timestamp x.created)
       pp_mems x.members
    (*BISECT-IGNORE-END*)
@@ -640,13 +645,13 @@ module Authorisation = struct
   type t = {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     authorised : S.t ;
   }
 
-  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(authorised = S.empty) created name =
-    { created ; counter ; wraps ; name ; authorised }
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(authorised = S.empty) created name =
+    { created ; counter ; epoch ; name ; authorised }
 
   let of_wire data =
     let open Wire in
@@ -654,17 +659,17 @@ module Authorisation = struct
     Header.of_wire data >>= fun h ->
     Header.check `Authorisation version h >>= fun () ->
     opt_string_set (search data "authorised") >>= fun authorised ->
-    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps ~authorised h.Header.created h.Header.name)
+    Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch ~authorised h.Header.created h.Header.name)
 
   let wire d =
     let open Wire in
     let created = d.created
     and counter = d.counter
-    and wraps = d.wraps
+    and epoch = d.epoch
     and name = d.name
     and typ = `Authorisation
     in
-    let header = { Header.version ;created ; counter ; wraps ; name ; typ } in
+    let header = { Header.version ;created ; counter ; epoch ; name ; typ } in
     M.add "authorised" (wire_string_set d.authorised) (Header.wire header)
 
   let equal a b =
@@ -684,50 +689,50 @@ module Authorisation = struct
   let pp ppf d =
     Format.fprintf ppf "authorisation %a %s (created %s)@ %a"
       pp_name d.name
-      (Header.counter d.counter d.wraps)
+      (Header.counter d.counter d.epoch)
       (Header.timestamp d.created)
       pp_authorised d.authorised
   (*BISECT-IGNORE-END*)
 end
 
-module Package = struct
+module Releases = struct
   let version = Uint.zero
   type t = {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
-    releases : S.t ;
+    versions : S.t ;
   }
 
-  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) ?(releases = S.empty) created name =
-    { created ; counter ; wraps ; name ; releases }
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(versions = S.empty) created name =
+    { created ; counter ; epoch ; name ; versions }
 
   let of_wire data =
     let open Wire in
-    Header.keys ["releases"] data >>= fun () ->
+    Header.keys ["versions"] data >>= fun () ->
     Header.of_wire data >>= fun h ->
-    Header.check `Package version h >>= fun () ->
-    opt_string_set (search data "releases") >>= fun rels ->
-    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps ~releases:rels h.Header.created h.Header.name)
+    Header.check `Releases version h >>= fun () ->
+    opt_string_set (search data "versions") >>= fun versions ->
+    Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch ~versions h.Header.created h.Header.name)
 
   let wire r =
     let open Wire in
     let counter = r.counter
-    and wraps = r.wraps
+    and epoch = r.epoch
     and created = r.created
-    and typ = `Package
+    and typ = `Releases
     and name = r.name
     in
-    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
-    M.add "releases" (wire_string_set r.releases) (Header.wire header)
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
+    M.add "versions" (wire_string_set r.versions) (Header.wire header)
 
   let equal a b =
-    name_equal a.name b.name && S.equal a.releases b.releases
+    name_equal a.name b.name && S.equal a.versions b.versions
 
-  let add t i = { t with releases = S.add i t.releases }
+  let add t i = { t with versions = S.add i t.versions }
 
-  let remove t i = { t with releases = S.remove i t.releases }
+  let remove t i = { t with versions = S.remove i t.versions }
 
   let prep t =
     let carry, counter = Uint.succ t.counter in
@@ -735,15 +740,15 @@ module Package = struct
 
   (*BISECT-IGNORE-BEGIN*)
   let pp ppf r =
-    Format.fprintf ppf "package %a %s (created %s)@ %a"
+    Format.fprintf ppf "package releases %a %s (created %s)@ %a"
       pp_name r.name
-      (Header.counter r.counter r.wraps)
+      (Header.counter r.counter r.epoch)
       (Header.timestamp r.created)
-      (pp_list pp_name) (List.sort String.compare_insensitive (S.elements r.releases))
+      (pp_list pp_name) (List.sort String.compare_insensitive (S.elements r.versions))
   (*BISECT-IGNORE-END*)
 end
 
-module Release = struct
+module Checksums = struct
   type c = {
     filename : name ;
     digest   : Digest.t ;
@@ -760,15 +765,15 @@ module Release = struct
 
   let checksum_of_wire data =
     let open Wire in
-    list data >>= function
-    | [ digest ; String filename ] ->
+    plist data >>= function
+    | [ Data filename ; digest ] ->
       Digest.of_wire digest >>= fun digest ->
       Ok ({ filename ; digest })
     | _ -> Error "cannot parse checksum"
 
   let wire_checksum c =
     let open Wire in
-    List [ Digest.wire_raw c.digest ; String c.filename ]
+    List [ Data c.filename ; Digest.wire_raw c.digest ]
 
   type checksum_map = c M.t
 
@@ -786,42 +791,42 @@ module Release = struct
   type t = {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     files : checksum_map ;
   }
 
   (*BISECT-IGNORE-BEGIN*)
   let pp ppf c =
-    Format.fprintf ppf "release %a %s (created %s)@ %a"
+    Format.fprintf ppf "checksums %a %s (created %s)@ %a"
       pp_name c.name
-      (Header.counter c.counter c.wraps)
+      (Header.counter c.counter c.epoch)
       (Header.timestamp c.created)
       pp_checksum_map c.files
   (*BISECT-IGNORE-END*)
 
-  let t ?(counter = Uint.zero) ?(wraps = Uint.zero) created name files =
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) created name files =
     let files = List.fold_left (fun m f -> M.add f.filename f m) M.empty files in
-    { created ; counter ; wraps ; name ; files }
+    { created ; counter ; epoch ; name ; files }
 
   let of_wire data =
     let open Wire in
     Header.keys ["files"] data >>= fun () ->
     Header.of_wire data >>= fun h ->
-    Header.check `Release version h >>= fun () ->
+    Header.check `Checksums version h >>= fun () ->
     opt_list (search data "files") >>= fun sums ->
     foldM (fun acc v -> checksum_of_wire v >>= fun cs -> Ok (cs :: acc)) [] sums >>= fun files ->
-    Ok (t ~counter:h.Header.counter ~wraps:h.Header.wraps h.Header.created h.Header.name files)
+    Ok (t ~counter:h.Header.counter ~epoch:h.Header.epoch h.Header.created h.Header.name files)
 
   let wire cs =
     let open Wire in
     let counter = cs.counter
-    and wraps = cs.wraps
+    and epoch = cs.epoch
     and created = cs.created
     and name = cs.name
-    and typ = `Release
+    and typ = `Checksums
     in
-    let header = { Header.version ; created ; counter ; wraps ; name ; typ } in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
     let csums = fold (fun c acc -> wire_checksum c :: acc) cs.files [] in
     M.add "files" (List csums) (Header.wire header)
 

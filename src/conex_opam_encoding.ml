@@ -9,12 +9,13 @@ let rec encode_s = function
       OpamParserTypes.Ident (np, "emptymap")
     else
       let data = M.fold (fun k v acc ->
-          OpamParserTypes.(List (np, [ String (np, k) ; encode_s v ])) :: acc)
+          OpamParserTypes.(List (np, [ Ident (np, k) ; encode_s v ])) :: acc)
           s []
       in
       OpamParserTypes.List (np, data)
   | Wire.List l -> OpamParserTypes.List (np, List.map encode_s l)
-  | Wire.String s -> OpamParserTypes.String (np, s)
+  | Wire.Identifier i -> OpamParserTypes.Ident (np, i)
+  | Wire.Data s -> OpamParserTypes.String (np, s)
   | Wire.Int i -> OpamParserTypes.Ident (np, "0x" ^ Uint.to_string i)
 
 let encode t =
@@ -37,19 +38,19 @@ let rec decode_s = function
     else if data = "emptymap" then
       Ok (Wire.Map M.empty)
     else
-      Error "unexpected ident"
-  | OpamParserTypes.String (_, s) -> Ok (Wire.String (String.trim s))
+      Ok (Wire.Identifier data)
+  | OpamParserTypes.String (_, s) -> Ok (Wire.Data (String.trim s))
   | OpamParserTypes.List (_, []) -> Ok (Wire.List [])
   | OpamParserTypes.List (_, l) ->
     let is_pair = function
-        OpamParserTypes.List (_, [OpamParserTypes.String _ ; _]) -> true
+      | OpamParserTypes.List (_, [OpamParserTypes.Ident _ ; _]) -> true
       | _ -> false
     in
     if List.for_all is_pair l then begin
       List.fold_left (fun m xs ->
           m >>= fun m ->
           match xs with
-            OpamParserTypes.List (_, [ OpamParserTypes.String (_, k) ; v ]) ->
+            OpamParserTypes.List (_, [ OpamParserTypes.Ident (_, k) ; v ]) ->
             (decode_s v >>= fun v -> Ok (M.add (String.trim k) v m))
           | _ -> Error "can not happen")
         (Ok M.empty) l >>= fun map ->

@@ -2,10 +2,10 @@
 
     Every resource in conex is a piece of data (or metadata), and has its own
     purpose.  Resources stored on disk consists of a common header: a name, a
-    type, a counter, a wraparound counter, and a creation timestamp.  There are
+    type, a counter, an epoch, and a creation timestamp.  There are
     broadly three kinds of resources: those containing identities ({!Team} and
     {!Author}), those regulating access to packages ({!Authorisation}), and
-    those with the digests of the opam repository data ({!Package} and
+    those with the digests of the opam repository data ({!Releases} and
     {!Release}).
 *)
 
@@ -39,12 +39,13 @@ val id_equal : identifier -> identifier -> bool
     computations, and persistent storage on disk. *)
 module Wire : sig
 
-  (** The values in the key value store: either a map, a list, a string, or an
-      unsigned integer. *)
+  (** The values in the key value store: either a map, a list, an identifier,
+      data (represented as string), or an unsigned integer. *)
   type s =
     | Map of s M.t
     | List of s list
-    | String of string
+    | Identifier of identifier
+    | Data of string
     | Int of Uint.t
 
   (** The toplevel node, a Map *)
@@ -64,11 +65,11 @@ type typ = [
   | `Key
   | `Account
   | `Author
-  | `Wrap
+  | `Epoch
   | `Team
   | `Authorisation
-  | `Package
-  | `Release
+  | `Releases
+  | `Checksums
 ]
 
 (** [resource_to_string res] is the string representation of [res]. *)
@@ -89,12 +90,12 @@ val typ_of_wire : Wire.s -> (typ, string) result
 (** Common header on disk *)
 module Header : sig
 
-  (** The header consists of version, created, counter, wraps, a name, and a typ. *)
+  (** The header consists of version, created, counter, epoch, name, and typ. *)
   type t = {
     version : Uint.t ;
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     typ : typ
   }
@@ -112,8 +113,8 @@ module Header : sig
       seconds since UNIX epoch). *)
   val timestamp : Uint.t -> string
 
-  (** [counter ctr wrap] prints [ctr, wrap] to a string containing the counter
-      and wraps (unless zero). *)
+  (** [counter ctr epoch] prints [ctr, epoch] to a string containing the counter
+      and epoch (unless zero). *)
   val counter : Uint.t -> Uint.t -> string
 end
 
@@ -273,7 +274,7 @@ module Author : sig
     (* signed part *)
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : identifier ;
     resources : r list ;
     (* unsigned part *)
@@ -285,9 +286,9 @@ module Author : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~accounts ~keys ~resources ~queued created name] is a
+  (** [t ~counter ~epoch ~accounts ~keys ~resources ~queued created name] is a
       constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?accounts:(account list) ->
     ?keys:((Key.t * Signature.t) list) ->
     ?resources:(r list) ->
@@ -346,7 +347,7 @@ module Team : sig
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : identifier ;
     members : S.t
   }
@@ -354,8 +355,8 @@ module Team : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~members created id] is a constructor for a team. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  (** [t ~counter ~epoch ~members created id] is a constructor for a team. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?members:S.t -> Uint.t -> identifier -> t
 
   (** [equal t t'] is true if the set of members is equal and the name is
@@ -390,7 +391,7 @@ module Authorisation : sig
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     authorised : S.t ;
   }
@@ -398,8 +399,8 @@ module Authorisation : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~authorised created name] is a constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
+  (** [t ~counter ~epoch ~authorised created name] is a constructor. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
     ?authorised:S.t -> Uint.t -> name -> t
 
   (** [equal t t'] is true if the names are equal and the set of authorised ids
@@ -423,41 +424,41 @@ module Authorisation : sig
   val prep : t -> t * bool
 end
 
-(** {1 Package} *)
+(** {1 Releases} *)
 
-(** A package lists all releases of a given package.  There is one package
-    resource for each package. *)
-module Package : sig
+(** A releases lists all released versions of a given package.  There is one
+    releases resource for each package. *)
+module Releases : sig
 
-  (** The record for a package: a header, and a set of release names. *)
+  (** The record for a releases: a header, and a set of version names. *)
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
-    releases : S.t ;
+    versions : S.t ;
   }
 
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps ~releases created name] is a constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t ->
-    ?releases:S.t -> Uint.t -> name -> t
+  (** [t ~counter ~epoch ~releases created name] is a constructor. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
+    ?versions:S.t -> Uint.t -> name -> t
 
-  (** [equal t t'] is true if the names are equal and the set of releases. *)
+  (** [equal t t'] is true if the names are equal and the set of versions. *)
   val equal : t -> t -> bool
 
-  (** [of_wire w] converts [w] to a package or error. *)
+  (** [of_wire w] converts [w] to a releases or error. *)
   val of_wire : Wire.t -> (t, string) result
 
   (** [wire t] is the wire representation of [t], as stored on disk. *)
   val wire : t -> Wire.t
 
-  (** [add t name] adds [name] to [t.releases]. *)
+  (** [add t name] adds [name] to [t.versions]. *)
   val add : t -> name -> t
 
-  (** [remove t name] removes [name] from [t.releases]. *)
+  (** [remove t name] removes [name] from [t.versions]. *)
   val remove : t -> name -> t
 
   (** [prep t] increments [t.counter], the carry bit is returned as second
@@ -465,11 +466,11 @@ module Package : sig
   val prep : t -> t * bool
 end
 
-(** {1 Release} *)
+(** {1 Checksums} *)
 
-(** A release contains a map of all files in the repository relevant for this
-    release and their digests. *)
-module Release : sig
+(** A checksums contains a map of all files in the repository relevant for this
+    package version and their digests. *)
+module Checksums : sig
 
   (** The record for a checksum: filename and digest. *)
   type c = {
@@ -487,11 +488,11 @@ module Release : sig
   (** Type of a checksum map. *)
   type checksum_map
 
-  (** The record of a release: a header, and a checksum map. *)
+  (** The record of checksums: a header, and a checksum map. *)
   type t = private {
     created : Uint.t ;
     counter : Uint.t ;
-    wraps : Uint.t ;
+    epoch : Uint.t ;
     name : name ;
     files : checksum_map ;
   }
@@ -499,10 +500,10 @@ module Release : sig
   (** [pp] is a pretty printer. *)
   val pp : t fmt
 
-  (** [t ~counter ~wraps created name checksums] is a constructor. *)
-  val t : ?counter:Uint.t -> ?wraps:Uint.t -> Uint.t -> string -> c list -> t
+  (** [t ~counter ~epoch created name checksums] is a constructor. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t -> Uint.t -> string -> c list -> t
 
-  (** [of_wire w] converts [w] to a release or error. *)
+  (** [of_wire w] converts [w] to a checksums or error. *)
   val of_wire : Wire.t -> (t, string) result
 
   (** [wire t] is the wire representation of [t]. *)

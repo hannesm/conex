@@ -22,23 +22,23 @@ let authorisation_filename = "authorisation"
 
 let authorisation_path id = [ data_dir ; id ; authorisation_filename ]
 
-let package_filename = "package"
-let package_path id = [ data_dir ; id ; package_filename ]
+let releases_filename = "releases"
+let package_path id = [ data_dir ; id ; releases_filename ]
 
-let release_filename = "release"
+let checksums_filename = "checksums"
 
 let release_dir p =
   match authorisation_of_package p with
   | Some d -> [ data_dir ; d ; p ]
   | None -> [ data_dir ; p ; p ]
 
-let release_path p =
-  release_dir p @ [release_filename]
+let checksums_path p =
+  release_dir p @ [checksums_filename]
 
 let categorise = function
   | idx ::id :: [] when idx = id_dir -> `Id id
   | dd :: id :: dfn :: [] when dd = data_dir && dfn = authorisation_filename -> `Authorisation id
-  | dd :: id :: dfn :: [] when dd = data_dir && dfn = package_filename -> `Package id
+  | dd :: id :: dfn :: [] when dd = data_dir && dfn = releases_filename -> `Package id
   | dd :: id :: dfn :: _ when dd = data_dir ->
     (* current: packages/foo/foo.0.0.1 *)
     (match authorisation_of_package dfn with

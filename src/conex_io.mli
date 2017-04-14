@@ -45,14 +45,14 @@ type cc_err = [ `FileNotFound of name | `NotADirectory of name ]
 (** [pp_cc_err] is a pretty printer for {!cc_err}. *)
 val pp_cc_err : cc_err fmt
 
-(** [compute_release digestf t now name] computes the release by computing
+(** [compute_checksums digestf t now name] computes the release by computing
     checksums of all files and directories of [name] using [digestf].  If
     release [name] is not found, an error is signalled. *)
-val compute_release : (string -> Digest.t) -> t -> Uint.t -> name -> (Release.t, cc_err) result
+val compute_checksums : (string -> Digest.t) -> t -> Uint.t -> name -> (Checksums.t, cc_err) result
 
-(** [compute_package t create name] computes the package by listing all
+(** [compute_releases t create name] computes the package by listing all
     subdirectories of [name]. *)
-val compute_package : t -> Uint.t -> name -> (Package.t, string) result
+val compute_releases : t -> Uint.t -> name -> (Releases.t, string) result
 
 
 (** {1 Reading of resource files} *)
@@ -78,13 +78,13 @@ val read_team : t -> identifier -> (Team.t, [> r_err ]) result
     [name] on [t]. *)
 val read_authorisation : t -> name -> (Authorisation.t, [> r_err ]) result
 
-(** [read_package t name] reads and parses the package for the given
+(** [read_releases t name] reads and parses the package for the given
     [name] on [t]. *)
-val read_package : t -> name -> (Package.t, [> r_err ]) result
+val read_releases : t -> name -> (Releases.t, [> r_err ]) result
 
-(** [read_release t name.version] reads and parses the release for the given
+(** [read_checksums t name.version] reads and parses the release for the given
     [name.version] on [t]. *)
-val read_release : t -> name -> (Release.t, [> r_err ]) result
+val read_checksums : t -> name -> (Checksums.t, [> r_err ]) result
 
 (** {1 Writing of resources to files} *)
 
@@ -97,8 +97,8 @@ val write_team : t -> Team.t -> (unit, string) result
 (** [write_authorisation t a] writes the given authorisation on [t]. *)
 val write_authorisation : t -> Authorisation.t -> (unit, string) result
 
-(** [write_package t p] writes the given package on [t]. *)
-val write_package : t -> Package.t -> (unit, string) result
+(** [write_releases t p] writes the given releases on [t]. *)
+val write_releases : t -> Releases.t -> (unit, string) result
 
-(** [write_release t r] writes the given release on [t]. *)
-val write_release : t -> Release.t -> (unit, string) result
+(** [write_checksums t r] writes the given checksums on [t]. *)
+val write_checksums : t -> Checksums.t -> (unit, string) result

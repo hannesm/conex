@@ -207,14 +207,14 @@ let empty_r () =
     (Error "") (Conex_io.releases io "foo") ;
   Alcotest.check (result auth re) "reading authorisation foo in empty repo fails"
     (Error (`NotFound (`Authorisation, "foo"))) (Conex_io.read_authorisation io "foo") ;
-  Alcotest.check (result package re) "reading releases foo in empty repo fails"
-    (Error (`NotFound (`Package, "foo"))) (Conex_io.read_package io "foo") ;
+  Alcotest.check (result rels re) "reading releases foo in empty repo fails"
+    (Error (`NotFound (`Releases, "foo"))) (Conex_io.read_releases io "foo") ;
   Alcotest.check (result ji re) "reading janitorindex foo in empty repo fails"
     (Error (`NotFound (`Author, "foo"))) (Conex_io.read_author io "foo") ;
-  Alcotest.check (result rel re) "reading checksum foo.0 in empty repo fails"
-    (Error (`NotFound (`Release, "foo.0"))) (Conex_io.read_release io "foo.0") ;
-  Alcotest.check (result rel ch_err) "computing checksum foo.0 in empty repo fails"
-    (Error (`FileNotFound "foo.0")) (Conex_io.compute_release V.raw_digest io Uint.zero "foo.0")
+  Alcotest.check (result css re) "reading checksum foo.0 in empty repo fails"
+    (Error (`NotFound (`Checksums, "foo.0"))) (Conex_io.read_checksums io "foo.0") ;
+  Alcotest.check (result css ch_err) "computing checksum foo.0 in empty repo fails"
+    (Error (`FileNotFound "foo.0")) (Conex_io.compute_checksums V.raw_digest io Uint.zero "foo.0")
 
 let key_r () =
   let io = Mem.mem_provider () in
@@ -261,17 +261,17 @@ let checks_r () =
     (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "files"; "patch1"] "p1") ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'p2' to 'packages/foo/foo.0/files/patch2'"
     (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "files"; "patch2"] "p2") ;
-  (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
+  (* manually crafted using echo -n XXX | openssl dgst -sha256 -hex *)
   let csums = [
-    { Release.filename = "bar" ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
-    { Release.filename = "foo" ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
-    { Release.filename = "files/patch1" ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
-    { Release.filename = "files/patch2" ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
+    { Checksums.filename = "bar" ; digest = (`SHA256, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae") } ;
+    { Checksums.filename = "foo" ; digest = (`SHA256, "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9") } ;
+    { Checksums.filename = "files/patch1" ; digest = (`SHA256, "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a") } ;
+    { Checksums.filename = "files/patch2" ; digest = (`SHA256, "3946ca64ff78d93ca61090a437cbb6b3d2ca0d488f5f9ccf3059608368b27693") }
   ]
   in
-  let css = Release.t Uint.zero "foo.0" csums in
-  Alcotest.check (result rel ch_err) "checksum computation works"
-    (Ok css) (Conex_io.compute_release V.raw_digest io Uint.zero "foo.0")
+  let css' = Checksums.t Uint.zero "foo.0" csums in
+  Alcotest.check (result css ch_err) "checksum computation works"
+    (Ok css') (Conex_io.compute_checksums V.raw_digest io Uint.zero "foo.0")
 
 let key =
   let module M = struct
@@ -310,33 +310,41 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "couldn't parse team"
     (Error "") (Team.of_wire M.empty) ;
   Alcotest.check (result typ str_err) "couldn't parse typ"
-    (Error "") (typ_of_wire (String "frabs")) ;
+    (Error "") (typ_of_wire (Identifier "frabs")) ;
+  Alcotest.check (result typ str_err) "couldn't parse typ"
+    (Error "") (typ_of_wire (Data "key")) ;
   Alcotest.check (result typ str_err) "couldn't parse typ"
     (Error "") (typ_of_wire (Int Uint.zero)) ;
   Alcotest.check (result signature str_err) "couldn't parse signature"
-    (Error "") (Signature.of_wire (List [ Int Uint.zero ; String "foo" ; String "baz" ])) ;
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Data "foo" ; Data "baz" ])) ;
   Alcotest.check (result signature str_err) "couldn't parse signature"
-    (Error "") (Signature.of_wire (List [ String "foo" ; String "foo" ; Int Uint.zero ])) ;
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Identifier "foo" ; Data "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Data "foo" ; Identifier "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Int Uint.zero ; Identifier "foo" ; Identifier "baz" ])) ;
+  Alcotest.check (result signature str_err) "couldn't parse signature"
+    (Error "") (Signature.of_wire (List [ Data "foo" ; Identifier "foo" ; Int Uint.zero ])) ;
   Alcotest.check (result signature str_err) "couldn't parse signature"
     (Error "") (Signature.of_wire (List [ Int Uint.zero ; Int Uint.zero ; Int Uint.zero ])) ;
   Alcotest.check (result signature str_err) "could parse signature"
     (Ok ((`RSA_PSS_SHA256, Uint.zero), "frab"))
-    (Signature.of_wire (List [ Int Uint.zero ; String "RSA-PSS-SHA256" ; String "frab" ])) ;
+    (Signature.of_wire (List [ Int Uint.zero ; Identifier "RSA-PSS-SHA256" ; Data "frab" ])) ;
   Alcotest.check (result digest str_err) "couldn't parse digest"
-    (Error "") (Digest.of_wire (List [ Int Uint.zero ; String "foobar" ])) ;
+    (Error "") (Digest.of_wire (List [ Int Uint.zero ; Data "foobar" ])) ;
   Alcotest.check (result digest str_err) "couldn't parse digest"
-    (Error "") (Digest.of_wire (List [ String "bar" ; String "foobar" ])) ;
+    (Error "") (Digest.of_wire (List [ Data "bar" ; Data "foobar" ])) ;
   Alcotest.check (result digest str_err) "couldn't parse digest"
-    (Error "") (Digest.of_wire (List [ String "bar" ; Int Uint.zero ])) ;
+    (Error "") (Digest.of_wire (List [ Data "bar" ; Int Uint.zero ])) ;
   Alcotest.check (result digest str_err) "could parse digest"
-    (Ok (`SHA256, "1234")) (Digest.of_wire (List [ String "SHA256" ; String "1234" ])) ;
-  let bad_key = List [Int Uint.zero ; String "foo" ; String "bar"] in
+    (Ok (`SHA256, "1234")) (Digest.of_wire (Data "sha256=1234")) ;
+  let bad_key = List [Int Uint.zero ; Data "foo" ; Data "bar"] in
   Alcotest.check (result key str_err) "couldn't parse key"
     (Error "") (Key.of_wire bad_key) ;
-  let bad_key = List [String "foobar" ; String "foo" ; Int Uint.zero] in
+  let bad_key = List [Data "foobar" ; Data "foo" ; Int Uint.zero] in
   Alcotest.check (result key str_err) "couldn't parse key (bad typ)"
     (Error "") (Key.of_wire bad_key) ;
-  let bad_c = M.add "counter" (String "foo") M.empty in
+  let bad_c = M.add "counter" (Data "foo") M.empty in
   Alcotest.check (result team str_err) "couldn't parse team counter"
     (Error "") (Team.of_wire bad_c) ;
   let bad_n =
@@ -348,45 +356,45 @@ let basic_persistency () =
   Alcotest.check (result team str_err) "couldn't parse team name"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
-    M.add "name" (String "foo") bad_n
+    M.add "name" (Data "foo") bad_n
   in
-  Alcotest.check (result team str_err) "couldn't parse team (type, wraps missing)"
+  Alcotest.check (result team str_err) "couldn't parse team (type, epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
     M.add "typ" (Int Uint.zero) bad_n
   in
-  Alcotest.check (result team str_err) "couldn't parse team (bad type, wraps missing)"
+  Alcotest.check (result team str_err) "couldn't parse team (bad type, epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n =
-    M.add "typ" (String "team") bad_n
+    M.add "typ" (Identifier "team") bad_n
   in
-  Alcotest.check (result team str_err) "couldn't parse team (wraps missing)"
+  Alcotest.check (result team str_err) "couldn't parse team (epoch missing)"
     (Error "") (Team.of_wire bad_n) ;
   let good_n =
-    M.add "wraps" (Int Uint.zero) (M.add "created" (Int Uint.zero) bad_n)
+    M.add "epoch" (Int Uint.zero) (M.add "created" (Int Uint.zero) bad_n)
   in
   let t = Team.t Uint.zero "foo" in
   Alcotest.check (result team str_err) "could parse team"
     (Ok t) (Team.of_wire good_n) ;
-  let bad_n = M.add "typ" (String "author") good_n in
+  let bad_n = M.add "typ" (Identifier "author") good_n in
   Alcotest.check (result team str_err) "couldn't parse team (wrong typ)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_n = M.add "version" (Int Uint.(of_int_exn 23)) good_n in
   Alcotest.check (result team str_err) "couldn't parse team (wrong version)"
     (Error "") (Team.of_wire bad_n) ;
   let bad_m =
-    M.add "members" (String "bl") good_n
+    M.add "members" (Data "bl") good_n
   in
   Alcotest.check (result team str_err) "couldn't parse team members"
     (Error "") (Team.of_wire bad_m) ;
   let bad_m =
     M.add "members" (List [ Int Uint.zero ])
-      (M.add "name" (String "foo") good_n)
+      (M.add "name" (Identifier "foo") good_n)
   in
   Alcotest.check (result team str_err) "couldn't parse team members (not a set)"
     (Error "") (Team.of_wire bad_m) ;
   let good_t =
-    M.add "members" (List [ String "foo" ]) good_n
+    M.add "members" (List [ Data "foo" ]) good_n
   in
   let t = Team.t ~members:(S.singleton "foo") Uint.zero "foo" in
   Alcotest.check (result team str_err) "could parse team"
@@ -397,37 +405,37 @@ let basic_persistency () =
     (Ok t) (Conex_opam_encoding.decode (Conex_opam_encoding.encode (Team.wire t)) >>= Team.of_wire) ;
   let checksum =
     List [
-      List [ String "SHA256" ; String "zWPsX4M9Gk2uvY0Jg1hASQa9yiCDU5/GkTJk7wbqE6Y=" ] ;
-      String "foo"
+      Data "foo" ;
+      Data "sha256=3234c3275955af97d5def935a26098933c303f02813497d6b96d6aef9afe362f"
     ]
   in
-  let css =
-    M.add "name" (String "foo")
+  let css' =
+    M.add "name" (Data "foo")
       (M.add "counter" (Int Uint.zero)
-         (M.add "wraps" (Int Uint.zero)
+         (M.add "epoch" (Int Uint.zero)
             (M.add "created" (Int Uint.zero)
                (M.add "version" (Int Uint.zero)
-                  (M.add "typ" (String "release")
+                  (M.add "typ" (Identifier "checksums")
                      (M.add "files" (List [checksum]) M.empty))))))
   in
   let csum =
     let digest = V.digest Author.(wire (t Uint.zero "bar")) in
-    { Release.filename = "foo" ; digest }
+    { Checksums.filename = "foo" ; digest }
   in
-  let csums = Release.t Uint.zero "foo" [csum] in
-  Alcotest.check (result rel str_err) "can parse checksum"
-    (Ok csums) (Release.of_wire css) ;
+  let csums = Checksums.t Uint.zero "foo" [csum] in
+  Alcotest.check (result css str_err) "can parse checksum"
+    (Ok csums) (Checksums.of_wire css') ;
 
-  let s = List [ Int Uint.zero ; String (Signature.alg_to_string `RSA_PSS_SHA256) ; String "barf" ] in
-  let pub = List [ String "RSA" ; String "data" ; Int Uint.zero ] in
+  let s = List [ Int Uint.zero ; Identifier (Signature.alg_to_string `RSA_PSS_SHA256) ; Data "barf" ] in
+  let pub = List [ Identifier "RSA" ; Data "data" ; Int Uint.zero ] in
   let pub' = (`RSA, "data", Uint.zero) in
   let s' = ((`RSA_PSS_SHA256, Uint.zero), "frab") in
   let idx =
-    M.add "name" (String "foo")
+    M.add "name" (Data "foo")
       (M.add "counter" (Int Uint.zero)
          (M.add "created" (Int Uint.zero)
-            (M.add "wraps" (Int Uint.zero)
-               (M.add "typ" (String "author")
+            (M.add "epoch" (Int Uint.zero)
+               (M.add "typ" (Identifier "author")
                   (M.add "version" (Int Uint.zero) M.empty)))))
   in
   let empty_idx =
@@ -445,9 +453,10 @@ let basic_persistency () =
     (Ok idx') (Author.of_wire (Author.wire idx')) ;
   let r =
     M.add "index" (Int Uint.zero)
-      (M.add "name" (String "foobar")
-         (M.add "typ" (String "team")
-            (M.add "digest" (List [ String "SHA256" ; String "01234567890123456789012345678901234567890123" ]) M.empty)))
+      (M.add "name" (Data "foobar")
+         (M.add "typ" (Identifier "team")
+            (M.add "digest" (Data "sha256=01234567890123456789012345678901234567890123")
+               M.empty)))
   in
   let r' = Author.r Uint.zero "foobar" `Team (`SHA256, "01234567890123456789012345678901234567890123") in
   let idx = M.add "resources" (List [ Map r ]) idx in
@@ -459,7 +468,7 @@ let basic_persistency () =
     (Ok idx') (Author.of_wire idxs) ;
   Alcotest.check (result ji str_err) "can unparse/parse index"
     (Ok idx') (Author.of_wire (Author.wire idx')) ;
-  let bad_r = M.add "typ" (String "teamfoo") r in
+  let bad_r = M.add "typ" (Identifier "teamfoo") r in
   let idx = M.add "resources" (List [ Map bad_r ]) idx in
   let idxs =
     M.add "signed" (Map idx) empty_idx
@@ -556,43 +565,43 @@ let bad_auth_r () =
 
 let bad_rel_r () =
   let io = Mem.mem_provider () in
-  Alcotest.check (result package re) "package foo not found"
-    (Error (`NotFound (`Package, "foo"))) (Conex_io.read_package io "foo") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/package'"
-    (Ok ()) (io.write ["packages"; "foo"; "package"] "foobar") ;
-  Alcotest.check (result package re) "parse error on package foo"
-    (Error (`ParseError (`Package, "foo", ""))) (Conex_io.read_package io "foo") ;
-  let rel = Package.t Uint.zero "foo" in
-  Alcotest.check (result Alcotest.unit str_err) "writing package 'foo'"
-    (Ok ()) (Conex_io.write_package io rel) ;
-  Alcotest.check (result package re) "package foo good"
-    (Ok rel) (Conex_io.read_package io "foo") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foobar/package'"
-    (Ok ()) (io.write ["packages"; "foobar"; "package"] (Conex_opam_encoding.encode (Package.wire rel))) ;
-  Alcotest.check (result package re) "name mismatch on pacakge foobar"
-    (Error (`NameMismatch (`Package, "foobar", "foo"))) (Conex_io.read_package io "foobar")
+  Alcotest.check (result rels re) "releases of package foo not found"
+    (Error (`NotFound (`Releases, "foo"))) (Conex_io.read_releases io "foo") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/releases'"
+    (Ok ()) (io.write ["packages"; "foo"; "releases"] "foobar") ;
+  Alcotest.check (result rels re) "parse error on package releases foo"
+    (Error (`ParseError (`Releases, "foo", ""))) (Conex_io.read_releases io "foo") ;
+  let rel = Releases.t Uint.zero "foo" in
+  Alcotest.check (result Alcotest.unit str_err) "writing package releases 'foo'"
+    (Ok ()) (Conex_io.write_releases io rel) ;
+  Alcotest.check (result rels re) "package releases foo good"
+    (Ok rel) (Conex_io.read_releases io "foo") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foobar/releases'"
+    (Ok ()) (io.write ["packages"; "foobar"; "releases"] (Conex_opam_encoding.encode (Releases.wire rel))) ;
+  Alcotest.check (result rels re) "name mismatch on pacakge foobar"
+    (Error (`NameMismatch (`Releases, "foobar", "foo"))) (Conex_io.read_releases io "foobar")
 
 let bad_cs_r () =
   let io = Mem.mem_provider () in
-  Alcotest.check (result rel re) "package foo not found"
-    (Error (`NotFound (`Release, "foo"))) (Conex_io.read_release io "foo") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/foo.0/release'"
-    (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "release"] "foobar") ;
-  Alcotest.check (result rel re) "parse error on release foo.0"
-    (Error (`ParseError (`Release, "foo.0", ""))) (Conex_io.read_release io "foo.0") ;
-  let c = Release.t Uint.zero "foo.0" [] in
+  Alcotest.check (result css re) "package foo not found"
+    (Error (`NotFound (`Checksums, "foo"))) (Conex_io.read_checksums io "foo") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing 'foobar' to 'packages/foo/foo.0/checksums'"
+    (Ok ()) (io.write ["packages"; "foo"; "foo.0"; "checksums"] "foobar") ;
+  Alcotest.check (result css re) "parse error on release foo.0"
+    (Error (`ParseError (`Checksums, "foo.0", ""))) (Conex_io.read_checksums io "foo.0") ;
+  let c = Checksums.t Uint.zero "foo.0" [] in
   Alcotest.check (result Alcotest.unit str_err) "writing release foo.0"
-    (Ok ()) (Conex_io.write_release io c) ;
-  Alcotest.check (result rel re) "release foo.0 good"
-    (Ok c) (Conex_io.read_release io "foo.0") ;
-  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foo/foo.1/release'"
-    (Ok ()) (io.write ["packages"; "foo"; "foo.1"; "release"] (Conex_opam_encoding.encode (Release.wire c))) ;
-  Alcotest.check (result rel re) "name mismatch on release foo.1"
-    (Error (`NameMismatch (`Release, "foo.1", "foo.0"))) (Conex_io.read_release io "foo.1") ;
+    (Ok ()) (Conex_io.write_checksums io c) ;
+  Alcotest.check (result css re) "release foo.0 good"
+    (Ok c) (Conex_io.read_checksums io "foo.0") ;
+  Alcotest.check (result Alcotest.unit str_err) "writing sth to 'packages/foo/foo.1/checksums'"
+    (Ok ()) (io.write ["packages"; "foo"; "foo.1"; "checksums"] (Conex_opam_encoding.encode (Checksums.wire c))) ;
+  Alcotest.check (result css re) "name mismatch on release foo.1"
+    (Error (`NameMismatch (`Checksums, "foo.1", "foo.0"))) (Conex_io.read_checksums io "foo.1") ;
   Alcotest.check (result Alcotest.unit str_err) "writing 'blubb' to 'packages/foo/foo.2'"
     (Ok ()) (io.write ["packages"; "foo"; "foo.2"] "blubb") ;
-  Alcotest.check (result rel ch_err) "release is a file, should be a directory"
-    (Error (`NotADirectory "foo.2")) (Conex_io.compute_release V.raw_digest io Uint.zero "foo.2")
+  Alcotest.check (result css ch_err) "foo.2 is a file, should be a directory"
+    (Error (`NotADirectory "foo.2")) (Conex_io.compute_checksums V.raw_digest io Uint.zero "foo.2")
 
 let basic_repo_tests = [
   "empty repo", `Quick, empty_r ;
@@ -830,12 +839,12 @@ let k_wrong_resource () =
   let pub, _priv = gen_pub () in
   let resources =
     let d = V.digest (Key.wire id pub) in
-    [ Author.r Uint.zero id `Package d ]
+    [ Author.r Uint.zero id `Releases d ]
   in
   let r = add_rs r jid resources in
   let r = add_rs r id resources in
   Alcotest.check (result k_ok k_err) "wrong resource"
-    (Error (`InvalidResource (id, `Key, `Package)))
+    (Error (`InvalidResource (id, `Key, `Releases)))
     (Conex_repository.validate_key r id pub)
 
 let k_wrong_name () =
@@ -954,12 +963,12 @@ let team_wrong_resource () =
   let team = Team.t Uint.zero pname in
   let resources =
     let d = V.digest (Team.wire team) in
-    [ Author.r Uint.zero pname `Package d ]
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let jid = "aaa" in
   let r = add_rs r jid resources in
   Alcotest.check (result t_ok a_err) "wrong resource"
-    (Error (`InvalidResource (pname, `Team, `Package)))
+    (Error (`InvalidResource (pname, `Team, `Releases)))
     (Conex_repository.validate_team r team)
 
 let team_wrong_name () =
@@ -1124,12 +1133,12 @@ let a_wrong_resource () =
   let auth = Authorisation.t Uint.zero pname in
   let resources =
     let d = V.digest (Authorisation.wire auth) in
-    [ Author.r Uint.zero pname `Package d ]
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let jid = "aaa" in
   let r = add_rs r jid resources in
   Alcotest.check (result a_ok a_err) "wrong resource"
-    (Error (`InvalidResource (pname, `Authorisation, `Package)))
+    (Error (`InvalidResource (pname, `Authorisation, `Releases)))
     (Conex_repository.validate_authorisation r auth)
 
 let a_wrong_name () =
@@ -1250,18 +1259,18 @@ let rel_1 () =
   and id = "id"
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t Uint.zero pname in
+  let rel = Releases.t Uint.zero pname in
   Alcotest.check (result r_ok r_err) "not signed"
-    (Error (`NotApproved (pname, `Package, S.empty)))
-    (Conex_repository.validate_package r auth rel) ;
+    (Error (`NotApproved (pname, `Releases, S.empty)))
+    (Conex_repository.validate_releases r auth rel) ;
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero pname `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "properly signed"
     (Ok (`Approved id))
-    (Conex_repository.validate_package r auth rel)
+    (Conex_repository.validate_releases r auth rel)
 
 let rel_quorum () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1269,21 +1278,21 @@ let rel_quorum () =
   and id = "id"
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t Uint.zero pname in
+  let rel = Releases.t Uint.zero pname in
   let jid = "janitor" in
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero pname `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result r_ok r_err) "properly signed (quorum)"
     (Ok (`Quorum (S.singleton jid)))
-    (Conex_repository.validate_package r auth rel) ;
+    (Conex_repository.validate_releases r auth rel) ;
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "properly signed (both)"
     (Ok (`Both (id, S.singleton jid)))
-    (Conex_repository.validate_package r auth rel)
+    (Conex_repository.validate_releases r auth rel)
 
 let rel_not_authorised () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1291,15 +1300,15 @@ let rel_not_authorised () =
   and id = "id"
   in
   let auth = Authorisation.t ~authorised:(S.singleton "foo") Uint.zero pname in
-  let rel = Package.t Uint.zero pname in
+  let rel = Releases.t Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero pname `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "not authorised"
-    (Error (`NotApproved (pname, `Package, S.empty)))
-    (Conex_repository.validate_package r auth rel)
+    (Error (`NotApproved (pname, `Releases, S.empty)))
+    (Conex_repository.validate_releases r auth rel)
 
 let rel_missing_releases () =
   let io = Mem.mem_provider () in
@@ -1309,41 +1318,41 @@ let rel_missing_releases () =
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
   let v = pname ^ ".0" in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero pname `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "missing on disk"
     (Error (`InvalidReleases (pname, S.empty, S.singleton v)))
-    (Conex_repository.validate_package r ~on_disk:(Package.t Uint.zero pname) auth rel) ;
+    (Conex_repository.validate_releases r ~on_disk:(Releases.t Uint.zero pname) auth rel) ;
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
     (Ok ()) (io.write ["packages"; pname; v; "checksum"] "") ;
-  match Conex_io.compute_package io Uint.zero pname with
+  match Conex_io.compute_releases io Uint.zero pname with
   | Error _ -> Alcotest.fail "should be able to compute releases0"
   | Ok on_disk ->
     Alcotest.check (result r_ok r_err) "all good"
       (Ok (`Approved id))
-      (Conex_repository.validate_package r ~on_disk auth rel) ;
+      (Conex_repository.validate_releases r ~on_disk auth rel) ;
     let v2 = pname ^ ".1" in
     Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v2/checksum'"
       (Ok ()) (io.write ["packages"; pname; v2; "checksum"] "") ;
-    match Conex_io.compute_package io Uint.zero pname with
+    match Conex_io.compute_releases io Uint.zero pname with
     | Error _ -> Alcotest.fail "shold be able to compute releases1"
     | Ok on_disk ->
       Alcotest.check (result r_ok r_err) "missing in releases"
         (Error (`InvalidReleases (pname, S.singleton v2, S.empty)))
-        (Conex_repository.validate_package r ~on_disk auth rel) ;
+        (Conex_repository.validate_releases r ~on_disk auth rel) ;
       let v3 = pname ^ ".2" in
       Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$oname/$v3/checksum'"
         (Ok ()) (io.write ["packages"; pname; v3; "checksum"] "") ;
-      match Conex_io.compute_package io Uint.zero pname with
+      match Conex_io.compute_releases io Uint.zero pname with
       | Error _ -> Alcotest.fail "shoul be able to compute releases2"
       | Ok on_disk ->
         Alcotest.check (result r_ok r_err) "missing in releases"
           (Error (`InvalidReleases (pname, S.add v3 (S.singleton v2), S.empty)))
-          (Conex_repository.validate_package r ~on_disk auth rel)
+          (Conex_repository.validate_releases r ~on_disk auth rel)
 
 let bad_releases () =
   let io = Mem.mem_provider () in
@@ -1353,20 +1362,20 @@ let bad_releases () =
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
   let v = pname ^ pname ^ ".0" in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero pname `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/checksum'"
     (Ok ()) (io.write ["packages"; pname; v; "checksum"] "") ;
-  match Conex_io.compute_package io Uint.zero pname with
+  match Conex_io.compute_releases io Uint.zero pname with
   | Error _ -> Alcotest.fail "should be able to compute releases0"
   | Ok on_disk ->
     Alcotest.check (result r_ok r_err) "releases contains bad prefix"
       (Error (`NoSharedPrefix (pname, S.singleton v)))
-      (Conex_repository.validate_package r ~on_disk auth rel)
+      (Conex_repository.validate_releases r ~on_disk auth rel)
 
 let rel_name_mismatch () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1374,15 +1383,15 @@ let rel_name_mismatch () =
   and id = "id"
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero "foo" in
-  let rel = Package.t Uint.zero pname in
+  let rel = Releases.t Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero pname `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero pname `Releases d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "releases and authorisation names do not match"
     (Error (`AuthRelMismatch ("foo", pname)))
-    (Conex_repository.validate_package r auth rel)
+    (Conex_repository.validate_releases r auth rel)
 
 let rel_wrong_name () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1390,15 +1399,15 @@ let rel_wrong_name () =
   and id = "id"
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t Uint.zero pname in
+  let rel = Releases.t Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel) in
-    [ Author.r Uint.zero "foo" `Package d ]
+    let d = V.digest (Releases.wire rel) in
+    [ Author.r Uint.zero "foo" `Releases d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "wrong name in releases"
     (Error (`InvalidName (pname, "foo")))
-    (Conex_repository.validate_package r auth rel)
+    (Conex_repository.validate_releases r auth rel)
 
 let rel_wrong_resource () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1406,15 +1415,15 @@ let rel_wrong_resource () =
   and id = "id"
   in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t Uint.zero pname in
+  let rel = Releases.t Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel) in
+    let d = V.digest (Releases.wire rel) in
     [ Author.r Uint.zero pname `Authorisation d ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result r_ok r_err) "wrong resource for releases"
-    (Error (`InvalidResource (pname, `Package, `Authorisation)))
-    (Conex_repository.validate_package r auth rel)
+    (Error (`InvalidResource (pname, `Releases, `Authorisation)))
+    (Conex_repository.validate_releases r auth rel)
 
 let rel_repo_tests = [
   "basic release", `Quick, rel_1 ;
@@ -1430,7 +1439,7 @@ let rel_repo_tests = [
 
 let c_err =
   let module M = struct
-    type t = [ Conex_repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t | `ChecksumsDiff of name * name list * name list * (Release.c * Release.c) list ]
+    type t = [ Conex_repository.base_error  | `AuthRelMismatch of name * name | `NotInReleases of name * S.t | `ChecksumsDiff of name * name list * name list * (Checksums.c * Checksums.c) list ]
     let pp = Conex_repository.pp_error
     let equal a b = match a, b with
       | `InvalidName (w, h), `InvalidName (w', h') -> name_equal w w' && name_equal h h'
@@ -1443,7 +1452,7 @@ let c_err =
         S.equal (S.of_list a) (S.of_list a') &&
         S.equal (S.of_list b) (S.of_list b') &&
         List.length cs = List.length cs' &&
-        List.for_all (fun (c, d) -> List.exists (fun (c', d') -> Release.checksum_equal c c' && Release.checksum_equal d d') cs) cs'
+        List.for_all (fun (c, d) -> List.exists (fun (c', d') -> Checksums.checksum_equal c c' && Checksums.checksum_equal d d') cs) cs'
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
@@ -1456,32 +1465,32 @@ let cs_base () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
-  let cs = Release.t Uint.zero v [] in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
+  let cs = Checksums.t Uint.zero v [] in
   Alcotest.check (result r_ok c_err) "release not signed"
-    (Error (`NotApproved (v, `Release, S.empty)))
-    (Conex_repository.validate_release r auth rel cs) ;
+    (Error (`NotApproved (v, `Checksums, S.empty)))
+    (Conex_repository.validate_checksums r auth rel cs) ;
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d' = V.digest (Release.wire cs)
+    let d = V.digest (Releases.wire rel)
+    and d' = V.digest (Checksums.wire cs)
     in
-    [ Author.r Uint.zero pname `Package d ; Author.r (Uint.of_int_exn 1) v `Release d' ]
+    [ Author.r Uint.zero pname `Releases d ; Author.r (Uint.of_int_exn 1) v `Checksums d' ]
   in
   let r = add_rs r id resources in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/release'"
-    (Ok ()) (io.write ["packages"; pname; v; "release"] "") ;
-  match Conex_io.compute_release V.raw_digest io Uint.zero v with
+    (Ok ()) (io.write ["packages"; pname; v; "checksums"] "") ;
+  match Conex_io.compute_checksums V.raw_digest io Uint.zero v with
   | Error _ -> Alcotest.fail "should be able to compute release"
   | Ok on_disk ->
     Alcotest.check (result r_ok c_err) "good release"
       (Ok (`Approved id))
-      (Conex_repository.validate_release r ~on_disk auth rel cs) ;
+      (Conex_repository.validate_checksums r ~on_disk auth rel cs) ;
     let jid = "janitor" in
     let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
     let r = add_rs r jid resources in
     Alcotest.check (result r_ok c_err) "good release (both)"
       (Ok (`Both (id, S.singleton jid)))
-      (Conex_repository.validate_release r auth rel cs)
+      (Conex_repository.validate_checksums r auth rel cs)
 
 let cs_quorum () =
   let io = Mem.mem_provider () in
@@ -1491,25 +1500,25 @@ let cs_quorum () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
-  let cs = Release.t Uint.zero v [] in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
+  let cs = Checksums.t Uint.zero v [] in
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d' = V.digest (Release.wire cs)
+    let d = V.digest (Releases.wire rel)
+    and d' = V.digest (Checksums.wire cs)
     in
-    [ Author.r Uint.zero pname `Package d ; Author.r (Uint.of_int_exn 1) v `Release d' ]
+    [ Author.r Uint.zero pname `Releases d ; Author.r (Uint.of_int_exn 1) v `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result Alcotest.unit str_err) "writing nothing to 'packages/$pname/$v/release'"
-    (Ok ()) (io.write ["packages"; pname; v; "release"] "") ;
-  match Conex_io.compute_release V.raw_digest io Uint.zero v with
+    (Ok ()) (io.write ["packages"; pname; v; "checksums"] "") ;
+  match Conex_io.compute_checksums V.raw_digest io Uint.zero v with
   | Error _ -> Alcotest.fail "should be able to compute release"
   | Ok on_disk ->
     Alcotest.check (result r_ok c_err) "good release (quorum)"
       (Ok (`Quorum (S.singleton jid)))
-      (Conex_repository.validate_release r ~on_disk auth rel cs)
+      (Conex_repository.validate_checksums r ~on_disk auth rel cs)
 
 let cs_bad () =
   let io = Mem.mem_provider () in
@@ -1526,53 +1535,53 @@ let cs_bad () =
     (Ok ()) (io.write ["packages"; pname; v; "files"; "patch2"] "p2") ;
   (* manually crafted using echo -n XXX | openssl dgst -sha256 -binary | b64encode -m - *)
   let csums = [
-    { Release.filename = "bar" ; digest = (`SHA256, "LCa0a2j/xo/5m0U8HTBBNBNCLXBkg7+g+YpeiGJm564=") } ;
-    { Release.filename = "foo" ; digest = (`SHA256, "/N4rLtula/QIYB+3If6bXDONEO5CnqBPrlURto+/j7k=") } ;
-    { Release.filename = "files/patch1" ; digest = (`SHA256, "9kVR/NbweCPLh5cc+5FEZCXaGChrOrHvk14MvXpp9oo=") } ;
-    { Release.filename = "files/patch2" ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") }
+    { Checksums.filename = "bar" ; digest = (`SHA256, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae") } ;
+    { Checksums.filename = "foo" ; digest = (`SHA256, "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9") } ;
+    { Checksums.filename = "files/patch1" ; digest = (`SHA256, "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a") } ;
+    { Checksums.filename = "files/patch2" ; digest = (`SHA256, "3946ca64ff78d93ca61090a437cbb6b3d2ca0d488f5f9ccf3059608368b27693") }
   ]
   in
-  let css = Release.t Uint.zero v csums in
-  Alcotest.check (result rel ch_err) "release computation works"
-    (Ok css) (Conex_io.compute_release V.raw_digest io Uint.zero "foo.0") ;
-  let css' = Release.t Uint.zero v (List.tl csums) in
-  let css'' = Release.t Uint.zero v ({ Release.filename = "foobar" ; digest = (`SHA256, "") } :: csums) in
-  let other = { Release.filename = "bar" ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") } in
-  let css''' = Release.t Uint.zero v (other :: List.tl csums) in
+  let acss = Checksums.t Uint.zero v csums in
+  Alcotest.check (result css ch_err) "release computation works"
+    (Ok acss) (Conex_io.compute_checksums V.raw_digest io Uint.zero "foo.0") ;
+  let css' = Checksums.t Uint.zero v (List.tl csums) in
+  let css'' = Checksums.t Uint.zero v ({ Checksums.filename = "foobar" ; digest = (`SHA256, "") } :: csums) in
+  let other = { Checksums.filename = "bar" ; digest = (`SHA256, "OUbKZP942TymEJCkN8u2s9LKDUiPX5zPMFlgg2iydpM=") } in
+  let css''' = Checksums.t Uint.zero v (other :: List.tl csums) in
   let id = "id" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d1 = V.digest (Release.wire css)
-    and d2 = V.digest (Release.wire css')
-    and d3 = V.digest (Release.wire css'')
-    and d4 = V.digest (Release.wire css''')
+    let d = V.digest (Releases.wire rel)
+    and d1 = V.digest (Checksums.wire acss)
+    and d2 = V.digest (Checksums.wire css')
+    and d3 = V.digest (Checksums.wire css'')
+    and d4 = V.digest (Checksums.wire css''')
     in
-    [ Author.r Uint.zero pname `Package d ;
-      Author.r (Uint.of_int_exn 1) v `Release d1 ;
-      Author.r (Uint.of_int_exn 2) v `Release d2 ;
-      Author.r (Uint.of_int_exn 3) v `Release d3 ;
-      Author.r (Uint.of_int_exn 4) v `Release d4 ]
+    [ Author.r Uint.zero pname `Releases d ;
+      Author.r (Uint.of_int_exn 1) v `Checksums d1 ;
+      Author.r (Uint.of_int_exn 2) v `Checksums d2 ;
+      Author.r (Uint.of_int_exn 3) v `Checksums d3 ;
+      Author.r (Uint.of_int_exn 4) v `Checksums d4 ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
-  match Conex_io.compute_release V.raw_digest io Uint.zero v with
+  match Conex_io.compute_checksums V.raw_digest io Uint.zero v with
   | Error _ -> Alcotest.fail "should be able to compute release"
   | Ok on_disk ->
     Alcotest.check (result r_ok c_err) "good release (quorum)"
       (Ok (`Quorum (S.singleton jid)))
-      (Conex_repository.validate_release r ~on_disk auth rel css) ;
+      (Conex_repository.validate_checksums r ~on_disk auth rel acss) ;
     Alcotest.check (result r_ok c_err) "bad release (missing in cs file)"
       (Error (`ChecksumsDiff (v, [], ["bar"], [])))
-      (Conex_repository.validate_release r ~on_disk auth rel css') ;
+      (Conex_repository.validate_checksums r ~on_disk auth rel css') ;
     Alcotest.check (result r_ok c_err) "bad release (missing on disk)"
       (Error (`ChecksumsDiff (v, ["foobar"], [], [])))
-      (Conex_repository.validate_release r ~on_disk auth rel css'') ;
+      (Conex_repository.validate_checksums r ~on_disk auth rel css'') ;
     Alcotest.check (result r_ok c_err) "bad release (differ)"
       (Error (`ChecksumsDiff (v, [], [], [(List.hd csums, other)])))
-      (Conex_repository.validate_release r ~on_disk auth rel css''')
+      (Conex_repository.validate_checksums r ~on_disk auth rel css''')
 
 let cs_bad_name () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1582,20 +1591,20 @@ let cs_bad_name () =
   let reln = "foo" in
   let v = reln ^ ".0" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero reln in
-  let cs = Release.t Uint.zero v [] in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero reln in
+  let cs = Checksums.t Uint.zero v [] in
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d' = V.digest (Release.wire cs)
+    let d = V.digest (Releases.wire rel)
+    and d' = V.digest (Checksums.wire cs)
     in
-    [ Author.r Uint.zero reln `Package d ; Author.r (Uint.of_int_exn 1) v `Release d' ]
+    [ Author.r Uint.zero reln `Releases d ; Author.r (Uint.of_int_exn 1) v `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result r_ok c_err) "bad name (auth != rel)"
     (Error (`AuthRelMismatch (pname, reln)))
-    (Conex_repository.validate_release r auth rel cs)
+    (Conex_repository.validate_checksums r auth rel cs)
 
 let cs_bad_name2 () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1605,20 +1614,20 @@ let cs_bad_name2 () =
   let reln = pname ^ ".0" in
   let v = reln ^ ".0" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton reln) Uint.zero pname in
-  let cs = Release.t Uint.zero v [] in
+  let rel = Releases.t ~versions:(S.singleton reln) Uint.zero pname in
+  let cs = Checksums.t Uint.zero v [] in
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d' = V.digest (Release.wire cs)
+    let d = V.digest (Releases.wire rel)
+    and d' = V.digest (Checksums.wire cs)
     in
-    [ Author.r Uint.zero pname `Package d ; Author.r (Uint.of_int_exn 1) v `Release d' ]
+    [ Author.r Uint.zero pname `Releases d ; Author.r (Uint.of_int_exn 1) v `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result r_ok c_err) "bad name (not member of releases)"
-    (Error (`NotInReleases (v, rel.Package.releases)))
-    (Conex_repository.validate_release r auth rel cs)
+    (Error (`NotInReleases (v, rel.Releases.versions)))
+    (Conex_repository.validate_checksums r auth rel cs)
 
 let cs_wrong_name () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1627,20 +1636,20 @@ let cs_wrong_name () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
-  let cs = Release.t Uint.zero v [] in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
+  let cs = Checksums.t Uint.zero v [] in
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d' = V.digest (Release.wire cs)
+    let d = V.digest (Releases.wire rel)
+    and d' = V.digest (Checksums.wire cs)
     in
-    [ Author.r Uint.zero pname `Package d ; Author.r (Uint.of_int_exn 1) pname `Release d' ]
+    [ Author.r Uint.zero pname `Releases d ; Author.r (Uint.of_int_exn 1) pname `Checksums d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result r_ok c_err) "wrong name"
     (Error (`InvalidName (v, pname)))
-    (Conex_repository.validate_release r auth rel cs)
+    (Conex_repository.validate_checksums r auth rel cs)
 
 let cs_wrong_resource () =
   let r = Conex_repository.repository ~quorum:1 V.digest () in
@@ -1649,20 +1658,20 @@ let cs_wrong_resource () =
   in
   let v = pname ^ ".0" in
   let auth = Authorisation.t ~authorised:(S.singleton id) Uint.zero pname in
-  let rel = Package.t ~releases:(S.singleton v) Uint.zero pname in
-  let cs = Release.t Uint.zero v [] in
+  let rel = Releases.t ~versions:(S.singleton v) Uint.zero pname in
+  let cs = Checksums.t Uint.zero v [] in
   let resources =
-    let d = V.digest (Package.wire rel)
-    and d' = V.digest (Release.wire cs)
+    let d = V.digest (Releases.wire rel)
+    and d' = V.digest (Checksums.wire cs)
     in
-    [ Author.r Uint.zero pname `Package d ; Author.r (Uint.of_int_exn 1) v `Package d' ]
+    [ Author.r Uint.zero pname `Releases d ; Author.r (Uint.of_int_exn 1) v `Releases d' ]
   in
   let jid = "janitor" in
   let r = Conex_repository.add_team r (Team.t ~members:(S.singleton jid) Uint.zero "janitors") in
   let r = add_rs r jid resources in
   Alcotest.check (result r_ok c_err) "wrong resource"
-    (Error (`InvalidResource (v, `Release, `Package)))
-    (Conex_repository.validate_release r auth rel cs)
+    (Error (`InvalidResource (v, `Checksums, `Releases)))
+    (Conex_repository.validate_checksums r auth rel cs)
 
 let cs_repo_tests = [
   "basic checksum", `Quick, cs_base ;

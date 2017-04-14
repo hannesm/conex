@@ -27,11 +27,29 @@ module V = struct
           Error `InvalidSignature
       | _ -> Error `InvalidPublicKey
 
-  let b64sha256 data =
+  let to_h i =
+    if i < 10 then
+      char_of_int (0x30 + i)
+    else
+      char_of_int (0x57 + i)
+
+  let to_hex cs =
+    let l = Cstruct.len cs in
+    let out = Bytes.create (2 * l) in
+    for i = 0 to pred l do
+      let b = Cstruct.get_uint8 cs i in
+      let up = b lsr 4
+      and low = b land 0x0F
+      in
+      Bytes.set out (i * 2) (to_h up);
+      Bytes.set out (i * 2 + 1) (to_h low);
+    done;
+    Bytes.to_string out
+
+  let sha256 data =
     let cs = Cstruct.of_string data in
     let check = Nocrypto.Hash.digest `SHA256 cs in
-    let b64 = Nocrypto.Base64.encode check in
-    Cstruct.to_string b64
+    to_hex check
 end
 
 module C = struct

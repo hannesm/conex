@@ -124,11 +124,11 @@ module V = struct
     | Error x when x = "broken" -> Error `InvalidSignature
     | Error _ -> Error `InvalidPublicKey
 
-  let b64sha256 data =
+  let sha256 data =
     match
       let filename = Filename.temp_file "conex" "b64" in
       Conex_unix_persistency.write_replace filename data >>= fun () ->
-      let cmd = Printf.sprintf "openssl dgst -binary -sha256 %s | openssl base64" filename in
+      let cmd = Printf.sprintf "openssl dgst -hex -r -sha256 %s | cut -d ' ' -f 1" filename in
       let input = Unix.open_process_in cmd in
       let output = input_line input in
       let _ = Unix.close_process_in input in

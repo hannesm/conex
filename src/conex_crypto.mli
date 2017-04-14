@@ -44,9 +44,9 @@ module type VERIFY_BACK = sig
   val verify_rsa_pss : key:string -> data:string -> signature:string ->
     (unit, [> verification_error ]) result
 
-  (** [b64sha356 str] computes the SHA256 digest of [str] and converts it to
-      base64. *)
-  val b64sha256 : string -> string
+  (** [sha356 str] computes the SHA256 digest of [str] and converts it to
+      hex. *)
+  val sha256 : string -> string
 end
 
 (** Instantiation. *)

@@ -86,23 +86,23 @@ let auth =
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let package =
+let rels =
   let module M = struct
-    type t = Package.t
-    let pp = Package.pp
+    type t = Releases.t
+    let pp = Releases.pp
     let equal a b =
-      let open Package in
+      let open Releases in
       a.counter = b.counter &&
       a.name = b.name &&
-      S.equal a.releases b.releases
+      S.equal a.versions b.versions
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let rel =
+let css =
   let module M = struct
-    type t = Release.t
-    let pp = Release.pp
-    let equal a b = match Release.compare_t a b with Ok () -> true | _ -> false
+    type t = Checksums.t
+    let pp = Checksums.pp
+    let equal a b = match Checksums.compare_t a b with Ok () -> true | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
