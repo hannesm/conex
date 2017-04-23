@@ -34,7 +34,7 @@ let quorum =
   Arg.(value & opt (some int) None & info [ "quorum" ] ~doc)
 
 let repo =
-  let doc = "Repository base directory" in
+  let doc = "Repository base directory (defaults to cwd)" in
   Arg.(value & opt (some dir) None & info [ "r" ; "repository" ] ~docs ~doc)
 
 let anchors =
@@ -49,7 +49,7 @@ let dry =
   Arg.(value & flag & info ["dry-run"] ~docs ~doc)
 
 let id =
-  let doc = "Use a specific identity (rather than autodiscovery)." in
+  let doc = "Use a specific identity (not needed unless you have more than one identity)." in
   Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
 
 let remove =
@@ -69,9 +69,9 @@ let incremental =
   Arg.(value & flag & info [ "incremental" ] ~doc)
 
 let dir =
-    let doc = "Directory which is verified." in
-    Arg.(value & opt (some dir) None & info [ "dir" ] ~doc)
+  let doc = "Directory which is verified." in
+  Arg.(value & opt (some dir) None & info [ "dir" ] ~doc)
 
 let patch =
-    let doc = "Patch file which is verified." in
-    Arg.(value & opt (some file) None & info [ "patch" ] ~doc)
+  let doc = "Patch file which is verified." in
+  Arg.(value & opt (some file) None & info [ "patch" ] ~doc)

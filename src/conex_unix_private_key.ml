@@ -8,38 +8,37 @@ let find_ids () =
   Ok (List.fold_left
         (fun acc s ->
            match List.rev (String.cuts '.' s) with
-           | p::id::path when p = "private" ->
-             (id, "/" ^ (path_to_string (List.rev path))) :: acc
+           | p::id::[] when p = "private" -> id::acc
            | _ -> acc)
         []
         files)
 
-let private_key_path path id =
-  let filename =
-    let els = string_to_path path @ [id ; "private"] in
-    String.concat "." els
-  in
-  "/" ^ path_to_string (string_to_path private_dir @ [ filename ])
+let private_key_path id =
+  "/" ^ path_to_string (string_to_path private_dir @ [ id ^ ".private" ])
 
-let write prov id key =
-  let base = prov.Conex_io.basedir in
-  let filename = private_key_path base id in
-  (if exists filename then begin
-      let ts =
-        let open Unix in
-        let t = gmtime (stat filename).st_mtime in
-        Printf.sprintf "%4d%2d%2d%2d%2d%2d" (t.tm_year + 1900) (succ t.tm_mon)
-          t.tm_mday t.tm_hour t.tm_min t.tm_sec
-      in
-      let backfn = String.concat "." [ id ; ts ] in
-      let backup = private_key_path base backfn in
-      let rec inc n =
+let backup id filename =
+  if exists filename then begin
+    let backfn =
+      let open Unix in
+      let t = gmtime (stat filename).st_mtime in
+      Printf.sprintf "%s.%4d%2d%2d%2d%2d%2d" id
+        (t.tm_year + 1900) (succ t.tm_mon) t.tm_mday t.tm_hour t.tm_min t.tm_sec
+    in
+    let backup = private_key_path backfn in
+    let rec inc n =
+      if n = 10 then Error "too many backup keys, only 10 supported"
+      else
         let nam = backup ^ "." ^ string_of_int n in
-        if exists nam then inc (succ n) else nam
-      in
-      let backup = if exists backup then inc 0 else backup in
-      rename filename backup
-    end else Ok ()) >>= fun () ->
+        if exists nam then inc (succ n) else Ok nam
+    in
+    (if exists backup then inc 0 else Ok backup) >>= fun backup ->
+    rename filename backup
+  end else
+    Ok ()
+
+let write id key =
+  let filename = private_key_path id in
+  backup id filename >>= fun () ->
   (if not (exists private_dir) then
      mkdir ~mode:0o700 private_dir
    else Ok ()) >>= fun () ->
@@ -57,9 +56,8 @@ let pp_err ppf = function
   | `Msg m -> Format.fprintf ppf "error %s while trying to read private key" m
 (*BISECT-IGNORE-END*)
 
-let read prov id =
-  let base = prov.Conex_io.basedir in
-  let fn = private_key_path base id in
+let read id =
+  let fn = private_key_path id in
   if exists fn then
     match read_file fn with
     | Error e -> Error (`Msg e)
