@@ -1,3 +1,13 @@
+## 0.10.0 ??
+
+* opam_encoding: maps use identifiers now, instead of strings - as does alg_type
+* conex_resource: use alg=data for encoding digests (instead of [ alg ; data ])
+* conex_resource: use hex encoding, rather than base64 for checksums
+* rename "package" to "releases" ; rename "release" to "checksums" (filenames)
+* conex_unix_private_key: store private keys in ~/.conex/<id>.private, instead
+  of having the repository included in the filename.  this removes lots of magic
+  from conex_author
+
 ## 0.9.2 (2017-02-18)
 
 * conex_author: status subcommand: handle id argument properly
@@ -11,7 +21,7 @@
   - verify subcommand: require repo, do not use id
 * crypto: trim result from `pub_of_priv` (nocrypto appends a newline, and breaks checksum)
 * conex: verify_janitors could never succeed (unless quorum = 0), because the
-   team janitors (repo.teams)) was empty while validating the team resource
+   team janitors (repo.teams) was empty while validating the team resource
 
 ## 0.9.0 (2017-02-16)
 
