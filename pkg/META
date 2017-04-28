@@ -5,14 +5,3 @@ archive(byte) = "conex.cma"
 archive(native) = "conex.cmxa"
 plugin(byte) = "conex.cma"
 plugin(native) = "conex.cmxs"
-
-package "nocrypto" (
-  description = "Sign and verify provider based on nocrypto"
-  version = "%%VERSION_NUM%%"
-  requires = "nocrypto x509 cstruct"
-  archive(byte) = "conex-nocrypto.cma"
-  archive(native) = "conex-nocrypto.cmxa"
-  plugin(byte) = "conex-nocrypto.cma"
-  plugin(native) = "conex-nocrypto.cmxs"
-  exists_if = "conex-nocrypto.cma"
-)
