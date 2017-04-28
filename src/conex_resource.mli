@@ -132,9 +132,6 @@ module Key : sig
   (** [string_to_alg str] is either [Some alg], or [None]. *)
   val string_to_alg : string -> alg option
 
-  (** The type of private keys *)
-  type priv = [ `Priv of alg * string * Uint.t ]
-
   (** The type of public keys *)
   type t = alg * string * Uint.t
 

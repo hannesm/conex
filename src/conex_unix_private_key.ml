@@ -3,15 +3,17 @@ open Conex_unix_persistency
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
-let find_ids () =
-  collect_dir private_dir >>= fun files ->
-  Ok (List.fold_left
-        (fun acc s ->
-           match List.rev (String.cuts '.' s) with
-           | p::id::[] when p = "private" -> id::acc
-           | _ -> acc)
-        []
-        files)
+let ids () =
+  match collect_dir private_dir with
+  | Ok files ->
+    List.fold_left
+      (fun acc s ->
+         match List.rev (String.cuts '.' s) with
+         | p::id::[] when p = "private" -> id::acc
+         | _ -> acc)
+      []
+      files
+  | Error _ -> []
 
 let private_key_path id =
   "/" ^ path_to_string (string_to_path private_dir @ [ id ^ ".private" ])
@@ -43,28 +45,16 @@ let write id key =
      mkdir ~mode:0o700 private_dir
    else Ok ()) >>= fun () ->
   match file_type private_dir with
-  | Ok Directory ->
-    let key = match key with `Priv (_alg, data, _created) -> data in
-    write_file ~mode:0o400 filename key
+  | Ok Directory -> write_file ~mode:0o400 filename key
   | _ -> Error (private_dir ^ " is not a directory!")
-
-type err = [ `NotFound of string | `Msg of string]
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_err ppf = function
-  | `NotFound x -> Format.fprintf ppf "couldn't find private key %s" x
-  | `Msg m -> Format.fprintf ppf "error %s while trying to read private key" m
-(*BISECT-IGNORE-END*)
 
 let read id =
   let fn = private_key_path id in
   if exists fn then
-    match read_file fn with
-    | Error e -> Error (`Msg e)
-    | Ok key ->
-      let stat = Unix.stat fn in
-      match Uint.of_float stat.Unix.st_mtime with
-      | None -> Error (`Msg "couldn't convert modification time to Uint")
-      | Some created -> Ok (`Priv (`RSA, key, created))
+    read_file fn >>= fun key ->
+    let stat = Unix.stat fn in
+    match Uint.of_float stat.Unix.st_mtime with
+    | None -> Error ("couldn't convert modification time to Uint.t")
+    | Some created -> Ok (key, created)
   else
-    Error (`NotFound id)
+    Error ("couldn't find private key for " ^ id)

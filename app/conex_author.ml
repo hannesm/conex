@@ -5,7 +5,7 @@ open Rresult
 
 module V = Conex_nocrypto.NC_V
 module C = Conex.Make(Logs)(V)
-module SIGN = Conex_nocrypto.NC_S
+module PRIV = Conex_private.Make(Conex_nocrypto.C(Conex_unix_private_key))
 
 let str_to_msg = function
   | Ok x -> Ok x
@@ -25,8 +25,7 @@ let setup_log style_renderer level =
   Logs.set_reporter (Logs_fmt.reporter ~dst:Format.std_formatter ())
 
 let find_id id =
-  Conex_unix_private_key.find_ids () >>= fun ids ->
-  match id, ids with
+  match id, PRIV.ids () with
   | _, [] -> Error "no private key found, please run init"
   | None, [one] -> Ok one
   | None, _ -> Error "multiple keys found, please specify --id"
@@ -107,13 +106,9 @@ let status _ basedir quorum id no_rec package =
                      (List.length idx.Author.resources)
                      (List.length idx.Author.queued) ) ;
         List.iter (fun ((t, _, c) as key, _) ->
-            let bits = match SIGN.bits key with
-              | Error e -> Logs.err (fun m -> m "error while decoding key %s" e) ; 0
-              | Ok bits -> bits
-            in
             let kid = V.keyid id key in
-            Logs.app (fun m -> m "%d bit %s key created %s %a, %a"
-                         bits (Key.alg_to_string t) (Uint.decimal c)
+            Logs.app (fun m -> m "%s key created %s %a, %a"
+                         (Key.alg_to_string t) (Uint.decimal c)
                          to_st_txt (Conex_repository.validate_key r id key)
                          Digest.pp kid))
           idx.Author.keys ;
@@ -263,20 +258,13 @@ let init _ dry basedir id email =
           Logs.info (fun m -> m "error reading author %s %a, creating a fresh one"
                         id Conex_io.pp_r_err err) ;
           Ok (Author.t now id)) >>= fun idx ->
-       (match Conex_unix_private_key.read id with
+       (match PRIV.read id with
         | Ok priv ->
-          let created = match priv with `Priv (_, _, c) -> c in
+          let created = PRIV.created priv in
           Logs.info (fun m -> m "using existing private key %s (created %s)" id (Header.timestamp created)) ;
           Ok priv
-        | Error _ ->
-          let p = SIGN.generate now () in
-          (if not dry then
-             str_to_msg (Conex_unix_private_key.write id p) >>| fun () ->
-             Logs.info (fun m -> m "generated and wrote private key %s" id) ;
-           else
-             Ok ()) >>| fun () ->
-          p) >>= fun priv ->
-       str_to_msg (SIGN.pub_of_priv priv) >>= fun public ->
+        | Error _ -> str_to_msg (PRIV.generate `RSA id now ())) >>= fun priv ->
+       str_to_msg (PRIV.pub_of_priv priv) >>= fun public ->
        let accounts =
          List.sort_uniq Author.compare_account
            (`GitHub id :: List.map (fun e -> `Email e) email @ idx.Author.accounts)
@@ -299,7 +287,7 @@ let init _ dry basedir id email =
          List.fold_left (fun idx a -> approve idx `Account (Author.wire_account id a))
            idx accounts
        in
-       str_to_msg (SIGN.sign now idx priv) >>= fun idx ->
+       str_to_msg (PRIV.sign now idx `RSA_PSS_SHA256 priv) >>= fun idx ->
        Logs.info (fun m -> m "signed author %a" Author.pp idx) ;
        str_to_msg (IO.write_author io idx) >>| fun () ->
        Logs.info (fun m -> m "wrote %a" Author.pp idx) ;
@@ -381,8 +369,7 @@ let sign _ dry basedir id =
   msg_to_cmdliner
     (str_to_msg (find_id id) >>= fun id ->
      str_to_msg (init_repo dry basedir) >>= fun (_r, io) ->
-     R.error_to_msg ~pp_error:Conex_unix_private_key.pp_err
-       (Conex_unix_private_key.read id) >>= fun priv ->
+     str_to_msg (PRIV.read id) >>= fun priv ->
      Logs.info (fun m -> m "using private key %s" id) ;
      let idx = find_idx io id in
      match idx.Author.queued with
@@ -406,7 +393,7 @@ let sign _ dry basedir id =
          Logs.app (fun m -> m "nothing was approved") ; Ok ()
        end else begin
          Nocrypto_entropy_unix.initialize () ;
-         str_to_msg (SIGN.sign now idx' priv) >>= fun idx' ->
+         str_to_msg (PRIV.sign now idx' `RSA_PSS_SHA256 priv) >>= fun idx' ->
          Logs.info (fun m -> m "signed author %a" Author.pp idx') ;
          str_to_msg (IO.write_author io idx') >>| fun () ->
          Logs.app (fun m -> m "wrote %s to disk" id)

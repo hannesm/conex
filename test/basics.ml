@@ -97,21 +97,20 @@ module Ui = struct
 end
 
 open Common
-module CS = Conex_nocrypto.NC_S
+module CS = Conex_nocrypto.C(FS)
 
 module BasicTests (V : Conex_crypto.VERIFY) (R : Conex_crypto.VERIFY_BACK) = struct
 
-let raw_sign p d = match Conex_nocrypto.C.sign_rsa_pss ~key:p d with
+let raw_sign p d = match CS.sign_pss p d with
   | Ok s -> s
   | Error e -> Alcotest.fail e
 
 let sig_good () =
   let pid = "foobar" in
   let pub, p = gen_pub () in
-  let priv = match p with `Priv (`RSA, k, _) -> k in
   let pu = match pub with `RSA, k, _ -> k in
   let d = Wire.to_string (Signature.wire pid (`RSA_PSS_SHA256, Uint.zero) pid) in
-  let signature = raw_sign priv d in
+  let signature = raw_sign (Obj.magic p) d in
   Alcotest.check (result Alcotest.unit verr)
     "signature is good" (Ok ())
     (R.verify_rsa_pss ~key:pu ~data:d ~signature)
@@ -119,10 +118,9 @@ let sig_good () =
 let sign_single () =
   let idx = Author.t Uint.zero "a" in
   let pub, priv = gen_pub () in
-  let pri = match priv with `Priv (`RSA, k, _) -> k in
   let key = match pub with `RSA, k, _ -> k in
   let raw = Wire.to_string (Author.wire idx) in
-  let sv = raw_sign pri raw in
+  let sv = raw_sign (Obj.magic priv) raw in
   Alcotest.check (result Alcotest.unit verr)
     "signature can be verified"
     (Ok ())
@@ -169,27 +167,6 @@ let sign_single () =
     (Error `InvalidPublicKey)
       (R.verify_rsa_pss ~key:(key ^ "\000") ~data:raw ~signature:sv) *)
 
-let bad_priv () =
-  let idx = Author.t Uint.zero "a" in
-  let pub, priv = gen_pub () in
-  let raw = Wire.to_string (Author.wire idx) in
-  Alcotest.check (result Alcotest.string Alcotest.string)
-    "sign with broken key is broken"
-    (Error "couldn't decode private key")
-    (Conex_nocrypto.C.sign_rsa_pss ~key:"" raw) ;
-  let get_pub p = Conex_nocrypto.C.pub_of_priv_rsa p in
-  Alcotest.check (result Alcotest.string Alcotest.string)
-    "pub_of_priv with broken key is broken"
-    (Error "couldn't decode private key")
-    (get_pub "") ;
-  let mypriv = match priv with `Priv (`RSA, p, _) -> p
-  and _, mypub, _ = pub
-  in
-  Alcotest.check (result Alcotest.string Alcotest.string)
-    "pub_of_priv works fine"
-    (Ok mypub)
-    (get_pub mypriv)
-
 let verify_fail () =
   let idx = Author.t Uint.zero "a" in
   let k, p = gen_pub () in
@@ -208,9 +185,13 @@ let verify_fail () =
   Alcotest.check (result Alcotest.unit verr) "bad signature does not verify"
     (Error `InvalidSignature)
     (V.verify idx) ;
-  let pub = match CS.(pub_of_priv (generate ~bits:20 Uint.zero ())) with
-    | Ok p -> p
-    | Error _ -> Alcotest.fail "couldn't pub_of_priv"
+  let pub =
+    match CS.generate_rsa ~bits:20 "foo" Uint.zero () with
+    | Error _ -> Alcotest.fail "couldn't generate_rsa"
+    | Ok pr ->
+      match CS.pub_of_priv_rsa pr with
+      | Ok p -> (`RSA, p, Uint.zero)
+      | Error _ -> Alcotest.fail "couldn't pub_of_priv"
   in
   let idx = Author.t ~keys:[pub, single_sig] Uint.zero "a" in
   Alcotest.check (result Alcotest.unit verr) "too small key"
@@ -225,7 +206,6 @@ let verify_fail () =
 let sign_tests = [
   "sign and verify is good", `Quick, sig_good ;
   "self-sign is good", `Quick, sign_single ;
-  "bad priv is bad", `Quick, bad_priv ;
   "verify failures", `Quick, verify_fail ;
 ]
 

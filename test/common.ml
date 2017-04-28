@@ -1,7 +1,13 @@
 open Conex_utils
 open Conex_resource
 
-module SIGN = Conex_nocrypto.NC_S
+module FS = struct
+  let ids () = []
+  let read _ = Error "no"
+  let write _ _ = Ok ()
+end
+
+module SIGN = Conex_private.Make(Conex_nocrypto.C(FS))
 
 let sset =
   let module M = struct
@@ -17,11 +23,13 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      let p = Conex_nocrypto.NC_S.generate ~bits:2048 Uint.zero () in
-      privkey := Some p ;
-      p
+      match SIGN.generate ~bits:2048 `RSA "foo" Uint.zero () with
+      | Error e -> Alcotest.fail e
+      | Ok p ->
+        privkey := Some p ;
+        p
   in
-  match Conex_nocrypto.NC_S.pub_of_priv priv with
+  match SIGN.pub_of_priv priv with
   | Ok pub -> (pub, priv)
   | Error e -> Alcotest.fail e
 
@@ -126,6 +134,6 @@ let verr =
 
 let sign_idx idx p =
   let idx = List.fold_left Author.approve idx idx.Author.queued in
-  match SIGN.sign Uint.zero idx p with
+  match SIGN.sign Uint.zero idx `RSA_PSS_SHA256 p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

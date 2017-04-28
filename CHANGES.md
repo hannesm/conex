@@ -7,6 +7,8 @@
 * conex_unix_private_key: store private keys in ~/.conex/<id>.private, instead
   of having the repository included in the filename.  this removes lots of magic
   from conex_author
+* conex_private: new module gathering private key handling and operations,
+  replacing conex_unix_private_key and conex_crypto.SIGN
 
 ## 0.9.2 (2017-02-18)
 
