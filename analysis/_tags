@@ -1,0 +1,2 @@
+<opam_repo_stats.{ml,native}>: package(cstruct nocrypto x509 astring opam-file-format logs)
+<maintainer.{ml,native}>: package(cstruct nocrypto x509 astring opam-file-format opam-format logs cmdliner logs.cli logs.fmt fmt)

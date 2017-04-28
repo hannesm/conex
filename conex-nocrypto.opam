@@ -9,15 +9,27 @@ maintainer:   ["Hannes Mehnert <hannes@mehnert.org>"]
 license:      "BSD2"
 
 build: [
-  [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "false" ]
+  [ "ocaml" "pkg/pkg.ml" "build" "--pkg-name" "%{name}%"
+    "--pinned" "%{pinned}%" "--tests" "false" ]
+]
+
+build-test: [
+  [ "ocaml" "pkg/pkg.ml" "build" "--pkg-name" "%{name}%" "--pinned" "%{pinned}%" "--tests" "true" ]
+  [ "ocaml" "pkg/pkg.ml" "test" "--pkg-name" "%{name}%" ]
 ]
 
 depends: [
   "ocamlfind"  {build}
   "ocamlbuild" {build}
   "topkg"      {build}
+  "alcotest"   {test}
   "cmdliner"
+  "conex"
   "opam-file-format" {>= "2.0.0~beta"}
+  "cstruct"    {>= "1.6.0"}
+  "nocrypto"   {>= "0.5.4"}
+  "x509"       {>= "0.4.0"}
+  "logs" "fmt" "rresult"
 ]
 
 available: [ ocaml-version >= "4.03.0" ]
