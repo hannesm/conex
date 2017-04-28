@@ -8,7 +8,7 @@ let str pp e =
 
 module IO = Conex_io
 
-module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
+module Make (L : LOGS) (C : Conex_verify.S) = struct
 
   let to_str pp = function
     | Ok a -> Ok a
@@ -16,7 +16,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
 
   let verify_and_validate repo author =
     L.debug (fun m -> m "%a" Author.pp author) ;
-    to_str Conex_crypto.pp_verification_error (C.verify author) >>= fun () ->
+    to_str Conex_verify.pp_error (C.verify author) >>= fun () ->
     to_str pp_error (validate_author repo author) >>= fun repo ->
     L.info (fun m -> m "%a verified" pp_id author.Author.name) ;
     Ok repo
@@ -62,7 +62,7 @@ module Make (L : LOGS) (C : Conex_crypto.VERIFY) = struct
 
     (* for each, validate public key(s): signs the index *)
     foldM (fun acc author ->
-        to_str Conex_crypto.pp_verification_error (C.verify author) >>= fun () ->
+        to_str Conex_verify.pp_error (C.verify author) >>= fun () ->
         L.info (fun m -> m "verified %a" Author.pp author) ;
         Ok (author :: acc))
       [] idxs >>= fun valid_idxs ->

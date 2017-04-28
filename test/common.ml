@@ -116,8 +116,8 @@ let css =
 
 let verr =
   let module M = struct
-    type t = Conex_crypto.verification_error
-    let pp = Conex_crypto.pp_verification_error
+    type t = Conex_verify.error
+    let pp = Conex_verify.pp_error
     let equal a b = match a, b with
       | `InvalidBase64Encoding, `InvalidBase64Encoding
       | `InvalidSignature, `InvalidSignature

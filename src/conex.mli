@@ -7,9 +7,9 @@
     package releases) they vouch for.  The {{!Conex_repository.t}repository} is
     a map where resource digests are the key, and the set of warrantors the
     value.  Verification of the signature is done via
-    {{!Conex_crypto.VERIFY.verify}verify}.
+    {{!Conex_verify.S.verify}verify}.
 
-    Given a {{!Conex_utils.LOGS}logs} and a {{!Conex_crypto.VERIFY}verify}
+    Given a {{!Conex_utils.LOGS}logs} and a {{!Conex_verify.S}verify}
     implementation, this modules provides functionality to verify identities and
     packages.  All functions require {{!Conex_io.t}IO} explicitly.
 
@@ -18,9 +18,8 @@
 
 open Conex_utils
 open Conex_resource
-open Conex_crypto
 
-module Make (L : LOGS) (C : VERIFY): sig
+module Make (L : LOGS) (C : Conex_verify.S): sig
 
   (** [verify_id io repo id] reads [id] from [io] unless [id] is already part of
       [repo].  The read data will either be a team or an author.  If

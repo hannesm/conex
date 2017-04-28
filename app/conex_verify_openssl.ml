@@ -67,7 +67,7 @@ module Log : EXTLOGS = struct
   let warn ?src:_ msgf = incr wcount ; kmsg kunit `Warn msgf
 end
 
-module V = Conex_verify.VERIFY (Log) (Conex_openssl.O_V)
+module V = Conex_verify_app.VERIFY (Log) (Conex_openssl.O_V)
 
 let terminal () =
   let dumb = try Sys.getenv "TERM" = "dumb" with
@@ -108,6 +108,6 @@ let no_color =
 let cmd =
   Term.(ret (const setup $ repo $ quorum $ anchors $ incremental $ dir $ patch $ verbose $ quiet $ no_strict $ no_color)),
   Term.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
-    ~doc:Conex_verify.doc ~man:Conex_verify.man
+    ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
 
 let () = match Term.eval cmd with `Ok () -> exit 0 | _ -> exit 1

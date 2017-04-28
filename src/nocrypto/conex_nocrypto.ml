@@ -51,7 +51,7 @@ module V = struct
     to_hex check
 end
 
-module NC_V = Conex_crypto.Make_verify (V)
+module NC_V = Conex_verify.Make (V)
 
 module C (F : Conex_private.FS) = struct
 

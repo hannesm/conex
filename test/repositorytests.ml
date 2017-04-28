@@ -193,7 +193,7 @@ let ch_err =
 
 let io_ex f = match f with Error e -> Alcotest.fail e | Ok x -> x
 
-module RTest (V : Conex_crypto.VERIFY) = struct
+module RTest (V : Conex_verify.S) = struct
 (* basic operations work, and we have an in-memory data provider!  let the games begin *)
 let empty_r () =
   let io = Mem.mem_provider () in

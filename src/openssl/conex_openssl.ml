@@ -139,4 +139,4 @@ module V = struct
     | Error e -> invalid_arg e
 end
 
-module O_V = Conex_crypto.Make_verify (V)
+module O_V = Conex_verify.Make (V)

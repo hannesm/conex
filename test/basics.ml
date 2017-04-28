@@ -99,7 +99,7 @@ end
 open Common
 module CS = Conex_nocrypto.C(FS)
 
-module BasicTests (V : Conex_crypto.VERIFY) (R : Conex_crypto.VERIFY_BACK) = struct
+module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
 
 let raw_sign p d = match CS.sign_pss p d with
   | Ok s -> s

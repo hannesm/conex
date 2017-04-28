@@ -52,7 +52,7 @@ module Wire : sig
   type t = s M.t
 
   (** [to_string t] is a string representing [t].  This is used by
-      {!Conex_crypto} to compute digests and signatures.  There is no parser for
+      {!Conex_verify.S} to compute digests and signatures.  There is no parser for
       this string encoding available. *)
   val to_string : t -> string
 end

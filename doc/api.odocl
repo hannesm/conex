@@ -4,7 +4,8 @@ Conex_repository
 Conex_resource
 Conex_io
 Conex_opam_repository_layout
-Conex_crypto
+Conex_verify
+Conex_private
 Conex_opam_encoding
 Conex_unix_persistency
 Conex_unix_provider

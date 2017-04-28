@@ -1,6 +1,6 @@
 open Conex_utils
 
-module V = Conex_verify.VERIFY (Logs) (Conex_nocrypto.NC_V)
+module V = Conex_verify_app.VERIFY (Logs) (Conex_nocrypto.NC_V)
 
 let jump _ = V.verify_it
 
@@ -20,6 +20,6 @@ let setup_log =
 let cmd =
   Term.(ret (const jump $ setup_log $ repo $ quorum $ anchors $ incremental $ dir $ patch $ no_strict)),
   Term.info "conex_verify_nocrypto" ~version:"%%VERSION_NUM%%"
-    ~doc:Conex_verify.doc ~man:Conex_verify.man
+    ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
 
 let () = match Term.eval cmd with `Ok () -> exit 0 | _ -> exit 1

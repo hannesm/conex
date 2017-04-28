@@ -1,37 +1,37 @@
 open Conex_utils
 open Conex_resource
 
-type verification_error = [
+type error = [
   | `InvalidBase64Encoding
   | `InvalidSignature
   | `InvalidPublicKey
 ]
 
 (*BISECT-IGNORE-BEGIN*)
-let pp_verification_error ppf = function
+let pp_error ppf = function
   | `InvalidBase64Encoding -> Format.fprintf ppf "signature: no valid base64 encoding"
   | `InvalidSignature -> Format.fprintf ppf "signature: invalid"
   | `InvalidPublicKey -> Format.fprintf ppf "invalid public key"
 (*BISECT-IGNORE-END*)
 
-module type VERIFY_BACK = sig
-  val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> verification_error ]) result
+module type S_RSA_BACK = sig
+  val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> error ]) result
 
   val sha256 : string -> string
 end
 
-module type VERIFY = sig
+module type S = sig
   val raw_digest : string -> Digest.t
 
   val digest : Wire.t -> Digest.t
 
   val keyid : identifier -> Key.t -> Digest.t
 
-  val verify : Author.t -> (unit, [> verification_error ]) result
+  val verify : Author.t -> (unit, [> error ]) result
 end
 
 (** Instantiation. *)
-module Make_verify (C : VERIFY_BACK) = struct
+module Make (C : S_RSA_BACK) = struct
 
   let raw_digest data = `SHA256, C.sha256 data
 
