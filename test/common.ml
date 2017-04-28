@@ -7,7 +7,7 @@ module FS = struct
   let write _ _ = Ok ()
 end
 
-module SIGN = Conex_private.Make(Conex_nocrypto.C(FS))
+module PRIV = Conex_private.Make(Conex_nocrypto.C(FS))
 
 let sset =
   let module M = struct
@@ -23,13 +23,13 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      match SIGN.generate ~bits:2048 `RSA "foo" Uint.zero () with
+      match PRIV.generate ~bits:2048 `RSA "foo" Uint.zero () with
       | Error e -> Alcotest.fail e
       | Ok p ->
         privkey := Some p ;
         p
   in
-  match SIGN.pub_of_priv priv with
+  match PRIV.pub_of_priv priv with
   | Ok pub -> (pub, priv)
   | Error e -> Alcotest.fail e
 
@@ -134,6 +134,6 @@ let verr =
 
 let sign_idx idx p =
   let idx = List.fold_left Author.approve idx idx.Author.queued in
-  match SIGN.sign Uint.zero idx `RSA_PSS_SHA256 p with
+  match PRIV.sign Uint.zero idx `RSA_PSS_SHA256 p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e
