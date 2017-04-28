@@ -25,7 +25,7 @@ depends: [
   "cmdliner"
   "opam-file-format" {>= "2.0.0~beta"}
   "cstruct"    {>= "1.6.0"}
-  "nocrypto"   {>= "0.5.3"}
+  "nocrypto"   {>= "0.5.4"}
   "x509"       {>= "0.4.0"}
   "alcotest"   {test}
   "logs" "fmt" "rresult" "astring"
