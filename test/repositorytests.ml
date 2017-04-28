@@ -4,8 +4,6 @@ open Conex_io
 
 open Common
 
-module CS = Conex_nocrypto.NC_S
-
 module Mem = struct
   type tree = Leaf of string * string | Node of string * tree list
 
