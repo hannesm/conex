@@ -1,7 +1,13 @@
 open Conex_utils
 open Conex_resource
 
-module SIGN = Conex_nocrypto.NC_S
+module FS = struct
+  let ids () = []
+  let read _ = Error "no"
+  let write _ _ = Ok ()
+end
+
+module PRIV = Conex_private.Make(Conex_nocrypto.C(FS))
 
 let sset =
   let module M = struct
@@ -17,11 +23,13 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      let p = Conex_nocrypto.NC_S.generate ~bits:2048 Uint.zero () in
-      privkey := Some p ;
-      p
+      match PRIV.generate ~bits:2048 `RSA "foo" Uint.zero () with
+      | Error e -> Alcotest.fail e
+      | Ok p ->
+        privkey := Some p ;
+        p
   in
-  match Conex_nocrypto.NC_S.pub_of_priv priv with
+  match PRIV.pub_of_priv priv with
   | Ok pub -> (pub, priv)
   | Error e -> Alcotest.fail e
 
@@ -108,8 +116,8 @@ let css =
 
 let verr =
   let module M = struct
-    type t = Conex_crypto.verification_error
-    let pp = Conex_crypto.pp_verification_error
+    type t = Conex_verify.error
+    let pp = Conex_verify.pp_error
     let equal a b = match a, b with
       | `InvalidBase64Encoding, `InvalidBase64Encoding
       | `InvalidSignature, `InvalidSignature
@@ -117,15 +125,12 @@ let verr =
       (* for OpenSSL where we don't have detailed error reporting *)
       | `InvalidSignature, `InvalidPublicKey
       | `InvalidPublicKey, `InvalidSignature -> true
-      (* until nocrypto >0.5.3 is not released *)
-      | `InvalidSignature, `InvalidBase64Encoding
-      | `InvalidBase64Encoding, `InvalidSignature -> true
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
 let sign_idx idx p =
   let idx = List.fold_left Author.approve idx idx.Author.queued in
-  match SIGN.sign Uint.zero idx p with
+  match PRIV.sign Uint.zero idx `RSA_PSS_SHA256 p with
   | Ok idx -> idx
   | Error e -> Alcotest.fail e

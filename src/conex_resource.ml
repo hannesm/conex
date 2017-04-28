@@ -247,8 +247,6 @@ module Key = struct
   let version = Uint.zero
   type t = alg * string * Uint.t
 
-  type priv = [ `Priv of alg * string * Uint.t ]
-
   let equal (alg, data, _) (alg', data', _) =
     alg_equal alg alg' && String.compare data data' = 0
 

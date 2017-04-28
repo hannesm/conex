@@ -41,7 +41,7 @@ let err_to_cmdliner = function
 
 module IO = Conex_io
 
-module VERIFY (L : LOGS) (V : Conex_crypto.VERIFY) = struct
+module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   module C = Conex.Make(L)(V)
 

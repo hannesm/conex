@@ -52,7 +52,7 @@ module Wire : sig
   type t = s M.t
 
   (** [to_string t] is a string representing [t].  This is used by
-      {!Conex_crypto} to compute digests and signatures.  There is no parser for
+      {!Conex_verify.S} to compute digests and signatures.  There is no parser for
       this string encoding available. *)
   val to_string : t -> string
 end
@@ -131,9 +131,6 @@ module Key : sig
 
   (** [string_to_alg str] is either [Some alg], or [None]. *)
   val string_to_alg : string -> alg option
-
-  (** The type of private keys *)
-  type priv = [ `Priv of alg * string * Uint.t ]
 
   (** The type of public keys *)
   type t = alg * string * Uint.t

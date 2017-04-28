@@ -1,13 +1,7 @@
 (** Crypto provided by the nocrypto package *)
 
-module C : sig
-  include Conex_crypto.SIGN_BACK
-end
+module V : Conex_verify.S_RSA_BACK
 
-module V : sig
-  include Conex_crypto.VERIFY_BACK
-end
+module NC_V : Conex_verify.S
 
-module NC_S : (Conex_crypto.SIGN)
-
-module NC_V : (Conex_crypto.VERIFY)
+module C (FS : Conex_private.FS) : Conex_private.S_RSA_BACK

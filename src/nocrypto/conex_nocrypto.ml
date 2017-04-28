@@ -1,15 +1,14 @@
-module V = struct
-  type nc_pub =
-    | RSA_pub of Nocrypto.Rsa.pub
+open Conex_utils
 
+module V = struct
   let good_rsa p = Nocrypto.Rsa.pub_bits p >= 2048
 
-  let encode_key = function
-    | RSA_pub pub -> String.trim (Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub)))
+  let encode_key pub =
+    String.trim (Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub)))
 
   let decode_key data =
     match X509.Encoding.Pem.Public_key.of_pem_cstruct (Cstruct.of_string data) with
-    | [ `RSA pub ] -> Some (RSA_pub pub)
+    | [ `RSA pub ] -> Some pub
     | _ -> None
 
   module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
@@ -20,7 +19,7 @@ module V = struct
     | Some signature ->
       let cs_data = Cstruct.of_string data in
       match decode_key key with
-      | Some (RSA_pub key) when good_rsa key ->
+      | Some key when good_rsa key ->
         if Pss_sha256.verify ~key ~signature cs_data then
           Ok ()
         else
@@ -52,51 +51,46 @@ module V = struct
     to_hex check
 end
 
-module C = struct
-  type nc_priv =
-    | RSA_priv of Nocrypto.Rsa.priv
+module NC_V = Conex_verify.Make (V)
+
+module C (F : Conex_private.FS) = struct
+
+  type t = Nocrypto.Rsa.priv * Uint.t
+
+  let created (_, ts) = ts
+
+  let ids = F.ids
 
   let decode_priv data =
     match X509.Encoding.Pem.Private_key.of_pem_cstruct (Cstruct.of_string data) with
-    | [ `RSA priv ] -> Some (RSA_priv priv)
+    | [ `RSA priv ] -> Some priv
     | _ -> None
 
-  let encode_priv = function
-    | RSA_priv priv ->
-      let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
-      Cstruct.to_string pem
-
-  let generate_rsa ?(bits = 4096) () =
-    let key = RSA_priv (Nocrypto.Rsa.generate bits) in
-    encode_priv key
-
-  let bits_rsa k =
-    match V.decode_key k with
-    | None -> Error "couldn't decode key"
-    | Some (V.RSA_pub pub) -> Ok (Nocrypto.Rsa.pub_bits pub)
-
-  let pub_of_priv_rsa k =
+  let read id =
+    F.read id >>= fun (k, ts) ->
     match decode_priv k with
-    | Some (RSA_priv k) ->
-      let pub = Nocrypto.Rsa.pub_of_priv k in
-      let pem = V.encode_key (V.RSA_pub pub) in
-      Ok pem
-    | None -> Error "couldn't decode private key"
+    | Some priv -> Ok (priv, ts)
+    | None -> Error "could not decode private key"
 
-  let primitive_sign priv data =
+  let encode_priv priv =
+    let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
+    Cstruct.to_string pem
+
+  let generate_rsa ?(bits = 4096) id ts () =
+    let key = Nocrypto.Rsa.generate bits in
+    let data = encode_priv key in
+    F.write id data >>= fun () ->
+    Ok (key, ts)
+
+  let bits (k, _) = Nocrypto.Rsa.priv_bits k
+
+  let pub_of_priv_rsa (k, _) =
+    let pub = Nocrypto.Rsa.pub_of_priv k in
+    Ok (V.encode_key pub)
+
+  let sign_pss (key, _) data =
     let cs = Cstruct.of_string data in
-    let signature =
-      match priv with
-      | RSA_priv key -> V.Pss_sha256.sign ~key cs
-    in
+    let signature = V.Pss_sha256.sign ~key cs in
     let b64 = Nocrypto.Base64.encode signature in
-    Cstruct.to_string b64
-
-  let sign_rsa_pss ~key data =
-    match decode_priv key with
-    | Some key -> Ok (primitive_sign key data)
-    | None -> Error "couldn't decode private key"
+    Ok (Cstruct.to_string b64)
 end
-
-module NC_S = Conex_crypto.Make_sign (C)
-module NC_V = Conex_crypto.Make_verify (V)
