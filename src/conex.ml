@@ -194,9 +194,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     let janitor_keys =
       S.fold (fun id acc ->
           match IO.read_author io id with
-          | Ok idx ->
-            let id (k, _) = C.keyid id k in
-            List.map id idx.Author.keys @ acc
+          | Ok idx -> List.map (fun (k,_) -> C.keyid id k) idx.Author.keys @ acc
           | Error _ -> acc)
         (match find_team repo "janitors" with None -> S.empty | Some x -> x)
         []
