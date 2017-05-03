@@ -1,8 +1,9 @@
-open Conex_utils
+open Conex_verify_app
 
-module V = Conex_verify_app.VERIFY (Logs) (Conex_nocrypto.NC_V)
+module V = VERIFY(Logs)(Conex_nocrypto.NC_V)
 
-let jump _ = V.verify_it
+let jump _ repo quorum anchors inc dir patch nostrict =
+  err_to_cmdliner (V.verify_it repo quorum anchors inc dir patch nostrict)
 
 let setup_log style_renderer level =
   Fmt_tty.setup_std_outputs ?style_renderer ();

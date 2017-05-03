@@ -70,21 +70,19 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
 
   let verify_it repodir quorum anchors incremental dir patch nostrict =
-    err_to_cmdliner
-      (let ta = Conex_opts.convert_anchors anchors in
-       Conex_openssl.V.check_version () >>= fun () ->
-       let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
-       match repodir, incremental, patch, dir with
-       | Some repodir, true, Some p, None ->
-         Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
-         L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-         verify_patch io repo p nostrict
-       | _, false, None, Some d ->
-         Conex_unix_provider.fs_ro_provider d >>= fun io ->
-         L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-         verify_full io repo ta nostrict
-       | None, _, _, _ -> Error "--repo is required"
-       | _ -> Error "invalid combination of incremental, patch and dir")
+    let ta = Conex_opts.convert_anchors anchors in
+    let repo = Conex_repository.repository ?quorum V.digest () in
+    match repodir, incremental, patch, dir with
+    | Some repodir, true, Some p, None ->
+      Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
+      L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
+      verify_patch io repo p nostrict
+    | _, false, None, Some d ->
+      Conex_unix_provider.fs_ro_provider d >>= fun io ->
+      L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
+      verify_full io repo ta nostrict
+    | None, _, _, _ -> Error "--repo is required"
+    | _ -> Error "invalid combination of incremental, patch and dir"
 end
 
 let doc = "Verify a signed community repository"
