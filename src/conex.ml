@@ -185,10 +185,10 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
        packages/foo/authorisation (maybe empty)
        packages/foo/releases <- empty
 *)
-  let verify_patch ?ignore_missing repo io newio (ids, auths, pkgs, rels) =
-    let releases = M.fold (fun _name versions acc -> S.union versions acc) rels S.empty in
-    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
-                (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
+  let verify_patch ?ignore_missing repo io newio (ids, auths, rels, check) =
+    let checksums = M.fold (fun _name versions acc -> S.union versions acc) check S.empty in
+    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d checks"
+                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (S.cardinal checksums)) ;
     (* all public keys of janitors in repo are valid. *)
     verify_janitors ~valid:(fun _ _ -> true) io repo >>= fun repo ->
     let janitor_keys =
@@ -235,14 +235,14 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         | Ok old, Error _ -> maybe_m (monoton_releases ~old repo)
         | Error _, Ok now -> maybe_m (monoton_releases ~now repo)
         | Error _, Error _ -> maybe_m (monoton_releases repo))
-      () pkgs >>= fun () ->
+      () rels >>= fun () ->
     foldS (fun () id ->
         match IO.read_checksums io id, IO.read_checksums newio id with
         | Ok old, Ok now -> maybe_m (monoton_checksums ~old ~now repo)
         | Ok old, Error _ -> maybe_m (monoton_checksums ~old repo)
         | Error _, Ok now -> maybe_m (monoton_checksums ~now repo)
         | Error _, Error _ -> maybe_m (monoton_checksums repo))
-      () releases >>= fun () ->
+      () checksums >>= fun () ->
     Ok newrepo
 
   let verify_diff ?ignore_missing io repo data =
