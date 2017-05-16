@@ -47,3 +47,7 @@ let apply provider diff =
   and description = "Patch provider"
   in
   { basedir ; description ; file_type ; read ; write ; read_dir ; exists }
+
+let apply_diff io data =
+    let diffs = Conex_diff.to_diffs data in
+    (List.fold_left apply io diffs, diffs)

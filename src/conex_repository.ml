@@ -248,6 +248,22 @@ let validate_checksums repo ?on_disk a r cs =
   | None -> res
   | Some css -> Checksums.compare_t cs css >>= fun () -> res
 
+let validate_snapshot repo authors snap =
+  (* XXX: do we need to verify that all snap.resources are of rtyp = `Author? *)
+  let names =
+    List.fold_left (fun acc idx -> S.add idx.Author.name acc) S.empty authors
+  and snaps =
+    List.fold_left (fun acc r -> S.add r.Author.rname acc)
+      (S.singleton snap.Author.name)
+      snap.Author.resources
+  in
+  guard (S.equal snaps names) "names are not equal" >>= fun () ->
+  iterM (fun idx ->
+      let hash = repo.digestf (Author.wire idx) in
+      let r = Author.r Uint.zero idx.Author.name `Author hash in
+      if Author.contains snap r then Ok () else Error ("snap does not include " ^ idx.Author.name))
+    authors
+
 type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
 
 let pp_m_err ppf = function

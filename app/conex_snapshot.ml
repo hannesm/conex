@@ -23,8 +23,15 @@ let err_to_cmdliner = function
   | Ok _ -> `Ok ()
   | Error m -> `Error (false, m)
 
-let doit _ repo quorum patchfile ignore_missing id =
+let doit _ repo quorum patchfile ignore_missing id anchors =
   err_to_cmdliner (
+    let ta = Conex_opts.convert_anchors anchors in
+    let valid id (_, digest) =
+      if S.mem digest ta then
+        (Logs.debug (fun m -> m "accepting ta %s" id) ; true)
+      else
+        (Logs.debug (fun m -> m "rejecting ta %s" id) ; false)
+    in
     (match patchfile with
      | None -> Error "you have to provide --patch"
      | Some p -> Ok p) >>= fun patchfile ->
@@ -35,11 +42,10 @@ let doit _ repo quorum patchfile ignore_missing id =
     Conex_unix_provider.fs_provider repo >>= fun io ->
     let repo = Conex_repository.repository ?quorum V.digest () in
     Conex_unix_persistency.read_file patchfile >>= fun patch ->
-    C.verify_diff ~ignore_missing io repo patch >>= fun _ ->
+    let newio, diffs = Conex_diff_provider.apply_diff io patch in
+    C.verify_patch ~ignore_missing ~valid repo io newio diffs >>= fun _ ->
     let ws = Logs.warn_count () in
-    Printf.printf "verification successfull with %d warnings\n" ws ;
-    let diffs = Conex_diff.to_diffs patch in
-    let newio = List.fold_left Conex_diff_provider.apply io diffs in
+    Logs.app (fun m -> m "verification successfull with %d warnings" ws) ;
     (* now that we have a sane repository, read ourselves, increment counter,
        sign, and save... we expect patch to not include us *)
     let idx = match Conex_io.read_author io id with
@@ -85,7 +91,7 @@ let man = [
 ]
 
 let cmd =
-  Term.(ret (const doit $ setup_log $ repo $ quorum $ patch $ no_strict $ id)),
+  Term.(ret (const doit $ setup_log $ repo $ quorum $ patch $ no_strict $ id $ anchors)),
   Term.info "conex_snapshot" ~version:"%%VERSION_NUM%%"
     ~doc:"Snapshot a given repository" ~man
 

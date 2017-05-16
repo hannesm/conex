@@ -28,6 +28,10 @@ val guard : bool -> 'a -> (unit, 'a) result
     the produced value, or [Error]. *)
 val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
 
+(** [iterM f xs] applies [f] to each element of [xs], returns either [Ok] and
+    the produced value, or [Error]. *)
+val iterM : ('a -> (unit, 'b) result) -> 'a list -> (unit, 'b) result
+
 (** [foldS f a s] applies [f] to each element of the set [s], returns either
     [Ok] and the produced value, or [Error]. *)
 val foldS : ('a -> string -> ('a, 'c) result) -> 'a -> S.t -> ('a, 'c) result

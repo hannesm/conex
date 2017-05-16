@@ -14,6 +14,10 @@ let rec foldM f n = function
   | [] -> Ok n
   | x::xs -> f n x >>= fun n' -> foldM f n' xs
 
+let rec iterM f = function
+  | [] -> Ok ()
+  | x::xs -> f x >>= fun () -> iterM f xs
+
 let foldS f a s =
   S.fold (fun id r ->
       r >>= fun r ->

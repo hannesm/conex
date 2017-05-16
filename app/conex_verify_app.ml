@@ -45,21 +45,18 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   module C = Conex.Make(L)(V)
 
-  let verify_patch io repo patch ignore_missing =
+  let verify_diff io repo patch valid ignore_missing =
     Conex_unix_persistency.read_file patch >>= fun x ->
-    C.verify_diff ~ignore_missing io repo x >>= fun _ ->
+    let newio, diffs = Conex_diff_provider.apply_diff io x in
+    C.verify_snapshot newio repo >>= fun () ->
+    C.verify_patch ~ignore_missing ~valid repo io newio diffs >>= fun _ ->
     let ws = L.warn_count () in
     Printf.printf "verification successfull with %d warnings\n" ws ;
     Ok ()
 
-  let verify_full io repo anchors ignore_missing =
-    let valid id (_, digest) =
-      if S.mem digest anchors then
-        (L.debug (fun m -> m "accepting ta %s" id) ; true)
-      else
-        (L.debug (fun m -> m "rejecting ta %s" id) ; false)
-    in
+  let verify_full io repo valid ignore_missing =
     C.verify_janitors ~valid io repo >>= fun repo ->
+    C.verify_snapshot io repo >>= fun () ->
     C.verify_ids io repo >>= fun repo ->
     IO.packages io >>= fun packages ->
     foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
@@ -71,16 +68,22 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   let verify_it repodir quorum anchors incremental dir patch nostrict =
     let ta = Conex_opts.convert_anchors anchors in
+    let valid id (_, digest) =
+      if S.mem digest ta then
+        (L.debug (fun m -> m "accepting ta %s" id) ; true)
+      else
+        (L.debug (fun m -> m "rejecting ta %s" id) ; false)
+    in
     let repo = Conex_repository.repository ?quorum V.digest () in
     match repodir, incremental, patch, dir with
     | Some repodir, true, Some p, None ->
       Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
       L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-      verify_patch io repo p nostrict
+      verify_diff io repo p valid nostrict
     | _, false, None, Some d ->
       Conex_unix_provider.fs_ro_provider d >>= fun io ->
       L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-      verify_full io repo ta nostrict
+      verify_full io repo valid nostrict
     | None, _, _, _ -> Error "--repo is required"
     | _ -> Error "invalid combination of incremental, patch and dir"
 end
