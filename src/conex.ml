@@ -158,6 +158,15 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
           (S.elements rel.Releases.versions) >>= fun () ->
         Ok repo
 
+  let verify_snapshot io repo =
+    let snap = "snapshot" in
+    to_str IO.pp_r_err (IO.read_author io snap) >>= fun idx ->
+    IO.ids io >>= fun ids ->
+    to_str IO.pp_r_err (foldS (fun acc id ->
+        IO.read_author io id >>= fun idx ->
+        Ok (idx :: acc)) [] (S.remove snap ids)) >>= fun idxs ->
+    validate_snapshot repo idxs idx
+
     (* we could try to be more smart:
        - only check all modified authorisations, releases, packages
        --> but if a team is modified, or an index is modified (add/remove!), we
@@ -185,24 +194,12 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
        packages/foo/authorisation (maybe empty)
        packages/foo/releases <- empty
 *)
-  let verify_patch ?ignore_missing repo io newio (ids, auths, pkgs, rels) =
-    let releases = M.fold (fun _name versions acc -> S.union versions acc) rels S.empty in
-    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d pkgs %d rels"
-                (S.cardinal ids) (S.cardinal auths) (S.cardinal pkgs) (S.cardinal releases)) ;
-    (* all public keys of janitors in repo are valid. *)
-    verify_janitors ~valid:(fun _ _ -> true) io repo >>= fun repo ->
-    let janitor_keys =
-      S.fold (fun id acc ->
-          match IO.read_author io id with
-          | Ok idx ->
-            let id (k, _) = C.keyid id k in
-            List.map id idx.Author.keys @ acc
-          | Error _ -> acc)
-        (match find_team repo "janitors" with None -> S.empty | Some x -> x)
-        []
-    in
+  let verify_patch ?ignore_missing ?(valid = fun _ _ -> false) repo io newio diffs =
+    let (ids, auths, rels, check) = Conex_diff.diffs_to_components diffs in
+    let checksums = M.fold (fun _name versions acc -> S.union versions acc) check S.empty in
+    L.debug (fun m -> m "verifying a diff with %d ids %d auths %d rels %d checks"
+                (S.cardinal ids) (S.cardinal auths) (S.cardinal rels) (S.cardinal checksums)) ;
     (* load all those janitors in newrepo which are valid (and verify janitors team) *)
-    let valid _id key = List.exists (fun k -> Digest.equal k key) janitor_keys in
     let fresh_repo = repository ~quorum:(quorum repo) (digestf repo) () in
     verify_janitors ~valid newio fresh_repo >>= fun newrepo ->
     (* now we do a full verification of the new repository *)
@@ -237,19 +234,13 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         | Ok old, Error _ -> maybe_m (monoton_releases ~old repo)
         | Error _, Ok now -> maybe_m (monoton_releases ~now repo)
         | Error _, Error _ -> maybe_m (monoton_releases repo))
-      () pkgs >>= fun () ->
+      () rels >>= fun () ->
     foldS (fun () id ->
         match IO.read_checksums io id, IO.read_checksums newio id with
         | Ok old, Ok now -> maybe_m (monoton_checksums ~old ~now repo)
         | Ok old, Error _ -> maybe_m (monoton_checksums ~old repo)
         | Error _, Ok now -> maybe_m (monoton_checksums ~now repo)
         | Error _, Error _ -> maybe_m (monoton_checksums repo))
-      () releases >>= fun () ->
+      () checksums >>= fun () ->
     Ok newrepo
-
-  let verify_diff ?ignore_missing io repo data =
-    let diffs = Conex_diff.to_diffs data in
-    let comp = Conex_diff.diffs_to_components diffs in
-    let newio = List.fold_left Conex_diff_provider.apply io diffs in
-    verify_patch ?ignore_missing repo io newio comp
 end

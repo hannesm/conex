@@ -65,10 +65,7 @@ let add_valid_resource id repo res =
     Ok ({ repo with valid = M.add dgst_str (res.rname, res.rtyp, S.singleton id) t})
 
 let add_index repo idx =
-  foldM
-    (add_valid_resource idx.Author.name)
-    repo
-    idx.Author.resources
+  foldM (add_valid_resource idx.Author.name) repo idx.Author.resources
 
 let add_team repo team =
   { repo with teams = M.add team.Team.name team.Team.members repo.teams  }
@@ -76,8 +73,12 @@ let add_team repo team =
 (*BISECT-IGNORE-BEGIN*)
 let pp_ok ppf = function
   | `Approved id -> Format.fprintf ppf "ok by id %s" id
-  | `Both (id, js) -> Format.fprintf ppf "ok by id %s and quorum %s" id (String.concat ", " (S.elements js))
-  | `Quorum js -> Format.fprintf ppf "ok by quorum %s" (String.concat ", " (S.elements js))
+  | `Both (id, js) ->
+    let janitors = String.concat ", " (S.elements js) in
+    Format.fprintf ppf "ok by id %s and quorum %s" id janitors
+  | `Quorum js ->
+    let janitors = String.concat ", " (S.elements js) in
+    Format.fprintf ppf "ok by quorum %s" janitors
 (*BISECT-IGNORE-END*)
 
 type base_error = [
@@ -246,6 +247,22 @@ let validate_checksums repo ?on_disk a r cs =
   match on_disk with
   | None -> res
   | Some css -> Checksums.compare_t cs css >>= fun () -> res
+
+let validate_snapshot repo authors snap =
+  (* XXX: do we need to verify that all snap.resources are of rtyp = `Author? *)
+  let names =
+    List.fold_left (fun acc idx -> S.add idx.Author.name acc) S.empty authors
+  and snaps =
+    List.fold_left (fun acc r -> S.add r.Author.rname acc)
+      (S.singleton snap.Author.name)
+      snap.Author.resources
+  in
+  guard (S.equal snaps names) "names are not equal" >>= fun () ->
+  iterM (fun idx ->
+      let hash = repo.digestf (Author.wire idx) in
+      let r = Author.r Uint.zero idx.Author.name `Author hash in
+      if Author.contains snap r then Ok () else Error ("snap does not include " ^ idx.Author.name))
+    authors
 
 type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
 

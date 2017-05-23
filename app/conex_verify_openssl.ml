@@ -67,7 +67,8 @@ module Log : EXTLOGS = struct
   let warn ?src:_ msgf = incr wcount ; kmsg kunit `Warn msgf
 end
 
-module V = Conex_verify_app.VERIFY (Log) (Conex_openssl.O_V)
+open Conex_verify_app
+module V = VERIFY(Log)(Conex_openssl.O_V)
 
 let terminal () =
   let dumb = try Sys.getenv "TERM" = "dumb" with
@@ -88,7 +89,9 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c =
   let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
-  V.verify_it repo quorum anchors incremental dir patch strict
+  err_to_cmdliner (
+    Conex_openssl.V.check_version () >>= fun () ->
+    V.verify_it repo quorum anchors incremental dir patch strict)
 
 open Conex_opts
 open Cmdliner

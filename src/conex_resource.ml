@@ -380,7 +380,8 @@ module Author = struct
   let resource_of_wire data =
     let open Wire in
     pmap data >>= fun map ->
-    Header.keys ~header:false ["index" ; "name" ; "typ" ; "digest" ] map >>= fun () ->
+    let keys = ["index" ; "name" ; "typ" ; "digest" ] in
+    Header.keys ~header:false keys map >>= fun () ->
     opt_err (search map "index") >>= pint >>= fun index ->
     opt_err (search map "name") >>= pdata >>= fun rname ->
     opt_err (search map "typ") >>= typ_of_wire >>= fun rtyp ->
@@ -403,10 +404,7 @@ module Author = struct
   (*BISECT-IGNORE-BEGIN*)
   let pp_r ppf { index ; rname ; rtyp ; digest } =
     Format.fprintf ppf "%a #%s %a@ %a"
-      pp_typ rtyp
-      (Uint.decimal index)
-      pp_name rname
-      Digest.pp digest
+      pp_typ rtyp (Uint.decimal index) pp_name rname Digest.pp digest
   (*BISECT-IGNORE-END*)
 
   type email = identifier

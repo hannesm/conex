@@ -51,13 +51,20 @@ module Make (L : LOGS) (C : Conex_verify.S): sig
   val verify_package : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t -> name ->
     (Conex_repository.t, string) result
 
-  (** [verify_diff ~ignore_missing io repository patch] first parses the [patch]
-      and applies it.  The key fingerprints ofjanitors in [repository] are used
-      to validate the janitors team of the repository with applied [patch].  All
-      identifiers and packages of the repository with [patch] applied are
-      verified, and additionally all modified resources have their monotonicity
-      verified.  If [ignore_missing] is true, packages with missing
-      authorisations and package indexes are ignored. *)
-  val verify_diff : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t -> string ->
+  (** [verify_snapshot io repo] reads and verifies the "snapshot", and verifies
+      that all other authors (and no additional authors) are present, and the
+      checksums match. *)
+  val verify_snapshot : Conex_io.t -> Conex_repository.t -> (unit, string) result
+
+  (** [verify_patch ~ignore_missing ~valid repo io newio diffs] verifies a
+      patch: [valid] is used to validate the janitors team of the repository
+      with applied patch [newio].  All identifiers and packages of the
+      repository with [patch] applied are verified, and additionally all
+      modified resources have their monotonicity verified.  If [ignore_missing]
+      is true, packages with missing authorisations and package indexes are
+      ignored. *)
+  val verify_patch : ?ignore_missing:bool ->
+    ?valid:(identifier -> Digest.t -> bool) -> Conex_repository.t ->
+    Conex_io.t -> Conex_io.t -> Conex_diff.t list ->
     (Conex_repository.t, string) result
 end

@@ -31,6 +31,7 @@ let () =
          Pkg.mllib "src/nocrypto/conex-nocrypto.mllib" ;
          Pkg.bin "app/conex_author" ;
          Pkg.bin "app/conex_verify_nocrypto" ;
+         Pkg.bin "app/conex_snapshot" ;
          Pkg.test "test/tests" ]
   | other ->
     R.error_msgf "unknown package name: %s" other

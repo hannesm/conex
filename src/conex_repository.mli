@@ -180,6 +180,9 @@ val validate_checksums : t -> ?on_disk:Checksums.t -> Authorisation.t -> Release
    | `NotInReleases of name * S.t
    | `ChecksumsDiff of name * name list * name list * (Checksums.c * Checksums.c) list ]) result
 
+(** [validate_snapshot repo authors snap] validates [snap] with [authors] data. *)
+val validate_snapshot : t -> Author.t list -> Author.t -> (unit, string) result
+
 (** {1 Monotonicity} *)
 
 (** The variant of monotonicity errors. *)
