@@ -1,6 +1,5 @@
 open Conex_utils
 open Conex_resource
-open Conex_opam_repository_layout
 open Conex_opam_encoding
 
 type t = {
@@ -18,158 +17,105 @@ let pp ppf t =
   Format.fprintf ppf "repository %s: %s" t.basedir t.description
 (*BISECT-IGNORE-END*)
 
-type cc_err = [ `FileNotFound of name | `NotADirectory of name ]
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_cc_err ppf = function
-  | `FileNotFound n -> Format.fprintf ppf "couldn't find file %a" pp_name n
-  | `NotADirectory n -> Format.fprintf ppf "expected %a to be a directory, but it is a file" pp_name n
- (*BISECT-IGNORE-END*)
-
-let checksum_files t pv =
-  (match authorisation_of_package pv with
-   | Some de -> Ok (data_path@[ de ; pv ])
-   | None -> Error (`FileNotFound pv )) >>= fun st ->
-  let rec collect1 acc d = function
-    | File, f when d = [] && f = checksums_filename -> acc
-    | File, f -> (d@[f]) :: acc
-    | Directory, dir ->
-      let sub = d @ [ dir ] in
-      match t.read_dir (st@sub) with
-      | Error _ -> []
-      | Ok data -> List.fold_left (fun acc x -> collect1 acc sub x) acc data
-  in
-  match t.read_dir st with
-  | Error _ -> Error (`FileNotFound pv)
-  | Ok data ->
-    Ok (List.fold_left (fun acc x -> collect1 [] [] x @ acc) [] data)
-
-let compute_checksums digest t now name =
-  let checksum filename data =
-    let digest = digest data in
-    { Checksums.filename ; digest }
-  in
-  match t.file_type (release_dir name) with
-  | Error _ -> Error (`FileNotFound name)
-  | Ok File -> Error (`NotADirectory name)
-  | Ok Directory ->
-    checksum_files t name >>= fun fs ->
-    let d = release_dir name in
-    foldM (fun acc f ->
-        match t.read (d@f) with
-        | Error _ -> Error (`FileNotFound (path_to_string (d@f)))
-        | Ok data -> Ok (data :: acc)) [] fs >>= fun ds ->
-    let r = List.(map2 checksum (map path_to_string fs) (rev ds)) in
-    Ok (Checksums.t now name r)
-
-let read_dir f t path =
-  t.read_dir path >>= fun data ->
-  Ok (S.of_list (filter_map ~f data))
-
-let ids t = read_dir (function File, f -> Some f | _ -> None) t id_path
-
-let dirs = (function Directory, d -> Some d | _ -> None)
-
-let packages t = read_dir dirs t data_path
-let releases t name = read_dir dirs t (data_path@[name])
-
-let compute_releases t now name =
-  releases t name >>= fun versions ->
-  Ok (Releases.t ~versions now name)
-
-
 type r_err = [ `NotFound of typ * name | `ParseError of typ * name * string | `NameMismatch of typ * name * name ]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_r_err ppf = function
-  | `NotFound (res, nam) -> Format.fprintf ppf "%a %a was not found in repository" pp_typ res pp_name nam
-  | `ParseError (res, n, e) -> Format.fprintf ppf "parse error while parsing %a %a: %s" pp_typ res pp_name n e
-  | `NameMismatch (res, should, is) -> Format.fprintf ppf "%a %a is named %a" pp_typ res pp_name should pp_name is
+  | `NotFound (res, nam) -> Format.fprintf ppf "%a (type %a) was not found in repository" pp_name nam pp_typ res
+  | `ParseError (res, n, e) -> Format.fprintf ppf "parse error while parsing %a (type %a): %s" pp_name n pp_typ res e
+  | `NameMismatch (res, should, is) -> Format.fprintf ppf "%a (type %a) is named %a" pp_name should pp_typ res pp_name is
 (*BISECT-IGNORE-END*)
 
-let read_team t name =
-  match t.read (id_file name) with
-  | Error _ -> Error (`NotFound (`Team, name))
+let read_root t root_file =
+  match t.read [ root_file ] with
+  | Error _ -> Error (`NotFound (`Root, root_file))
   | Ok data ->
-    match decode data >>= Team.of_wire with
-    | Error p -> Error (`ParseError (`Team, name, p))
-    | Ok team ->
-      if id_equal team.Team.name name then
-        Ok team
-      else
-        Error (`NameMismatch (`Team, name, team.Team.name))
+    match decode data >>= Root.of_wire with
+    | Error p -> Error (`ParseError (`Root, root_file, p))
+    | Ok (root, warn) ->
+      guard (id_equal root.Root.name root_file)
+        (`NameMismatch (`Root, root_file, root.Root.name)) >>= fun () ->
+      Ok (root, warn)
 
-let write_team t team =
-  let id = team.Team.name in
-  t.write (id_file id) (encode (Team.wire team))
+let write_root t root =
+  let id = root.Root.name in
+  t.write [ id ] (encode (Root.wire root))
 
-let read_author t name =
-  match t.read (id_file name) with
-  | Error _ -> Error (`NotFound (`Author, name))
+let targets t root =
+  match t.read_dir root.Root.keydir with
+  | Error e ->
+    Printf.printf "failed while listing keys with %s\n" e ;
+    []
+  | Ok datas ->
+    List.fold_left (fun acc -> function
+        | File, name -> name :: acc
+        | Directory, name ->
+          Printf.printf "unexpected directory %s in keydir!" name ;
+          acc)
+      [] datas
+
+let read_targets t root id =
+  let path = root.Root.keydir @ [ id ] in
+  match t.read path with
+  | Error _ -> Error (`NotFound (`Targets, id))
   | Ok data ->
-    match decode data >>= Author.of_wire with
-    | Error p -> Error (`ParseError (`Author, name, p))
-    | Ok i ->
-      if id_equal i.Author.name name then
-        Ok i
-      else
-        Error (`NameMismatch (`Author, name, i.Author.name))
+    match decode data >>= Targets.of_wire with
+    | Error p -> Error (`ParseError (`Targets, id, p))
+    | Ok (targets, warn) ->
+      guard (id_equal targets.Targets.name id)
+        (`NameMismatch (`Targets, id, targets.Targets.name)) >>= fun () ->
+      Ok (targets, warn)
 
-let write_author t i =
-  let name = id_file i.Author.name in
-  t.write name (encode (Author.wire i))
+let write_targets t root targets =
+  let path = root.Root.keydir @ [ targets.Targets.name ] in
+  Printf.printf "writing %s\n" (path_to_string path) ;
+  t.write path (encode (Targets.wire targets))
 
-let read_id t id =
-  match read_team t id with
-  | Ok team -> Ok (`Team team)
-  | Error _ -> match read_author t id with
-    | Ok idx -> Ok (`Author idx)
-    | Error e -> Error e
+let digest_len f data =
+  let digest = f data
+  and size = Uint.of_int_exn (String.length data)
+  in
+  (digest, size)
 
-let read_authorisation t name =
-  match t.read (authorisation_path name) with
-  | Error _ -> Error (`NotFound (`Authorisation, name))
-  | Ok data ->
-    match decode data >>= Authorisation.of_wire with
-    | Error p -> Error (`ParseError (`Authorisation, name, p))
-    | Ok auth ->
-      if name_equal auth.Authorisation.name name then
-        Ok auth
-      else
-        Error (`NameMismatch (`Authorisation, name, auth.Authorisation.name))
+let target f filename data =
+  let digest, size = digest_len f data in
+  { Target.digest = [ digest ] ; size ; filename }
 
-let write_authorisation t a =
-  t.write (authorisation_path a.Authorisation.name)
-    (encode (Authorisation.wire a))
+let compute_checksum ?(prefix = [ "packages" ]) t f path =
+  let rec compute_item prefix otherp acc = function
+    | Directory, name ->
+      let path = prefix @ [ name ] in
+      t.read_dir path >>= fun items ->
+      foldM (compute_item path (otherp @ [ name ])) acc items
+    | File, name ->
+      let filename = prefix @ [ name ] in
+      t.read filename >>= fun data ->
+      Ok (target f (otherp @ [ name ]) data :: acc)
+  in
+  let go pre name = compute_item (prefix @ pre) pre [] (Directory, name) in
+  match List.rev path with
+    | [] ->
+      t.read_dir prefix >>= fun items ->
+      foldM (fun acc e -> match e with
+          | Directory, _ -> compute_item prefix [ ] acc e
+          | File, _ -> Ok acc)
+        [] items
+    | [ name ] -> go [] name
+    | name::rest -> go (List.rev rest) name
 
-let read_releases t name =
-  match t.read (package_path name) with
-  | Error _ -> Error (`NotFound (`Releases, name))
-  | Ok data ->
-    match decode data >>= Releases.of_wire with
-    | Error p -> Error (`ParseError (`Releases, name, p))
-    | Ok r ->
-      if name_equal r.Releases.name name then
-        Ok r
-      else
-        Error (`NameMismatch (`Releases, name, r.Releases.name))
 
-let write_releases t r =
-  let name = package_path r.Releases.name in
-  t.write name (encode (Releases.wire r))
-
-let read_checksums t name =
-  match t.read (checksums_path name) with
-  | Error _ -> Error (`NotFound (`Checksums, name))
-  | Ok data ->
-    match decode data >>= Checksums.of_wire with
-    | Error p -> Error (`ParseError (`Checksums, name, p))
-    | Ok csum ->
-      if name_equal csum.Checksums.name name then
-        Ok csum
-      else
-        Error (`NameMismatch (`Checksums, name, csum.Checksums.name))
-
-let write_checksums t csum =
-  let name = checksums_path csum.Checksums.name in
-  t.write name (encode (Checksums.wire csum))
+let compute_checksum_tree ?(prefix = [ "packages" ]) t f =
+  let rec compute_item prefix otherp acc = function
+    | Directory, name ->
+      let path = prefix @ [ name ] in
+      t.read_dir path >>= fun items ->
+      foldM (compute_item path (otherp @ [ name ])) acc items
+    | File, name ->
+      let filename = prefix @ [ name ] in
+      t.read filename >>= fun data ->
+      let path = otherp @ [name] in
+      let digestlen = digest_len f data in
+      Ok (Tree.insert path digestlen acc)
+  in
+  t.read_dir prefix >>= fun items ->
+  foldM (compute_item prefix []) Tree.empty items

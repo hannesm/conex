@@ -104,8 +104,8 @@ module V = struct
     else
       Ok ()
 
-  let verify_rsa_pss ~key ~data ~signature =
-    (try Ok (B64.decode signature) with _ -> Error `InvalidBase64Encoding) >>= fun signature ->
+  let verify_rsa_pss ~key ~data ~signature id =
+    (try Ok (B64.decode signature) with _ -> Error (`InvalidBase64Encoding id)) >>= fun signature ->
     match
       let filename = Filename.temp_file "conex" "sig" in
       Conex_unix_persistency.write_replace (filename ^ ".key") key >>= fun () ->
@@ -121,14 +121,18 @@ module V = struct
       res
     with
     | Ok () -> Ok ()
-    | Error x when x = "broken" -> Error `InvalidSignature
-    | Error _ -> Error `InvalidPublicKey
+    | Error x when x = "broken" -> Error (`InvalidSignature id)
+    | Error _ -> Error (`InvalidPublicKey id)
 
+  (* TODO we may need another sha256 which takes a filename to avoid
+          reading file X, writing file Y, sha256 Y, removing file Y
+          and instead doing sha256 X directly! *)
   let sha256 data =
     match
       let filename = Filename.temp_file "conex" "b64" in
       Conex_unix_persistency.write_replace filename data >>= fun () ->
       let cmd = Printf.sprintf "openssl dgst -hex -r -sha256 %s | cut -d ' ' -f 1" filename in
+      (* let cmd = Printf.sprintf "sha256 -q %s" filename in *)
       let input = Unix.open_process_in cmd in
       let output = input_line input in
       let _ = Unix.close_process_in input in

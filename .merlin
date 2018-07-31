@@ -16,5 +16,6 @@ PKG logs fmt rresult
 PKG cmdliner
 PKG alcotest
 PKG topkg
+PKG ptime ptime.clock.os
 
 FLG -safe-string -warn_error -w +A-4-6-44-48

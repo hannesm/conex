@@ -17,7 +17,8 @@ depends: [
   "ocamlbuild" {build}
   "topkg"      {build}
   "cmdliner"
-  "opam-file-format" {>= "2.0.0~beta"}
+  "opam-file-format" {>= "2.0.0~rc2"}
+  "ptime"
 ]
 
 available: [ ocaml-version >= "4.03.0" ]

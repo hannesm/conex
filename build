@@ -22,9 +22,10 @@ action ()
         default) action lib ; action bin ;;
         analysis) action lib ; $OCAMLBUILD analysis/opam_repo_stats.native ; $OCAMLBUILD analysis/maintainer.native ;;
         bin) action lib ;
-             $OCAMLBUILD app/conex_author.native ;
-             $OCAMLBUILD app/conex_verify.native ;;
-        lib) $OCAMLBUILD conex.cma conex.cmxa ;;
+#             $OCAMLBUILD app/conex_author.native ;
+             $OCAMLBUILD app/conex_verify_app.native ;;
+        lib) $OCAMLBUILD conex.cma conex.cmxa ;
+             $OCAMLBUILD conex_nocrypto.cma conex_nocrypto.cmxa ;;
         test) action lib ; $OCAMLBUILD test/tests.native ; ./tests.native -q ;;
         coverage)
             action clean ;

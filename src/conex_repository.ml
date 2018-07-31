@@ -1,292 +1,245 @@
 open Conex_resource
 open Conex_utils
 
-type valid_resources = (name * typ * S.t) M.t
-
-type teams = S.t M.t
-
+(* the targets tree uses the datadir ["packages"] as root []! *)
 type t = {
-  quorum : int ;
-  valid : valid_resources ;
-  teams : teams ;
-  ids : S.t ;
-  digestf : (Wire.t -> Digest.t);
+  root : Root.t ;
+  targets : (Digest.t * Uint.t * S.t) Tree.t ;
 }
 
-let repository ?(quorum = 3) digestf () =
-  { quorum ; valid = M.empty ; teams = M.empty ; ids = S.empty ; digestf }
+let root t = t.root
 
-let quorum t = t.quorum
+let keydir t = t.root.Root.keydir
 
-let digestf t = t.digestf
+let datadir t = t.root.Root.datadir
 
-let find_team t id = try Some (M.find id t.teams) with Not_found -> None
+let janitor_delegation t =
+  match M.find "janitor" t.root.Root.roles with
+  | None -> None
+  | Some e -> Some (e, false, S.singleton "root")
 
-let id_loaded t id = S.mem id t.ids || find_team t id <> None
+let targets t = t.targets
 
-let add_id t id = { t with ids = S.add id t.ids }
+let with_targets t targets = { t with targets }
 
-let expand_owner r os =
-  S.fold
-    (fun id s -> match find_team r id with
-       | None -> S.add id s
-       | Some mems -> S.union s mems)
-    os
-    S.empty
+let create root =
+  let targets = Tree.empty in
+  { root ; targets }
 
-let authorised r a id =
-  let owners = expand_owner r a.Authorisation.authorised in
-  S.mem id owners
-
-type conflict = [
-  | `NameConflict of name * Author.r
-  | `TypConflict of typ * Author.r
+type res = [
+  | `Only_on_disk of path
+  | `Only_in_targets of path
+  | `No_match of path * (Digest.t * Uint.t) list * (Digest.t * Uint.t * S.t) list
 ]
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_conflict ppf = function
-  | `NameConflict (have, inmem) -> Format.fprintf ppf "resource name conflict %a vs %a" pp_name have Author.pp_r inmem
-  | `TypConflict (have, inmem) -> Format.fprintf ppf "resource type conflict %a vs %a" pp_typ have Author.pp_r inmem
-(*BISECT-IGNORE-END*)
-
-let add_valid_resource id repo res =
-  let open Author in
-  let t = repo.valid in
-  let dgst_str = snd res.digest in
-  try
-    let n, r, ids = M.find dgst_str t in
-    if not (name_equal n res.rname) then
-      Error (`NameConflict (n, res))
-    else if not (typ_equal r res.rtyp) then
-      Error (`TypConflict (r, res))
-    else
-      Ok ({ repo with valid = M.add dgst_str (n, r, S.add id ids) t })
-  with Not_found ->
-    Ok ({ repo with valid = M.add dgst_str (res.rname, res.rtyp, S.singleton id) t})
-
-let add_index repo idx =
-  foldM
-    (add_valid_resource idx.Author.name)
-    repo
-    idx.Author.resources
-
-let add_team repo team =
-  { repo with teams = M.add team.Team.name team.Team.members repo.teams  }
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_ok ppf = function
-  | `Approved id -> Format.fprintf ppf "ok by id %s" id
-  | `Both (id, js) -> Format.fprintf ppf "ok by id %s and quorum %s" id (String.concat ", " (S.elements js))
-  | `Quorum js -> Format.fprintf ppf "ok by quorum %s" (String.concat ", " (S.elements js))
-(*BISECT-IGNORE-END*)
-
-type base_error = [
-  | `InvalidName of name * name
-  | `InvalidResource of name * typ * typ
-  | `NotApproved of name * typ * S.t
-]
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_cs ppf (a, b) =
-  Format.fprintf ppf "have %a want %a" Checksums.pp_c a Checksums.pp_c b
-
-let pp_error ppf = function
-  | #conflict as e -> pp_conflict ppf e
-  | `InvalidName (w, h) -> Format.fprintf ppf "invalid resource name, looking for %a but got %a" pp_name w pp_name h
-  | `InvalidResource (n, w, h) -> Format.fprintf ppf "invalid resource type %a, looking for %a but got %a" pp_name n pp_typ w pp_typ h
-  | `NotApproved (n, r, _) -> Format.fprintf ppf "not approved %a %a" pp_typ r pp_name n
-  | `InsufficientQuorum (name, r, goods, req) -> Format.fprintf ppf "quorum for %a %a insufficient: %d/%d %a" pp_typ r pp_name name (S.cardinal goods) req (pp_list pp_id) (S.elements goods)
-  | `AuthorWithoutKeys id -> Format.fprintf ppf "author %a does not have any public keys" pp_id id
-  | `IdNotPresent (n, s) -> Format.fprintf ppf "packages %a, authorised ids %a missing" pp_name n (pp_list pp_id) (S.elements s)
-  | `MemberNotPresent (n, s) -> Format.fprintf ppf "team %a, members %a missing" pp_id n (pp_list pp_id) (S.elements s)
-  | `AuthRelMismatch (a, r) -> Format.fprintf ppf "package name in authorisation of %a is different from releases %a" pp_name a pp_name r
-  | `InvalidReleases (n, h, w) when S.equal h S.empty -> Format.fprintf ppf "several releases of %a are missing on disk: %a" pp_name n (pp_list pp_name) (S.elements w)
-  | `InvalidReleases (n, h, w) when S.equal w S.empty -> Format.fprintf ppf "several releases of %a are not in the signed releases file %a" pp_name n (pp_list pp_name) (S.elements h)
-  | `InvalidReleases (n, h, w) -> Format.fprintf ppf "the releases file of %a diverges: %a are on disk, but not in the file, %a are in the file, but not on disk" pp_name n (pp_list pp_name) (S.elements h) (pp_list pp_name) (S.elements w)
-  | `NoSharedPrefix (n, rels) -> Format.fprintf ppf "releases %a contains releases where its name is not a prefix %a" pp_name n (pp_list pp_name) (S.elements rels)
-  | `NotInReleases (c, rs) -> Format.fprintf ppf "the package name %a is not in the set of released versions %a" pp_name c (pp_list pp_name) (S.elements rs)
-  | `ChecksumsDiff (n, miss, too, diffs) -> Format.fprintf ppf "checksums for %a differ, missing on disk: %a, missing in checksums file: %a, checksums differ: %a" pp_name n (pp_list pp_name) miss (pp_list pp_name) too (pp_list pp_cs) diffs
-(*BISECT-IGNORE-END*)
-
-let validate_resource repo owners name resource wire =
-  let digest = repo.digestf wire in
-  let csum_str = snd digest in
-  let n, r, ids =
-    if M.mem csum_str repo.valid then
-      M.find csum_str repo.valid
-    else
-      (name, resource, S.empty)
+let pp_res ppf =
+  let pp_d ppf (dgst, len) =
+    Format.fprintf ppf "%s bytes, %a" (Uint.decimal len) Digest.pp dgst
+  and pp_t ppf (dgst, len, _) =
+    Format.fprintf ppf "%s bytes, %a" (Uint.decimal len) Digest.pp dgst
   in
-  let janitors = match find_team repo "janitors" with None -> S.empty | Some s -> s in
-  let js = S.inter janitors ids in
-  let owners = expand_owner repo owners in
-  let signed_owners = S.inter ids owners in
-  match
-    name_equal n name,
-    typ_equal r resource,
-    S.cardinal signed_owners > 0,
-    S.cardinal js >= repo.quorum
-  with
-  | false, _    , _    , _     -> Error (`InvalidName (name, n))
-  | true , false, _    , _     -> Error (`InvalidResource (name, resource, r))
-  | true , true , false, false -> Error (`NotApproved (n, r, js))
-  | true , true , false, true  -> Ok (`Quorum js)
-  | true , true , true , false -> Ok (`IdNoQuorum (S.choose signed_owners, js))
-  | true , true , true , true  -> Ok (`Both (S.choose signed_owners, js))
+  function
+  | `Only_on_disk p -> Format.fprintf ppf "path %a only exists on disk" pp_path p
+  | `Only_in_targets p -> Format.fprintf ppf "path %a only exists in targets" pp_path p
+  | `No_match (p, disk, targets) ->
+    Format.fprintf ppf "no matching digest for %a (on_disk %a, targets %a)"
+      pp_path p (pp_list pp_d) disk (pp_list pp_t) targets
 
-let validate_key repo id key =
-  validate_resource repo (S.singleton id) id `Key (Key.wire id key) >>= function
-  | `Both b -> Ok (`Both b)
-  | `Quorum _ -> Error (`NotApproved (id, `Key, S.empty))
-  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Key, js, repo.quorum))
-
-let contains ?queued repo idx name typ data =
-  let digest = repo.digestf data in
-  let r = Author.r Uint.zero name typ digest in
-  Author.contains ?queued idx r
-
-let validate_account repo author a =
-  let name = author.Author.name in
-  let wired = Author.wire_account name a in
-  validate_resource repo (S.singleton name) name `Account wired >>= function
-  | `Both x -> Ok (`Both x)
-  | `Quorum _ -> Error (`NotApproved (name, `Account, S.empty)) (* TODO: loses account *)
-  | `IdNoQuorum (id, js) -> Error (`InsufficientQuorum (id, `Account, js, repo.quorum))
-
-let validate_author repo author =
-  let id = author.Author.name in
-  match author.Author.keys, author.Author.resources with
-  | [], [] ->
-    (match validate_resource repo S.empty id `Author (Author.wire_raw author) with
-     | Ok (`Quorum _) -> Ok (add_id repo id)
-     | _ -> Error (`AuthorWithoutKeys id))
-  | [], _ -> Error (`AuthorWithoutKeys id)
-  | _k :: _keys, _rs ->
-    add_index repo author >>= fun repo' ->
-    List.fold_left (fun r (k, _) ->
-        match r, validate_key repo' id k with
-        | Ok (), _ -> Ok ()
-        | Error _, Ok _ -> Ok ()
-        | Error _, Error e -> Error e)
-      (Error (`NotApproved (id, `Key, S.empty)))
-      author.Author.keys >>= fun () ->
-    Ok (add_id repo' id)
-
-let validate_team repo team =
-  let id = team.Team.name in
-  match validate_resource repo S.empty id `Team (Team.wire team) with
-  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Team, js, repo.quorum))
-  | Error e -> Error e
-  | Ok (`Quorum js) ->
-    guard (S.subset team.Team.members repo.ids)
-      (`MemberNotPresent (id, S.diff team.Team.members repo.ids)) >>= fun () ->
-    Ok (add_team repo team, `Quorum js)
-  (* the following two cases will never happen, since authorised is S.empty! *)
-  | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-
-let validate_authorisation repo auth =
-  let name = auth.Authorisation.name in
-  match validate_resource repo S.empty name `Authorisation (Authorisation.wire auth) with
-  | Error (`NotApproved (n, _, js)) -> Error (`InsufficientQuorum (n, `Authorisation, js, repo.quorum))
-  | Error e -> Error e
-  | Ok (`Quorum js) ->
-    let all = auth.Authorisation.authorised in
-    guard (S.for_all (id_loaded repo) all)
-      (`IdNotPresent (name, S.filter (fun id -> not (id_loaded repo id)) all)) >>= fun () ->
-    Ok (`Quorum js)
-  (* the following two cases will never happen, since authorised is S.empty! *)
-  | Ok (`IdNoQuorum _) | Ok (`Both _) -> invalid_arg "can not happen"
-
-let ensure_releases rel disk =
-  let rels = rel.Releases.versions
-  and dirs = disk.Releases.versions
-  in
-  if S.equal rels dirs then
-    Ok ()
-  else
-    let have = S.diff dirs rels
-    and want = S.diff rels dirs
+let validate_targets t on_disk =
+  (* foreach digest in on_disk there exists a matching one in t.targets
+     if there is no such digest -> `Only_on_disk
+     if the digest does not match -> `No_match
+     then, fold over t.targets, validate there exists a matching one in on_disk
+     if there is no such digest -> `Only_in_targets
+     if there is such a digest, it must match (see check above)
+ *)
+  let on_d =
+    let matches (dgst, len) (dgst', len', _) =
+      Digest.equal dgst dgst' && Uint.compare len len' = 0
     in
-    Error (have, want)
-
-let is_release name a =
-  match Conex_opam_repository_layout.authorisation_of_package a with
-  | Some x -> name_equal name x
-  | _ -> false
-
-let validate_releases repo ?on_disk a r =
-  guard (name_equal a.Authorisation.name r.Releases.name)
-    (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  guard (S.for_all (is_release r.Releases.name) r.Releases.versions)
-    (`NoSharedPrefix (r.Releases.name, r.Releases.versions)) >>= fun () ->
-  validate_resource repo a.Authorisation.authorised r.Releases.name `Releases (Releases.wire r) >>= fun res ->
-  let res = match res with
-    | `Both b -> Ok (`Both b)
-    | `Quorum js -> Ok (`Quorum js)
-    | `IdNoQuorum (id, _) -> Ok (`Approved id)
+    Tree.fold (fun path ds acc ->
+        match ds with
+        | [] -> acc
+        | _ -> match Tree.lookup path t.targets with
+          | None -> `Only_on_disk path :: acc
+          | Some xs ->
+            let in_targets d = List.exists (matches d) xs in
+            if List.exists in_targets ds
+            then acc
+            else `No_match (path, ds, xs) :: acc)
+      [] on_disk
   in
-  match on_disk with
-  | None -> res
-  | Some rels ->
-    match ensure_releases r rels with
-    | Error (h, w) -> Error (`InvalidReleases (r.Releases.name, h, w))
-    | Ok () -> res
+  Tree.fold (fun path xs acc ->
+      match xs with
+      | [] -> acc
+      | _ -> match Tree.lookup path on_disk with
+        | None -> `Only_in_targets path :: acc
+        | Some _ -> acc)
+    on_d t.targets
 
-let validate_checksums repo ?on_disk a r cs =
-  guard (name_equal a.Authorisation.name r.Releases.name)
-    (`AuthRelMismatch (a.Authorisation.name, r.Releases.name)) >>= fun () ->
-  guard (S.mem cs.Checksums.name r.Releases.versions)
-    (`NotInReleases (cs.Checksums.name, r.Releases.versions)) >>= fun () ->
-  validate_resource repo a.Authorisation.authorised cs.Checksums.name `Checksums (Checksums.wire cs) >>= fun res ->
-  let res = match res with
-    | `Both b -> Ok (`Both b)
-    | `Quorum js -> Ok (`Quorum js)
-    | `IdNoQuorum (id, _) -> Ok (`Approved id)
+let fold_targets f acc id_d targets =
+(*  M.iter (fun id (dgst, epoch) ->
+      Printf.printf "[fold_targets] id %s digest %s epoch %s\n"
+        id (Digest.to_string dgst) (Uint.decimal epoch))
+    id_d ; *)
+  List.fold_left (fun acc target ->
+      match M.find target.Targets.name id_d with
+      | None ->
+        Format.printf "couldn't find id %a in id_d@." pp_id target.Targets.name ;
+        acc
+      | Some (dgst, epoch) -> f acc dgst epoch target)
+    acc targets
+
+module Expr_map = struct
+  include Map.Make(Expression)
+
+  let find k m = try Some (find k m) with Not_found -> None
+end
+
+let collect_and_validate_delegations id_d parent expr targets =
+  let tree =
+    fold_targets (fun tree dgst epoch target ->
+        List.fold_left (fun tree delegation ->
+            (* Format.printf "inserting delegation %a (origin %a)@."
+               Delegation.pp delegation pp_id target.Targets.name ; *)
+            List.fold_left (fun tree path ->
+                if subpath ~parent path then begin
+                  Tree.insert path
+                    (delegation.Delegation.terminating,
+                     delegation.Delegation.keys,
+                     target.Targets.name, dgst, epoch)
+                    tree
+                  end else begin
+                    Format.printf "WARN ignoring delegation %a (path %a is not below parent %a)@."
+                      Delegation.pp delegation
+                      pp_path path pp_path parent ;
+                    tree
+                  end)
+                tree delegation.Delegation.paths)
+            tree target.Targets.delegations)
+      Tree.empty id_d targets
   in
-  match on_disk with
-  | None -> res
-  | Some css -> Checksums.compare_t cs css >>= fun () -> res
+  (* now, tree contains at its nodes a list of
+     (bool * Expression.t * identifier * Digest.t * Uint.t) *)
+  let good_ones =
+    Tree.fold (fun path stuff acc ->
+        let em =
+          List.fold_left (fun acc (terminating, expression, id, keyid, epoch) ->
+              let supporter = (terminating, id, keyid, epoch) in
+              (* Format.printf "inserting expr %a (terminating %b) (supporter %a) for %a@."
+                 Expression.pp expression terminating pp_id id pp_path path ; *)
+              let v = match Expr_map.find expression acc with
+                | None -> [ supporter ]
+                | Some m -> supporter :: m
+              in
+              Expr_map.add expression v acc)
+            Expr_map.empty stuff
+        in
+        Expr_map.fold (fun expression ss acc ->
+            (* eval expression foreach thing *)
+            let t, nont = List.partition (fun (t, _, _, _) -> t) ss in
+            (* Format.printf "expr %a path %a %d terminating, %d non-terminating@."
+               Expression.pp expression pp_path path (List.length t) (List.length nont) ; *)
+            let dms xs =
+              List.fold_left (fun (dm, s) (_, id, keyid, epoch) ->
+                  (* Format.printf "adding %a for %a@." pp_id id pp_path path ; *)
+                  Digest_map.add keyid (id, epoch) dm, S.add id s)
+                (Digest_map.empty, S.empty) xs
+            in
+            let ts, tss = dms t
+            and nonts, nontss = dms nont
+            in
+            (* Format.printf "evaluating expr %a for %a and %a@."
+              Expression.pp expr pp_path path Expression.pp expression ; *)
+            if Expression.eval expr ts S.empty then
+              (path, expression, true, tss) :: acc
+            else if Expression.eval expr nonts S.empty then
+              (path, expression, false, nontss) :: acc
+            else begin
+              Format.printf "expression %a couldn't evaluate for %a@."
+                Expression.pp expression pp_path path ;
+              acc
+            end) em acc)
+      [] tree
+  in
+(*  let pp_t ppf (path, expr, t, s) =
+    Format.fprintf ppf "path %a expr %a terminating %b supporters %a@."
+      pp_path path Expression.pp expr t S.pp s
+  in
+    Format.printf "at the end, our delegations %a@." (pp_list pp_t) good_ones ; *)
+  (* each checksum that is good in that setting is allowed to return from here,
+     and being inserted into a global tree of valid checksums *)
+  good_ones
 
-type m_err = [ `NotIncreased of typ * name | `Deleted of typ * name | `Msg of typ * string ]
-
-let pp_m_err ppf = function
-  | `NotIncreased (res, nam) -> Format.fprintf ppf "monotonicity: counter of %a %a was not increased" pp_typ res pp_name nam
-  | `Deleted (res, nam) -> Format.fprintf ppf "monotonicity: %a %a was deleted" pp_typ res pp_name nam
-  | `Msg (res, str) -> Format.fprintf ppf "monotonicity: %a %s" pp_typ res str
-
-let increased old ne r nam = guard (Uint.compare ne old = 1) (`NotIncreased (r, nam))
-
-let monoton_author ?old ?now _t =
-  match old, now with
-  | Some idx, Some idx' -> increased idx.Author.counter idx'.Author.counter `Author idx.Author.name
-  | None, Some _ -> Ok () (* allow creation of ids *)
-  | Some idx, None -> Error (`Deleted (`Author, idx.Author.name)) (* DO NOT allow author deletions *)
-  | None, None -> Error (`Msg (`Author, "both are none"))
-
-let monoton_team ?old ?now _t =
-  match old, now with
-  | Some team, Some team' -> increased team.Team.counter team'.Team.counter `Team team.Team.name
-  | None, Some _ -> Ok () (* allow creation of ids *)
-  | Some team, None -> Error (`Deleted (`Team, team.Team.name)) (* DO NOT allow team deletions *)
-  | None, None -> Error (`Msg (`Team, "both are none"))
-
-let monoton_authorisation ?old ?now _t =
-  match old, now with
-  | Some a, Some a' -> increased a.Authorisation.counter a'.Authorisation.counter `Authorisation a.Authorisation.name
-  | None, Some _ -> Ok () (* allow creation *)
-  | Some a, None -> Error (`Deleted (`Authorisation, a.Authorisation.name)) (* DO NOT allow deletion of authorsations *)
-  | None, None -> Error (`Msg (`Authorisation, "both are none"))
-
-let monoton_releases ?old ?now _t =
-  match old, now with
-  | Some rel, Some rel' -> increased rel.Releases.counter rel'.Releases.counter `Releases rel.Releases.name
-  | None, Some _ -> Ok () (* allow creation *)
-  | Some rel, None -> Error (`Deleted (`Releases, rel.Releases.name)) (* DO NOT allow deletion of packages *)
-  | None, None -> Error (`Msg (`Releases, "both are none"))
-
-let monoton_checksums ?old ?now _t =
-  match old, now with
-  | Some cs, Some cs' -> increased cs.Checksums.counter cs'.Checksums.counter `Checksums cs.Checksums.name
-  | None, Some _ -> Ok () (* allow creation *)
-  | Some _, None -> Ok () (* allow deletion of releases *)
-  | None, None -> Error (`Msg (`Checksums, "both are none"))
+let collect_and_validate_targets ?(tree = Tree.empty) id_d parent expr targets =
+  let ttree =
+    fold_targets (fun tree dgst epoch target ->
+        List.fold_left (fun tree chk ->
+            if subpath ~parent chk.Target.filename then begin
+(*              Format.printf "inserting target %a (origin %a)@."
+                Target.pp chk pp_id target.Targets.name ; *)
+              Tree.insert chk.Target.filename
+                (chk.Target.digest, chk.Target.size,
+                 target.Targets.name, dgst, epoch)
+                tree
+            end else begin
+              Format.printf "WARN ignoring target %a (path %a is not below parent %a@."
+                Target.pp chk pp_path chk.Target.filename pp_path parent ;
+              tree
+            end)
+          tree target.Targets.targets)
+      Tree.empty id_d targets
+  in
+  (* once that is in there, fold over tree and eval expr with the stored "digest maps" *)
+  let good_ones =
+    Tree.fold (fun path stuff acc ->
+        (* need to go over the stuff list and sort by first projection: *)
+        (* this is a digest list -- now we need to put all the digests somewhere *)
+        (* and get the key_dgst, name, epoch as DigestMap on the RHS, *)
+        let dm =
+          List.fold_left (fun acc (chks, len, id, keyid, epoch) ->
+              let supporter = (id, keyid, epoch) in
+              List.fold_left (fun acc dgst ->
+(*                  Format.printf "inserting digest %a (supporter %a) for %a (digest %a, len %s)@."
+                    Digest.pp dgst pp_id id pp_path path Digest.pp dgst (Uint.decimal len) ; *)
+                  let v = match Digest_map.find dgst acc with
+                    | None -> Uint_map.add len [ supporter ] Uint_map.empty
+                    | Some m ->
+                      match Uint_map.find len m with
+                      | None -> Uint_map.add len [ supporter ] m
+                      | Some sups -> Uint_map.add len (supporter :: sups) m
+                  in
+                  Digest_map.add dgst v acc) acc chks)
+            Digest_map.empty stuff
+        in
+        Digest_map.fold (fun dgst m tree ->
+            (* eval expression foreach thing *)
+            Uint_map.fold (fun len sups tree ->
+                let dm, s =
+                  List.fold_left (fun (dm, s) (id, keyid, epoch) ->
+                      (* Format.printf "adding %a for %a (digest %a, len %s)@."
+                         pp_id id pp_path path Digest.pp dgst (Uint.decimal len) ; *)
+                      Digest_map.add keyid (id, epoch) dm, S.add id s)
+                    (Digest_map.empty, S.empty) sups
+                in
+                (* Format.printf "evaluating expr %a for %a (digest %a, len %s)@."
+                   Expression.pp expr pp_path path Digest.pp dgst (Uint.decimal len) ; *)
+                if Expression.eval expr dm S.empty then
+                  Tree.insert path (dgst, len, s) tree
+                else begin
+                  Format.printf "expression %a couldn't evaluate for %a (digest %a, len %s)@."
+                    Expression.pp expr pp_path path Digest.pp dgst (Uint.decimal len) ;
+                  tree
+                end) m tree)
+          dm acc)
+      tree ttree
+  in
+  (*
+  let pp_t ppf (dgst, len, s) =
+    Format.fprintf ppf "digest %a len %s supporters %a@."
+      Digest.pp dgst (Uint.decimal len) S.pp s
+  in
+  Format.printf "at the end, our tree %a@." (Tree.pp pp_t) good_ones ; *)
+  (* each checksum that is good in that setting is allowed to return from here,
+     and being inserted into a global tree of valid checksums *)
+  good_ones

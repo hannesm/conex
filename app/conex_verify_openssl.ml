@@ -55,8 +55,8 @@ module Log : EXTLOGS = struct
     fun k level msgf ->
       let doit =
         match level, !curr_level with
+        | `Warn, _ -> true
         | `Info, `Debug | `Info, `Info -> true
-        | `Warn, `Warn -> true
         | `Debug, `Debug -> true
         | _ -> false
       in
@@ -67,7 +67,9 @@ module Log : EXTLOGS = struct
   let warn ?src:_ msgf = incr wcount ; kmsg kunit `Warn msgf
 end
 
-module V = Conex_verify_app.VERIFY (Log) (Conex_openssl.O_V)
+open Conex_verify_app
+open Conex_opts
+module V = VERIFY(Log)(Conex_openssl.O_V)
 
 let terminal () =
   let dumb = try Sys.getenv "TERM" = "dumb" with
@@ -78,7 +80,7 @@ let terminal () =
   in
   if not dumb && isatty then `Ansi_tty else `None
 
-let setup repo quorum anchors incremental dir patch verbose quiet strict no_c =
+let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root =
   let level =
     if quiet then `Warn
     else if verbose then `Debug
@@ -88,25 +90,27 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c =
   let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
-  V.verify_it repo quorum anchors incremental dir patch strict
+  msg_to_cmdliner (
+    Conex_openssl.V.check_version () >>= fun () ->
+    V.verify_it repo quorum anchors incremental dir patch strict root)
 
 open Conex_opts
 open Cmdliner
 
 let quiet =
     let doc = "Be quiet.  Takes over $(b,--verbose)" in
-    Arg.(value & flag & info [ "quiet" ] ~doc)
+    Arg.(value & flag & info [ "q" ; "quiet" ] ~doc)
 
 let verbose =
     let doc = "Be more verbose." in
-    Arg.(value & flag & info [ "verbose" ] ~doc)
+    Arg.(value & flag & info [ "v" ; "verbose" ] ~doc)
 
 let no_color =
     let doc = "Don't colourise the output.  Default is to colourise unless the output is not a terminal (or a dumb one)." in
     Arg.(value & flag & info [ "no-color" ] ~doc)
 
 let cmd =
-  Term.(ret (const setup $ repo $ quorum $ anchors $ incremental $ dir $ patch $ verbose $ quiet $ no_strict $ no_color)),
+  Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root)),
   Term.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
     ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
 

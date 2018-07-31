@@ -1,7 +1,31 @@
 
-module S = Set.Make(String)
+type 'a fmt = Format.formatter -> 'a -> unit
 
-let s_of_list es = List.fold_left (fun s v -> S.add v s) S.empty es
+(*BISECT-IGNORE-BEGIN*)
+let pp_list pe ppf xs =
+  match xs with
+  | [] -> Format.pp_print_string ppf "empty"
+  | xs ->
+    Format.pp_print_string ppf "[" ;
+    let rec p1 = function
+      | [] -> Format.pp_print_string ppf "]" ;
+      | [x] -> Format.fprintf ppf "%a]" pe x
+      | x::xs -> Format.fprintf ppf "%a;@ " pe x ; p1 xs
+    in
+    p1 xs
+(*BISECT-IGNORE-END*)
+
+module S = struct
+  include Set.Make(String)
+
+  let pp fmt t = pp_list Format.pp_print_string fmt (elements t)
+
+  let of_list es = List.fold_right add es empty
+end
+
+let str_pp pp e =
+  Format.(fprintf str_formatter "%a" pp e) ;
+  Format.flush_str_formatter ()
 
 let (>>=) a f =
   match a with
@@ -14,10 +38,18 @@ let rec foldM f n = function
   | [] -> Ok n
   | x::xs -> f n x >>= fun n' -> foldM f n' xs
 
+let rec iterM f = function
+  | [] -> Ok ()
+  | x::xs -> f x >>= fun () -> iterM f xs
+
 let foldS f a s =
   S.fold (fun id r ->
       r >>= fun r ->
       f r id) s (Ok a)
+
+let err_to_str pp = function
+  | Ok a -> Ok a
+  | Error e -> Error (str_pp pp e)
 
 module String = struct
   type t = string
@@ -39,8 +71,7 @@ module String = struct
       else
         match cut sep s with
         | None -> List.rev (s :: acc)
-        | Some (a, b) when String.length a > 0 -> doit (a :: acc) b
-        | Some (_, b) -> doit acc b
+        | Some (a, b) -> doit (a :: acc) b
     in
     doit [] str
 
@@ -115,11 +146,7 @@ module Uint = struct
   let max = -1L (* this is 0xFFFFFFFFFFFFFFFF *)
 
   let compare a b =
-    if a = b then
-      0
-    else if (a >= 0L && b >= 0L) || (a < 0L && b < 0L) then
-      Int64.compare a b
-    else if a < 0L then 1 else -1
+    Int64.(compare (sub a min_int) (sub b min_int))
 
   let succ x =
     if x = max then
@@ -128,6 +155,10 @@ module Uint = struct
       (false, Int64.succ x)
 
   let to_string s = Printf.sprintf "%LX" s
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf i = Format.pp_print_string ppf (to_string i)
+  (*BISECT-IGNORE-END*)
 
   let decimal s = Printf.sprintf "%Lu" s
 
@@ -147,9 +178,24 @@ module Uint = struct
       Int64.of_int i
 
   let of_int i = try Some (of_int_exn i) with Failure _ -> None
+
 end
 
-module M = Map.Make(String)
+module Uint_map = struct
+  include Map.Make(Uint)
+  let find k m = try Some (find k m) with Not_found -> None
+end
+
+module M = struct
+  include Map.Make(String)
+
+  let find k m = try Some (find k m) with Not_found -> None
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp pp_e ppf m =
+    iter (fun k v -> Format.fprintf ppf "%s -> %a@ " k pp_e v) m
+  (*BISECT-IGNORE-END*)
+end
 
 let rec filter_map ~f = function
   | []    -> []
@@ -178,42 +224,120 @@ module type LOGS = sig
   val warn : ?src:src -> 'a log
 end
 
-
-type 'a fmt = Format.formatter -> 'a -> unit
-
-(*BISECT-IGNORE-BEGIN*)
-let pp_list pe ppf xs =
-  match xs with
-  | [] -> Format.pp_print_string ppf "empty"
-  | xs ->
-    Format.pp_print_string ppf "[" ;
-    let rec p1 = function
-      | [] -> Format.pp_print_string ppf "]" ;
-      | [x] -> Format.fprintf ppf "%a]" pe x
-      | x::xs -> Format.fprintf ppf "%a;@ " pe x ; p1 xs
-    in
-    p1 xs
-(*BISECT-IGNORE-END*)
-
 type file_type = File | Directory
 
 type path = string list
 
-let path_to_string path =
-  let skip x = List.mem x [ "." ; "" ; "/" ] in
-  List.fold_left (fun d f ->
-                  match d, f with
-                  | "..", _ -> invalid_arg "there's no escape!"
-                  | _, ".." -> invalid_arg "no escape for files!"
-                  | d, f when skip d -> f
-                  | d, f when skip f -> d
-                  | d, f -> Filename.concat d f)
-                 "" path
+let root = []
 
-let string_to_path str = String.cuts '/' str
+let non_path = [ ".." ; "." ; "" ; "/" ]
+
+let path_to_string path =
+  assert (not (List.exists (fun s -> List.mem s non_path) path)) ;
+  List.fold_left Filename.concat "" path
+
+let string_to_path_exn str =
+  let segments = String.cuts '/' str in
+  let segs = match segments with
+    | ""::xs -> xs
+    | xs -> xs
+  in
+  if List.exists (fun s -> List.mem s non_path) segs then
+    invalid_arg "invalid path"
+  else
+    segs
+
+let string_to_path str =
+  try Ok (string_to_path_exn str) with
+  | Invalid_argument m -> Error m
 
 let path_equal a b =
-  List.length a = List.length b &&
-  List.for_all2 (fun s s' -> String.compare s s' = 0) a b
+  let str_eq a b = String.compare a b = 0 in
+  try List.for_all2 str_eq a b with _ -> false
+
+let rec subpath ~parent b =
+  let str_eq a b = String.compare a b = 0 in
+  match parent, b with
+  | [], [] -> false
+  | [], _ -> true
+  | _, [] -> false
+  | hd::tl, hd'::tl' -> if str_eq hd hd' then subpath ~parent:tl tl' else false
+
+(*BISECT-IGNORE-BEGIN*)
+let pp_path fmt p = Format.pp_print_string fmt (path_to_string p)
+(*BISECT-IGNORE-END*)
 
 type item = file_type * string
+
+module Tree = struct
+  type 'a t = Node of 'a list * 'a t M.t
+
+  let rec equal eq (Node (del, map)) (Node (del', map')) =
+    (try List.for_all2 eq del del' with _ -> false) &&
+    M.equal (equal eq) map map'
+
+  let empty = Node ([], M.empty)
+
+  let is_empty = function
+    | Node ([], m) when M.is_empty m -> true
+    | Node (_, _) -> false
+
+  let rec sub path t = match path, t with
+    | [], n -> n
+    | hd::tl, Node (_, m) -> match M.find hd m with
+      | None -> empty
+      | Some n -> sub tl n
+
+  let fold f acc root =
+    let rec doit path (Node (v, map)) acc =
+      let acc' = f path v acc in
+      M.fold (fun k v acc -> doit (path @ [k]) v acc) map acc'
+    in
+    doit [] root acc
+
+(*BISECT-IGNORE-BEGIN*)
+  let pp pp_e ppf node =
+    let rec pp prefix ppf (Node (dels, map)) =
+      let pp_map ppf map =
+        List.iter (fun (key, node) ->
+            let prefix' = prefix ^ "/" ^ key in
+            Format.fprintf ppf "@[<2>%s@ ->@ %a@]@,"
+              prefix' (pp prefix') node)
+          (M.bindings map)
+      in
+      Format.fprintf ppf "@[<2>values:@ %a@.%a@,@]@,"
+        (pp_list pp_e) dels
+        pp_map map
+    in
+    (pp "") ppf node
+(*BISECT-IGNORE-END*)
+
+  let rec lookup path (Node (dels, map)) =
+    match path with
+    | [] -> Some dels
+    | hd::tl -> match M.find hd map with
+      | None -> None
+      | Some x -> lookup tl x
+
+  let lookup_prefix path node =
+    let rec lookup sofar path (Node (dels, map)) =
+      let ext = match dels with [] -> sofar | d -> d in
+      match path with
+      | [] -> ext
+      | hd::tl -> match M.find hd map with
+        | None -> ext
+        | Some x -> lookup ext tl x
+    in
+    lookup [] path node
+
+  let rec insert path value (Node (dels, map)) =
+    match path with
+    | [] -> Node (dels @ [ value ], map)
+    | hd::tl ->
+      let n = match M.find hd map with
+        | None -> empty
+        | Some x -> x
+      in
+      let res = insert tl value n in
+      Node (dels, M.add hd res map)
+end

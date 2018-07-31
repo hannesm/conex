@@ -1,0 +1,8 @@
+#require "cmdliner, opam-file-format, nocrypto, x509, rresult, cstruct, logs, fmt, ptime, ptime.clock.os";;
+#directory "_build/src";;
+#load "conex.cma";;
+
+#directory "_build/src/nocrypto";;
+#load "conex_nocrypto.cma";;
+
+#utop_prompt_dummy;;

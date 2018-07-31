@@ -35,56 +35,44 @@ true
 
  *)
 
-let err_to_cmdliner = function
-  | Ok _ -> `Ok ()
-  | Error m -> `Error (false, m)
-
 module IO = Conex_io
 
 module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   module C = Conex.Make(L)(V)
 
-  let verify_patch io repo patch ignore_missing =
+  let verify_diff io patch valid ignore_missing root_file =
     Conex_unix_persistency.read_file patch >>= fun x ->
-    C.verify_diff ~ignore_missing io repo x >>= fun _ ->
-    let ws = L.warn_count () in
-    Printf.printf "verification successfull with %d warnings\n" ws ;
+    let newio, diffs = Conex_diff_provider.apply_diff io x in
+    (*    C.verify_snapshot newio repo >>= fun () -> *)
+    C.verify_root ~valid newio root_file >>= fun repo ->
+    C.verify ~ignore_missing newio repo >>= fun () ->
+    C.verify_diffs root_file io newio diffs >>= fun () ->
+    Printf.printf "diff verification successfull\n" ;
     Ok ()
 
-  let verify_full io repo anchors ignore_missing =
-    let valid id (_, digest) =
-      if S.mem digest anchors then
-        (L.debug (fun m -> m "accepting ta %s" id) ; true)
-      else
-        (L.debug (fun m -> m "rejecting ta %s" id) ; false)
-    in
-    C.verify_janitors ~valid io repo >>= fun repo ->
-    C.verify_ids io repo >>= fun repo ->
-    IO.packages io >>= fun packages ->
-    foldS (C.verify_package ~ignore_missing io) repo packages >>= fun _ ->
-    let ws = L.warn_count () in
-    Printf.printf "verification of %d packages successfull with %d warnings\n"
-      (S.cardinal packages - ws) ws ;
+  let verify_full io valid ignore_missing root_file =
+    C.verify_root ~valid io root_file >>= fun repo ->
+    C.verify ~ignore_missing io repo >>= fun () ->
+    Printf.printf "full verification successfull\n" ;
     Ok ()
 
-
-  let verify_it repodir quorum anchors incremental dir patch nostrict =
-    err_to_cmdliner
-      (let ta = Conex_opts.convert_anchors anchors in
-       Conex_openssl.V.check_version () >>= fun () ->
-       let repo = Conex_repository.repository ?quorum Conex_openssl.O_V.digest () in
-       match repodir, incremental, patch, dir with
-       | Some repodir, true, Some p, None ->
-         Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
-         L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-         verify_patch io repo p nostrict
-       | _, false, None, Some d ->
-         Conex_unix_provider.fs_ro_provider d >>= fun io ->
-         L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-         verify_full io repo ta nostrict
-       | None, _, _, _ -> Error "--repo is required"
-       | _ -> Error "invalid combination of incremental, patch and dir")
+  let verify_it repodir _quorum anchors incremental dir patch nostrict root_file =
+    let valid = Conex_opts.valid anchors in
+    match repodir, incremental, patch, dir with
+    | Some repodir, true, Some p, None ->
+      Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
+      L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
+      verify_diff io p valid nostrict root_file
+    | _, false, None, Some "" ->
+      L.debug (fun m -> m "called with no incremental, and dir = empty -> no update") ;
+      Ok ()
+    | _, false, None, Some d ->
+      Conex_unix_provider.fs_ro_provider d >>= fun io ->
+      L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
+      verify_full io valid nostrict root_file
+    | None, _, _, _ -> Error "--repo is required"
+    | _ -> Error "invalid combination of incremental, patch and dir"
 end
 
 let doc = "Verify a signed community repository"

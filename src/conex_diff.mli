@@ -21,11 +21,9 @@ val file : t -> string
 (** [to_diffs str] decodes the given patch into a list of [diff]. *)
 val to_diffs : string -> t list
 
-(** [diffs_to_components diffs]
-    {{!Conex_opam_repository_layout.categorise}categorises} the diffs into sets
-    of modified [ids], [authorisations], [package] resources, and a map of
-    [releases]. *)
-val diffs_to_components : t list -> (S.t * S.t * S.t * S.t M.t)
+(** [ids rootname keydir diffs] returns whether the root file was changed, and
+    the set of modified ids. *)
+val ids : string -> path -> t list -> (bool * S.t, string) result
 
 (** [patch data diff] is [data'], which is the result of applying [diff] to
     [data]. *)
