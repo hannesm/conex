@@ -29,8 +29,9 @@ let () =
   | "conex-nocrypto" ->
     Ok [ Pkg.lib "pkg/META.nocrypto" ;
          Pkg.mllib "src/nocrypto/conex-nocrypto.mllib" ;
-         Pkg.bin "app/conex_author" ;
+         Pkg.bin "app/conex_root" ;
+         Pkg.bin "app/conex_key" ;
+         Pkg.bin "app/conex_targets" ;
          Pkg.bin "app/conex_verify_nocrypto" ;
          Pkg.test "test/tests" ]
-  | other ->
-    R.error_msgf "unknown package name: %s" other
+  | _ -> Error (`Msg "unknown package")

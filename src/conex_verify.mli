@@ -7,9 +7,10 @@ open Conex_resource
 
 (** Potential error case when verifying a signature *)
 type error = [
-  | `InvalidBase64Encoding
-  | `InvalidSignature
-  | `InvalidPublicKey
+  | `UnknownKey of identifier
+  | `InvalidBase64Encoding of identifier
+  | `InvalidSignature of identifier
+  | `InvalidPublicKey of identifier
 ]
 
 (** [pp_error] is a pretty printer for [verification_error]. *)
@@ -25,12 +26,9 @@ module type S = sig
       encoding} of [wire]. *)
   val digest : Wire.t -> Digest.t
 
-  (** [keyid id key] is the unique fingerprint of [key]. *)
-  val keyid : identifier -> Key.t -> Digest.t
-
-  (** [verify author] verifies all signatures of [author]: they have to sign
-      the current resource list. *)
-  val verify : Author.t -> (unit, [> error ]) result
+  (** [verify wire keys sigs] is the set of valid signatures and errors *)
+  val verify : Wire.t -> Key.t M.t -> Signature.t M.t ->
+    S.t * error list
 end
 
 (** The verification backend, to be implemented by a crypto provider *)
@@ -39,7 +37,7 @@ module type S_RSA_BACK = sig
   (** [verify_rsa_pss ~key ~data ~signature] returns [Ok ()] on success,
       otherwise a [verification_error].  Currently, SHA256 is used as hash
       algorithm. *)
-  val verify_rsa_pss : key:string -> data:string -> signature:string ->
+  val verify_rsa_pss : key:string -> data:string -> signature:string -> identifier ->
     (unit, [> error ]) result
 
   (** [sha356 str] computes the SHA256 digest of [str] and converts it to

@@ -12,43 +12,50 @@ module type S = sig
   (** [ids ()] is the list of all available private keys. *)
   val ids : unit -> identifier list
 
+  type r_err = [ `Decode of string | `Read of string | `None | `Multiple of string list ]
+
+  val pp_r_err : r_err fmt
+
   (** [read id] is either [Ok priv], the private key corresponding to [id], or
       an [Error].  *)
-  val read : identifier -> (t, string) result
+  val read : identifier -> (t, r_err) result
 
   (** [bits t] is the number of bits of the private key [t]. *)
   val bits : t -> int
 
   (** [created t] is the timestamp when [t] was created. *)
-  val created : t -> Uint.t
+  val created : t -> timestamp
 
-  (** [generate ~bits alg id now ()] generates a fresh private key using [alg]
+  (** [id t] is the identifier of [t]. *)
+  val id : t -> identifier
+
+  (** [generate ~bits alg id ()] generates a fresh private key using [alg]
       for [id], or an error.  Generate also ensures to persistently store the
       generated key if desired. *)
-  val generate : ?bits:int -> Key.alg -> identifier -> Uint.t -> unit ->
+  val generate : ?bits:int -> Key.alg -> identifier -> unit ->
     (t, string) result
 
-  (** [pub_of_priv priv] extracts the public key out of [priv], or an error. *)
-  val pub_of_priv : t -> (Key.t, string) result
+  (** [pub_of_priv priv] extracts the public key out of [priv]. *)
+  val pub_of_priv : t -> Key.t
 
-  (** [sign now idx alg priv] signs [idx] with [priv] using [alg], and evaluates
-      to a new [idx], or an error.  The counter of [idx] is increased. *)
-  val sign : Uint.t -> Author.t -> Signature.alg -> t ->
-    (Author.t, string) result
+  (** [sign wire now id alg priv] signs [wire] with [priv] using [alg], and
+     evaluates to a [signature], or an error. *)
+  val sign : Wire.t -> timestamp -> identifier -> Signature.alg -> t ->
+    (Signature.t, string) result
 end
 
 (** A simple IO module type for certain private key operations. *)
 module type FS = sig
 
   (** [ids ()] is the list of available identifiers. *)
-  val ids : unit -> string list
+  val ids : unit -> Conex_resource.identifier list
 
   (** [read id] is either the content and creation timestamp of [id], or an
       error. *)
-  val read : string -> ((string * Conex_utils.Uint.t), string) result
+  val read : Conex_resource.identifier -> ((string * Conex_resource.timestamp), string) result
 
   (** [write id data] stores [data] as [id] persistently, or errors. *)
-  val write : string -> string -> (unit, string) result
+  val write : Conex_resource.identifier -> string -> (unit, string) result
 end
 
 (** The RSA backend module type *)
@@ -57,30 +64,31 @@ module type S_RSA_BACK = sig
   (** The abstract type t for keys *)
   type t
 
-  (** [ids ()] is the list of available identifiers. *)
-  val ids : unit -> string list
-
-  (** [read id] is either [t], the RSA private key of [id], or an error. *)
-  val read : string -> (t, string) result
+  (** [decode_priv id ts data] decodes the private key from [data] and returns
+      a [t] or an error. *)
+  val decode_priv : string -> Conex_resource.timestamp -> string -> (t, string) result
 
   (** [bits t] is the number of bits in [t]. *)
   val bits : t -> int
 
   (** [created t] is the timestamp of creation of [t]. *)
-  val created : t -> Uint.t
+  val created : t -> Conex_resource.timestamp
 
-  (** [generate_rsa ~bits id now ()] generates an RSA private key for [id], and
-      stores it persistently, or signals an error. *)
-  val generate_rsa : ?bits:int -> string -> Uint.t -> unit -> (t, string) result
+  (** [id t] is the identifier of [t]. *)
+  val id : t -> Conex_resource.identifier
 
-  (** [pub_of_priv_rsa priv] is either a PEM encoded PKCS8 public key of [priv]
-      or an error. *)
-  val pub_of_priv_rsa : t -> (string, string) result
+  (** [generate_rsa ~bits ()] generates an RSA private key. *)
+  val generate_rsa : ?bits:int -> unit -> string * string
+
+  (** [pub_of_priv_rsa priv] is the PEM-encoded PKCS8 public key of [priv]. *)
+  val pub_of_priv_rsa : t -> string
 
   (** [sign_pss priv data] is either the raw PSS signature of [data] using
       [priv] or an error. *)
   val sign_pss : t -> string -> (string, string) result
+
+  val sha256 : string -> string
 end
 
 (** Given a RSA backend, instantiate the private key module type S. *)
-module Make (C : S_RSA_BACK) : S
+module Make (C : S_RSA_BACK) (F : FS) : S

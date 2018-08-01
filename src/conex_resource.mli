@@ -11,6 +11,7 @@
 
 open Conex_utils
 
+(* TODO: maybe move name, identifier, timestamp to conex_utils!? *)
 (** {1 Names and identifiers} *)
 
 (** The name of resources, used e.g. for package names. *)
@@ -31,6 +32,16 @@ val pp_id : identifier fmt
 (** [id_equal a b] is the result of a case insensitive comparison of [a] and [b]. *)
 val id_equal : identifier -> identifier -> bool
 
+(** The type for a timestamp, always a RFC3339 string in UTC (no timezone
+    information).  *)
+type timestamp = string
+
+(* TODO: should we have a constructor and check for validity?
+   NNNN'-'MM'-'DD'T'hh':'mm':'ss'Z' where
+   ^^ year, 1 <= MM <= 12, 1 <= DD <= 31 (or depending on MM)
+   0 <= hh <= 23, 0 <= mm <= 59, 0 <= ss <= 59 *)
+
+val pp_timestamp : timestamp fmt
 
 (** {1 Wire format} *)
 
@@ -46,7 +57,11 @@ module Wire : sig
     | List of s list
     | Identifier of identifier
     | Data of string
-    | Int of Uint.t
+    | Bigint of Uint.t
+    | Smallint of int
+    | Pair of s * s
+    | And of s * s
+    | Or of s * s
 
   (** The toplevel node, a Map *)
   type t = s M.t
@@ -61,15 +76,8 @@ end
 
 (** The sum type of all possible resources. *)
 type typ = [
-  | `Signature
-  | `Key
-  | `Account
-  | `Author
-  | `Epoch
-  | `Team
-  | `Authorisation
-  | `Releases
-  | `Checksums
+  | `Root
+  | `Targets
 ]
 
 (** [resource_to_string res] is the string representation of [res]. *)
@@ -86,14 +94,21 @@ val typ_equal : typ -> typ -> bool
 
 val typ_of_wire : Wire.s -> (typ, string) result
 
+type err = [
+  | `Parse of string
+  | `Unknown_alg of string
+  | `Malformed
+]
+
+val pp_err : err fmt
 
 (** Common header on disk *)
 module Header : sig
 
   (** The header consists of version, created, counter, epoch, name, and typ. *)
   type t = {
-    version : Uint.t ;
-    created : Uint.t ;
+    version : int ;
+    created : timestamp ;
     counter : Uint.t ;
     epoch : Uint.t ;
     name : name ;
@@ -109,79 +124,9 @@ module Header : sig
   (** [of_wire t] converts [t] into a {!Header.t} or error. *)
   val of_wire : Wire.t -> (t, string) result
 
-  (** [timestamp uint] prints [uint] to a string as a timestamp (decimal as
-      seconds since UNIX epoch). *)
-  val timestamp : Uint.t -> string
-
   (** [counter ctr epoch] prints [ctr, epoch] to a string containing the counter
       and epoch (unless zero). *)
   val counter : Uint.t -> Uint.t -> string
-end
-
-
-(** {1 Asymmetric key types} *)
-
-module Key : sig
-
-  (** The sum type of supported asymmetric key algorithms. *)
-  type alg = [ `RSA ]
-
-  (** [alg_to_string pub] is a string representing the key algorithm. *)
-  val alg_to_string : alg -> string
-
-  (** [string_to_alg str] is either [Some alg], or [None]. *)
-  val string_to_alg : string -> alg option
-
-  (** The type of public keys *)
-  type t = alg * string * Uint.t
-
-  (** [equal a b] is [true] if both public keys are the same. *)
-  val equal : t -> t -> bool
-
-  (** [pp] is a pretty printer for public keys *)
-  val pp : t fmt
-
-  (** [of_wire w] converts [w] to a key or error. *)
-  val of_wire : Wire.s -> (t, string) result
-
-  (** [wire_raw t] is the raw wire representation of [t] used by
-      {!Author.wire}. *)
-  val wire_raw : t -> Wire.s
-
-  (** [wire id key] is [w], the wire representation used for approving [key]. *)
-  val wire : identifier -> t -> Wire.t
-end
-
-(** {1 Cryptographic signatures} *)
-
-module Signature : sig
-  (** The sum type of supported signature algorithms. *)
-  type alg = [ `RSA_PSS_SHA256 ]
-
-  (** [alg_to_string sig] is a string representing the signature algorithm. *)
-  val alg_to_string : alg -> string
-
-  (** [string_to_alg str] is either [Some alg] or [None]. *)
-  val string_to_alg : string -> alg option
-
-  (** The signature header, an algorithm and a created timestamp. *)
-  type hdr = alg * Uint.t
-
-  (** [wire id hdr data] extends the given data with the header and id to a
-      string which is then signed. *)
-  val wire : identifier -> hdr -> string -> Wire.t
-
-  (** A signature is a pair of header and value. *)
-  type t = hdr * string
-
-  (** [pp sig] is a pretty printer for a signature. *)
-  val pp : t fmt
-
-  (** [of_wire w] converts [w] to a signature or error. *)
-  val of_wire : Wire.s -> (t, string) result
-
-  (** [wire_raw t] is the wire representation of [t], used by {!Author.wire}. *)
-  val wire_raw : t -> Wire.s
 end
 
 (** {1 Digests} *)
@@ -191,342 +136,249 @@ module Digest : sig
   (** The sum type of supported digest algorithms. *)
   type alg = [ `SHA256 ]
 
-  (** [alg_to_string alg] is a string representing the digest algorithm. *)
-  val alg_to_string : alg -> string
-
-  (** [string_to_alg str] is either [Some alg] or [None]. *)
-  val string_to_alg : string -> alg option
-
   (** A digest is a pair of digest algorithm and value. *)
   type t = alg * string
 
-  (** [to_string digest] is a string representation of [digest]. *)
-  val to_string : t -> string
-
   (** [pp digest] is a pretty printer for [digest]. *)
   val pp : t fmt
+
+  (** [compare a b] compares [a] and [b], returns 0 if equal, -1 if smaller, 1
+     if bigger. *)
+  val compare : t -> t -> int
 
   (** [equal a b] is [true] when [a] and [b] use the same algorithm type, and
       have the same value. *)
   val equal : t -> t -> bool
 
   (** [of_wire w] converts [w] to a digest or error. *)
-  val of_wire : Wire.s -> (t, string) result
+  val of_wire : Wire.s -> (t, err) result
 
-  (** [wire_raw t] is the wire representation of [t], used by {!Author.wire} and
-      {!Release.wire}. *)
+  (** [wire_raw t] is the wire representation of [t]. *)
+  val wire_raw : t -> Wire.s
+
+  (** [of_string str] is t or an error. *)
+  val of_string : string -> (t, err) result
+
+  (** [to_string digest] is the [string] representing the [digest]. *)
+  val to_string : t -> string
+end
+
+module Digest_map : sig
+  include Map.S with type key = Digest.t
+  val find : Digest.t -> 'a t -> 'a option
+  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+end
+
+(** {1 Asymmetric key types} *)
+
+module Key : sig
+
+  (** The sum type of supported asymmetric key algorithms. *)
+  type alg = [ `RSA ]
+
+  (** The type of public keys *)
+  type t = identifier * timestamp * alg * string
+
+  (** [equal a b] is [true] if id, created, alg, and key are identical. *)
+  val equal : t -> t -> bool
+
+  (** [pp] is a pretty printer for public keys *)
+  val pp : t fmt
+
+  (** [of_wire w] converts [w] to a key or error. *)
+  val of_wire : Wire.s -> (t, err) result
+
+  (** [many_of_wire w] uses {!of_wire} on the {!Wire.List} [w].  Prints errors
+      to stdout if an unknown key algorithm or multiple keys with the same
+      identifier are used. *)
+  val many_of_wire : Wire.s list -> (t M.t * string list, string) result
+
+  (** [wire_raw t] is the raw wire representation of [t]. *)
+  val wire_raw : t -> Wire.s
+
+  (** [wire t] is the wire representation of [t]. *)
+  val wire : t -> Wire.t
+
+  (** [keyid hash key] is [hash (to_string key)], the key hash. *)
+  val keyid : (string -> Digest.t) -> t -> Digest.t
+
+  val to_string : t -> string
+end
+
+(** {1 Cryptographic signatures} *)
+
+module Signature : sig
+  (** The sum type of supported signature algorithms. *)
+  type alg = [ `RSA_PSS_SHA256 ]
+
+  (** A signature is a quadruple of timestamp, identifier, algorithm, and
+      signature value. *)
+  type t = identifier * timestamp * alg * string
+
+  (** [equal a b] is [true] if id, created, alg, and signature are the same. *)
+  val equal : t -> t -> bool
+
+  (** [pp sig] is a pretty printer for a signature. *)
+  val pp : t fmt
+
+  (** [of_wire w] converts [w] to a signature or error. *)
+  val of_wire : Wire.s -> (t, err) result
+
+  (** [many_of_wire w] uses {!of_wire} on the {!Wire.List} [w].  Prints errors to
+     stdout if an unknown signature algorithm or multiple signatures with the
+     same identifier are used. *)
+  val many_of_wire : Wire.s list -> (t M.t * string list, string) result
+
+  (** [wire_raw t] is the wire representation of [t]. *)
   val wire_raw : t -> Wire.s
 end
 
-(** {1 Author} *)
+(** [to_be_signed data timestamp id algorithm] prepares the representation used
+   by signing and verification  *)
+val to_be_signed : Wire.t -> timestamp -> identifier -> Signature.alg -> Wire.t
 
-(** An author contains a list of approved resources (name, typ, digest).  It
-    also contains a list of key and signature pairs, and a list of accounts.
-    Keys have to be approved by a quorum of janitors, but the resource list is
-    modified only by the author themselves. *)
-module Author : sig
 
-  (** {2 Resources} *)
+(** {1 Delegation key expression} *)
+module Expression : sig
 
-  (** The type of a resource in the approved list: a counter (the index), a
-      name, a typ, and its digest. *)
-  type r = private {
-    index : Uint.t ;
-    rname : string ;
-    rtyp : typ ;
-    digest : Digest.t ;
-  }
+  type keyref =
+    | Remote of identifier * Digest.t * Uint.t
+    | Local of identifier
 
-  (** [pp_r] is a pretty printer. *)
-  val pp_r : r fmt
+  module KS : (Set.S with type elt = keyref)
 
-  (** [r idx name typ dgst] is a constructor. *)
-  val r : Uint.t -> string -> typ -> Digest.t -> r
+  type t =
+    | Quorum of int * KS.t
+    | And of t * t
+    | Or of t * t
 
-  (** [r_equal r r'] is [true] is the name, type, and digest of [r] and [r'] are
-      equal. *)
-  val r_equal : r -> r -> bool
+  val compare : t -> t -> int
 
-  (** {2 Accounts} *)
+  val equal : t -> t -> bool
 
-  (** Variant of accounts *)
-  type account = [
-    | `Email of identifier
-    | `GitHub of identifier
-    | `Other of identifier * string
-  ]
+  val keys : (Digest.t * Uint.t) M.t -> t -> (Digest.t * Uint.t) M.t
 
-  (** [compare_account a b] compares accounts [a] and [b]. *)
-  val compare_account : account -> account -> int
+  val pp : t fmt
 
-  (** [pp_account a] is a pretty printer. *)
-  val pp_account : account fmt
+  val of_wire : Wire.s -> (t, string) result
 
-  (** [wire_account id a] is the wire representation of [a]. *)
-  val wire_account : identifier -> account -> Wire.t
+  val to_wire : t -> Wire.s
 
-  (** The record of an author: name, key/signature pairs, created, counter,
-      approved and queued resource lists. *)
-  type t = private {
-    (* signed part *)
-    created : Uint.t ;
+  val hash : (string -> Digest.t) -> string M.t -> t -> (Digest.t, string) result
+
+  val eval : t -> (identifier * Uint.t) Digest_map.t -> S.t -> bool
+end
+
+(** {1 Root} *)
+
+(** The root contains the (offline) root keys, also defines snapshot, timestamp,
+    and janitors.  Furthermore, it contains configuration information such as
+    where keys are located in this repository and where the data is stored. *)
+
+module Root : sig
+  type t = {
+    created : timestamp ;
     counter : Uint.t ;
     epoch : Uint.t ;
     name : identifier ;
-    resources : r list ;
-    (* unsigned part *)
-    accounts : account list ;
-    keys : (Key.t * Signature.t) list ;
-    queued : r list ;
+    datadir : path ;
+    keydir : path ;
+    keys : Key.t M.t ;
+    roles : Expression.t M.t ;
+    signatures : Signature.t M.t ;
   }
 
-  (** [pp] is a pretty printer. *)
+  val t : ?counter:Uint.t -> ?epoch:Uint.t -> ?name:identifier ->
+    ?datadir:path -> ?keydir:path -> ?keys:Key.t M.t -> ?roles:Expression.t M.t ->
+    ?signatures:Signature.t M.t -> timestamp -> t
+
+  val add_signature : t -> identifier -> Signature.t -> t
+
   val pp : t fmt
 
-  (** [t ~counter ~epoch ~accounts ~keys ~resources ~queued created name] is a
-      constructor. *)
-  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
-    ?accounts:(account list) ->
-    ?keys:((Key.t * Signature.t) list) ->
-    ?resources:(r list) ->
-    ?queued:(r list) ->
-    Uint.t -> identifier -> t
+  val of_wire : Wire.t -> (t * string list, string) result
 
-  (** [of_wire w] converts [w] to an author or error. *)
-  val of_wire : Wire.t -> (t, string) result
+  val wire : t -> Wire.t
 
-  (** [wire_raw t] is the raw wire representation of [t], including only header
-      and resource list.  This is used for signing.  *)
   val wire_raw : t -> Wire.t
 
-  (** [wire t] is the raw wire representation of [t], as written to disk. *)
-  val wire : t -> Wire.t
-
-  (** [contains ~queued author resource] is [true] if [resource] is in
-      [author.resources] (or [author.queued] if [queued] is true (default:
-      false). *)
-  val contains : ?queued:bool -> t -> r -> bool
-
-  (** [next_id t] is the next free identitifer of the resource list index. *)
-  val next_id : t -> Uint.t
-
-  (** [queue t r] adds [r] to [t.queued]. *)
-  val queue : t -> r -> t
-
-  (** [approve t r] adds [r] to [t.resources], and removes [r] from
-      [t.queued]. *)
-  val approve : t -> r -> t
-
-  (** [equal t t'] is true if name, keys, accounts, resource lists, and queued
-      are equal. *)
-  val equal : t -> t -> bool
-
-  (** [reset t] drops [t.queued]. *)
-  val reset : t -> t
-
-  (** [prep_sig t] increments [t.counter].  Returns the carry bit as second
-      component. *)
-  val prep_sig : t -> t * bool
-
-  (** [replace_sig t (k, s)] adds [k,s] to [t.keys], filtering existing pairs
-      where the same public key is used. *)
-  val replace_sig : t -> Key.t * Signature.t -> t
 end
 
+(* TODO: how do snapshot and timestamp look like?  basically a set of targets? *)
+(* snapshot needs to include all the keys/ files, plus timestamp and root!? *)
+(* timestamp just needs to sign the snapshot (after verifying the hashes) *)
 
-(** {1 Team} *)
+module Delegation : sig
+  type t = {
+    paths : path list ;
+    keys : Expression.t ;
+    terminating : bool
+  }
 
-(** A team consists of a group of authors.  Team members can dynamically join
-     and leave. *)
-module Team : sig
+  (** [equal a b] is [true] if delegations [a] and [b] are identical. *)
+  val equal : t -> t -> bool
 
-  (** The record for a team: a header and a set of members. *)
-  type t = private {
-    created : Uint.t ;
+  (** [pp] is a pretty printer for a delegation. *)
+  val pp : t fmt
+
+  (** [of_wire w] converts [w] to a delegation or error. *)
+  val of_wire : Wire.s -> (t, string) result
+
+  (** [wire_raw t] is the raw wire representation of [t]. *)
+  val wire_raw : t -> Wire.s
+end
+
+module Target : sig
+  type t = {
+    filename : path ;
+    digest : Digest.t list ;
+    size : Uint.t ;
+  }
+
+  (** [equal a b] is [true] if targets [a] and [b] are identical. *)
+  val equal : t -> t -> bool
+
+  (** [pp] is a pretty printer for a target. *)
+  val pp : t fmt
+
+  (** [of_wire w] converts [w] to a target or error. *)
+  val of_wire : Wire.s -> (t, string) result
+
+  (** [wire_raw t] is the raw wire representation of [t]. *)
+  val wire_raw : t -> Wire.s
+end
+
+module Targets : sig
+  type t = {
+    created : timestamp ;
     counter : Uint.t ;
     epoch : Uint.t ;
     name : identifier ;
-    members : S.t
+    keys : Key.t M.t ;
+    valid : Expression.t ;
+    delegations : Delegation.t list ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
   }
 
-  (** [pp] is a pretty printer. *)
-  val pp : t fmt
+  val t : ?counter:Uint.t -> ?epoch:Uint.t -> ?keys:Key.t M.t ->
+    ?delegations:Delegation.t list -> ?targets:Target.t list ->
+    ?signatures:Signature.t M.t -> timestamp -> identifier -> Expression.t -> t
 
-  (** [t ~counter ~epoch ~members created id] is a constructor for a team. *)
-  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
-    ?members:S.t -> Uint.t -> identifier -> t
+  val add_signature : t -> identifier -> Signature.t -> t
 
-  (** [equal t t'] is true if the set of members is equal and the name is
-      equal. *)
+  (** [equal a b] is [true] if all fields of [a] and [b] are equal. *)
   val equal : t -> t -> bool
 
-  (** [of_wire w] converts [w] to a team or error. *)
-  val of_wire : Wire.t -> (t, string) result
+  (** [pp t] is a pretty printer for a targets. *)
+  val pp : t fmt
+
+  (** [of_wire w] converts [w] to a targets or error. *)
+  val of_wire : Wire.t -> (t * string list, string) result
 
   (** [wire t] is the wire representation of [t]. *)
   val wire : t -> Wire.t
 
-  (** [add t id] adds [id] to team. *)
-  val add : t -> identifier -> t
-
-  (** [remove t id] removes [id] from team. *)
-  val remove : t -> identifier -> t
-
-  (** [prep t] prepares increments [t.counter].  Returns the carry bit as second
-      component.  Used after a batch of changes. *)
-  val prep : t -> t * bool
-end
-
-(** {1 Authorisation} *)
-
-(** An authorisation contains the information who is authorised to modify a
-    package.  There is always a single authorisation file per package, approved
-    by a quorum of janitors. *)
-module Authorisation : sig
-
-  (** The authorisation record: a header, a name, and a set of authorised ids. *)
-  type t = private {
-    created : Uint.t ;
-    counter : Uint.t ;
-    epoch : Uint.t ;
-    name : name ;
-    authorised : S.t ;
-  }
-
-  (** [pp] is a pretty printer. *)
-  val pp : t fmt
-
-  (** [t ~counter ~epoch ~authorised created name] is a constructor. *)
-  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
-    ?authorised:S.t -> Uint.t -> name -> t
-
-  (** [equal t t'] is true if the names are equal and the set of authorised ids
-      are equal. *)
-  val equal : t -> t -> bool
-
-  (** [of_wire w] converts [w] to an authorisation or error. *)
-  val of_wire : Wire.t -> (t, string) result
-
-  (** [wire t] is the wire representation of [t], written to disk. *)
-  val wire : t -> Wire.t
-
-  (** [add t id] adds [id] to [t.authorised]. *)
-  val add : t -> identifier -> t
-
-  (** [remove t id] removed [id] from [t.authorised]. *)
-  val remove : t -> identifier -> t
-
-  (** [prep t] increments [t.counter], returns the carry bit as second
-      component. *)
-  val prep : t -> t * bool
-end
-
-(** {1 Releases} *)
-
-(** A releases lists all released versions of a given package.  There is one
-    releases resource for each package. *)
-module Releases : sig
-
-  (** The record for a releases: a header, and a set of version names. *)
-  type t = private {
-    created : Uint.t ;
-    counter : Uint.t ;
-    epoch : Uint.t ;
-    name : name ;
-    versions : S.t ;
-  }
-
-  (** [pp] is a pretty printer. *)
-  val pp : t fmt
-
-  (** [t ~counter ~epoch ~releases created name] is a constructor. *)
-  val t : ?counter:Uint.t -> ?epoch:Uint.t ->
-    ?versions:S.t -> Uint.t -> name -> t
-
-  (** [equal t t'] is true if the names are equal and the set of versions. *)
-  val equal : t -> t -> bool
-
-  (** [of_wire w] converts [w] to a releases or error. *)
-  val of_wire : Wire.t -> (t, string) result
-
-  (** [wire t] is the wire representation of [t], as stored on disk. *)
-  val wire : t -> Wire.t
-
-  (** [add t name] adds [name] to [t.versions]. *)
-  val add : t -> name -> t
-
-  (** [remove t name] removes [name] from [t.versions]. *)
-  val remove : t -> name -> t
-
-  (** [prep t] increments [t.counter], the carry bit is returned as second
-      component. *)
-  val prep : t -> t * bool
-end
-
-(** {1 Checksums} *)
-
-(** A checksums contains a map of all files in the repository relevant for this
-    package version and their digests. *)
-module Checksums : sig
-
-  (** The record for a checksum: filename and digest. *)
-  type c = {
-    filename : name ;
-    digest   : Digest.t ;
-  }
-
-  (** [pp_c] is a pretty printer. *)
-  val pp_c : c fmt
-
-  (** [c_equal c c'] is true if the filenames are equal, and the digests are
-      equal. *)
-  val checksum_equal : c -> c -> bool
-
-  (** Type of a checksum map. *)
-  type checksum_map
-
-  (** The record of checksums: a header, and a checksum map. *)
-  type t = private {
-    created : Uint.t ;
-    counter : Uint.t ;
-    epoch : Uint.t ;
-    name : name ;
-    files : checksum_map ;
-  }
-
-  (** [pp] is a pretty printer. *)
-  val pp : t fmt
-
-  (** [t ~counter ~epoch created name checksums] is a constructor. *)
-  val t : ?counter:Uint.t -> ?epoch:Uint.t -> Uint.t -> string -> c list -> t
-
-  (** [of_wire w] converts [w] to a checksums or error. *)
-  val of_wire : Wire.t -> (t, string) result
-
-  (** [wire t] is the wire representation of [t]. *)
-  val wire : t -> Wire.t
-
-  (** [equal t t'] is true if the name is equal and the checksum maps are
-      equal. *)
-  val equal : t -> t -> bool
-
-  (** [set_counter t ctr] sets [t.counter] to [ctr]. *)
-  val set_counter : t -> Uint.t -> t
-
-  (** [compare_t t t'] compares [t] and [t'], either they are equal, their names
-      are different, or their checksum maps differ. *)
-  val compare_t : t -> t ->
-    (unit,
-     [> `InvalidName of name * name
-     | `ChecksumsDiff of name * name list * name list * (c * c) list ])
-      result
-
-  (** [fold f m acc] folds [f] over [m]. *)
-  val fold : (c -> 'b -> 'b) -> checksum_map -> 'b -> 'b
-
-  (** [find m k] looks [k] up in [m]. *)
-  val find : checksum_map -> string -> c
-
-  (** [prep t] increments [t.counter], returns carry as second component. *)
-  val prep : t -> t * bool
+  (** [wire_raw t] is the wire representation of [t]. *)
+  val wire_raw : t -> Wire.t
 end

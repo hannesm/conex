@@ -7,15 +7,16 @@ module V = struct
     String.trim (Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub)))
 
   let decode_key data =
-    match X509.Encoding.Pem.Public_key.of_pem_cstruct (Cstruct.of_string data) with
-    | [ `RSA pub ] -> Some pub
-    | _ -> None
+    match X509.Encoding.Pem.Public_key.of_pem_cstruct1 (Cstruct.of_string data) with
+    | exception (Invalid_argument _) -> None
+    | `RSA pub -> Some pub
+    | `EC_pub _ -> None
 
   module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
-  let verify_rsa_pss ~key ~data ~signature =
+  let verify_rsa_pss ~key ~data ~signature id =
     match Nocrypto.Base64.decode (Cstruct.of_string signature) with
-    | None -> Error `InvalidBase64Encoding
+    | None -> Error (`InvalidBase64Encoding id)
     | Some signature ->
       let cs_data = Cstruct.of_string data in
       match decode_key key with
@@ -23,8 +24,8 @@ module V = struct
         if Pss_sha256.verify ~key ~signature cs_data then
           Ok ()
         else
-          Error `InvalidSignature
-      | _ -> Error `InvalidPublicKey
+          Error (`InvalidSignature id)
+      | _ -> Error (`InvalidPublicKey id)
 
   let to_h i =
     if i < 10 then
@@ -53,44 +54,41 @@ end
 
 module NC_V = Conex_verify.Make (V)
 
-module C (F : Conex_private.FS) = struct
+module C = struct
 
-  type t = Nocrypto.Rsa.priv * Uint.t
+  type t =
+    Conex_resource.identifier * Conex_resource.timestamp * Nocrypto.Rsa.priv
 
-  let created (_, ts) = ts
+  let created (_, ts, _) = ts
 
-  let ids = F.ids
+  let id (id, _, _) = id
 
-  let decode_priv data =
-    match X509.Encoding.Pem.Private_key.of_pem_cstruct (Cstruct.of_string data) with
-    | [ `RSA priv ] -> Some priv
-    | _ -> None
-
-  let read id =
-    F.read id >>= fun (k, ts) ->
-    match decode_priv k with
-    | Some priv -> Ok (priv, ts)
-    | None -> Error "could not decode private key"
+  let decode_priv id ts data =
+    match X509.Encoding.Pem.Private_key.of_pem_cstruct1 (Cstruct.of_string data) with
+    | exception (Invalid_argument e) -> Error e
+    | `RSA priv -> Ok (id, ts, priv)
 
   let encode_priv priv =
     let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
     Cstruct.to_string pem
 
-  let generate_rsa ?(bits = 4096) id ts () =
+  let pub_of_priv_rsa_raw key =
+    let pub = Nocrypto.Rsa.pub_of_priv key in
+    V.encode_key pub
+
+  let generate_rsa ?(bits = 4096) () =
     let key = Nocrypto.Rsa.generate bits in
-    let data = encode_priv key in
-    F.write id data >>= fun () ->
-    Ok (key, ts)
+    encode_priv key, pub_of_priv_rsa_raw key
 
-  let bits (k, _) = Nocrypto.Rsa.priv_bits k
+  let bits (_, _, k) = Nocrypto.Rsa.priv_bits k
 
-  let pub_of_priv_rsa (k, _) =
-    let pub = Nocrypto.Rsa.pub_of_priv k in
-    Ok (V.encode_key pub)
+  let pub_of_priv_rsa (_, _, k) = pub_of_priv_rsa_raw k
 
-  let sign_pss (key, _) data =
+  let sign_pss (_, _, key) data =
     let cs = Cstruct.of_string data in
     let signature = V.Pss_sha256.sign ~key cs in
     let b64 = Nocrypto.Base64.encode signature in
     Ok (Cstruct.to_string b64)
+
+  let sha256 = V.sha256
 end

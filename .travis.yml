@@ -6,10 +6,9 @@ env:
   global:
     - PINS="conex:. conex-nocrypto:."
   matrix:
-    - OCAML_VERSION=4.03 PACKAGE="conex"
-    - OCAML_VERSION=4.04 PACKAGE="conex"
-    - OCAML_VERSION=4.05 PACKAGE="conex"
-    - OCAML_VERSION=4.03 PACKAGE="conex-nocrypto"
+    - OCAML_VERSION=4.03 PACKAGE="conex" TESTS=false
+    - OCAML_VERSION=4.05 PACKAGE="conex" TESTS=false
     - OCAML_VERSION=4.04 PACKAGE="conex-nocrypto"
+    - OCAML_VERSION=4.06 PACKAGE="conex-nocrypto"
 notifications:
   email: false

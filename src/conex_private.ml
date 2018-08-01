@@ -7,65 +7,98 @@ module type S = sig
   type t
 
   val ids : unit -> identifier list
-  val read : identifier -> (t, string) result
+  type r_err = [ `Decode of string | `Read of string | `None | `Multiple of string list ]
+  val pp_r_err : r_err fmt
+  val read : identifier -> (t, r_err) result
   val bits : t -> int
-  val created : t -> Uint.t
-  val generate : ?bits:int -> Key.alg -> identifier -> Uint.t -> unit ->
-    (t, string) result
-  val pub_of_priv : t -> (Key.t, string) result
-  val sign : Uint.t -> Author.t -> Signature.alg -> t ->
-    (Author.t, string) result
+  val created : t -> timestamp
+  val id : t -> string
+  val generate : ?bits:int -> Key.alg -> identifier -> unit -> (t, string) result
+  val pub_of_priv : t -> Key.t
+  val sign : Wire.t -> timestamp -> identifier -> Signature.alg -> t ->
+    (Signature.t, string) result
 end
 
 module type FS = sig
-  val ids : unit -> string list
-  val read : string -> ((string * Conex_utils.Uint.t), string) result
-  val write : string -> string -> (unit, string) result
+  val ids : unit -> Conex_resource.identifier list
+  val read : Conex_resource.identifier -> ((string * Conex_resource.timestamp), string) result
+  val write : Conex_resource.identifier -> string -> (unit, string) result
 end
 
 module type S_RSA_BACK = sig
   type t
 
-  val ids : unit -> string list
-  val read : string -> (t, string) result
+  val decode_priv : string -> Conex_resource.timestamp -> string -> (t, string) result
   val bits : t -> int
-  val created : t -> Uint.t
-  val generate_rsa : ?bits:int -> string -> Uint.t -> unit -> (t, string) result
-  val pub_of_priv_rsa : t -> (string, string) result
+  val created : t -> Conex_resource.timestamp
+  val id : t -> Conex_resource.identifier
+  val generate_rsa : ?bits:int -> unit -> string * string
+  val pub_of_priv_rsa : t -> string
   val sign_pss : t -> string -> (string, string) result
+  val sha256 : string -> string
 end
 
-module Make (C : S_RSA_BACK) = struct
+module Make (C : S_RSA_BACK) (F : FS) = struct
   open Conex_resource
 
   type t = C.t
 
-  let ids = C.ids
+  type r_err = [ `Decode of string | `Read of string | `None | `Multiple of string list ]
 
-  let read = C.read
+  let pp_r_err ppf = function
+    | `Decode str -> Format.fprintf ppf "decode failure: %s" str
+    | `Read str -> Format.fprintf ppf "read failure: %s" str
+    | `None -> Format.pp_print_string ppf "id does not exist"
+    | `Multiple ids -> Format.fprintf ppf "found multiple matching ids %a"
+                         (pp_list Format.pp_print_string) ids
+
+  let ids = F.ids
+
+  let get_id id = match String.cut '.' id with | None -> id | Some (a, _) -> a
+
+  let read id =
+    let decode_e = function Ok t -> Ok t | Error e -> Error (`Decode e) in
+    match F.read id with
+    | Ok (k, ts) -> decode_e (C.decode_priv (get_id id) ts k)
+    | Error _ ->
+      (* treat id as prefix, look whether we've something *)
+      match List.filter (fun fn -> String.is_prefix ~prefix:id fn) (F.ids ()) with
+      | [ id' ] ->
+        begin match F.read id' with
+          | Error e -> Error (`Read e)
+          | Ok (k, ts) -> decode_e (C.decode_priv (get_id id') ts k)
+        end
+      | [] -> Error `None
+      | ids -> Error (`Multiple ids)
 
   let bits = C.bits
 
   let created = C.created
 
-  let generate ?bits alg id ts () =
+  let id = C.id
+
+  let generate ?bits alg id () =
     match alg with
-    | `RSA -> C.generate_rsa ?bits id ts ()
+    | `RSA ->
+      let key, pub = C.generate_rsa ?bits () in
+      let filename =
+        let pub' = (id, "", `RSA, pub) in
+        let keyid = Key.keyid (fun s -> `SHA256, C.sha256 s) pub' in
+        get_id id ^ "." ^ Digest.to_string keyid
+      in
+      F.write filename key >>= fun () ->
+      F.read filename >>= fun (_, ts) ->
+      C.decode_priv id ts key
 
   let pub_of_priv t =
-    C.pub_of_priv_rsa t >>= fun pub ->
-    Ok (`RSA, pub, created t)
+    let pub = C.pub_of_priv_rsa t in
+    (id t, created t, `RSA, pub)
 
-  let sign now idx alg t =
-    let idx, _overflow = Author.prep_sig idx in
-    let data = Wire.to_string (Author.wire_raw idx)
-    and id = idx.Author.name
-    in
+  (* TODO allows data to be empty, is this good? *)
+  let sign data now id alg t =
     match alg with
     | `RSA_PSS_SHA256 ->
-      let hdr = alg, now in
-      let data = Wire.to_string (Signature.wire id hdr data) in
+      let data = Wire.to_string (to_be_signed data now id alg) in
       C.sign_pss t data >>= fun raw ->
-      pub_of_priv t >>= fun key ->
-      Ok (Author.replace_sig idx (key, (hdr, raw)))
+      Ok (id, now, alg, raw)
 end

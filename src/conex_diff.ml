@@ -45,7 +45,7 @@ let count_to_sl_sl data =
   if String.is_prefix ~prefix:"@@" data then
     (* input: "@@ -19,23 +19,12 @@ bla" *)
     (* output: ((19,23), (19, 12)) *)
-    match String.cuts '@' data with
+    match List.filter (function "" -> false | _ -> true) (String.cuts '@' data) with
     | numbers::_ ->
        let nums = String.trim numbers in
        (match String.cut ' ' nums with
@@ -132,14 +132,17 @@ let patch filedata diff =
   let lines = List.fold_left apply_hunk lines diff.hunks in
   String.concat "\n" lines
 
-let diffs_to_components diffs =
-  List.fold_left (fun (ids, auths, pkgs, rels) diff ->
-      match Conex_opam_repository_layout.categorise (string_to_path (file diff)) with
-      | `Id id -> S.add id ids, auths, pkgs, rels
-      | `Authorisation id -> ids, S.add id auths, pkgs, rels
-      | `Package id -> ids, auths, S.add id pkgs, rels
-      | `Release (name, version) ->
-        let s = try M.find name rels with Not_found -> S.empty in
-        ids, auths, pkgs, M.add name (S.add version s) rels
-      | _ -> ids, auths, pkgs, rels)
-    (S.empty, S.empty, S.empty, M.empty) diffs
+(* TODO which equality to use here? is = ok? *)
+let ids root keydir diffs =
+  List.fold_left (fun acc diff ->
+      acc >>= fun (r, ids) ->
+      string_to_path (file diff) >>= fun path ->
+      if subpath ~parent:keydir path then
+        (* TODO according to here, keydir must be flat! *)
+        match List.rev path with
+        | id :: _ -> Ok (r, S.add id ids)
+        | [] -> Error "empty keydir path?"
+      else match path with
+        | [ x ] when x = root -> Ok (true, ids)
+        | _ -> Ok (r, ids))
+    (Ok (false, S.empty)) diffs

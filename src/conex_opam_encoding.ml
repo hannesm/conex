@@ -16,7 +16,12 @@ let rec encode_s = function
   | Wire.List l -> OpamParserTypes.List (np, List.map encode_s l)
   | Wire.Identifier i -> OpamParserTypes.Ident (np, i)
   | Wire.Data s -> OpamParserTypes.String (np, s)
-  | Wire.Int i -> OpamParserTypes.Ident (np, "0x" ^ Uint.to_string i)
+  | Wire.Bigint i -> OpamParserTypes.Ident (np, "0x" ^ Uint.to_string i)
+  | Wire.Smallint i -> OpamParserTypes.Int (np, i)
+  | Wire.Pair (i, s) -> OpamParserTypes.Group
+                          (np, [ encode_s i ; encode_s s ])
+  | Wire.And (a, b) -> OpamParserTypes.Logop (np, `And, encode_s a, encode_s b)
+  | Wire.Or (a, b) -> OpamParserTypes.Logop (np, `Or, encode_s a, encode_s b)
 
 let encode t =
   let file_contents =
@@ -34,7 +39,7 @@ let rec decode_s = function
     if String.is_prefix ~prefix:"0x" data then
       match Uint.of_string (String.slice ~start:2 data) with
       | None -> Error "cannot parse unsigned integer"
-      | Some x -> Ok (Wire.Int x)
+      | Some x -> Ok (Wire.Bigint x)
     else if data = "emptymap" then
       Ok (Wire.Map M.empty)
     else
@@ -62,6 +67,25 @@ let rec decode_s = function
           Ok (x :: xs))
           (Ok []) l >>= fun xs ->
       Ok (Wire.List (List.rev xs))
+  | OpamParserTypes.Int (_, i) -> Ok (Wire.Smallint i)
+  | OpamParserTypes.Group (_, [ OpamParserTypes.Logop (_, op, a, b) ]) ->
+    decode_s a >>= fun a ->
+    decode_s b >>= fun b ->
+    begin match op with
+      | `And -> Ok (Wire.And (a, b))
+      | `Or -> Ok (Wire.Or (a, b))
+    end
+  | OpamParserTypes.Logop (_, op, a, b) ->
+    decode_s a >>= fun a ->
+    decode_s b >>= fun b ->
+    begin match op with
+      | `And -> Ok (Wire.And (a, b))
+      | `Or -> Ok (Wire.Or (a, b))
+    end
+  | OpamParserTypes.Group (_, [ a ; f]) ->
+    decode_s a >>= fun a ->
+    decode_s f >>= fun f ->
+    Ok (Wire.Pair (a, f))
   | _ -> Error "unexpected thing while decoding"
 
 let decode data =

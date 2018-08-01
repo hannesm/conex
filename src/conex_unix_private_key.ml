@@ -3,20 +3,18 @@ open Conex_unix_persistency
 
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
+let private_s = "private"
+
 let ids () =
   match collect_dir private_dir with
   | Ok files ->
-    List.fold_left
-      (fun acc s ->
-         match List.rev (String.cuts '.' s) with
-         | p::id::[] when p = "private" -> id::acc
-         | _ -> acc)
-      []
-      files
+    List.fold_left (fun acc s ->
+        match List.rev (String.cuts '.' s) with
+        | p::tl when p = private_s -> (String.concat "." (List.rev tl))::acc
+        | _ -> acc (* TODO warn *) ) [] files
   | Error _ -> []
 
-let private_key_path id =
-  "/" ^ path_to_string (string_to_path private_dir @ [ id ^ ".private" ])
+let private_key_path id = Filename.concat private_dir (id ^ "." ^ private_s)
 
 let backup id filename =
   if exists filename then begin
@@ -53,8 +51,8 @@ let read id =
   if exists fn then
     read_file fn >>= fun key ->
     let stat = Unix.stat fn in
-    match Uint.of_float stat.Unix.st_mtime with
+    match Ptime.of_float_s stat.Unix.st_mtime with
     | None -> Error ("couldn't convert modification time to Uint.t")
-    | Some created -> Ok (key, created)
+    | Some created -> Ok (key, Ptime.to_rfc3339 ~tz_offset_s:0 created)
   else
     Error ("couldn't find private key for " ^ id)

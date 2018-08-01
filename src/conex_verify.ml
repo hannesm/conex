@@ -2,20 +2,22 @@ open Conex_utils
 open Conex_resource
 
 type error = [
-  | `InvalidBase64Encoding
-  | `InvalidSignature
-  | `InvalidPublicKey
+  | `UnknownKey of identifier
+  | `InvalidBase64Encoding of identifier
+  | `InvalidSignature of identifier
+  | `InvalidPublicKey of identifier
 ]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_error ppf = function
-  | `InvalidBase64Encoding -> Format.fprintf ppf "signature: no valid base64 encoding"
-  | `InvalidSignature -> Format.fprintf ppf "signature: invalid"
-  | `InvalidPublicKey -> Format.fprintf ppf "invalid public key"
+  | `UnknownKey id -> Format.fprintf ppf "unknown public key %a" pp_id id
+  | `InvalidBase64Encoding id -> Format.fprintf ppf "signature %a: no valid base64 encoding" pp_id id
+  | `InvalidSignature id -> Format.fprintf ppf "invalid signature %a" pp_id id
+  | `InvalidPublicKey id -> Format.fprintf ppf "invalid public key %a" pp_id id
 (*BISECT-IGNORE-END*)
 
 module type S_RSA_BACK = sig
-  val verify_rsa_pss : key:string -> data:string -> signature:string -> (unit, [> error ]) result
+  val verify_rsa_pss : key:string -> data:string -> signature:string -> identifier -> (unit, [> error ]) result
 
   val sha256 : string -> string
 end
@@ -25,9 +27,8 @@ module type S = sig
 
   val digest : Wire.t -> Digest.t
 
-  val keyid : identifier -> Key.t -> Digest.t
-
-  val verify : Author.t -> (unit, [> error ]) result
+  val verify : Wire.t -> Key.t M.t -> Signature.t M.t ->
+    S.t * error list
 end
 
 (** Instantiation. *)
@@ -37,16 +38,19 @@ module Make (C : S_RSA_BACK) = struct
 
   let digest data = raw_digest (Wire.to_string data)
 
-  let keyid id k = digest (Key.wire id k)
+  let verify_signature data key (id, created, alg, signature) =
+    match alg, key with
+    | `RSA_PSS_SHA256, (_, _, `RSA, key) ->
+      let data = Wire.to_string (to_be_signed data created id alg) in
+      C.verify_rsa_pss ~key ~data ~signature id
 
-  let verify_signature data name key (hdr, sigval) =
-    let data = Signature.wire name hdr data in
-    let key = match key with `RSA, k, _ -> k in
-    C.verify_rsa_pss ~key ~data:(Wire.to_string data) ~signature:sigval
-
-  let verify author =
-    let tbv = Wire.to_string (Author.wire_raw author) in
-    foldM
-      (fun () (k, s) -> verify_signature tbv author.Author.name k s)
-      () author.Author.keys
+  let verify data keys sigs =
+    M.fold (fun _ (id, created, alg, s) (ok, err) ->
+        match M.find id keys with
+        | None -> (ok, `UnknownKey id :: err)
+        | Some key ->
+          match verify_signature data key (id, created, alg, s) with
+          | Ok () -> (S.add id ok, err)
+          | Error e -> (ok, e :: err))
+      sigs (S.empty, [])
 end

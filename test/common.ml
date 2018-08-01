@@ -2,17 +2,21 @@ open Conex_utils
 open Conex_resource
 
 module FS = struct
-  let ids () = []
-  let read _ = Error "no"
-  let write _ _ = Ok ()
+  let data = Hashtbl.create 3
+
+  let ids () = Hashtbl.fold (fun k _ acc -> k :: acc) data []
+  let read id = match Hashtbl.find data id with
+    | exception Not_found -> Error "not found"
+    | v -> Ok (v, "")
+  let write k v = Hashtbl.add data k v ; Ok ()
 end
 
-module PRIV = Conex_private.Make(Conex_nocrypto.C(FS))
+module PRIV = Conex_private.Make(Conex_nocrypto.C)(FS)
 
 let sset =
   let module M = struct
     type t = S.t
-    let pp ppf v = Format.fprintf ppf "%a" (pp_list pp_id) (S.elements v)
+    let pp = S.pp
     let equal = S.equal
   end in
   (module M: Alcotest.TESTABLE with type t = M.t)
@@ -23,15 +27,14 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      match PRIV.generate ~bits:2048 `RSA "foo" Uint.zero () with
+      match PRIV.generate ~bits:2048 `RSA "foo" () with
       | Error e -> Alcotest.fail e
       | Ok p ->
         privkey := Some p ;
         p
   in
-  match PRIV.pub_of_priv priv with
-  | Ok pub -> (pub, priv)
-  | Error e -> Alcotest.fail e
+  let pub = PRIV.pub_of_priv priv in
+  (pub, priv)
 
 let result (type a) (type e) a e =
   let (module A: Alcotest.TESTABLE with type t = a) = a in
@@ -48,89 +51,22 @@ let result (type a) (type e) a e =
   end in
   (module M: Alcotest.TESTABLE with type t = M.t)
 
-let team_eq a b =
-  let open Team in
-  id_equal a.name b.name && a.counter = b.counter && S.equal a.members b.members
-
-let team =
+let str_err =
   let module M = struct
-    type t = Team.t
-    let pp = Team.pp
-    let equal = team_eq
+    type t = string
+    let pp ppf x = Format.pp_print_string ppf x
+    let equal _ _ = true
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
 
-let idx_eq a b =
-  Author.equal a b && a.Author.counter = b.Author.counter
-
-let ji =
+let r_err =
   let module M = struct
-    type t = Author.t
-    let pp = Author.pp
-    let equal = idx_eq
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let id =
-  let module M = struct
-    type t = [ `Author of Author.t | `Team of Team.t ]
-    let pp ppf = function `Team t -> Team.pp ppf t | `Author idx -> Author.pp ppf idx
+    type t = err
+    let pp = pp_err
     let equal a b = match a, b with
-      | `Team t, `Team t' -> team_eq t t'
-      | `Author k, `Author k' -> idx_eq k k'
+      | `Parse _, `Parse _ -> true
+      | `Unknown_alg _, `Unknown_alg _ -> true
+      | `Malformed, `Malformed -> true
       | _ -> false
   end in
   (module M : Alcotest.TESTABLE with type t = M.t)
-
-let auth =
-  let module M = struct
-    type t = Authorisation.t
-    let pp = Authorisation.pp
-    let equal a b =
-      let open Authorisation in
-      a.counter = b.counter &&
-      name_equal a.name b.name &&
-      S.equal a.authorised b.authorised
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let rels =
-  let module M = struct
-    type t = Releases.t
-    let pp = Releases.pp
-    let equal a b =
-      let open Releases in
-      a.counter = b.counter &&
-      a.name = b.name &&
-      S.equal a.versions b.versions
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let css =
-  let module M = struct
-    type t = Checksums.t
-    let pp = Checksums.pp
-    let equal a b = match Checksums.compare_t a b with Ok () -> true | _ -> false
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let verr =
-  let module M = struct
-    type t = Conex_verify.error
-    let pp = Conex_verify.pp_error
-    let equal a b = match a, b with
-      | `InvalidBase64Encoding, `InvalidBase64Encoding
-      | `InvalidSignature, `InvalidSignature
-      | `InvalidPublicKey, `InvalidPublicKey -> true
-      (* for OpenSSL where we don't have detailed error reporting *)
-      | `InvalidSignature, `InvalidPublicKey
-      | `InvalidPublicKey, `InvalidSignature -> true
-      | _ -> false
-  end in
-  (module M : Alcotest.TESTABLE with type t = M.t)
-
-let sign_idx idx p =
-  let idx = List.fold_left Author.approve idx idx.Author.queued in
-  match PRIV.sign Uint.zero idx `RSA_PSS_SHA256 p with
-  | Ok idx -> idx
-  | Error e -> Alcotest.fail e

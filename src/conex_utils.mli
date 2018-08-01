@@ -4,17 +4,47 @@
 (** {1 Sets, Maps, List utils} *)
 
 (** [S] is a string set. *)
-module S : (Set.S with type elt = string)
+module S : sig
+  (** {1 String sets} *)
+  include Set.S with type elt = string
 
-(** [s_of_list xs] transforms the string list [xs] to a set. *)
-val s_of_list : string list -> S.t
+  (** [of_list xs] transforms the string list [xs] to a set. *)
+  val of_list : string list -> t
+
+  (** [pp fmt t] pretty prints [t]. *)
+  val pp : Format.formatter -> t -> unit
+end
 
 (** [M] is a [Map] which keys are strings. *)
-module M : (Map.S with type key = string)
+module M : sig
+
+  (** {1 String maps} *)
+  include Map.S with type key = string
+
+  (** [find key t] is [Some a] where a is the binding of [key] in [t]. [None] if
+     the [key] is not present. *)
+  val find : string -> 'a t -> 'a option
+
+  (** [pp pp_e fmt t] pretty prints [t] using [pp_e] for printing the values. *)
+  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+end
 
 (** [filter_map f xs] is [xs'], a list which contains all elements where [f]
     resulted in [Some _]. *)
 val filter_map : f:('a -> 'b option) -> 'a list -> 'b list
+
+(** {1 Format} *)
+
+(** ['a fmt] is the signature for pretty printers. *)
+type 'a fmt = Format.formatter -> 'a -> unit
+
+(** [pp_list pp] is a pretty printer for a list (surrounded by square brackets,
+    elements are separated by semicolon).  The [pp] is be a pretty printer for
+    list elements. *)
+val pp_list : 'a fmt -> 'a list fmt
+
+(** [str_pp pp a] results in a string applying the pretty-printer to the value. *)
+val str_pp : 'a fmt -> 'a -> string
 
 (** {1 Result combinators} *)
 
@@ -28,9 +58,18 @@ val guard : bool -> 'a -> (unit, 'a) result
     the produced value, or [Error]. *)
 val foldM : ('a -> 'b -> ('a, 'c) result) -> 'a -> 'b list -> ('a, 'c) result
 
+(** [iterM f xs] applies [f] to each element of [xs], returns either [Ok] and
+    the produced value, or [Error]. *)
+val iterM : ('a -> (unit, 'b) result) -> 'a list -> (unit, 'b) result
+
 (** [foldS f a s] applies [f] to each element of the set [s], returns either
     [Ok] and the produced value, or [Error]. *)
 val foldS : ('a -> string -> ('a, 'c) result) -> 'a -> S.t -> ('a, 'c) result
+
+(** [err_to_str pp res] is either [Ok a] or [Error str] where [str] was produced
+    by {!str_pp}. *)
+val err_to_str : 'b fmt -> ('a, 'b) result -> ('a, string) result
+
 
 (** {1 String} *)
 
@@ -44,7 +83,7 @@ module String : sig
 
   (** [cuts sep str] separates [str] into multiple substrings, stripping out the
       separating character [sep].  [String.concat "/" (String.cuts '/' xs)] is
-      not the identity since empty substrings are stripped. *)
+      the identity. *)
   val cuts : char -> t -> t list
 
   (** [cut sep str] cuts the string [str] at the first occurence of [sep] into
@@ -113,6 +152,9 @@ module Uint : sig
   (** [to_string t] is [t] converted to a string in hexadecimal ([%LX]).  *)
   val to_string : t -> string
 
+  (** [pp] is a pretty printer *)
+  val pp : t fmt
+
   (** [decimal t] is [t] converted to a string in decimal ([%Lu]).  *)
   val decimal : t -> string
 
@@ -131,6 +173,16 @@ module Uint : sig
   val of_int_exn : int -> t
 end
 
+(** [Uint_map] is a [Map] which keys are Uint.t. *)
+module Uint_map : sig
+
+  (** {1 String maps} *)
+  include Map.S with type key = Uint.t
+
+  (** [find key t] is [Some a] where a is the binding of [key] in [t]. [None] if
+     the [key] is not present. *)
+  val find : key -> 'a t -> 'a option
+end
 
 (** {1 Logging} *)
 
@@ -162,17 +214,6 @@ module type LOGS = sig
   val warn : ?src:src -> 'a log
 end
 
-(** {1 Format} *)
-
-(** ['a fmt] is the signature for pretty printers. *)
-type 'a fmt = Format.formatter -> 'a -> unit
-
-(** [pp_list pp] is a pretty printer for a list (surrounded by square brackets,
-    elements are separated by semicolon).  The [pp] is be a pretty printer for
-    list elements. *)
-val pp_list : 'a fmt -> 'a list fmt
-
-
 (** {1 File system types} *)
 
 (** The sum type of possible file types we expect *)
@@ -181,16 +222,67 @@ type file_type = File | Directory
 (** A [path] is a list of strings *)
 type path = string list
 
+(** [root] is the root path. *)
+val root : path
+
 (** [path_to_string path] is {{!Conex_utils.String.concat}String.concat} ["/"
     path].  @raise Invalid_argument if [path] includes either "." or ".." *)
 val path_to_string : path -> string
 
 (** [string_to_path str] is {{!Conex_utils.String.cuts}String.cuts} ["/"
-    str]. *)
-val string_to_path : string -> path
+    str] and ensuring no empty segments, ".", or ".." be present. If [str]
+    contains a leading "/", it is discarded. *)
+val string_to_path : string -> (path, string) result
+
+(** [string_to_path_exb str] is {{!Conex_utils.String.cuts}String.cuts} ["/"
+    str] and ensuring no empty segments, ".", or ".." be present. If [str]
+    contains a leading "/", it is discarded. @raise Invalid_argument if [path]
+    is invalid *)
+val string_to_path_exn : string -> path
 
 (** [path_equal p p'] is [true] if [p] and [p'] are equal. *)
 val path_equal : path -> path -> bool
 
+(** [subpath ~parent p] is [true] if [p] starts with all segments of [parent]. *)
+val subpath : parent:path -> path -> bool
+
+(** [pp_path] is a pretty printer for a path. *)
+val pp_path : path fmt
+
 (** An [item] is a type and its payload *)
 type item = file_type * string
+
+(** {1 Tree} *)
+
+(** [Tree] is a simple tree datatype, edge is a [string], values are ['a lists]. *)
+module Tree : sig
+
+  (** The main tree type *)
+  type 'a t
+
+  (** [equal eq a b] compares [a] with [b], using [eq] to compare values. *)
+  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+
+  (** [empty] is the only constructor of a tree. *)
+  val empty : 'a t
+
+  val is_empty : 'a t -> bool
+
+  val sub : path -> 'a t -> 'a t
+
+  (** [fold f acc t] folds [f] over [t], using the accumulator [acc]. *)
+  val fold : (path -> 'a list -> 'b -> 'b) -> 'b -> 'a t -> 'b
+
+  (** [pp pp_e ppf t] pretty prints the tree [t] using [pp_e] for printing values. *)
+  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+
+  (** [lookup path t] returns either [Some values] or [None]. *)
+  val lookup : path -> 'a t -> 'a list option
+
+  (** [lookup_prefix path t] finds the closest non-empty ['a] on [path]. *)
+  val lookup_prefix : path -> 'a t -> 'a list
+
+  (** [insert path value t] inserts [value] into [t] at [path].  If the key is
+      already in the tree, its value is prepended. *)
+  val insert : path -> 'a -> 'a t -> 'a t
+end
