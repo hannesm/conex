@@ -28,7 +28,7 @@ module type S = sig
   val digest : Wire.t -> Digest.t
 
   val verify : Wire.t -> Key.t M.t -> Signature.t M.t ->
-    S.t * error list
+    identifier Digest_map.t * error list
 end
 
 (** Instantiation. *)
@@ -44,13 +44,16 @@ module Make (C : S_RSA_BACK) = struct
       let data = Wire.to_string (to_be_signed data created id alg) in
       C.verify_rsa_pss ~key ~data ~signature id
 
+  (* using a digest map here to uniquify the public keys! *)
   let verify data keys sigs =
     M.fold (fun _ (id, created, alg, s) (ok, err) ->
         match M.find id keys with
         | None -> (ok, `UnknownKey id :: err)
         | Some key ->
           match verify_signature data key (id, created, alg, s) with
-          | Ok () -> (S.add id ok, err)
+          | Ok () ->
+            let dgst = Key.keyid raw_digest key in
+            (Digest_map.add dgst id ok, err)
           | Error e -> (ok, e :: err))
-      sigs (S.empty, [])
+      sigs (Digest_map.empty, [])
 end

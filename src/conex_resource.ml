@@ -592,7 +592,7 @@ end
 module Root = struct
   let version = 1
 
-  let supported_roles = [ "root" ; "timestamp" ; "snapshot" ; "janitor" ]
+  let supported_roles = [ "timestamp" ; "snapshot" ; "janitor" ]
 
   type t = {
     created : timestamp ;
@@ -602,14 +602,15 @@ module Root = struct
     datadir : path ;
     keydir : path ;
     keys : Key.t M.t ;
+    valid : Expression.t ;
     roles : Expression.t M.t ;
     signatures : Signature.t M.t ;
   }
 
   let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(name = "root")
       ?(datadir = [ "packages" ]) ?(keydir = [ "keys" ]) ?(keys = M.empty)
-      ?(roles = M.empty) ?(signatures = M.empty) created =
-    { created ; counter ; epoch ; name ; datadir ; keydir ; keys ; roles ; signatures }
+      ?(roles = M.empty) ?(signatures = M.empty) created valid  =
+    { created ; counter ; epoch ; name ; datadir ; keydir ; keys ; roles ; signatures ; valid }
 
   let add_signature t id s =
     let signatures = M.add id s t.signatures in
@@ -618,10 +619,11 @@ module Root = struct
   (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf
-      "root %s (created %a), datadir %a keydir %a@.@[<2>keys %a@]@.@[<2>roles %a@]@.@[<2> signatures %a@]"
+      "root %s (created %a), datadir %a keydir %a@.@valid %a@.[<2>keys %a@]@.@[<2>roles %a@]@.@[<2> signatures %a@]"
       (Header.counter t.counter t.epoch)
       pp_timestamp t.created
       pp_path t.datadir pp_path t.keydir
+      Expression.pp t.valid
       (M.pp Key.pp) t.keys
       (M.pp Expression.pp) t.roles
       (M.pp Signature.pp) t.signatures
@@ -631,7 +633,7 @@ module Root = struct
 
   let of_wire data =
     Header.split_signed data >>= fun (signed, sigs) ->
-    let keys = [ "datadir" ; "keydir" ; "keys" ; "roles" ] in
+    let keys = [ "datadir" ; "keydir" ; "keys" ; "roles" ; "valid" ] in
     Header.keys keys signed >>= fun () ->
     Header.of_wire signed >>= fun h ->
     Header.check `Root version h >>= fun () ->
@@ -640,6 +642,7 @@ module Root = struct
     opt_err (M.find "keydir" signed) >>= pdata >>= string_to_path >>= fun keydir ->
     opt_err (M.find "keys" signed) >>= plist >>= Key.many_of_wire >>= fun (keys, w) ->
     opt_err (M.find "roles" signed) >>= pmap >>= fun roles ->
+    opt_err (M.find "valid" signed) >>= Expression.of_wire >>= fun valid ->
     Header.keys ~header:false supported_roles roles >>= fun () ->
     M.fold (fun k v acc ->
         acc >>= fun (map, msgs) ->
@@ -655,7 +658,7 @@ module Root = struct
     let warns = w @ w' @ w'' in
     Ok ({ created = h.Header.created ; counter = h.Header.counter ;
           epoch = h.Header.epoch ; name = h.Header.name ;
-          datadir ; keydir ; keys ; roles ; signatures }, warns)
+          datadir ; keydir ; keys ; roles ; signatures ; valid }, warns)
 
   let wire_raw t =
     let open Wire in
@@ -672,8 +675,9 @@ module Root = struct
     M.add "datadir" (Data (path_to_string t.datadir))
       (M.add "keydir" (Data (path_to_string t.keydir))
          (M.add "keys" (List (M.fold (fun _ key acc -> Key.wire_raw key :: acc) t.keys []))
-            (M.add "roles" (Map roles)
-               (Header.wire header))))
+            (M.add "valid" (Expression.to_wire t.valid)
+               (M.add "roles" (Map roles)
+                  (Header.wire header)))))
 
   let wire t =
     let open Wire in
@@ -688,14 +692,14 @@ module Delegation = struct
  *)
   type t = {
     paths : path list ;
-    keys : Expression.t ;
+    valid : Expression.t ;
     terminating : bool
   }
 
   let equal a b =
     List.length a.paths = List.length b.paths &&
     List.for_all (fun p -> List.exists (path_equal p) b.paths) a.paths &&
-    Expression.equal a.keys b.keys &&
+    Expression.equal a.valid b.valid &&
     a.terminating = b.terminating
 
   (*BISECT-IGNORE-BEGIN*)
@@ -703,30 +707,30 @@ module Delegation = struct
     Format.fprintf ppf "delegation (terminating %b) paths %a@.keys %a@."
       t.terminating
       (pp_list pp_path) t.paths
-      Expression.pp t.keys
+      Expression.pp t.valid
   (*BISECT-IGNORE-END*)
 
   let of_wire wire =
     let open Wire in
     pmap wire >>= fun delegation ->
-    Header.keys ~header:false [ "paths" ; "keys" ; "terminating" ] delegation >>= fun () ->
+    Header.keys ~header:false [ "paths" ; "valid" ; "terminating" ] delegation >>= fun () ->
     opt_err (M.find "paths" delegation) >>= plist >>= fun paths ->
-    opt_err (M.find "keys" delegation) >>= Expression.of_wire >>= fun keys ->
+    opt_err (M.find "valid" delegation) >>= Expression.of_wire >>= fun valid ->
     (match M.find "terminating" delegation with
-     | None -> Ok false
+     | None -> Ok true
      | Some x -> pdata x >>= function
        | "true" | "yes" -> Ok true
        | "false" | "no" -> Ok false
        | x -> Error ("unkown value for terminating " ^ x)) >>= fun terminating ->
     foldM (fun acc p -> pdata p >>= string_to_path >>= fun s -> Ok (s :: acc)) [] paths >>= fun paths ->
     let paths = List.rev paths in
-    Ok { paths ; keys ; terminating }
+    Ok { paths ; valid ; terminating }
 
   let wire_raw t =
     let open Wire in
     let map =
       M.add "paths" (List (List.map (fun p -> Data (path_to_string p)) t.paths))
-        (M.add "keys" (Expression.to_wire t.keys)
+        (M.add "valid" (Expression.to_wire t.valid)
            (M.add "terminating" (Data (if t.terminating then "true" else "false"))
               M.empty))
     in

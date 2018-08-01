@@ -106,7 +106,7 @@ let collect_and_validate_delegations id_d parent expr targets =
                 if subpath ~parent path then begin
                   Tree.insert path
                     (delegation.Delegation.terminating,
-                     delegation.Delegation.keys,
+                     delegation.Delegation.valid,
                      target.Targets.name, dgst, epoch)
                     tree
                   end else begin

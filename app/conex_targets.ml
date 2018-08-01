@@ -82,10 +82,9 @@ let compute _ dry repodir id pkg root_file =
       M.add "targets" (Wire.List raw) M.empty
     in
     Logs.app (fun m -> m "computed targets: %s" (Conex_opam_encoding.encode out)) ;
-    match dry, id with
-    | true, _ -> Ok ()
-    | false, None -> Error "requires id for writing"
-    | false, Some id' ->
+    match id with
+    | None -> Error "requires id for writing"
+    | Some id' ->
       to_str IO.pp_r_err (IO.read_targets io root id') >>= fun (t, warn) ->
       List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
       let t' = { t with Targets.targets = t.Targets.targets @ targets } in

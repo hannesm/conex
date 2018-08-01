@@ -28,7 +28,7 @@ module type S = sig
 
   (** [verify wire keys sigs] is the set of valid signatures and errors *)
   val verify : Wire.t -> Key.t M.t -> Signature.t M.t ->
-    S.t * error list
+    identifier Digest_map.t * error list
 end
 
 (** The verification backend, to be implemented by a crypto provider *)

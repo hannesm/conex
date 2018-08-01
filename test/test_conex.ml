@@ -692,6 +692,8 @@ module RootTests = struct
     Alcotest.check (result roo str_err) "wrong wire 3.5"
       (Error "") (Root.of_wire (M.add "name" (Wire.Identifier "bar=foo") M.empty))
 
+  let empty_valid = Expression.Quorum (0, Expression.KS.empty)
+
   let basic_good_of_wire () =
     let signed =
       M.add "version" (Wire.Smallint 1)
@@ -702,15 +704,16 @@ module RootTests = struct
                     (M.add "typ" (Wire.Identifier "root")
                        (M.add "datadir" (Wire.Data "/here")
                           (M.add "keydir" (Wire.Data "/there")
-                             (M.add "keys" (Wire.List [])
-                                (M.add "roles" (Wire.Map M.empty) M.empty)))))))))
+                             (M.add "valid" (Wire.Pair (Wire.Smallint 0, Wire.List []))
+                                (M.add "keys" (Wire.List [])
+                                   (M.add "roles" (Wire.Map M.empty) M.empty))))))))))
     in
     let root_wire s =
       M.add "signed" (Wire.Map s) (M.add "signatures" (Wire.List []) M.empty)
     in
     let root = { Root.created = "now" ; counter = Uint.zero ; epoch = Uint.zero ;
                  name = "root" ; datadir = [ "here" ] ; keydir = [ "there" ] ;
-                 keys = M.empty ; roles = M.empty ; signatures = M.empty }
+                 keys = M.empty ; roles = M.empty ; signatures = M.empty ; valid = empty_valid }
     in
     Alcotest.check (result roo str_err) "good wire"
       (Ok (root, [])) (Root.of_wire (root_wire signed)) ;
@@ -757,12 +760,11 @@ module RootTests = struct
       let kref = Expression.Remote ( "foo", (`SHA256, "hash"), Uint.zero ) in
       Expression.Quorum (1, Expression.KS.singleton kref)
     in
-    let root = { root with Root.roles = M.add "root" e M.empty } in
+    let root = { root with Root.valid = e } in
     let signed =
-      M.add "roles"
-        (Wire.Map (M.add "root" (Expression.to_wire e) M.empty)) signed
+      M.add "valid" (Expression.to_wire e) signed
     in
-    Alcotest.check (result roo str_err) "good wire with root role"
+    Alcotest.check (result roo str_err) "good wire with valid"
       (Ok (root, [])) (Root.of_wire (root_wire signed)) ;
     let key = "foobar", "now", `RSA, "rsakey" in
     let root = { root with Root.keys = M.add "foobar" key M.empty } in
@@ -1288,7 +1290,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1323,7 +1325,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1334,7 +1336,7 @@ module RepoTests = struct
         targets = [] ; signatures = M.empty }
     in
     let expr' = Expression.Quorum (1, Expression.KS.singleton (Expression.Remote (id2, dgst2, epoch))) in
-    let delegations = [ { delegation1 with Delegation.keys = expr' } ] in
+    let delegations = [ { delegation1 with Delegation.valid = expr' } ] in
     let targets2 =
       { Targets.created = "now" ; counter = Uint.zero ; epoch = Uint.zero ;
         name = id2 ; keys = M.empty ; valid = expr ; delegations ;
@@ -1360,7 +1362,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1396,7 +1398,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1432,7 +1434,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1468,7 +1470,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ; [ "bar" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1508,13 +1510,13 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ; [ "bar" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
     let delegation2 = {
       Delegation.paths = [ [ "baz" ] ; [ "foobar" ] ] ;
-      keys = expr2 ;
+      valid = expr2 ;
       terminating = true
     }
     in
@@ -1557,7 +1559,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1592,7 +1594,7 @@ module RepoTests = struct
     let keys = M.add id1 (dgst1, epoch) (M.add id2 (dgst2, epoch) M.empty) in
     let delegation1 = {
       Delegation.paths = [ [ "foo" ] ; [ "bar" ] ; [ "bar" ; "foobar" ] ] ;
-      keys = expr ;
+      valid = expr ;
       terminating = false ;
     }
     in
@@ -1707,10 +1709,10 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
 
   let ver =
     let module M = struct
-      type t = S.t * Conex_verify.error list
+      type t = identifier Digest_map.t * Conex_verify.error list
       let pp ppf (ids, errs) =
         Format.fprintf ppf "s: %a@.errs: %a"
-          S.pp ids
+          (Digest_map.pp pp_id) ids
           (pp_list Conex_verify.pp_error) errs
       let equal (ids, err) (ids', err') =
         let e_eq a b = match a, b with
@@ -1722,7 +1724,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
         in
         List.length err = List.length err' &&
         List.for_all2 e_eq err err' &&
-        S.equal ids ids'
+        Digest_map.equal id_equal ids ids'
   end in
   (module M: Alcotest.TESTABLE with type t = M.t)
 
@@ -1730,7 +1732,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     let pub, p = gen_pub () in
     let id = "foobar" in
     let dgst = Key.keyid V.raw_digest pub in
-    let expr = Expression.Quorum (1, Expression.KS.singleton (Expression.Remote (id, dgst, Uint.zero))) in
+    let expr = Expression.Quorum (1, Expression.KS.singleton (Expression.Local id)) in
     let keys = M.add id pub M.empty in
     let root = {
       Root.created = "yesterday" ;
@@ -1740,7 +1742,8 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       datadir = [ "somewhere" ] ;
       keydir = [ "elsewhere" ] ;
       keys = keys ;
-      roles = M.add "root" expr M.empty ;
+      valid = expr ;
+      roles = M.empty ;
       signatures = M.empty
     } in
     match PRIV.sign (Root.wire_raw root) "now!" id `RSA_PSS_SHA256 (Obj.magic p) with
@@ -1748,17 +1751,17 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     | Ok signature ->
       let raw_root = Root.wire_raw root in
       Alcotest.check ver "verify root works"
-        (S.singleton id, [])
+        (Digest_map.add dgst id Digest_map.empty, [])
         (V.verify raw_root keys (M.add id signature M.empty)) ;
       Alcotest.check ver "verify root fails"
-        (S.empty, [])
+        (Digest_map.empty, [])
         (V.verify M.empty keys M.empty) ;
       Alcotest.check ver "verify root fails!"
-        (S.empty, [ `InvalidSignature id ])
+        (Digest_map.empty, [ `InvalidSignature id ])
         (V.verify M.empty keys (M.add id signature M.empty)) ;
       let wrong_keys = M.add "bar" pub M.empty in
       Alcotest.check ver "verify root fails (wrong key)!"
-        (S.empty, [ `UnknownKey id ])
+        (Digest_map.empty, [ `UnknownKey id ])
         (V.verify M.empty wrong_keys (M.add id signature M.empty))
 
 (*    <add signature>
@@ -1767,11 +1770,11 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     <verify>
       <maybe play a bit with modifyin root and attempt to verify> *)
 
-let sign_tests = raw_sigs @ [
-  "sign and verify root", `Quick, sign_verify_root ;
-]
-let tests prefix =
-  [ (prefix ^ "Signature", sign_tests) ]
+  let sign_tests = raw_sigs @ [
+      "sign and verify root", `Quick, sign_verify_root ;
+    ]
+  let tests prefix =
+    [ (prefix ^ "Signature", sign_tests) ]
 end
 
 module NC = BasicTests (Conex_nocrypto.NC_V) (Conex_nocrypto.V)

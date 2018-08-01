@@ -26,7 +26,8 @@ let status _ repodir anchors filename  =
 let create _ dry repodir force filename =
   msg_to_cmdliner (
     repo ~rw:(not dry) repodir >>= fun io ->
-    let root = Root.t ~name:filename now in
+    let valid = Expression.Quorum (0, Expression.KS.empty) in
+    let root = Root.t ~name:filename now valid in
     let root' =
       match IO.read_root io filename with
       | Error _ -> root

@@ -14,28 +14,21 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       C.verify (Root.wire_raw root) root.Root.keys root.Root.signatures
     in
     List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) errs ;
-    let s = S.fold (fun id acc ->
-        match M.find id root.Root.keys with
-        | None ->
-          L.info (fun m -> m "couldn't find key for %a" pp_id id) ;
-          acc
-        | Some key ->
-          let digest = Key.keyid C.raw_digest key in
-          if valid digest id then
-            S.add id acc
+    (* need to unique over keyids *)
+    let s =
+      Digest_map.fold (fun dgst id acc ->
+          if valid dgst id
+          then S.add id acc
           else begin
             L.info (fun m -> m "%a (%a) is not a valid root key"
-                       pp_id id Digest.pp digest) ;
+                       pp_id id Digest.pp dgst) ;
             acc
           end)
         sigs S.empty
     in
-    match M.find "root" root.Root.roles with
-    | None -> Error "no 'root' role in root file"
-    | Some e ->
-      if Expression.eval e Digest_map.empty s
-      then Ok (Conex_repository.create root)
-      else Error "couldn't validate root role"
+    if Expression.eval root.Root.valid Digest_map.empty s
+    then Ok (Conex_repository.create root)
+    else Error "couldn't validate root role"
 
   let targets_cache = ref M.empty
 
@@ -49,10 +42,11 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       let root = Conex_repository.root repo in
       err_to_str IO.pp_r_err (IO.read_targets io root id) >>= fun (targets, warn) ->
       List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
-      let s, es =
+      let sigs, es =
         Targets.(C.verify (wire_raw targets) targets.keys targets.signatures)
       in
       List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) es ;
+      let s = Digest_map.fold (fun _ id acc -> S.add id acc) sigs S.empty in
       (* assumes that expression is valid using only target-local (keys and) signatures! *)
       if Expression.eval targets.Targets.valid Digest_map.empty s then begin
         targets_cache := M.add id targets !targets_cache ;

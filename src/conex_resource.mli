@@ -284,13 +284,14 @@ module Root : sig
     datadir : path ;
     keydir : path ;
     keys : Key.t M.t ;
+    valid : Expression.t ;
     roles : Expression.t M.t ;
     signatures : Signature.t M.t ;
   }
 
   val t : ?counter:Uint.t -> ?epoch:Uint.t -> ?name:identifier ->
     ?datadir:path -> ?keydir:path -> ?keys:Key.t M.t -> ?roles:Expression.t M.t ->
-    ?signatures:Signature.t M.t -> timestamp -> t
+    ?signatures:Signature.t M.t -> timestamp -> Expression.t -> t
 
   val add_signature : t -> identifier -> Signature.t -> t
 
@@ -311,7 +312,7 @@ end
 module Delegation : sig
   type t = {
     paths : path list ;
-    keys : Expression.t ;
+    valid : Expression.t ;
     terminating : bool
   }
 
