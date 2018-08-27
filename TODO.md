@@ -54,6 +54,9 @@ the whole <delegation> (ref, id * hash * epoch) and <valid> stuff needs a re-thi
     -> so far no good way to express this, but now we have a hash.
     but team needs to specify members anyways to be able to read the targets
  -> let's keep it simple for now, and require "a public key with that hash" and a sig on the team targets/rotate
+-> seems that a single signature for each author, which may contain a target <teamX> may be a reasonable solution
+-> after further discussion, not in first iteration: maintainer need to delegate freshly!
+--> general problem is mixing remote keys and local keys
 
 FEATURE support rotation (root file rotation as well!)
        (1, foo hash) looks into foo.hash (which may rotate)

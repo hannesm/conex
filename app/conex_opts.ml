@@ -6,7 +6,7 @@ module Keys = struct
 
   let id_c =
     let parse s =
-      if Conex_utils.String.is_ascii ~p:(function '.' | '=' -> true | _ -> false) s then
+      if Conex_utils.String.is_ascii ~p:(function '.' | '=' | '-' -> true | _ -> false) s then
         `Ok s
       else
         `Error "invalid identifier (valid: A-Za-z0-9)"
@@ -49,18 +49,9 @@ module Keys = struct
     let doc = "Root filename, defaults to root" in
     Arg.(value & opt string "root" & info ["root"] ~docs ~doc)
 
-  let pkg_c =
-    let parse s =
-      if Conex_utils.String.is_ascii ~p:(function '-' | '.' | '=' -> true | _ -> false) s then
-        `Ok s
-      else
-        `Error "invalid identifier (valid: A-Za-z0-9)"
-    in
-    (parse, fun ppf s -> Format.pp_print_string ppf s)
-
   let package =
     let doc = "Package name" in
-    Arg.(value & opt (some pkg_c) None & info [ "pkg" ] ~doc)
+    Arg.(value & opt (some id_c) None & info [ "pkg" ] ~doc)
 
   let incremental =
     let doc = "Incremental verification mode" in
