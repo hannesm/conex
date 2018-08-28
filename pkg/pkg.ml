@@ -12,7 +12,7 @@ let opams =
   let opam no_lint name =
     Pkg.opam_file ~lint_deps_excluding:(Some no_lint) ~install:false name
   in
-  [ opam ["logs";"fmt";"rresult";"cstruct";"nocrypto";"x509";"alcotest"] "opam";
+  [ opam ["logs";"fmt";"rresult";"cstruct";"nocrypto";"x509";"alcotest";"ptime"] "opam";
     opam [ "opam-format";"conex" ] "conex-nocrypto.opam" ]
 
 let distrib =
