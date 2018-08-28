@@ -41,9 +41,9 @@ module Keys = struct
     let doc = "Force." in
     Arg.(value & flag & info ["force"] ~docs ~doc)
 
-  let incr =
-    let doc = "Increment counter." in
-    Arg.(value & flag & info ["incr"] ~docs ~doc)
+  let no_incr =
+    let doc = "Do not increment counter." in
+    Arg.(value & flag & info ["no-incr"] ~docs ~doc)
 
   let root =
     let doc = "Root filename, defaults to root" in

@@ -41,17 +41,17 @@ let to_str pp = function
   | Ok x -> Ok x
   | Error e -> Error (Fmt.to_to_string pp e)
 
-let sign _ dry repodir id incr filename =
+let sign _ dry repodir id no_incr filename =
   Nocrypto_entropy_unix.initialize () ;
   msg_to_cmdliner (
     init_priv_id id >>= fun (priv, id') ->
     repo ~rw:(not dry) repodir >>= fun io ->
     to_str IO.pp_r_err (IO.read_root io filename) >>= fun (root, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
-    (match incr, Uint.succ root.Root.counter with
-     | true, (true, _) -> Error "couldn't increment counter"
-     | false, _ -> Ok root
-     | true, (false, counter) -> Ok { root with Root.counter }) >>= fun root' ->
+    (match no_incr, Uint.succ root.Root.counter with
+     | false, (true, _) -> Error "couldn't increment counter"
+     | true, _ -> Ok root
+     | false, (false, counter) -> Ok { root with Root.counter }) >>= fun root' ->
     PRIV.sign (Root.wire_raw root') now id' `RSA_PSS_SHA256 priv >>= fun signature ->
     let root'' = Root.add_signature root' id' signature in
     IO.write_root io root'')
@@ -91,7 +91,7 @@ let sign_cmd =
     [`S "DESCRIPTION";
      `P "Cryptographically signs queued changes to your resource list."]
   in
-  Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.incr $ Keys.root)),
+  Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.no_incr $ Keys.root)),
   Term.info "sign" ~doc ~man
 
 let status_cmd =
