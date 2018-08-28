@@ -6,7 +6,7 @@ module Keys = struct
 
   let id_c =
     let parse s =
-      if Conex_utils.String.is_ascii ~p:(function '.' | '=' | '-' -> true | _ -> false) s then
+      if Conex_utils.String.is_ascii ~p:(function '_' | '.' | '=' | '-' -> true | _ -> false) s then
         `Ok s
       else
         `Error "invalid identifier (valid: A-Za-z0-9)"
