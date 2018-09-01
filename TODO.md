@@ -2,10 +2,11 @@ hannes, 2018-07-26
 
 this is taking new-conex into account, towards a usable conex
 TODO is before initial prototype announcement
+SHOULD is not mandatory
 LATER is later, delayed while in rush
 FEATURE is a later planned feature
 
-TODO define order / sort for targets and delegations (other lists in targets/root?)!
+SHOULD define order / sort for targets and delegations (other lists in targets/root?)!
 
 LATER atm we require delegations of _sub_paths, this limits expressivity
      there's only the root -> janitor -> target delegation going on..
@@ -14,7 +15,7 @@ LATER atm we require delegations of _sub_paths, this limits expressivity
 
 TODO root key rotation - how's that going to work out? do we need rotate below for that?
 
-TODO evaluate diff-provider with huge diffs (many files, ..), i suspect it'll
+SHOULD evaluate diff-provider with huge diffs (many files, ..), i suspect it'll
      show its limits early
      --> is there an alternative strategy?  call out to patch? (and diff to
          discover differences in the keys dir)?
@@ -22,7 +23,7 @@ TODO evaluate diff-provider with huge diffs (many files, ..), i suspect it'll
 
 TODO document diff to old-conex and diff to tuf!
 
-LATER sha256/openssl is slow, eliminate read -> write -> sha256 (instead do sha256 directly)
+SHOULD sha256/openssl is slow, eliminate read -> write -> sha256 (instead do sha256 directly)
      not sure whether that's worth it -- usually it will be applied to the diff provider.. which doesn't have physical files yet (but tbh only few files change every time)
 
 LATER snapshot verification integration
