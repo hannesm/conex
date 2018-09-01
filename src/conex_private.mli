@@ -18,7 +18,7 @@ module type S = sig
 
   (** [read id] is either [Ok priv], the private key corresponding to [id], or
       an [Error].  *)
-  val read : identifier -> (t, r_err) result
+  val read : (float -> Conex_resource.timestamp option) -> identifier -> (t, r_err) result
 
   (** [bits t] is the number of bits of the private key [t]. *)
   val bits : t -> int
@@ -32,8 +32,8 @@ module type S = sig
   (** [generate ~bits alg id ()] generates a fresh private key using [alg]
       for [id], or an error.  Generate also ensures to persistently store the
       generated key if desired. *)
-  val generate : ?bits:int -> Key.alg -> identifier -> unit ->
-    (t, string) result
+  val generate : ?bits:int -> (float -> Conex_resource.timestamp option) ->
+    Key.alg -> identifier -> unit -> (t, string) result
 
   (** [pub_of_priv priv] extracts the public key out of [priv]. *)
   val pub_of_priv : t -> Key.t
@@ -52,7 +52,7 @@ module type FS = sig
 
   (** [read id] is either the content and creation timestamp of [id], or an
       error. *)
-  val read : Conex_resource.identifier -> ((string * Conex_resource.timestamp), string) result
+  val read : (float -> Conex_resource.timestamp option) -> Conex_resource.identifier -> ((string * Conex_resource.timestamp), string) result
 
   (** [write id data] stores [data] as [id] persistently, or errors. *)
   val write : Conex_resource.identifier -> string -> (unit, string) result

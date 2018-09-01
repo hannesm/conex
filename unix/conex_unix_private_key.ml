@@ -46,13 +46,13 @@ let write id key =
   | Ok Directory -> write_file ~mode:0o400 filename key
   | _ -> Error (private_dir ^ " is not a directory!")
 
-let read id =
+let read to_ts id =
   let fn = private_key_path id in
   if exists fn then
     read_file fn >>= fun key ->
     let stat = Unix.stat fn in
-    match Ptime.of_float_s stat.Unix.st_mtime with
+    match to_ts stat.Unix.st_mtime with
     | None -> Error ("couldn't convert modification time to Uint.t")
-    | Some created -> Ok (key, Ptime.to_rfc3339 ~tz_offset_s:0 created)
+    | Some ts -> Ok (key, ts)
   else
     Error ("couldn't find private key for " ^ id)

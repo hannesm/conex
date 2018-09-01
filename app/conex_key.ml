@@ -22,13 +22,13 @@ let jump _ id force pub =
          Ok ()
        in
        let gen_or_err () =
-         PRIV.generate `RSA id () >>= fun t ->
+         PRIV.generate to_ts `RSA id () >>= fun t ->
          Logs.app (fun m -> m "generated fresh key") ;
          fp t
      in
      if force
      then gen_or_err ()
-     else match PRIV.read id with
+     else match PRIV.read to_ts id with
        | Ok key -> fp key
        | Error `None -> gen_or_err ()
        | Error e -> Error (Fmt.to_to_string PRIV.pp_r_err e))

@@ -9,11 +9,11 @@ module type S = sig
   val ids : unit -> identifier list
   type r_err = [ `Decode of string | `Read of string | `None | `Multiple of string list ]
   val pp_r_err : r_err fmt
-  val read : identifier -> (t, r_err) result
+  val read : (float -> Conex_resource.timestamp option) -> identifier -> (t, r_err) result
   val bits : t -> int
   val created : t -> timestamp
   val id : t -> string
-  val generate : ?bits:int -> Key.alg -> identifier -> unit -> (t, string) result
+  val generate : ?bits:int -> (float -> Conex_resource.timestamp option) -> Key.alg -> identifier -> unit -> (t, string) result
   val pub_of_priv : t -> Key.t
   val sign : Wire.t -> timestamp -> identifier -> Signature.alg -> t ->
     (Signature.t, string) result
@@ -21,7 +21,7 @@ end
 
 module type FS = sig
   val ids : unit -> Conex_resource.identifier list
-  val read : Conex_resource.identifier -> ((string * Conex_resource.timestamp), string) result
+  val read : (float -> Conex_resource.timestamp option) -> Conex_resource.identifier -> ((string * Conex_resource.timestamp), string) result
   val write : Conex_resource.identifier -> string -> (unit, string) result
 end
 
@@ -56,15 +56,15 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
 
   let get_id id = match String.cut '.' id with | None -> id | Some (a, _) -> a
 
-  let read id =
+  let read to_ts id =
     let decode_e = function Ok t -> Ok t | Error e -> Error (`Decode e) in
-    match F.read id with
+    match F.read to_ts id with
     | Ok (k, ts) -> decode_e (C.decode_priv (get_id id) ts k)
     | Error _ ->
       (* treat id as prefix, look whether we've something *)
       match List.filter (fun fn -> String.is_prefix ~prefix:id fn) (F.ids ()) with
       | [ id' ] ->
-        begin match F.read id' with
+        begin match F.read to_ts id' with
           | Error e -> Error (`Read e)
           | Ok (k, ts) -> decode_e (C.decode_priv (get_id id') ts k)
         end
@@ -77,7 +77,7 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
 
   let id = C.id
 
-  let generate ?bits alg id () =
+  let generate ?bits to_ts alg id () =
     match alg with
     | `RSA ->
       let key, pub = C.generate_rsa ?bits () in
@@ -87,7 +87,7 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
         get_id id ^ "." ^ Digest.to_string keyid
       in
       F.write filename key >>= fun () ->
-      F.read filename >>= fun (_, ts) ->
+      F.read to_ts filename >>= fun (_, ts) ->
       C.decode_priv id ts key
 
   let pub_of_priv t =

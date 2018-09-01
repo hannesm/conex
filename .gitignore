@@ -1,5 +1,6 @@
 _build/
 coverage/
 bisect*.out
+.merlin
 *.install
 *.native

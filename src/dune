@@ -1,0 +1,5 @@
+(library
+  (name conex)
+  (public_name conex)
+  (wrapped false)
+  (libraries opam-file-format))

@@ -1,5 +1,4 @@
 open Conex_utils
-open Conex_resource
 open Conex_io
 
 open Common

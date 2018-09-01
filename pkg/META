@@ -1,7 +1,0 @@
-description = "Digitally signed repositories"
-version = "%%BERSION_NUM%%"
-requires = "opam-file-format"
-archive(byte) = "conex.cma"
-archive(native) = "conex.cmxa"
-plugin(byte) = "conex.cma"
-plugin(native) = "conex.cmxs"

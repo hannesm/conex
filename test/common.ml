@@ -5,7 +5,7 @@ module FS = struct
   let data = Hashtbl.create 3
 
   let ids () = Hashtbl.fold (fun k _ acc -> k :: acc) data []
-  let read id = match Hashtbl.find data id with
+  let read _ id = match Hashtbl.find data id with
     | exception Not_found -> Error "not found"
     | v -> Ok (v, "")
   let write k v = Hashtbl.add data k v ; Ok ()
@@ -27,7 +27,7 @@ let gen_pub () =
   let priv = match !privkey with
     | Some p -> p
     | None ->
-      match PRIV.generate ~bits:2048 `RSA "foo" () with
+      match PRIV.generate ~bits:2048 (fun _ -> Some "") `RSA "foo" () with
       | Error e -> Alcotest.fail e
       | Ok p ->
         privkey := Some p ;

@@ -1,0 +1,8 @@
+(executables
+  (names tests)
+  (libraries conex conex-nocrypto conex.openssl alcotest nocrypto.unix))
+
+(alias
+  (name runtest)
+  (package conex-nocrypto)
+  (action (run ./tests.exe)))

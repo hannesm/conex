@@ -1,0 +1,46 @@
+(library
+  (name conex_cmd)
+  (wrapped false)
+  (modules conex_verify_app conex_opts)
+  (libraries cmdliner conex conex.unix))
+
+(executable
+  (name conex_verify_openssl)
+  (public_name conex_verify_openssl)
+  (package conex)
+  (modules conex_verify_openssl)
+  (libraries cmdliner conex conex.openssl conex.unix conex_cmd))
+
+(executable
+  (name conex_verify_nocrypto)
+  (public_name conex_verify_nocrypto)
+  (package conex-nocrypto)
+  (modules conex_verify_nocrypto)
+  (libraries cmdliner conex conex-nocrypto conex.unix conex_cmd logs fmt logs.fmt fmt.tty logs.cli fmt.cli))
+
+(library
+  (name conex_cmd_nc)
+  (wrapped false)
+  (modules conex_nc)
+  (libraries conex-nocrypto conex.unix logs fmt ptime ptime.clock.os))
+
+(executable
+  (name conex_root)
+  (public_name conex_root)
+  (package conex-nocrypto)
+  (modules conex_root)
+  (libraries cmdliner conex conex-nocrypto conex.unix conex_cmd conex_cmd_nc logs fmt logs.fmt fmt.tty logs.cli fmt.cli nocrypto.unix rresult))
+
+(executable
+  (name conex_key)
+  (public_name conex_key)
+  (package conex-nocrypto)
+  (modules conex_key)
+  (libraries cmdliner conex conex-nocrypto conex.unix conex_cmd conex_cmd_nc logs fmt logs.fmt fmt.tty logs.cli fmt.cli nocrypto.unix rresult))
+
+(executable
+  (name conex_targets)
+  (public_name conex_targets)
+  (package conex-nocrypto)
+  (modules conex_targets)
+  (libraries cmdliner conex conex-nocrypto conex.unix conex_cmd conex_cmd_nc logs fmt logs.fmt fmt.tty logs.cli fmt.cli nocrypto.unix rresult))
