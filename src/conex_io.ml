@@ -79,7 +79,9 @@ let digest_len f data =
 
 let target f filename data =
   let digest, size = digest_len f data in
-  { Target.digest = [ digest ] ; size ; filename }
+  let target = { Target.digest = [ digest ] ; size ; filename } in
+  Target.valid_path target >>= fun () ->
+  Ok target
 
 let compute_checksum ?(prefix = [ "packages" ]) t f path =
   let rec compute_item prefix otherp acc = function
@@ -90,7 +92,8 @@ let compute_checksum ?(prefix = [ "packages" ]) t f path =
     | File, name ->
       let filename = prefix @ [ name ] in
       t.read filename >>= fun data ->
-      Ok (target f (otherp @ [ name ]) data :: acc)
+      target f (otherp @ [ name ]) data >>= fun target ->
+      Ok (target :: acc)
   in
   let go pre name = compute_item (prefix @ pre) pre [] (Directory, name) in
   match List.rev path with

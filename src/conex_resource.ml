@@ -757,6 +757,18 @@ module Target = struct
       (pp_list Digest.pp) t.digest
   (*BISECT-IGNORE-END*)
 
+  let valid_path t =
+    (* this is an opam repository side condition:
+       [ foo ; foo.version ; .. ] *)
+    let res = match t.filename with
+      | pname :: pversion :: _ -> String.is_prefix ~prefix:(pname ^ ".") pversion
+      | _ -> false
+    in
+    if res then
+      Ok ()
+    else
+      Error (path_to_string t.filename ^ " is not a valid opam path")
+
   let of_wire wire =
     let open Wire in
     pmap wire >>= fun target ->
@@ -772,7 +784,9 @@ module Target = struct
         | Error e -> Error (str_pp pp_err e))
       [] digest >>= fun digest ->
     let digest = List.rev digest in
-    Ok { filename ; size ; digest }
+    let target = { filename ; size ; digest } in
+    valid_path target >>= fun () ->
+    Ok target
 
   let wire_raw t =
     let open Wire in

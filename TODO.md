@@ -12,6 +12,8 @@ LATER atm we require delegations of _sub_paths, this limits expressivity
      -> if we relax, we need to take cycles into consideration
          (a delegates p to b, b delegates p to a)
 
+TODO root key rotation - how's that going to work out? do we need rotate below for that?
+
 TODO evaluate diff-provider with huge diffs (many files, ..), i suspect it'll
      show its limits early
      --> is there an alternative strategy?  call out to patch? (and diff to
