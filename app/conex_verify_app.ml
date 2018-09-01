@@ -41,36 +41,36 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   module C = Conex.Make(L)(V)
 
-  let verify_diff io patch valid ignore_missing root_file =
+  let verify_diff io patch valid quorum ignore_missing root_file =
     Conex_unix_persistency.read_file patch >>= fun x ->
     let newio, diffs = Conex_diff_provider.apply_diff io x in
-    (*    C.verify_snapshot newio repo >>= fun () -> *)
-    C.verify_root ~valid newio root_file >>= fun repo ->
+    (* C.verify_snapshot newio repo >>= fun () -> *)
+    C.verify_root ~valid ?quorum newio root_file >>= fun repo ->
     C.verify ~ignore_missing newio repo >>= fun () ->
     C.verify_diffs root_file io newio diffs >>= fun () ->
     Printf.printf "diff verification successfull\n" ;
     Ok ()
 
-  let verify_full io valid ignore_missing root_file =
-    C.verify_root ~valid io root_file >>= fun repo ->
+  let verify_full io valid quorum ignore_missing root_file =
+    C.verify_root ~valid ?quorum io root_file >>= fun repo ->
     C.verify ~ignore_missing io repo >>= fun () ->
     Printf.printf "full verification successfull\n" ;
     Ok ()
 
-  let verify_it repodir _quorum anchors incremental dir patch nostrict root_file =
+  let verify_it repodir quorum anchors incremental dir patch nostrict root_file =
     let valid = Conex_opts.valid anchors in
     match repodir, incremental, patch, dir with
     | Some repodir, true, Some p, None ->
       Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
       L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-      verify_diff io p valid nostrict root_file
+      verify_diff io p valid quorum nostrict root_file
     | _, false, None, Some "" ->
       L.debug (fun m -> m "called with no incremental, and dir = empty -> no update") ;
       Ok ()
     | _, false, None, Some d ->
       Conex_unix_provider.fs_ro_provider d >>= fun io ->
       L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-      verify_full io valid nostrict root_file
+      verify_full io valid quorum nostrict root_file
     | None, _, _, _ -> Error "--repo is required"
     | _ -> Error "invalid combination of incremental, patch and dir"
 end

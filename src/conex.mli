@@ -22,7 +22,7 @@ open Conex_resource
 module Make (L : LOGS) (C : Conex_verify.S): sig
 
   val verify_root : ?valid:(Digest.t -> identifier -> bool) ->
-    Conex_io.t -> name -> (Conex_repository.t, string) result
+    ?quorum : int -> Conex_io.t -> name -> (Conex_repository.t, string) result
 
   val verify_targets : Conex_io.t -> Conex_repository.t -> identifier ->
     (Targets.t, string) result

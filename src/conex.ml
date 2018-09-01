@@ -5,7 +5,18 @@ module IO = Conex_io
 
 module Make (L : LOGS) (C : Conex_verify.S) = struct
 
-  let verify_root ?(valid = fun _ _ -> false) io filename =
+  let valid_ids valid sigs =
+    Digest_map.fold (fun dgst id acc ->
+        if valid dgst id
+        then S.add id acc
+        else begin
+          L.info (fun m -> m "%a (%a) is not a valid root key"
+                     pp_id id Digest.pp dgst) ;
+          acc
+        end)
+      sigs S.empty
+
+  let verify_root ?(valid = fun _ _ -> false) ?quorum io filename =
     L.debug (fun m -> m "verifying root %a" pp_name filename) ;
     err_to_str IO.pp_r_err (IO.read_root io filename) >>= fun (root, warn) ->
     List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
@@ -15,20 +26,18 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     in
     List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) errs ;
     (* need to unique over keyids *)
-    let s =
-      Digest_map.fold (fun dgst id acc ->
-          if valid dgst id
-          then S.add id acc
-          else begin
-            L.info (fun m -> m "%a (%a) is not a valid root key"
-                       pp_id id Digest.pp dgst) ;
-            acc
-          end)
-        sigs S.empty
+    let ids = valid_ids valid sigs in
+    let quorum_satisfied = match quorum with
+      | None -> true
+      | Some q -> q <= S.cardinal ids
     in
-    if Expression.eval root.Root.valid Digest_map.empty s
-    then Ok (Conex_repository.create root)
-    else Error "couldn't validate root role"
+    match
+      Expression.eval root.Root.valid Digest_map.empty ids,
+      quorum_satisfied
+    with
+    | true, true -> Ok (Conex_repository.create root)
+    | false, _ -> Error "couldn't validate root role"
+    | _, false -> Error "provided quorum was not matched"
 
   let targets_cache = ref M.empty
 

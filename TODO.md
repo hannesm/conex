@@ -1,11 +1,13 @@
 hannes, 2018-07-26
 
 this is taking new-conex into account, towards a usable conex
-TODO is before initial prototype announcement, FEATURE is later
+TODO is before initial prototype announcement
+LATER is later, delayed while in rush
+FEATURE is a later planned feature
 
 TODO define order / sort for targets and delegations (other lists in targets/root?)!
 
-TODO atm we require delegations of _sub_paths, this limits expressivity
+LATER atm we require delegations of _sub_paths, this limits expressivity
      there's only the root -> janitor -> target delegation going on..
      -> if we relax, we need to take cycles into consideration
          (a delegates p to b, b delegates p to a)
@@ -18,14 +20,10 @@ TODO evaluate diff-provider with huge diffs (many files, ..), i suspect it'll
 
 TODO document diff to old-conex and diff to tuf!
 
-TODO use from opam-file-format OpamPrinter.Preserved.opamfile to preserve whitespaces etc. (esp. after add_signatures) (requires opam-file-format >= 2.0.0-beta5)
-
-TODO sha256/openssl is slow, eliminate read -> write -> sha256 (instead do sha256 directly)
+LATER sha256/openssl is slow, eliminate read -> write -> sha256 (instead do sha256 directly)
      not sure whether that's worth it -- usually it will be applied to the diff provider.. which doesn't have physical files yet (but tbh only few files change every time)
 
-TODO opam-provided quorum: should we use to evaluate (x, trust_anchors) when validating root?
-
-TODO snapshot verification integration
+LATER snapshot verification integration
      functorize IO in conex (same as logs and verify)
 
 TODO think about future-safety: is conex 1 compat with 2? coexistance?
