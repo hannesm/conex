@@ -139,8 +139,8 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     end
 
   let verify ?(ignore_missing = false) io repo =
-    match Conex_repository.janitor_delegation repo with
-    | None -> Error "no delegation for janitors"
+    match Conex_repository.maintainer_delegation repo with
+    | None -> Error "no delegation for maintainers"
     | Some (expr, term, supp) ->
       (* queue is mutable, not thread safe, raises on pop when empty
          - it does not leave the scope here

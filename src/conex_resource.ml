@@ -592,7 +592,7 @@ end
 module Root = struct
   let version = 1
 
-  let supported_roles = [ "timestamp" ; "snapshot" ; "janitor" ]
+  let supported_roles = [ "timestamp" ; "snapshot" ; "maintainer" ]
 
   type t = {
     created : timestamp ;

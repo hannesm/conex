@@ -272,7 +272,7 @@ end
 (** {1 Root} *)
 
 (** The root contains the (offline) root keys, also defines snapshot, timestamp,
-    and janitors.  Furthermore, it contains configuration information such as
+    and maintainers.  Furthermore, it contains configuration information such as
     where keys are located in this repository and where the data is stored. *)
 
 module Root : sig

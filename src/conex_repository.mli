@@ -13,7 +13,7 @@ val targets : t -> (Digest.t * Uint.t * S.t) Tree.t
 
 val with_targets : t -> (Digest.t * Uint.t * S.t) Tree.t -> t
 
-val janitor_delegation : t -> (Expression.t * bool * S.t) option
+val maintainer_delegation : t -> (Expression.t * bool * S.t) option
 
 val create : Root.t -> t
 

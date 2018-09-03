@@ -22,7 +22,7 @@ module Keys = struct
     Arg.(value & flag & info [ "ignore-missing" ; "nostrict" ] ~doc)
 
   let quorum =
-    let doc = "The quorum of janitors used for verification of the repository" in
+    let doc = "The quorum of maintainers used for verification of the repository" in
     Arg.(value & opt (some int) None & info [ "quorum" ] ~doc)
 
   let repo =
