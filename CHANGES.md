@@ -1,5 +1,6 @@
-## 0.10.0 ??
+## 0.10.0 (2018-09-03)
 
+* adjusted to new conex design, lots of breaking changes
 * opam_encoding: maps use identifiers now, instead of strings - as does alg_type
 * conex_resource: use alg=data for encoding digests (instead of [ alg ; data ])
 * conex_resource: use hex encoding, rather than base64 for checksums
