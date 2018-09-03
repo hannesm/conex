@@ -4,8 +4,8 @@ open Conex_opts
 
 module V = VERIFY(Logs)(Conex_nocrypto.NC_V)
 
-let jump _ repo quorum anchors inc dir patch nostrict root =
-  msg_to_cmdliner (V.verify_it repo quorum anchors inc dir patch nostrict root)
+let jump _ repo quorum anchors inc dir patch nostrict root no_opam =
+  msg_to_cmdliner (V.verify_it repo quorum anchors inc dir patch nostrict root (not no_opam))
 
 let setup_log style_renderer level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
@@ -22,7 +22,7 @@ let setup_log =
         $ Logs_cli.level ~docs ())
 
 let cmd =
-  Term.(ret (const jump $ setup_log $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ Keys.ignore_missing $ Keys.root)),
+  Term.(ret (const jump $ setup_log $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ Keys.ignore_missing $ Keys.root $ Keys.no_opam)),
   Term.info "conex_verify_nocrypto" ~version:"%%VERSION_NUM%%"
     ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
 

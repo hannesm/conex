@@ -24,11 +24,12 @@ module Make (L : LOGS) (C : Conex_verify.S): sig
   val verify_root : ?valid:(Digest.t -> identifier -> bool) ->
     ?quorum : int -> Conex_io.t -> name -> (Conex_repository.t, string) result
 
-  val verify_targets : Conex_io.t -> Conex_repository.t -> identifier ->
+  val verify_targets : Conex_io.t -> Conex_repository.t -> bool -> identifier ->
     (Targets.t, string) result
 
-  val verify : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t -> (unit, string) result
+  val verify : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t ->
+    bool -> (unit, string) result
 
-  val verify_diffs : string -> Conex_io.t -> Conex_io.t -> Conex_diff.t list ->
+  val verify_diffs : string -> Conex_io.t -> Conex_io.t -> Conex_diff.t list -> bool ->
     (unit, string) result
 end

@@ -64,6 +64,10 @@ module Keys = struct
   let patch =
     let doc = "Patch file which is verified." in
     Arg.(value & opt (some file) None & info [ "patch" ] ~doc)
+
+  let no_opam =
+    let doc = "Do not verify opam repository layout" in
+    Arg.(value & flag & info [ "no-opam" ] ~doc)
 end
 
 let repo ?(rw = false) repodir =

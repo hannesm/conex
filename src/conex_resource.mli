@@ -342,7 +342,7 @@ module Target : sig
   (** [valid_path t] is [true] if the filename sticks to opam repository rules:
      [foo/foo.version/xx] (may not be [foo/bar.version], otherwise treat as
      [bar] package) *)
-  val valid_path : t -> (unit, string) result
+  val valid_path : t -> bool
 
   (** [pp] is a pretty printer for a target. *)
   val pp : t fmt

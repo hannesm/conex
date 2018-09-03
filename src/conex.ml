@@ -41,7 +41,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
 
   let targets_cache = ref M.empty
 
-  let verify_targets io repo id =
+  let verify_targets io repo opam id =
     L.debug (fun m -> m "verifying target %a" pp_id id) ;
     match M.find id !targets_cache with
     | Some targets ->
@@ -49,7 +49,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       Ok targets
     | None ->
       let root = Conex_repository.root repo in
-      err_to_str IO.pp_r_err (IO.read_targets io root id) >>= fun (targets, warn) ->
+      err_to_str IO.pp_r_err (IO.read_targets io root opam id) >>= fun (targets, warn) ->
       List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
       let sigs, es =
         Targets.(C.verify (wire_raw targets) targets.keys targets.signatures)
@@ -86,9 +86,9 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       | [] -> Ok ()
       | _ -> Error "non-strict comparison failed"
 
-  let collect_targets io repo keyrefs =
+  let collect_targets io repo opam keyrefs =
     M.fold (fun id (dgst, epoch) (dm, id_d, targets) ->
-        match verify_targets io repo id with
+        match verify_targets io repo opam id with
         | Error msg ->
           L.warn (fun m -> m "couldn't load or verify target %a: %s" pp_id id msg) ;
           (dm, id_d, targets)
@@ -116,9 +116,9 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
             end)
       keyrefs (Digest_map.empty, M.empty, [])
 
-  let verify_one io repo path expr terminating =
+  let verify_one io repo opam path expr terminating =
     let keyrefs = Expression.keys M.empty expr in
-    let dm, id_d, targets = collect_targets io repo keyrefs in
+    let dm, id_d, targets = collect_targets io repo opam keyrefs in
     if Expression.eval expr dm S.empty then begin
       let tree = Conex_repository.targets repo in
       let tree' = Conex_repository.collect_and_validate_targets ~tree id_d path expr targets in
@@ -138,7 +138,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       (repo, [])
     end
 
-  let verify ?(ignore_missing = false) io repo =
+  let verify ?(ignore_missing = false) io repo opam =
     match Conex_repository.maintainer_delegation repo with
     | None -> Error "no delegation for maintainers"
     | Some (expr, term, supp) ->
@@ -156,7 +156,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         then repo
         else begin
           let (path, expr, terminating, _supp) = Queue.pop q in
-          let repo', dels = verify_one io repo path expr terminating in
+          let repo', dels = verify_one io repo opam path expr terminating in
           List.iter (fun (p, e, t, s) ->
               L.debug (fun m -> m "pushing delegation path %a expr %a terminating %b s %a"
                          pp_path p Expression.pp e t S.pp s) ;
@@ -175,7 +175,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
                   (Tree.pp pp_t) (Conex_repository.targets repo')) ;
       compare_with_disk ignore_missing io repo'
 
-  let verify_diffs root io newio diffs =
+  let verify_diffs root io newio diffs opam =
     err_to_str IO.pp_r_err (IO.read_root io root) >>= fun (old_root, warn) ->
     List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
     err_to_str IO.pp_r_err (IO.read_root newio root) >>= fun (new_root, warn') ->
@@ -192,7 +192,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
      | r, c -> invalid_arg ("shouldn't happen, r is " ^ string_of_bool r ^ ", compare " ^ string_of_int c)) >>= fun () ->
     S.fold (fun id acc ->
         acc >>= fun () ->
-        match IO.read_targets io old_root id, IO.read_targets newio new_root id with
+        match IO.read_targets io old_root opam id, IO.read_targets newio new_root opam id with
         | Error _, Ok _ -> Ok ()
         | Error _, Error e -> err_to_str IO.pp_r_err (Error e)
         | Ok _, Error e -> err_to_str IO.pp_r_err (Error e) (* TODO allow delete? *)

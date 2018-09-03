@@ -80,7 +80,7 @@ let terminal () =
   in
   if not dumb && isatty then `Ansi_tty else `None
 
-let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root =
+let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root no_opam =
   let level =
     if quiet then `Warn
     else if verbose then `Debug
@@ -92,7 +92,7 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c ro
   Log.set_styled styled ;
   msg_to_cmdliner (
     Conex_openssl.V.check_version () >>= fun () ->
-    V.verify_it repo quorum anchors incremental dir patch strict root)
+    V.verify_it repo quorum anchors incremental dir patch strict root (not no_opam))
 
 open Conex_opts
 open Cmdliner
@@ -110,7 +110,7 @@ let no_color =
     Arg.(value & flag & info [ "no-color" ] ~doc)
 
 let cmd =
-  Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root)),
+  Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam)),
   Term.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
     ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
 

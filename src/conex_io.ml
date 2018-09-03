@@ -17,13 +17,19 @@ let pp ppf t =
   Format.fprintf ppf "repository %s: %s" t.basedir t.description
 (*BISECT-IGNORE-END*)
 
-type r_err = [ `NotFound of typ * name | `ParseError of typ * name * string | `NameMismatch of typ * name * name ]
+type r_err = [
+  | `NotFound of typ * name
+  | `ParseError of typ * name * string
+  | `NameMismatch of typ * name * name
+  | `InvalidPath of identifier * path
+]
 
 (*BISECT-IGNORE-BEGIN*)
 let pp_r_err ppf = function
   | `NotFound (res, nam) -> Format.fprintf ppf "%a (type %a) was not found in repository" pp_name nam pp_typ res
   | `ParseError (res, n, e) -> Format.fprintf ppf "parse error while parsing %a (type %a): %s" pp_name n pp_typ res e
   | `NameMismatch (res, should, is) -> Format.fprintf ppf "%a (type %a) is named %a" pp_name should pp_typ res pp_name is
+  | `InvalidPath (nam, path) -> Format.fprintf ppf "%a contains an invalid path %a" pp_id nam pp_path path
 (*BISECT-IGNORE-END*)
 
 let read_root t root_file =
@@ -54,7 +60,7 @@ let targets t root =
           acc)
       [] datas
 
-let read_targets t root id =
+let read_targets t root opam id =
   let path = root.Root.keydir @ [ id ] in
   match t.read path with
   | Error _ -> Error (`NotFound (`Targets, id))
@@ -64,6 +70,13 @@ let read_targets t root id =
     | Ok (targets, warn) ->
       guard (id_equal targets.Targets.name id)
         (`NameMismatch (`Targets, id, targets.Targets.name)) >>= fun () ->
+      let check_path t =
+        if opam then
+          guard (Target.valid_path t) (`InvalidPath (id, t.Target.filename))
+        else
+          Ok ()
+      in
+      iterM check_path targets.Targets.targets >>= fun () ->
       Ok (targets, warn)
 
 let write_targets t root targets =
@@ -79,11 +92,9 @@ let digest_len f data =
 
 let target f filename data =
   let digest, size = digest_len f data in
-  let target = { Target.digest = [ digest ] ; size ; filename } in
-  Target.valid_path target >>= fun () ->
-  Ok target
+  { Target.digest = [ digest ] ; size ; filename }
 
-let compute_checksum ?(prefix = [ "packages" ]) t f path =
+let compute_checksum ?(prefix = [ "packages" ]) t opam f path =
   let rec compute_item prefix otherp acc = function
     | Directory, name ->
       let path = prefix @ [ name ] in
@@ -92,8 +103,11 @@ let compute_checksum ?(prefix = [ "packages" ]) t f path =
     | File, name ->
       let filename = prefix @ [ name ] in
       t.read filename >>= fun data ->
-      target f (otherp @ [ name ]) data >>= fun target ->
-      Ok (target :: acc)
+      let target = target f (otherp @ [ name ]) data in
+      if not opam || opam && Target.valid_path target then
+        Ok (target :: acc)
+      else
+        Error ("invalid path " ^ path_to_string filename)
   in
   let go pre name = compute_item (prefix @ pre) pre [] (Directory, name) in
   match List.rev path with

@@ -15,20 +15,20 @@ let find_id io root id =
   | [] -> Error "no id found with given prefix"
   | _ -> Error "multiple ids found with given prefix"
 
-let status _ repodir id root_file =
+let status _ repodir id root_file no_opam =
   Conex_opts.msg_to_cmdliner (
     Conex_opts.repo repodir >>= fun io ->
     to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
     find_id io root id >>= fun id' ->
-    to_str IO.pp_r_err (IO.read_targets io root id') >>= fun (targets, warn) ->
+    to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (targets, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.app (fun m -> m "targets file %a" Targets.pp targets) ;
     Ok ())
     (* should verify targets now, but need root (delegations, +others) + TA *)
 
-let create _ repodir id dry root_file =
+let create _ repodir id dry root_file no_opam =
   (* given private key id, create an initial targets template! *)
   msg_to_cmdliner (
     init_priv_id id >>= fun (priv, id') ->
@@ -37,7 +37,7 @@ let create _ repodir id dry root_file =
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
     let targets =
-      match IO.read_targets io root id' with
+      match IO.read_targets io root (not no_opam) id' with
       | Error _ ->
         let pub = PRIV.pub_of_priv priv in
         let keyref = Expression.Local id' in
@@ -51,14 +51,14 @@ let create _ repodir id dry root_file =
     Logs.app (fun m -> m "targets file %a" Targets.pp targets) ;
     IO.write_targets io root targets)
 
-let hash _ repodir id root_file =
+let hash _ repodir id root_file no_opam =
   msg_to_cmdliner (
     (match id with None -> Error "requires id" | Some id -> Ok id) >>= fun id' ->
     repo repodir >>= fun io ->
     to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
-    to_str IO.pp_r_err (IO.read_targets io root id') >>= fun (targets, warn) ->
+    to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (targets, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     let keys =
       M.fold
@@ -69,14 +69,14 @@ let hash _ repodir id root_file =
     Logs.app (fun m -> m "hash %a" Digest.pp dgst) ;
     Ok ())
 
-let compute _ dry repodir id pkg root_file =
+let compute _ dry repodir id pkg root_file no_opam =
   msg_to_cmdliner (
     repo ~rw:(not dry) repodir >>= fun io ->
     to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
     let path = match pkg with None -> [] | Some path -> [ path ] in
-    IO.compute_checksum ~prefix:root.Root.datadir io V.raw_digest path >>= fun targets ->
+    IO.compute_checksum ~prefix:root.Root.datadir io (not no_opam) V.raw_digest path >>= fun targets ->
     let out =
       let raw = List.map Target.wire_raw targets in
       M.add "targets" (Wire.List raw) M.empty
@@ -85,12 +85,12 @@ let compute _ dry repodir id pkg root_file =
     match id with
     | None -> Error "requires id for writing"
     | Some id' ->
-      to_str IO.pp_r_err (IO.read_targets io root id') >>= fun (t, warn) ->
+      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (t, warn) ->
       List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
       let t' = { t with Targets.targets = t.Targets.targets @ targets } in
       IO.write_targets io root t')
 
-let sign _ dry repodir id no_incr root_file =
+let sign _ dry repodir id no_incr root_file no_opam =
   Nocrypto_entropy_unix.initialize () ;
   msg_to_cmdliner (
     init_priv_id id >>= fun (priv, id') ->
@@ -98,7 +98,7 @@ let sign _ dry repodir id no_incr root_file =
     to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root is %a" Root.pp root) ;
-    to_str IO.pp_r_err (IO.read_targets io root id') >>= fun (targets, warn) ->
+    to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (targets, warn) ->
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     (match no_incr, Uint.succ targets.Targets.counter with
      | true, _ -> Ok targets
@@ -143,7 +143,7 @@ let sign_cmd =
     [`S "DESCRIPTION";
      `P "Cryptographically signs queued changes to your resource list."]
   in
-  Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.no_incr $ Keys.root)),
+  Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.no_incr $ Keys.root $ Keys.no_opam)),
   Term.info "sign" ~doc ~man
 
 let status_cmd =
@@ -152,7 +152,7 @@ let status_cmd =
     [`S "DESCRIPTION";
      `P "Shows information targets file."]
   in
-  Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.id $ Keys.root)),
+  Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.id $ Keys.root $ Keys.no_opam)),
   Term.info "status" ~doc ~man
 
 let create_cmd =
@@ -161,7 +161,7 @@ let create_cmd =
     [`S "DESCRIPTION";
      `P "Creates a fresh targets file."]
   in
-  Term.(ret Conex_opts.(const create $ setup_log $ Keys.repo $ Keys.id $ Keys.dry $ Keys.root)),
+  Term.(ret Conex_opts.(const create $ setup_log $ Keys.repo $ Keys.id $ Keys.dry $ Keys.root $ Keys.no_opam)),
   Term.info "create" ~doc ~man
 
 let hash_cmd =
@@ -170,7 +170,7 @@ let hash_cmd =
     [`S "DESCRIPTION";
      `P "Hash targets valid expression file."]
   in
-  Term.(ret Conex_opts.(const hash $ setup_log $ Keys.repo $ Keys.id $ Keys.root)),
+  Term.(ret Conex_opts.(const hash $ setup_log $ Keys.repo $ Keys.id $ Keys.root $ Keys.no_opam)),
   Term.info "hash" ~doc ~man
 
 let compute_cmd =
@@ -179,7 +179,7 @@ let compute_cmd =
     [`S "DESCRIPTION";
      `P "Computes checksums."]
   in
-  Term.(ret Conex_opts.(const compute $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.package $ Keys.root)),
+  Term.(ret Conex_opts.(const compute $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.package $ Keys.root $ Keys.no_opam)),
   Term.info "compute" ~doc ~man
 
 let help_cmd =

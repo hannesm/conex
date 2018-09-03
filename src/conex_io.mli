@@ -28,7 +28,12 @@ val pp : t fmt
 (** {1 Reading of resource files} *)
 
 (** The variant of read and parse errors. *)
-type r_err = [ `NotFound of typ * name | `ParseError of typ * name * string | `NameMismatch of typ * name * name ]
+type r_err = [
+  | `NotFound of typ * name
+  | `ParseError of typ * name * string
+  | `NameMismatch of typ * name * name
+  | `InvalidPath of name * path
+]
 
 (** [pp_r_err] is a pretty printer for {!r_err}. *)
 val pp_r_err : r_err fmt
@@ -39,11 +44,11 @@ val write_root : t -> Root.t -> (unit, string) result
 
 val targets : t -> Root.t -> identifier list
 
-val read_targets : t -> Root.t -> identifier -> (Targets.t * string list, [> r_err ]) result
+val read_targets : t -> Root.t -> bool -> identifier -> (Targets.t * string list, [> r_err ]) result
 
 val write_targets : t -> Root.t -> Targets.t -> (unit, string) result
 
-val compute_checksum : ?prefix:path -> t -> (string -> Digest.t) -> path ->
+val compute_checksum : ?prefix:path -> t -> bool -> (string -> Digest.t) -> path ->
   (Target.t list, string) result
 
 val compute_checksum_tree : ?prefix:path -> t -> (string -> Digest.t) ->
