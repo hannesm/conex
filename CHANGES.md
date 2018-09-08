@@ -1,3 +1,7 @@
+## 0.10.1 (2018-09-08)
+
+* re-add LICENSE.md file (with a 2 clause BSD license)
+
 ## 0.10.0 (2018-09-03)
 
 * adjusted to new conex design, lots of breaking changes
