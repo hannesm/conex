@@ -4,13 +4,13 @@ module V = struct
   let good_rsa p = Nocrypto.Rsa.pub_bits p >= 2048
 
   let encode_key pub =
-    String.trim (Cstruct.to_string (X509.Encoding.Pem.Public_key.to_pem_cstruct1 (`RSA pub)))
+    String.trim (Cstruct.to_string (X509.Public_key.encode_pem (`RSA pub)))
 
   let decode_key data =
-    match X509.Encoding.Pem.Public_key.of_pem_cstruct1 (Cstruct.of_string data) with
-    | exception (Invalid_argument _) -> None
-    | `RSA pub -> Some pub
-    | `EC_pub _ -> None
+    match X509.Public_key.decode_pem (Cstruct.of_string data) with
+    | Error _ -> None
+    | Ok (`RSA pub) -> Some pub
+    | Ok (`EC_pub _) -> None
 
   module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
 
@@ -64,12 +64,12 @@ module C = struct
   let id (id, _, _) = id
 
   let decode_priv id ts data =
-    match X509.Encoding.Pem.Private_key.of_pem_cstruct1 (Cstruct.of_string data) with
-    | exception (Invalid_argument e) -> Error e
-    | `RSA priv -> Ok (id, ts, priv)
+    match X509.Private_key.decode_pem (Cstruct.of_string data) with
+    | Error (`Msg e) -> Error e
+    | Ok (`RSA priv) -> Ok (id, ts, priv)
 
   let encode_priv priv =
-    let pem = X509.Encoding.Pem.Private_key.to_pem_cstruct1 (`RSA priv) in
+    let pem = X509.Private_key.encode_pem (`RSA priv) in
     Cstruct.to_string pem
 
   let pub_of_priv_rsa_raw key =
