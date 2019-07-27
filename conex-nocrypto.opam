@@ -1,30 +1,34 @@
-opam-version: "1.2"
-homepage:     "https://github.com/hannesm/conex"
-dev-repo:     "https://github.com/hannesm/conex.git"
-bug-reports:  "https://github.com/hannesm/conex/issues"
-doc:          "https://hannesm.github.io/conex/doc"
-author:       ["Hannes Mehnert <hannes@mehnert.org>"]
-maintainer:   ["Hannes Mehnert <hannes@mehnert.org>"]
-license:      "BSD2"
-
-build: [
-  ["dune" "subst"] {pinned}
-  ["dune" "build" "-p" name "-j" jobs]
-]
-
-build-test: [
-  ["dune" "runtest" "-p" name "-j" jobs]
-]
-
+opam-version: "2.0"
+maintainer: "Hannes Mehnert <hannes@mehnert.org>"
+authors: "Hannes Mehnert <hannes@mehnert.org>"
+license: "BSD2"
+homepage: "https://github.com/hannesm/conex"
+doc: "https://hannesm.github.io/conex/doc"
+bug-reports: "https://github.com/hannesm/conex/issues"
 depends: [
+  "ocaml" {>= "4.03.0"}
   "dune" {build}
-  "alcotest" {test}
+  "alcotest" {with-test}
   "cmdliner"
-  "conex" {>= "0.10.0"}
+  "conex" {= version}
   "cstruct" {>= "1.6.0"}
   "nocrypto" {>= "0.5.4"}
   "x509" {>= "0.7.0"}
-  "logs" "fmt" "rresult"
+  "logs"
+  "fmt"
+  "rresult"
 ]
+build: [
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
+dev-repo: "git+https://github.com/hannesm/conex.git"
+synopsis: "Establishing trust in community repositories: crypto provided via nocrypto"
+description: """
+Conex is a system based on [TUF](https://theupdateframework.github.io/) to
+establish trust in community repositories. Since opam2, the required hooks
+are present.
 
-available: [ ocaml-version >= "4.03.0" ]
+This package uses the crypto primitives provided by nocrypto.
+"""
