@@ -75,7 +75,7 @@ let terminal () =
   let dumb = try Sys.getenv "TERM" = "dumb" with
     | Not_found -> true
   in
-  let isatty = try Unix.(isatty (descr_of_out_channel Pervasives.stdout)) with
+  let isatty = try Unix.(isatty (descr_of_out_channel Stdlib.stdout)) with
     | Unix.Unix_error _ -> false
   in
   if not dumb && isatty then `Ansi_tty else `None

@@ -9,7 +9,7 @@
   (public_name conex_verify_openssl)
   (package conex)
   (modules conex_verify_openssl)
-  (libraries cmdliner conex conex.openssl conex.unix conex_cmd))
+  (libraries cmdliner conex conex.openssl conex.unix conex_cmd stdlib-shims))
 
 (executable
   (name conex_verify_nocrypto)
