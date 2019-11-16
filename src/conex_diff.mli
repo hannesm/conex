@@ -5,21 +5,26 @@ open Conex_utils
 (** A hunk. *)
 type hunk
 
+type operation =
+  | Edit of string
+  | Rename of string * string
+  | Delete of string
+  | Create of string
+
+val pp_operation : Format.formatter -> operation -> unit
+
+val operation_eq : operation -> operation -> bool
+
 (** A diff is a list of hunks, and a filename (mine and their are different for
     file addition and removal, otherwise they should be equal. *)
 type t = {
-  mine_name : string option ;
-  their_name : string option ;
+  operation : operation ;
   hunks : hunk list ;
   mine_no_nl : bool ;
   their_no_nl : bool ;
 }
 
 val pp : Format.formatter -> t -> unit
-
-(** [filename name] strips potentially leading "a/" or "b/" from given [name].
-    If [name] is /dev/null, [None] is returned! *)
-val filename : string -> string option
 
 (** [to_diffs str] decodes the given patch into a list of [diff]. *)
 val to_diffs : string -> t list

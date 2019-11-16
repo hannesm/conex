@@ -128,6 +128,9 @@ module String : sig
   (** [compare_insensitive a b] first converts [a] and [b] to lowercase strings,
       then uses [compare]. *)
   val compare_insensitive : t -> t -> int
+
+  (** [equal a b] is [String.equal a b]. *)
+  val equal : t -> t -> bool
 end
 
 (** {1 Unsigned integers} *)

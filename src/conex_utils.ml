@@ -133,6 +133,8 @@ module String = struct
 
   let compare_insensitive a b =
     compare (to_lower a) (to_lower b)
+
+  let equal = String.equal
 end
 
 module Uint = struct

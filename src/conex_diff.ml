@@ -105,30 +105,59 @@ let rec to_hunks (mine_no_nl, their_no_nl, acc) = function
     | None, mine_no_nl, their_no_nl, rest -> List.rev acc, mine_no_nl, their_no_nl, rest
     | Some hunk, mine_no_nl, their_no_nl, rest -> to_hunks (mine_no_nl, their_no_nl, hunk :: acc) rest
 
+type operation =
+  | Edit of string
+  | Rename of string * string
+  | Delete of string
+  | Create of string
+
+let operation_eq a b = match a, b with
+  | Edit a, Edit b -> String.equal a b
+  | Rename (a, a'), Rename (b, b') -> String.equal a b && String.equal a' b'
+  | Delete a, Delete b -> String.equal a b
+  | Create a, Create b -> String.equal a b
+  | _ -> false
+
+let pp_operation ppf = function
+  | Edit name ->
+    Format.fprintf ppf "--- b/%s\n" name ;
+    Format.fprintf ppf "+++ a/%s\n" name
+  | Rename (old_name, new_name) ->
+    Format.fprintf ppf "--- b/%s\n" old_name ;
+    Format.fprintf ppf "+++ a/%s\n" new_name
+  | Delete name ->
+    Format.fprintf ppf "--- b/%s\n" name ;
+    Format.fprintf ppf "+++ /dev/null\n"
+  | Create name ->
+    Format.fprintf ppf "--- /dev/null\n" ;
+    Format.fprintf ppf "+++ q/%s\n" name
+
 type t = {
-  mine_name : string option ;
-  their_name : string option ;
+  operation : operation ;
   hunks : hunk list ;
   mine_no_nl : bool ;
   their_no_nl : bool ;
 }
 
 let pp ppf t =
-  Format.fprintf ppf "--- b/%s\n"
-    (match t.mine_name with None -> "/dev/null" | Some x -> x) ;
-  Format.fprintf ppf "+++ a/%s\n"
-    (match t.their_name with None -> "/dev/null" | Some x -> x) ;
+  pp_operation ppf t.operation ;
   List.iter (pp_hunk ppf) t.hunks
 
-let filename name =
-  let str = match String.cut ' ' name with None -> name | Some (x, _) -> x in
-  let r =
-    if String.is_prefix ~prefix:"a/" str || String.is_prefix ~prefix:"b/" str then
-      String.slice ~start:2 str
+let op mine their =
+  let get_filename_opt n =
+    let s = match String.cut ' ' n with None -> n | Some (x, _) -> x in
+    if s = "/dev/null" then
+      None
+    else if String.(is_prefix ~prefix:"a/" s || is_prefix ~prefix:"b/" s) then
+      Some (String.slice ~start:2 s)
     else
-      str
+      Some s
   in
-  if r = "/dev/null" then None else Some r
+  match get_filename_opt mine, get_filename_opt their with
+  | None, Some n -> Create n
+  | Some n, None -> Delete n
+  | Some a, Some b -> if String.equal a b then Edit a else Rename (a, b)
+  | None, None -> assert false (* ??!?? *)
 
 let to_diff data =
   (* first locate --- and +++ lines *)
@@ -140,9 +169,9 @@ let to_diff data =
   in
   match find_start data with
   | Some (mine_name, their_name, rest) ->
-    let mine_name, their_name = filename mine_name, filename their_name in
+    let operation = op mine_name their_name in
     let hunks, mine_no_nl, their_no_nl, rest = to_hunks (false, false, []) rest in
-    Some ({ mine_name ; their_name ; hunks ; mine_no_nl ; their_no_nl }, rest)
+    Some ({ operation ; hunks ; mine_no_nl ; their_no_nl }, rest)
   | None -> None
 
 let to_lines = String.cuts '\n'
@@ -175,22 +204,21 @@ let patch filedata diff =
 (* TODO which equality to use here? is = ok? *)
 let ids root keydir diffs =
   List.fold_left (fun acc diff ->
-      let add_id filename (r, ids) =
-        match filename with
-        | None -> Ok (r, ids)
-        | Some name ->
-          string_to_path name >>= fun path ->
-          if subpath ~parent:keydir path then
-            (* TODO according to here, keydir must be flat! *)
-            match List.rev path with
-            | id :: _ -> Ok (r, S.add id ids)
-            | [] -> Error "empty keydir path?"
-          else match path with
-            | [ x ] when x = root -> Ok (true, ids)
-            | _ -> Ok (r, ids)
+      let add_name name (r, ids) =
+        string_to_path name >>= fun path ->
+        if subpath ~parent:keydir path then
+          (* TODO according to here, keydir must be flat! *)
+          match List.rev path with
+          | id :: _ -> Ok (r, S.add id ids)
+          | [] -> Error "empty keydir path?"
+        else match path with
+          | [ x ] when x = root -> Ok (true, ids)
+          | _ -> Ok (r, ids)
       in
       acc >>= fun (r, ids) ->
-      add_id diff.their_name (r, ids) >>= fun (r', ids') ->
-      add_id diff.mine_name (r', ids')
-    )
+      match diff.operation with
+      | Create a -> add_name a (r, ids)
+      | Delete a -> add_name a (r, ids)
+      | Edit a -> add_name a (r, ids)
+      | Rename (a, b) -> add_name a (r, ids) >>= add_name b)
     (Ok (false, S.empty)) diffs

@@ -198,7 +198,7 @@ let diff_test_remove () =
   Alcotest.check Alcotest.bool __LOC__
     false (d.exists ["packages" ; "foo"]) ;
   Alcotest.check (result (Alcotest.list it) str_err) __LOC__
-    (Ok [ ]) (d.read_dir ["packages"]) ;
+    (Error "") (d.read_dir ["packages"]) ;
   Alcotest.check (result ft str_err) __LOC__
     (Error "") (d.file_type ["packages" ; "foo"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__
