@@ -7,8 +7,11 @@ env:
     - PINS="conex:. conex-nocrypto:."
   matrix:
     - OCAML_VERSION=4.03 PACKAGE="conex" TESTS=false
-    - OCAML_VERSION=4.05 PACKAGE="conex" TESTS=false
     - OCAML_VERSION=4.04 PACKAGE="conex-nocrypto"
+    - OCAML_VERSION=4.05 PACKAGE="conex" TESTS=false
     - OCAML_VERSION=4.06 PACKAGE="conex-nocrypto"
+    - OCAML_VERSION=4.07 PACKAGE="conex" TESTS=false
+    - OCAML_VERSION=4.08 PACKAGE="conex-nocrypto"
+    - OCAML_VERSION=4.09 PACKAGE="conex" TESTS=false
 notifications:
   email: false
