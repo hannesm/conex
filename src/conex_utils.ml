@@ -66,12 +66,9 @@ module String = struct
 
   let cuts sep str =
     let rec doit acc s =
-      if String.length s = 0 then
-        List.rev acc
-      else
-        match cut sep s with
-        | None -> List.rev (s :: acc)
-        | Some (a, b) -> doit (a :: acc) b
+      match cut sep s with
+      | None -> List.rev (s :: acc)
+      | Some (a, b) -> doit (a :: acc) b
     in
     doit [] str
 
