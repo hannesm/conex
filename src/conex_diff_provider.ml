@@ -49,7 +49,7 @@ let apply provider diff =
     | Some p when p = pn -> Ok File
     | Some p when String.is_prefix ~prefix:(pn ^ "/") p -> Ok Directory
     | t -> match t, diff.mine_name with
-      | None, Some p when p = pn -> Error "does not exist"
+      | _, Some p when p = pn -> Error "does not exist"
       | _ -> provider.file_type path
   and read_dir path =
     let rec strip parent x = match parent, x with
@@ -72,8 +72,8 @@ let apply provider diff =
       match diff.mine_name, diff.their_name with
       | Some p, Some p' when p = p' -> None, None
       | Some p, Some p' ->
-        (if String.is_prefix ~prefix p then dropped_pre p else None),
-        (if String.is_prefix ~prefix p' then dropped_pre p' else None)
+        (if String.is_prefix ~prefix p' then dropped_pre p' else None),
+        (if String.is_prefix ~prefix p then dropped_pre p else None)
       | None, Some p' ->
         (if String.is_prefix ~prefix p' then dropped_pre p' else None), None
       | Some p, None ->
@@ -96,7 +96,7 @@ let apply provider diff =
     match diff.their_name with
     | Some p when p = pn -> true
     | t -> match t, diff.mine_name with
-      | None, Some p when p = pn -> false
+      | _, Some p when p = pn -> false
       | _ -> provider.exists path
   and basedir = provider.basedir
   and description = "Patch provider"

@@ -161,8 +161,113 @@ let more_p () =
   Alcotest.check Alcotest.bool "packages/foobar/barfoo/foobar contained in more store"
     true (p.exists ["packages"; "foobar" ; "barfoo" ; "foobar"])
 
+let diff_test_create () =
+  let p = Mem.mem_provider () in
+  let diff = {|
+--- /dev/null
++++ packages/foo
+@@ -0,0 +1 @@
++bar
+|}
+  in
+  let d, _ = Conex_diff_provider.apply_diff p diff in
+  Alcotest.check Alcotest.bool __LOC__
+    true (d.exists ["packages" ; "foo"]) ;
+  Alcotest.check (result (Alcotest.list it) str_err) __LOC__
+    (Ok [ Directory, "packages" ]) (d.read_dir []) ;
+  Alcotest.check (result (Alcotest.list it) str_err) __LOC__
+    (Ok [ File, "foo" ]) (d.read_dir ["packages"]) ;
+  Alcotest.check (result ft str_err) __LOC__
+    (Ok File) (d.file_type ["packages" ; "foo"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__
+    (Ok "bar") (d.read ["packages" ; "foo"])
+
+let diff_test_remove () =
+  let p = Mem.mem_provider () in
+  (match p.write ["packages" ; "foo" ] "bar" with
+   | Ok () -> ()
+   | Error _ -> assert false) ;
+  let diff = {|
+--- packages/foo
++++ /dev/null
+@@ -1 +0,0 @@
+-bar
+|}
+  in
+  let d, _ = Conex_diff_provider.apply_diff p diff in
+  Alcotest.check Alcotest.bool __LOC__
+    false (d.exists ["packages" ; "foo"]) ;
+  Alcotest.check (result (Alcotest.list it) str_err) __LOC__
+    (Ok [ ]) (d.read_dir ["packages"]) ;
+  Alcotest.check (result ft str_err) __LOC__
+    (Error "") (d.file_type ["packages" ; "foo"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__
+    (Error "") (d.read ["packages" ; "foo"])
+
+let diff_test_rename () =
+  let p = Mem.mem_provider () in
+  (match p.write ["packages" ; "foo" ] "bar" with
+   | Ok () -> ()
+   | Error _ -> assert false) ;
+  let diff = {|
+--- packages/foo
++++ packages/bar
+@@ -1 +1 @@
+-bar
++foobar
+|}
+  in
+  let d, _ = Conex_diff_provider.apply_diff p diff in
+  Alcotest.check Alcotest.bool __LOC__
+    false (d.exists ["packages" ; "foo"]) ;
+  Alcotest.check Alcotest.bool __LOC__
+    true (d.exists ["packages" ; "bar"]) ;
+  Alcotest.check (result (Alcotest.list it) str_err) __LOC__
+    (Ok [ File, "bar" ]) (d.read_dir ["packages"]) ;
+  Alcotest.check (result ft str_err) __LOC__
+    (Error "") (d.file_type ["packages" ; "foo"]) ;
+  Alcotest.check (result ft str_err) __LOC__
+    (Ok File) (d.file_type ["packages" ; "bar"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__
+    (Error "") (d.read ["packages" ; "foo"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__
+    (Ok "foobar") (d.read ["packages" ; "bar"])
+
+let diff_test_edit () =
+  let p = Mem.mem_provider () in
+  (match p.write ["packages" ; "foo" ] "bar" with
+   | Ok () -> ()
+   | Error _ -> assert false) ;
+  let diff = {|
+--- packages/foo
++++ packages/foo
+@@ -1 +1 @@
+-bar
++foobar
+|}
+  in
+  let d, _ = Conex_diff_provider.apply_diff p diff in
+  Alcotest.check Alcotest.bool __LOC__
+    true (d.exists ["packages" ; "foo"]) ;
+  Alcotest.check Alcotest.bool __LOC__
+    false (d.exists ["packages" ; "bar"]) ;
+  Alcotest.check (result (Alcotest.list it) str_err) __LOC__
+    (Ok [ File, "foo" ]) (d.read_dir ["packages"]) ;
+  Alcotest.check (result ft str_err) __LOC__
+    (Error "") (d.file_type ["packages" ; "bar"]) ;
+  Alcotest.check (result ft str_err) __LOC__
+    (Ok File) (d.file_type ["packages" ; "foo"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__
+    (Error "") (d.read ["packages" ; "bar"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__
+    (Ok "foobar") (d.read ["packages" ; "foo"])
+
 let tests = [
   "empty provider", `Quick, empty_p ;
   "basic provider", `Quick, basic_p ;
   "more provider", `Quick, more_p ;
+  "diff provider create", `Quick, diff_test_create ;
+  "diff provider remove", `Quick, diff_test_remove ;
+  "diff provider rename", `Quick, diff_test_rename ;
+  "diff provider edit", `Quick, diff_test_edit ;
 ]
