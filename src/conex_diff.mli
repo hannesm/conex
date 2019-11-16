@@ -8,15 +8,18 @@ type hunk
 (** A diff is a list of hunks, and a filename (mine and their are different for
     file addition and removal, otherwise they should be equal. *)
 type t = {
-  mine_name : string ;
-  their_name : string ;
+  mine_name : string option ;
+  their_name : string option ;
   hunks : hunk list ;
+  mine_no_nl : bool ;
+  their_no_nl : bool ;
 }
 
-(** [file diff] is [mine_name] unless this is "/dev/null", in which case
-    [their_name] is used.  A potentially leading "a/" or "b/" is stripped from
-    mine/their. *)
-val file : t -> string
+val pp : Format.formatter -> t -> unit
+
+(** [filename name] strips potentially leading "a/" or "b/" from given [name].
+    If [name] is /dev/null, [None] is returned! *)
+val filename : string -> string option
 
 (** [to_diffs str] decodes the given patch into a list of [diff]. *)
 val to_diffs : string -> t list
