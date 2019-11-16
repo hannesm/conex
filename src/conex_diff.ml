@@ -67,6 +67,8 @@ let count_to_sl_sl data =
 let sort_into_bags dir mine their m_nl t_nl str =
   if String.length str = 0 then
     None
+  else if String.is_prefix ~prefix:"---" str then
+    None
   else match String.get str 0, String.slice ~start:1 str with
     | ' ', data -> Some (`Both, (data :: mine), (data :: their), m_nl, t_nl)
     | '+', data -> Some (`Their, mine, (data :: their), m_nl, t_nl)
