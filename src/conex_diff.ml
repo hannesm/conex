@@ -154,7 +154,7 @@ let to_diffs data =
     | xs ->
       (* TODO is this a good idea here to drop potential errors? *)
       match to_diff xs with
-      | None -> acc
+      | None -> List.rev acc
       | Some (diff, rest) -> doit (diff :: acc) rest
   in
   doit [] lines

@@ -302,7 +302,7 @@ let diff_test_complex () =
   in
   let d, _diffs = Conex_diff_provider.apply_diff p diff in
   Alcotest.check (result (Alcotest.list it) str_err) __LOC__
-    (Ok [ File, "bar" ; File, "baz" ; File, "staying" ; File, "foobarbaz" ])
+    (Ok [ File, "baz" ; File, "bar" ; File, "staying" ; File, "foobarbaz" ])
     (d.read_dir ["packages"]) ;
   Alcotest.check Alcotest.bool __LOC__ false (d.exists ["packages" ; "foo"]) ;
   Alcotest.check Alcotest.bool __LOC__ false (d.exists ["packages" ; "foobar"]) ;
