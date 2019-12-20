@@ -180,11 +180,11 @@ let diff_test_create () =
   Alcotest.check (result ft str_err) __LOC__
     (Ok File) (d.file_type ["packages" ; "foo"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__
-    (Ok "bar") (d.read ["packages" ; "foo"])
+    (Ok "bar\n") (d.read ["packages" ; "foo"])
 
 let diff_test_remove () =
   let p = Mem.mem_provider () in
-  (match p.write ["packages" ; "foo" ] "bar" with
+  (match p.write ["packages" ; "foo" ] "bar\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
   let diff = {|
@@ -198,7 +198,7 @@ let diff_test_remove () =
   Alcotest.check Alcotest.bool __LOC__
     false (d.exists ["packages" ; "foo"]) ;
   Alcotest.check (result (Alcotest.list it) str_err) __LOC__
-    (Error "") (d.read_dir ["packages"]) ;
+    (Ok []) (d.read_dir ["packages"]) ;
   Alcotest.check (result ft str_err) __LOC__
     (Error "") (d.file_type ["packages" ; "foo"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__
@@ -206,7 +206,7 @@ let diff_test_remove () =
 
 let diff_test_rename () =
   let p = Mem.mem_provider () in
-  (match p.write ["packages" ; "foo" ] "bar" with
+  (match p.write ["packages" ; "foo" ] "bar\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
   let diff = {|
@@ -231,11 +231,11 @@ let diff_test_rename () =
   Alcotest.check (result Alcotest.string str_err) __LOC__
     (Error "") (d.read ["packages" ; "foo"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__
-    (Ok "foobar") (d.read ["packages" ; "bar"])
+    (Ok "foobar\n") (d.read ["packages" ; "bar"])
 
 let diff_test_edit () =
   let p = Mem.mem_provider () in
-  (match p.write ["packages" ; "foo" ] "bar" with
+  (match p.write ["packages" ; "foo" ] "bar\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
   let diff = {|
@@ -260,20 +260,20 @@ let diff_test_edit () =
   Alcotest.check (result Alcotest.string str_err) __LOC__
     (Error "") (d.read ["packages" ; "bar"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__
-    (Ok "foobar") (d.read ["packages" ; "foo"])
+    (Ok "foobar\n") (d.read ["packages" ; "foo"])
 
 let diff_test_complex () =
   let p = Mem.mem_provider () in
-  (match p.write ["packages" ; "foo" ] "bar" with
+  (match p.write ["packages" ; "foo" ] "bar\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
-  (match p.write ["packages" ; "foobar" ] "baz" with
+  (match p.write ["packages" ; "foobar" ] "baz\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
-  (match p.write ["packages" ; "foobarbaz" ] "foobarbaz" with
+  (match p.write ["packages" ; "foobarbaz" ] "foobarbaz\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
-  (match p.write ["packages" ; "staying" ] "data" with
+  (match p.write ["packages" ; "staying" ] "data\n" with
    | Ok () -> ()
    | Error _ -> assert false) ;
   Alcotest.check (result (Alcotest.list it) str_err) __LOC__
@@ -302,7 +302,7 @@ let diff_test_complex () =
   in
   let d, _diffs = Conex_diff_provider.apply_diff p diff in
   Alcotest.check (result (Alcotest.list it) str_err) __LOC__
-    (Ok [ File, "baz" ; File, "bar" ; File, "staying" ; File, "foobarbaz" ])
+    (Ok [ File, "bar" ; File, "baz" ; File, "foobarbaz" ; File, "staying" ])
     (d.read_dir ["packages"]) ;
   Alcotest.check Alcotest.bool __LOC__ false (d.exists ["packages" ; "foo"]) ;
   Alcotest.check Alcotest.bool __LOC__ false (d.exists ["packages" ; "foobar"]) ;
@@ -318,10 +318,10 @@ let diff_test_complex () =
   Alcotest.check (result ft str_err) __LOC__ (Ok File) (d.file_type ["packages" ; "bar"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__ (Error "") (d.read ["packages" ; "foo"]) ;
   Alcotest.check (result Alcotest.string str_err) __LOC__ (Error "") (d.read ["packages" ; "foobar"]) ;
-  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "foobar") (d.read ["packages" ; "foobarbaz"]) ;
-  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "data") (d.read ["packages" ; "staying"]) ;
-  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "baz") (d.read ["packages" ; "baz"]) ;
-  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "foobar") (d.read ["packages" ; "bar"])
+  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "foobar\n") (d.read ["packages" ; "foobarbaz"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "data\n") (d.read ["packages" ; "staying"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "baz\n") (d.read ["packages" ; "baz"]) ;
+  Alcotest.check (result Alcotest.string str_err) __LOC__ (Ok "foobar\n") (d.read ["packages" ; "bar"])
 
 let tests = [
   "empty provider", `Quick, empty_p ;

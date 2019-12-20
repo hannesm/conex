@@ -28,27 +28,36 @@ let take data num =
   in
   take0 num data []
 
-let rec drop data num =
-  match num, data with
-  | 0, _ -> data
-  | n, _::xs -> drop xs (pred n)
-  | _ -> invalid_arg "drop broken"
+let drop data num =
+  let rec drop data num =
+    match num, data with
+    | 0, _ -> data
+    | n, _::xs -> drop xs (pred n)
+    | _ -> invalid_arg "drop broken"
+  in
+  try drop data num with
+  | Invalid_argument _ -> invalid_arg ("drop " ^ string_of_int num ^ " on " ^ string_of_int (List.length data))
 
 (* TODO verify that it applies cleanly *)
 let apply_hunk old (index, to_build) hunk =
-  let prefix = take (drop old index) (hunk.mine_start - index) in
-  (hunk.mine_start + hunk.mine_len, to_build @ prefix @ hunk.their)
+  try
+    let prefix = take (drop old index) (hunk.mine_start - index) in
+    (hunk.mine_start + hunk.mine_len, to_build @ prefix @ hunk.their)
+  with
+  | Invalid_argument _ -> invalid_arg ("apply_hunk " ^ string_of_int index ^ " old len " ^ string_of_int (List.length old) ^
+                                       " hunk start " ^ string_of_int hunk.mine_start ^ " hunk len " ^ string_of_int hunk.mine_len)
 
 let to_start_len data =
   (* input being "?19,23" *)
   match String.cut ',' (String.slice ~start:1 data) with
-  | None when data = "+1" -> (0, 1)
-  | None when data = "-1" -> (0, 1)
+  | None when data = "+1" || data = "-1" -> (0, 1)
   | None -> invalid_arg ("start_len broken in " ^ data)
   | Some (start, len) ->
-     let start = int_of_string start in
-     let st = if start = 0 then start else pred start in
-     (st, int_of_string len)
+     let len = int_of_string len
+     and start = int_of_string start
+     in
+     let st = if len = 0 || start = 0 then start else pred start in
+     (st, len)
 
 let count_to_sl_sl data =
   if String.is_prefix ~prefix:"@@" data then
@@ -110,27 +119,51 @@ type operation =
   | Rename of string * string
   | Delete of string
   | Create of string
+  | Rename_only of string * string
 
 let operation_eq a b = match a, b with
-  | Edit a, Edit b -> String.equal a b
-  | Rename (a, a'), Rename (b, b') -> String.equal a b && String.equal a' b'
-  | Delete a, Delete b -> String.equal a b
+  | Edit a, Edit b
+  | Delete a, Delete b
   | Create a, Create b -> String.equal a b
+  | Rename (a, a'), Rename (b, b')
+  | Rename_only (a, a'), Rename_only (b, b') -> String.equal a b && String.equal a' b'
   | _ -> false
 
-let pp_operation ppf = function
+let no_file = "/dev/null"
+
+let pp_operation ~git ppf op =
+  let real_name direction name =
+    if git then name else
+      match direction with `Mine -> "a/" ^ name | `Theirs -> "b/" ^ name
+  in
+  let hdr mine their =
+    (* even if create/delete, /dev/null is not used in this header *)
+    (* according to git documentation *)
+    if git then
+      Format.fprintf ppf "diff --git %s %s\n"
+        (real_name `Mine mine) (real_name `Theirs their)
+  in
+  match op with
   | Edit name ->
-    Format.fprintf ppf "--- b/%s\n" name ;
-    Format.fprintf ppf "+++ a/%s\n" name
+    hdr name name ;
+    Format.fprintf ppf "--- %s\n" (real_name `Mine name) ;
+    Format.fprintf ppf "+++ %s\n" (real_name `Theirs name)
   | Rename (old_name, new_name) ->
-    Format.fprintf ppf "--- b/%s\n" old_name ;
-    Format.fprintf ppf "+++ a/%s\n" new_name
+    hdr old_name new_name ;
+    Format.fprintf ppf "--- %s\n" (real_name `Mine old_name) ;
+    Format.fprintf ppf "+++ %s\n" (real_name `Theirs new_name)
   | Delete name ->
-    Format.fprintf ppf "--- b/%s\n" name ;
-    Format.fprintf ppf "+++ /dev/null\n"
+    hdr name name ;
+    Format.fprintf ppf "--- %s\n" (real_name `Mine name) ;
+    Format.fprintf ppf "+++ %s\n" no_file
   | Create name ->
-    Format.fprintf ppf "--- /dev/null\n" ;
-    Format.fprintf ppf "+++ q/%s\n" name
+    hdr name name ;
+    Format.fprintf ppf "--- %s\n" no_file ;
+    Format.fprintf ppf "+++ %s\n" (real_name `Theirs name)
+  | Rename_only (old_name, new_name) ->
+    hdr old_name new_name ;
+    Format.fprintf ppf "rename from %s\n" old_name;
+    Format.fprintf ppf "rename to %s\n" new_name
 
 type t = {
   operation : operation ;
@@ -139,19 +172,17 @@ type t = {
   their_no_nl : bool ;
 }
 
-let pp ppf t =
-  pp_operation ppf t.operation ;
+let pp ~git ppf t =
+  pp_operation ~git ppf t.operation ;
   List.iter (pp_hunk ppf) t.hunks
 
-let op mine their =
+let operation_of_strings git mine their =
   let get_filename_opt n =
-    let s = match String.cut ' ' n with None -> n | Some (x, _) -> x in
-    if s = "/dev/null" then
-      None
-    else if String.(is_prefix ~prefix:"a/" s || is_prefix ~prefix:"b/" s) then
+    let s = match String.cut '\t' n with None -> n | Some (x, _) -> x in
+    if s = no_file then None else
+    if git && (String.is_prefix ~prefix:"a/" s || String.is_prefix ~prefix:"b/" s) then
       Some (String.slice ~start:2 s)
-    else
-      Some s
+    else Some s
   in
   match get_filename_opt mine, get_filename_opt their with
   | None, Some n -> Create n
@@ -159,20 +190,30 @@ let op mine their =
   | Some a, Some b -> if String.equal a b then Edit a else Rename (a, b)
   | None, None -> assert false (* ??!?? *)
 
+(* parses a list of lines to a diff.t list *)
 let to_diff data =
   (* first locate --- and +++ lines *)
-  let cut4 = String.slice ~start:4 in
-  let rec find_start = function
-    | [] -> None
-    | x::y::xs when String.is_prefix ~prefix:"---" x -> Some (cut4 x, cut4 y, xs)
-    | _::xs -> find_start xs
+  let rec find_start git ?hdr = function
+    | [] -> hdr, []
+    | x::xs when String.is_prefix ~prefix:"diff --git" x ->
+      begin match hdr with None -> find_start true xs | Some _ -> hdr, x::xs end
+    | x::y::xs when String.is_prefix ~prefix:"rename from" x && String.is_prefix ~prefix:"rename to" y ->
+      let hdr = Rename_only (String.slice ~start:12 x, String.slice ~start:10 y) in
+      find_start git ~hdr xs
+    | x::y::xs when String.is_prefix ~prefix:"---" x ->
+      let mine = String.slice ~start:4 x and their = String.slice ~start:4 y in
+      Some (operation_of_strings git mine their), xs
+    | _::xs -> find_start git ?hdr xs
   in
-  match find_start data with
-  | Some (mine_name, their_name, rest) ->
-    let operation = op mine_name their_name in
+  match find_start false data with
+  | Some (Rename_only _ as operation), rest ->
+    let hunks = [] and mine_no_nl = false and their_no_nl = false in
+    Some ({ operation ; hunks ; mine_no_nl ; their_no_nl }, rest)
+  | Some operation, rest ->
     let hunks, mine_no_nl, their_no_nl, rest = to_hunks (false, false, []) rest in
     Some ({ operation ; hunks ; mine_no_nl ; their_no_nl }, rest)
-  | None -> None
+  | None, [] -> None
+  | None, _ -> assert false
 
 let to_lines = String.cuts '\n'
 
@@ -180,26 +221,37 @@ let to_diffs data =
   let lines = to_lines data in
   let rec doit acc = function
     | [] -> List.rev acc
-    | xs ->
-      (* TODO is this a good idea here to drop potential errors? *)
-      match to_diff xs with
+    | xs -> match to_diff xs with
       | None -> List.rev acc
       | Some (diff, rest) -> doit (diff :: acc) rest
   in
   doit [] lines
 
 let patch filedata diff =
-  let old = match filedata with None -> [] | Some x -> to_lines x in
-  let idx, lines = List.fold_left (apply_hunk old) (0, []) diff.hunks in
-  let lines = lines @ drop old idx in
-  let lines =
-    match diff.mine_no_nl, diff.their_no_nl with
-    | false, true -> (match List.rev lines with ""::tl -> List.rev tl | _ -> lines)
-    | true, false -> lines @ [ "" ]
-    | false, false -> lines
-    | true, true -> lines
-  in
-  String.concat "\n" lines
+  match diff.operation with
+  | Rename_only _ -> filedata
+  | Delete _ -> None
+  | Create _ ->
+    begin match diff.hunks with
+      | [ the_hunk ] ->
+        let d = the_hunk.their in
+        let lines = if diff.their_no_nl then d else d @ [""] in
+        Some (String.concat "\n" lines)
+      | _ -> assert false
+    end
+  | _ ->
+    let old = match filedata with None -> [] | Some x -> to_lines x in
+    let idx, lines = List.fold_left (apply_hunk old) (0, []) diff.hunks in
+    let lines = lines @ drop old idx in
+    let lines =
+      match diff.mine_no_nl, diff.their_no_nl with
+      | false, true -> (match List.rev lines with ""::tl -> List.rev tl | _ -> lines)
+      | true, false -> lines @ [ "" ]
+      | false, false when filedata = None -> lines @ [ "" ]
+      | false, false -> lines
+      | true, true -> lines
+    in
+    Some (String.concat "\n" lines)
 
 (* TODO which equality to use here? is = ok? *)
 let ids root keydir diffs =
@@ -217,8 +269,6 @@ let ids root keydir diffs =
       in
       acc >>= fun (r, ids) ->
       match diff.operation with
-      | Create a -> add_name a (r, ids)
-      | Delete a -> add_name a (r, ids)
-      | Edit a -> add_name a (r, ids)
-      | Rename (a, b) -> add_name a (r, ids) >>= add_name b)
+      | Create a | Delete a | Edit a -> add_name a (r, ids)
+      | Rename (a, b) | Rename_only (a, b) -> add_name a (r, ids) >>= add_name b)
     (Ok (false, S.empty)) diffs
