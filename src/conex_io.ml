@@ -72,7 +72,7 @@ let read_targets t root opam id =
         (`NameMismatch (`Targets, id, targets.Targets.name)) >>= fun () ->
       let check_path t =
         if opam then
-          guard (Target.valid_path t) (`InvalidPath (id, t.Target.filename))
+          guard (Target.valid_opam_path t) (`InvalidPath (id, t.Target.filename))
         else
           Ok ()
       in
@@ -104,7 +104,7 @@ let compute_checksum ?(prefix = [ "packages" ]) t opam f path =
       let filename = prefix @ [ name ] in
       t.read filename >>= fun data ->
       let target = target f (otherp @ [ name ]) data in
-      if not opam || opam && Target.valid_path target then
+      if not opam || opam && Target.valid_opam_path target then
         Ok (target :: acc)
       else
         Error ("invalid path " ^ path_to_string filename)
