@@ -9,6 +9,7 @@ let () =
   in
   Alcotest.run "Conex tests" (
     ("Uint", Test_uint.tests) ::
+    ("String", Test_string.tests) ::
     ("Path", Test_path.tests) ::
     ("Tree", Test_tree.tests) ::
     ("provider", Test_provider.tests) ::

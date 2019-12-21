@@ -757,12 +757,16 @@ module Target = struct
       (pp_list Digest.pp) t.digest
   (*BISECT-IGNORE-END*)
 
-  let valid_path t =
+  let valid_opam_path t =
     (* this is an opam repository side condition:
-       [ foo ; foo.version ; .. ] *)
+       [ foo ; foo.version ; opam ]
+       [ foo ; foo.version ; files ; _ ]
+       or [ foo.version ; opam ] [ foo.version ; files ; _ ] *)
     match t.filename with
-      | pname :: pversion :: _ -> String.is_prefix ~prefix:(pname ^ ".") pversion
-      | _ -> false
+    | [ pname ; pversion ; "opam" ] | [ pname ; pversion ; "files" ; _ ] ->
+      String.is_prefix ~prefix:(pname ^ ".") pversion
+    | [ _ ; "opam" ] | [ _ ; "files" ; _ ] -> true
+    | _ -> false
 
   let of_wire wire =
     let open Wire in

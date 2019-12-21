@@ -1,3 +1,12 @@
+## 0.11.0 (2019-12-21)
+
+* Adapt to X509 0.7.0 API
+* Avoid deprecation warnings by using stdlib-shims
+* Adjust opam repository file locations #13, now the whitelist is:
+  packages/NV/opam and packages/NV/files/*
+  where NV is either name.version or name/name.version
+* Various fixes for diff in the real world #13
+
 ## 0.10.1 (2018-09-08)
 
 * re-add LICENSE.md file (with a 2 clause BSD license)

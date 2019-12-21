@@ -6,8 +6,8 @@ homepage: "https://github.com/hannesm/conex"
 doc: "https://hannesm.github.io/conex/doc"
 bug-reports: "https://github.com/hannesm/conex/issues"
 depends: [
-  "ocaml" {>= "4.03.0"}
-  "dune" {build}
+  "ocaml" {>= "4.05.0"}
+  "dune"
   "alcotest" {with-test}
   "cmdliner"
   "conex" {= version}
