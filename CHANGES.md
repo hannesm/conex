@@ -1,4 +1,4 @@
-## 0.11.0 (2019-12-21)
+## v0.11.0 (2019-12-21)
 
 * Adapt to X509 0.7.0 API
 * Avoid deprecation warnings by using stdlib-shims
