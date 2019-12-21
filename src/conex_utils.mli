@@ -171,8 +171,8 @@ module Uint : sig
   (** [of_int i] is [Int64.of_int i] if [i >= 0]. *)
   val of_int : int -> t option
 
-  (** [of_int_exn i] is [Int64.of_int i] if [i >= 0], raises an exception on
-      failure. *)
+  (** [of_int_exn i] is [Int64.of_int i] if [i >= 0].
+      @raise [Invalid_argument] on failure. *)
   val of_int_exn : int -> t
 end
 
@@ -229,7 +229,8 @@ type path = string list
 val root : path
 
 (** [path_to_string path] is {{!Conex_utils.String.concat}String.concat} ["/"
-    path].  @raise Invalid_argument if [path] includes either "." or ".." *)
+    path].
+    @raise [Invalid_argument] if [path] includes either "." or "..". *)
 val path_to_string : path -> string
 
 (** [string_to_path str] is {{!Conex_utils.String.cuts}String.cuts} ["/"
@@ -239,8 +240,8 @@ val string_to_path : string -> (path, string) result
 
 (** [string_to_path_exb str] is {{!Conex_utils.String.cuts}String.cuts} ["/"
     str] and ensuring no empty segments, ".", or ".." be present. If [str]
-    contains a leading "/", it is discarded. @raise Invalid_argument if [path]
-    is invalid *)
+    contains a leading "/", it is discarded.
+    @raise [Invalid_argument] if [path] is invalid. *)
 val string_to_path_exn : string -> path
 
 (** [path_equal p p'] is [true] if [p] and [p'] are equal. *)
