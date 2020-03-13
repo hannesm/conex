@@ -1,6 +1,6 @@
 (** Verification primitives
 
-    Implementations are provided in {!Conex_nocrypto} and {!Conex_openssl}. *)
+    Implementations are provided in {!Conex_mirage_crypto} and {!Conex_openssl}. *)
 
 open Conex_utils
 open Conex_resource

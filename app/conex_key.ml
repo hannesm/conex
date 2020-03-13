@@ -2,10 +2,10 @@ open Conex_utils
 open Conex_resource
 
 open Conex_opts
-open Conex_nc
+open Conex_mc
 
 let jump _ id force pub =
-  Nocrypto_entropy_unix.initialize () ;
+  Mirage_crypto_rng_unix.initialize () ;
   msg_to_cmdliner
     (match id with
      | None -> Error "need an id"

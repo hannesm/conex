@@ -1,8 +1,8 @@
 open Conex_utils
 
-module V = Conex_nocrypto.NC_V
+module V = Conex_mirage_crypto.NC_V
 module C = Conex.Make(Logs)(V)
-module PRIV = Conex_private.Make(Conex_nocrypto.C)(Conex_unix_private_key)
+module PRIV = Conex_private.Make(Conex_mirage_crypto.C)(Conex_unix_private_key)
 
 let to_str pp = function
   | Ok x -> Ok x

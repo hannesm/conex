@@ -2,7 +2,7 @@ open Conex_utils
 open Conex_resource
 
 open Conex_opts
-open Conex_nc
+open Conex_mc
 
 open Rresult
 
@@ -91,7 +91,7 @@ let compute _ dry repodir id pkg root_file no_opam =
       IO.write_targets io root t')
 
 let sign _ dry repodir id no_incr root_file no_opam =
-  Nocrypto_entropy_unix.initialize () ;
+  Mirage_crypto_rng_unix.initialize () ;
   msg_to_cmdliner (
     init_priv_id id >>= fun (priv, id') ->
     repo ~rw:(not dry) repodir >>= fun io ->

@@ -812,7 +812,7 @@ end
 module VF = Conex_verify.Make(
   struct
     let verify_rsa_pss ~key:_ ~data:_ ~signature:_ _id = Ok ()
-    let sha256 = Conex_nocrypto.V.sha256
+    let sha256 = Conex_mirage_crypto.V.sha256
   end)
 
 module RepoTests = struct
@@ -1655,7 +1655,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     end in
     (module M : Alcotest.TESTABLE with type t = M.t)
 
-  let raw_sign p d = match Conex_nocrypto.C.sign_pss p d with
+  let raw_sign p d = match Conex_mirage_crypto.C.sign_pss p d with
     | Ok s -> s
     | Error e -> Alcotest.fail e
 
@@ -1777,7 +1777,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     [ (prefix ^ "Signature", sign_tests) ]
 end
 
-module NC = BasicTests (Conex_nocrypto.NC_V) (Conex_nocrypto.V)
+module MC = BasicTests (Conex_mirage_crypto.NC_V) (Conex_mirage_crypto.V)
 module OC = BasicTests (Conex_openssl.O_V) (Conex_openssl.V)
 
 let tests = ("Expressions", ExprTests.tests) ::
@@ -1786,4 +1786,4 @@ let tests = ("Expressions", ExprTests.tests) ::
             ("Digests", DigestTests.tests) ::
             ("Roots", RootTests.tests) ::
             ("Repos", RepoTests.tests) ::
-            NC.tests "Nocrypto"
+            MC.tests "Mirage_crypto"

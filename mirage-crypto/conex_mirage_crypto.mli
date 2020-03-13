@@ -1,4 +1,4 @@
-(** Crypto provided by the nocrypto package *)
+(** Crypto provided by the mirage-crypto package *)
 
 module V : Conex_verify.S_RSA_BACK
 

@@ -4,7 +4,7 @@ open Conex_resource
 open Rresult
 
 open Conex_opts
-open Conex_nc
+open Conex_mc
 
 module IO = Conex_io
 
@@ -42,7 +42,7 @@ let to_str pp = function
   | Error e -> Error (Fmt.to_to_string pp e)
 
 let sign _ dry repodir id no_incr filename =
-  Nocrypto_entropy_unix.initialize () ;
+  Mirage_crypto_rng_unix.initialize () ;
   msg_to_cmdliner (
     init_priv_id id >>= fun (priv, id') ->
     repo ~rw:(not dry) repodir >>= fun io ->

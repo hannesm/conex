@@ -1,7 +1,6 @@
 
-
 let () =
-  Nocrypto_entropy_unix.initialize () ;
+  Mirage_crypto_rng_unix.initialize () ;
   let more = []
     (* match Conex_openssl.V.check_version () with
     | Error e -> Printf.printf "no openssl tests, version %s\n" e ; []

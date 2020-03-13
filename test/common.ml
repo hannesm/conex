@@ -11,7 +11,7 @@ module FS = struct
   let write k v = Hashtbl.add data k v ; Ok ()
 end
 
-module PRIV = Conex_private.Make(Conex_nocrypto.C)(FS)
+module PRIV = Conex_private.Make(Conex_mirage_crypto.C)(FS)
 
 let sset =
   let module M = struct

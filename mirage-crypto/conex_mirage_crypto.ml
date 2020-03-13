@@ -1,7 +1,7 @@
 open Conex_utils
 
 module V = struct
-  let good_rsa p = Nocrypto.Rsa.pub_bits p >= 2048
+  let good_rsa p = Mirage_crypto_pk.Rsa.pub_bits p >= 2048
 
   let encode_key pub =
     String.trim (Cstruct.to_string (X509.Public_key.encode_pem (`RSA pub)))
@@ -12,16 +12,17 @@ module V = struct
     | Ok (`RSA pub) -> Some pub
     | Ok (`EC_pub _) -> None
 
-  module Pss_sha256 = Nocrypto.Rsa.PSS (Nocrypto.Hash.SHA256)
+  module Pss_sha256 = Mirage_crypto_pk.Rsa.PSS (Mirage_crypto.Hash.SHA256)
 
   let verify_rsa_pss ~key ~data ~signature id =
-    match Nocrypto.Base64.decode (Cstruct.of_string signature) with
-    | None -> Error (`InvalidBase64Encoding id)
-    | Some signature ->
+    match Base64.decode signature with
+    | Error _ -> Error (`InvalidBase64Encoding id)
+    | Ok signature ->
+      let signature = Cstruct.of_string signature in
       let cs_data = Cstruct.of_string data in
       match decode_key key with
       | Some key when good_rsa key ->
-        if Pss_sha256.verify ~key ~signature cs_data then
+        if Pss_sha256.verify ~key ~signature (`Message cs_data) then
           Ok ()
         else
           Error (`InvalidSignature id)
@@ -48,7 +49,7 @@ module V = struct
 
   let sha256 data =
     let cs = Cstruct.of_string data in
-    let check = Nocrypto.Hash.digest `SHA256 cs in
+    let check = Mirage_crypto.Hash.digest `SHA256 cs in
     to_hex check
 end
 
@@ -57,7 +58,7 @@ module NC_V = Conex_verify.Make (V)
 module C = struct
 
   type t =
-    Conex_resource.identifier * Conex_resource.timestamp * Nocrypto.Rsa.priv
+    Conex_resource.identifier * Conex_resource.timestamp * Mirage_crypto_pk.Rsa.priv
 
   let created (_, ts, _) = ts
 
@@ -73,22 +74,21 @@ module C = struct
     Cstruct.to_string pem
 
   let pub_of_priv_rsa_raw key =
-    let pub = Nocrypto.Rsa.pub_of_priv key in
+    let pub = Mirage_crypto_pk.Rsa.pub_of_priv key in
     V.encode_key pub
 
   let generate_rsa ?(bits = 4096) () =
-    let key = Nocrypto.Rsa.generate bits in
+    let key = Mirage_crypto_pk.Rsa.generate ~bits () in
     encode_priv key, pub_of_priv_rsa_raw key
 
-  let bits (_, _, k) = Nocrypto.Rsa.priv_bits k
+  let bits (_, _, k) = Mirage_crypto_pk.Rsa.priv_bits k
 
   let pub_of_priv_rsa (_, _, k) = pub_of_priv_rsa_raw k
 
   let sign_pss (_, _, key) data =
     let cs = Cstruct.of_string data in
-    let signature = V.Pss_sha256.sign ~key cs in
-    let b64 = Nocrypto.Base64.encode signature in
-    Ok (Cstruct.to_string b64)
+    let signature = V.Pss_sha256.sign ~key (`Message cs) in
+    Ok (Base64.encode_string (Cstruct.to_string signature))
 
   let sha256 = V.sha256
 end
