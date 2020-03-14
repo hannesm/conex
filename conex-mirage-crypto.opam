@@ -19,6 +19,7 @@ depends: [
   "logs"
   "fmt"
   "rresult"
+  "base64" {>= "3.4.0"}
 ]
 build: [
   ["dune" "subst"] {pinned}
