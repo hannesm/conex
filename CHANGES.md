@@ -1,3 +1,7 @@
+## v0.11.1 (2020-03-15)
+
+* Use mirage-crypto instead of nocrypto
+
 ## v0.11.0 (2019-12-21)
 
 * Adapt to X509 0.7.0 API
