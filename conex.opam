@@ -9,11 +9,11 @@ depends: [
   "ocaml" {>= "4.05.0"}
   "dune"
   "cmdliner"
-  "opam-file-format" {>= "2.0.0~rc2"}
+  "opam-file-format" {>= "2.1.1"}
   "stdlib-shims"
 ]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]
 ]
 dev-repo: "git+https://github.com/hannesm/conex.git"
