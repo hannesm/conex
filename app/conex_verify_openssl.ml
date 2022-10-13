@@ -110,8 +110,11 @@ let no_color =
     Arg.(value & flag & info [ "no-color" ] ~doc)
 
 let cmd =
-  Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam)),
-  Term.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
-    ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
+  let term =
+    Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam))
+  and info = Cmd.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
+      ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
+  in
+  Cmd.v info term
 
-let () = match Term.eval cmd with `Ok () -> exit 0 | _ -> exit 1
+let () = exit (Cmd.eval cmd)

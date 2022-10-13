@@ -91,8 +91,11 @@ let sign_cmd =
     [`S "DESCRIPTION";
      `P "Cryptographically signs queued changes to your resource list."]
   in
-  Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.no_incr $ Keys.root)),
-  Term.info "sign" ~doc ~man
+  let term =
+    Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.no_incr $ Keys.root))
+  and info = Cmd.info "sign" ~doc ~man
+  in
+  Cmd.v info term
 
 let status_cmd =
   let doc = "information about provided root file" in
@@ -100,8 +103,11 @@ let status_cmd =
     [`S "DESCRIPTION";
      `P "Shows information root file."]
   in
-  Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.anchors $ Keys.root)),
-  Term.info "status" ~doc ~man
+  let term =
+    Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.anchors $ Keys.root))
+  and info = Cmd.info "status" ~doc ~man
+  in
+  Cmd.v info term
 
 let create_cmd =
   let doc = "create an empty root file" in
@@ -109,30 +115,24 @@ let create_cmd =
     [`S "DESCRIPTION";
      `P "Creates a fresh root file."]
   in
-  Term.(ret Conex_opts.(const create $ setup_log $ Keys.dry $ Keys.repo $ Keys.force $ Keys.root)),
-  Term.info "create" ~doc ~man
+  let term =
+    Term.(ret Conex_opts.(const create $ setup_log $ Keys.dry $ Keys.repo $ Keys.force $ Keys.root))
+  and info = Cmd.info "create" ~doc ~man
+  in
+  Cmd.v info term
 
 let help_cmd =
   let topic =
     let doc = "The topic to get help on. `topics' lists the topics." in
     Arg.(value & pos 0 (some string) None & info [] ~docv:"TOPIC" ~doc)
   in
-  let doc = "display help about conex_root" in
-  let man =
-    [`S "DESCRIPTION";
-     `P "Prints help about conex commands and subcommands"] @ help_secs
-  in
-  Term.(ret Conex_opts.(const help $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Term.man_format $ Term.choice_names $ topic)),
-  Term.info "help" ~doc ~man
+  Term.(ret Conex_opts.(const help $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Arg.man_format $ Term.choice_names $ topic))
 
-let default_cmd =
-  let doc = "manage root file of a signed community repository" in
-  let man = help_secs in
-  Term.(ret Conex_opts.(const help $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Term.man_format $ Term.choice_names $ Term.pure None)),
-  Term.info "conex_root" ~version:"%%VERSION_NUM%%" ~sdocs:docs ~doc ~man
-
-let cmds = [ help_cmd ; status_cmd ; sign_cmd ; create_cmd ]
+let cmds = [ status_cmd ; sign_cmd ; create_cmd ]
 
 let () =
-  match Term.eval_choice default_cmd cmds
-  with `Ok () -> exit 0 | _ -> exit 1
+  let doc = "Manage root file of a signed community repository" in
+  let man = help_secs in
+  let info = Cmd.info "conex_root" ~version:"%%VERSION_NUM%%" ~doc ~man in
+  let group = Cmd.group ~default:help_cmd info cmds in
+  exit (Cmd.eval group)

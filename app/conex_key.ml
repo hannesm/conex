@@ -53,7 +53,9 @@ let pub =
 
 let cmd =
   let doc = "key management" in
-  Term.(ret (const jump $ setup_log $ Keys.id $ Keys.force $ pub)),
-  Term.info "conex_key" ~version:"%%VERSION_NUM%%" ~doc
+  let term = Term.(ret (const jump $ setup_log $ Keys.id $ Keys.force $ pub))
+  and info = Cmd.info "conex_key" ~version:"%%VERSION_NUM%%" ~doc
+  in
+  Cmd.v info term
 
-let () = match Term.eval cmd with `Ok () -> exit 0 | _ -> exit 1
+let () = exit (Cmd.eval cmd)

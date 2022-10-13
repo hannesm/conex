@@ -6,11 +6,10 @@ homepage: "https://github.com/hannesm/conex"
 doc: "https://hannesm.github.io/conex/doc"
 bug-reports: "https://github.com/hannesm/conex/issues"
 depends: [
-  "ocaml" {>= "4.05.0"}
+  "ocaml" {>= "4.08.0"}
   "dune"
-  "cmdliner"
+  "cmdliner" {>= "1.1.0"}
   "opam-file-format" {>= "2.1.1"}
-  "stdlib-shims"
 ]
 build: [
   ["dune" "subst"] {dev}

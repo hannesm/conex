@@ -35,7 +35,7 @@ module V = struct
       char_of_int (0x57 + i)
 
   let to_hex cs =
-    let l = Cstruct.len cs in
+    let l = Cstruct.length cs in
     let out = Bytes.create (2 * l) in
     for i = 0 to pred l do
       let b = Cstruct.get_uint8 cs i in
