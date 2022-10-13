@@ -133,6 +133,6 @@ let cmds = [ status_cmd ; sign_cmd ; create_cmd ]
 let () =
   let doc = "Manage root file of a signed community repository" in
   let man = help_secs in
-  let info = Cmd.info "conex_root" ~version:"%%VERSION_NUM%%" ~doc ~man in
+  let info = Cmd.info "conex_root" ~version:"%%VERSION_NUM%%" ~sdocs:docs ~doc ~man in
   let group = Cmd.group ~default:help_cmd info cmds in
   exit (Cmd.eval group)
