@@ -184,12 +184,17 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       "old and new key directories are differrent" >>= fun () ->
     Conex_diff.ids root new_root.Root.keydir diffs >>= fun (r, ids) ->
     L.debug (fun m -> m "root is modified? %b, ids %a" r S.pp ids) ;
-    (match r, Uint.compare old_root.Root.counter new_root.Root.counter with
-     | _, 1 -> Error "root counter decremented"
-     | false, 0 -> Ok ()
-     | true, -1 -> Ok ()
-     | true, 0 -> Error "root counter same, expected to increase"
-     | r, c -> invalid_arg ("shouldn't happen, r is " ^ string_of_bool r ^ ", compare " ^ string_of_int c)) >>= fun () ->
+    (match Uint.compare old_root.Root.counter new_root.Root.counter with
+     | 0 ->
+       if r then
+         Error "root counter same, expected to increase"
+       else
+         Ok ()
+     | x ->
+       if x > 0 then
+         Error "root counter decremented"
+       else (* x < 0 *)
+         Ok ()) >>= fun () ->
     S.fold (fun id acc ->
         acc >>= fun () ->
         match IO.read_targets io old_root opam id, IO.read_targets newio new_root opam id with
@@ -201,11 +206,16 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
             Uint.compare t.Targets.epoch t'.Targets.epoch,
             Uint.compare t.Targets.counter t'.Targets.counter
           with
-          | 0, -1 -> Ok ()
-          | -1, _ -> Ok ()
-          | 1, _ -> Error ("epoch of " ^ id ^ " is moving backwards")
           | 0, 0 -> Error ("counter and epoch of " ^ id ^ " same")
-          | 0, 1 -> Error ("counter of " ^ id ^ " is moving backwards")
-          | _ -> invalid_arg "unexpected")
+          | 0, y ->
+            if y > 0 then
+              Error ("counter of " ^ id ^ " is moving backwards")
+            else (* y < 0 *)
+              Ok ()
+          | x, _ ->
+            if x < 0 then
+              Ok ()
+            else (* x > 0 *)
+              Error ("epoch of " ^ id ^ " is moving backwards"))
       ids (Ok ())
 end

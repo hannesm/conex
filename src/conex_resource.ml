@@ -490,7 +490,7 @@ module Expression = struct
              | Some (d', e') ->
                Format.printf "WARN: key %s already needed in (epoch %a, digest %a), now (epoch %a, digest %a) [selected higher epoch]\n"
                  id Uint.pp e' Digest.pp d' Uint.pp e Digest.pp d ;
-               if Uint.compare e' e = 1 then begin
+               if Uint.compare e' e > 0 then begin
                  Format.printf "WARN: replacing existing digest with newer epoch\n" ;
                  M.add id (d', e') m
                end else
