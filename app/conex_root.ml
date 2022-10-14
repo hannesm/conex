@@ -1,8 +1,6 @@
 open Conex_utils
 open Conex_resource
 
-open Rresult
-
 open Conex_opts
 open Conex_mc
 

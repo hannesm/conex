@@ -4,8 +4,6 @@ open Conex_resource
 open Conex_opts
 open Conex_mc
 
-open Rresult
-
 module IO = Conex_io
 
 let find_id io root id =

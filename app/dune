@@ -29,18 +29,18 @@
   (public_name conex_root)
   (package conex-mirage-crypto)
   (modules conex_root)
-  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix rresult))
+  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))
 
 (executable
   (name conex_key)
   (public_name conex_key)
   (package conex-mirage-crypto)
   (modules conex_key)
-  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix rresult))
+  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))
 
 (executable
   (name conex_targets)
   (public_name conex_targets)
   (package conex-mirage-crypto)
   (modules conex_targets)
-  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix rresult))
+  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))
