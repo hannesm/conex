@@ -54,23 +54,15 @@ let err_to_str pp = function
 module String = struct
   type t = string
 
-  let cut sep str =
-    try
-      let idx = String.index str sep
-      and l = String.length str
-      in
-      let sidx = succ idx in
-      Some (String.sub str 0 idx, String.sub str sidx (l - sidx))
-    with
-      Not_found -> None
-
   let cuts sep str =
-    let rec doit acc s =
-      match cut sep s with
-      | None -> List.rev (s :: acc)
-      | Some (a, b) -> doit (a :: acc) b
-    in
-    doit [] str
+    String.split_on_char sep str
+
+  let cut sep str =
+    match cuts sep str with
+    | [] -> None
+    | [ _ ] -> None
+    | [ a ; b ] -> Some (a, b)
+    | a :: xs -> Some (a, String.concat (String.make 1 sep) xs)
 
   let slice ?(start = 0) ?stop str =
     let stop = match stop with
