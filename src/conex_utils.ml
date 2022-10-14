@@ -85,14 +85,14 @@ module String = struct
     if String.length str < pl then
       false
     else
-      String.sub str 0 (String.length prefix) = prefix
+      String.(equal (sub str 0 (length prefix)) prefix)
 
   let is_suffix ~suffix str =
     let sl = String.length suffix in
     if String.length str < sl then
       false
     else
-      String.sub str (String.length str - sl) sl = suffix
+      String.(equal (sub str (length str - sl) sl) suffix)
 
   let lowercase_char = function
     | 'A' .. 'Z' as c -> char_of_int (int_of_char c + 0x20)
