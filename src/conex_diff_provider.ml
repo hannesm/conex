@@ -83,6 +83,7 @@ let apply provider diffs =
     Ok (FS.elements stuff)
   and write _ _ = Error "read only"
   and exists path =
+    print_endline ("exists on " ^ path_to_string path);
     match find_diff target path, find_diff source path with
     | None, None -> provider.exists path
     | Some _, _ -> true

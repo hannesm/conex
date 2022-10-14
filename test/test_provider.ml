@@ -170,7 +170,10 @@ let diff_test_create () =
 +bar
 |}
   in
-  let d, _ = Conex_diff_provider.apply_diff p diff in
+  let d, diffs = Conex_diff_provider.apply_diff p diff in
+  List.iteri (fun idx d ->
+      print_endline ("diff " ^ string_of_int idx ^ ":\n" ^ Fmt.to_to_string (Conex_diff.pp ~git:true) d))
+    diffs;
   Alcotest.check Alcotest.bool __LOC__
     true (d.exists ["packages" ; "foo"]) ;
   Alcotest.check (result (Alcotest.list it) str_err) __LOC__
