@@ -41,19 +41,21 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   module C = Conex.Make(L)(V)
 
+  let verify_root_targets io valid quorum ignore_missing root_file opam =
+    C.verify_root ~valid ?quorum io root_file >>= fun repo ->
+    C.verify ~ignore_missing io repo opam
+
   let verify_diff io patch valid quorum ignore_missing root_file opam =
     Conex_unix_persistency.read_file patch >>= fun x ->
     let newio, diffs = Conex_diff_provider.apply_diff io x in
     (* C.verify_snapshot newio repo >>= fun () -> *)
-    C.verify_root ~valid ?quorum newio root_file >>= fun repo ->
-    C.verify ~ignore_missing newio repo opam >>= fun () ->
+    verify_root_targets newio valid quorum ignore_missing root_file opam >>= fun () ->
     C.verify_diffs root_file io newio diffs opam >>= fun () ->
     Printf.printf "diff verification successfull\n" ;
     Ok ()
 
   let verify_full io valid quorum ignore_missing root_file opam =
-    C.verify_root ~valid ?quorum io root_file >>= fun repo ->
-    C.verify ~ignore_missing io repo opam >>= fun () ->
+    verify_root_targets io valid quorum ignore_missing root_file opam >>= fun () ->
     Printf.printf "full verification successfull\n" ;
     Ok ()
 
