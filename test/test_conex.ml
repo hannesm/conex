@@ -677,7 +677,7 @@ module RootTests = struct
         id_equal r.Root.name r'.Root.name &&
         path_equal r.Root.datadir r'.Root.datadir &&
         path_equal r.Root.keydir r'.Root.keydir &&
-        M.equal Expression.equal r.Root.roles r'.Root.roles &&
+        Root.RM.equal Expression.equal r.Root.roles r'.Root.roles &&
         M.equal Signature.equal r.Root.signatures r'.Root.signatures
     end in
     (module M : Alcotest.TESTABLE with type t = M.t)
@@ -713,7 +713,7 @@ module RootTests = struct
     in
     let root = { Root.created = "now" ; counter = Uint.zero ; epoch = Uint.zero ;
                  name = "root" ; datadir = [ "here" ] ; keydir = [ "there" ] ;
-                 keys = M.empty ; roles = M.empty ; signatures = M.empty ; valid = empty_valid }
+                 keys = M.empty ; roles = Root.RM.empty ; signatures = M.empty ; valid = empty_valid }
     in
     Alcotest.check (result roo str_err) "good wire"
       (Ok (root, [])) (Root.of_wire (root_wire signed)) ;
@@ -1743,7 +1743,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       keydir = [ "elsewhere" ] ;
       keys = keys ;
       valid = expr ;
-      roles = M.empty ;
+      roles = Root.RM.empty ;
       signatures = M.empty
     } in
     match PRIV.sign (Root.wire_raw root) "now!" id `RSA_PSS_SHA256 (Obj.magic p) with

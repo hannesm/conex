@@ -14,7 +14,7 @@ let keydir t = t.root.Root.keydir
 let datadir t = t.root.Root.datadir
 
 let maintainer_delegation t =
-  match M.find "maintainer" t.root.Root.roles with
+  match Root.RM.find `Maintainer t.root.Root.roles with
   | None -> None
   | Some e -> Some (e, false, S.singleton "root")
 

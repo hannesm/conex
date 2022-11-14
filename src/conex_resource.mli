@@ -277,6 +277,14 @@ end
     and maintainers.  Furthermore, it contains configuration information such as
     where keys are located in this repository and where the data is stored. *)
 module Root : sig
+  type role = [ `Snapshot | `Timestamp | `Maintainer ]
+
+  module RM : sig
+    include Map.S with type key = role
+    val find : role -> 'a t -> 'a option
+    val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+  end
+
   type t = {
     created : timestamp ;
     counter : Uint.t ;
@@ -286,12 +294,12 @@ module Root : sig
     keydir : path ;
     keys : Key.t M.t ;
     valid : Expression.t ;
-    roles : Expression.t M.t ;
+    roles : Expression.t RM.t ;
     signatures : Signature.t M.t ;
   }
 
   val t : ?counter:Uint.t -> ?epoch:Uint.t -> ?name:identifier ->
-    ?datadir:path -> ?keydir:path -> ?keys:Key.t M.t -> ?roles:Expression.t M.t ->
+    ?datadir:path -> ?keydir:path -> ?keys:Key.t M.t -> ?roles:Expression.t RM.t ->
     ?signatures:Signature.t M.t -> timestamp -> Expression.t -> t
 
   val add_signature : t -> identifier -> Signature.t -> t

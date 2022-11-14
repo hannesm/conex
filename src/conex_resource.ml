@@ -96,8 +96,7 @@ type typ = [
 let typ_equal a b = match a, b with
   | `Root, `Root
   | `Timestamp, `Timestamp
-  | `Snapshot, `Snapshot
-  | `Targets, `Targets -> true
+  | `Snapshot, `Snapshot   | `Targets, `Targets -> true
   | _ -> false
 
 let typ_to_string = function
@@ -118,6 +117,7 @@ let pp_typ ppf typ = Format.pp_print_string ppf (typ_to_string typ)
 (*BISECT-IGNORE-END*)
 
 let wire_typ typ = Wire.Identifier (typ_to_string typ)
+
 let typ_of_wire = function
   | Wire.Identifier str ->
     (match string_to_typ str with
@@ -600,7 +600,47 @@ end
 module Root = struct
   let version = 1
 
-  let supported_roles = [ "timestamp" ; "snapshot" ; "maintainer" ]
+  type role = [
+    | `Timestamp
+    | `Snapshot
+    | `Maintainer
+  ]
+
+  let role_compare a b = match a, b with
+    | `Timestamp, `Timestamp -> 0 | `Timestamp, _ -> -1 | _, `Timestamp -> 1
+    | `Snapshot, `Snapshot -> 0 | `Snapshot, _ -> -1 | _, `Snapshot -> 1
+    | `Maintainer, `Maintainer -> 0
+
+  let role_to_string = function
+    | `Timestamp -> "timestamp"
+    | `Snapshot -> "snapshot"
+    | `Maintainer -> "maintainer"
+
+  let string_to_role = function
+    | "timestamp" -> Some `Timestamp
+    | "snapshot" -> Some `Snapshot
+    | "maintainer" -> Some `Maintainer
+    | _ -> None
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp_role ppf role = Format.pp_print_string ppf (role_to_string role)
+  (*BISECT-IGNORE-END*)
+
+  module RM = struct
+    include Map.Make (struct
+        type t = role
+        let compare (a : t) (b : t) = role_compare a b
+      end)
+
+    let find k m = try Some (find k m) with Not_found -> None
+
+    (*BISECT-IGNORE-BEGIN*)
+    let pp pp_e ppf m =
+      iter (fun k v -> Format.fprintf ppf "%a -> %a@ " pp_role k pp_e v) m
+    (*BISECT-IGNORE-END*)
+  end
+
+  let supported_roles = [ `Timestamp ; `Snapshot ; `Maintainer ]
 
   type t = {
     created : timestamp ;
@@ -611,13 +651,13 @@ module Root = struct
     keydir : path ;
     keys : Key.t M.t ;
     valid : Expression.t ;
-    roles : Expression.t M.t ;
+    roles : Expression.t RM.t ;
     signatures : Signature.t M.t ;
   }
 
   let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(name = "root")
       ?(datadir = [ "packages" ]) ?(keydir = [ "keys" ]) ?(keys = M.empty)
-      ?(roles = M.empty) ?(signatures = M.empty) created valid  =
+      ?(roles = RM.empty) ?(signatures = M.empty) created valid  =
     { created ; counter ; epoch ; name ; datadir ; keydir ; keys ; roles ; signatures ; valid }
 
   let add_signature t id s =
@@ -633,11 +673,9 @@ module Root = struct
       pp_path t.datadir pp_path t.keydir
       Expression.pp t.valid
       (M.pp Key.pp) t.keys
-      (M.pp Expression.pp) t.roles
+      (RM.pp Expression.pp) t.roles
       (M.pp Signature.pp) t.signatures
   (*BISECT-IGNORE-END*)
-
-  let safe_role s = guard (String.is_ascii s) ("invalid role")
 
   let of_wire data =
     Header.split_signed data >>= fun (signed, sigs) ->
@@ -651,17 +689,17 @@ module Root = struct
     opt_err (M.find "keys" signed) >>= plist >>= Key.many_of_wire >>= fun (keys, w) ->
     opt_err (M.find "roles" signed) >>= pmap >>= fun roles ->
     opt_err (M.find "valid" signed) >>= Expression.of_wire >>= fun valid ->
-    Header.keys ~header:false supported_roles roles >>= fun () ->
+    Header.keys ~header:false (List.map role_to_string supported_roles) roles >>= fun () ->
     M.fold (fun k v acc ->
         acc >>= fun (map, msgs) ->
-        safe_role k >>= fun () ->
+        Option.to_result ~none:"invalid role" (string_to_role k) >>= fun role ->
         Expression.of_wire v >>= fun expr ->
-        if M.mem k map then begin
+        if RM.mem role map then begin
           let msg = "roles with name " ^ k ^ " already present, ignoring" in
           Ok (map, msg :: msgs)
         end else
-          Ok (M.add k expr map, msgs))
-      roles (Ok (M.empty, [])) >>= fun (roles, w') ->
+          Ok (RM.add role expr map, msgs))
+      roles (Ok (RM.empty, [])) >>= fun (roles, w') ->
     Signature.many_of_wire sigs >>= fun (signatures, w'') ->
     let warns = w @ w' @ w'' in
     Ok ({ created = h.Header.created ; counter = h.Header.counter ;
@@ -678,7 +716,7 @@ module Root = struct
     in
     let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
     let roles =
-      M.fold (fun k v acc -> M.add k (Expression.to_wire v) acc) t.roles M.empty
+      RM.fold (fun k v acc -> M.add (role_to_string k) (Expression.to_wire v) acc) t.roles M.empty
     in
     M.add "datadir" (Data (path_to_string t.datadir))
       (M.add "keydir" (Data (path_to_string t.keydir))
