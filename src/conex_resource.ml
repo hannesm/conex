@@ -88,20 +88,28 @@ end
 
 type typ = [
   | `Root
+  | `Timestamp
+  | `Snapshot
   | `Targets
 ]
 
 let typ_equal a b = match a, b with
   | `Root, `Root
+  | `Timestamp, `Timestamp
+  | `Snapshot, `Snapshot
   | `Targets, `Targets -> true
   | _ -> false
 
 let typ_to_string = function
   | `Root -> "root"
+  | `Timestamp -> "timestamp"
+  | `Snapshot -> "snapshot"
   | `Targets -> "targets"
 
 let string_to_typ = function
   | "root" -> Some `Root
+  | "timestamp" -> Some `Timestamp
+  | "snapshot" -> Some `Snapshot
   | "targets" -> Some `Targets
   | _ -> None
 
@@ -794,6 +802,172 @@ module Target = struct
               M.empty))
     in
     Map map
+end
+
+module Timestamp = struct
+  let version = 0
+
+  type t = {
+    created : timestamp ;
+    counter : Uint.t ;
+    epoch : Uint.t ;
+    name : identifier ;
+    keys : Key.t M.t ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
+  }
+
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(keys = M.empty)
+    ?(targets = []) ?(signatures = M.empty) created name =
+    { created ; counter ; epoch ; name ; keys ; targets ; signatures }
+
+  let equal t t' =
+    timestamp_equal t.created t'.created &&
+    Uint.compare t.counter t'.counter = 0 &&
+    Uint.compare t.epoch t'.epoch = 0 &&
+    name_equal t.name t'.name &&
+    M.equal Key.equal t.keys t'.keys &&
+    List.length t.targets = List.length t'.targets &&
+    List.for_all (fun t -> List.exists (Target.equal t) t'.targets) t.targets &&
+    M.equal Signature.equal t.signatures t'.signatures
+
+  let add_signature t id s =
+    let signatures = M.add id s t.signatures in
+    { t with signatures }
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf t =
+    Format.fprintf ppf "timestamp %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
+      pp_name t.name
+      (Header.counter t.counter t.epoch)
+      pp_timestamp t.created
+      (M.pp Key.pp) t.keys
+      (pp_list Target.pp) t.targets
+      (M.pp Signature.pp) t.signatures
+  (*BISECT-IGNORE-END*)
+
+  let of_wire data =
+    Header.split_signed data >>= fun (signed, sigs) ->
+    let keys = [ "keys" ; "targets" ] in
+    Header.keys keys signed >>= fun () ->
+    Header.of_wire signed >>= fun h ->
+    Header.check `Timestamp version h >>= fun () ->
+    let open Wire in
+    (match M.find "keys" signed with
+     | None -> Ok (M.empty, [])
+     | Some keys -> plist keys >>= Key.many_of_wire) >>= fun (keys, w) ->
+    opt_err (M.find "targets" signed) >>= plist >>= fun targets ->
+    (* preserve order! *)
+    foldM (fun acc t -> Target.of_wire t >>= fun t -> Ok (t :: acc)) [] targets >>= fun targets ->
+    let targets = List.rev targets in
+    Signature.many_of_wire sigs >>= fun (signatures, w') ->
+    let warn = w @ w' in
+    Ok ({ created = h.Header.created ; counter = h.Header.counter ;
+          epoch = h.Header.epoch ; name = h.Header.name ;
+          keys ; targets ; signatures }, warn)
+
+
+  let wire_raw t =
+    let open Wire in
+    let created = t.created
+    and counter = t.counter
+    and epoch = t.epoch
+    and name = t.name
+    and typ = `Targets
+    in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
+    M.add "keys" (List (M.fold (fun _ key acc -> Key.wire_raw key :: acc) t.keys []))
+      (M.add "targets" (List (List.map Target.wire_raw t.targets))
+         (Header.wire header))
+
+  let wire t =
+    let open Wire in
+    M.add "signed" (Map (wire_raw t))
+      (M.add "signatures" (List (M.fold (fun _ s acc -> Signature.wire_raw s :: acc) t.signatures []))
+         M.empty)
+end
+
+module Snapshot = struct
+  let version = 0
+
+  type t = {
+    created : timestamp ;
+    counter : Uint.t ;
+    epoch : Uint.t ;
+    name : identifier ;
+    keys : Key.t M.t ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
+  }
+
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(keys = M.empty)
+    ?(targets = []) ?(signatures = M.empty) created name =
+    { created ; counter ; epoch ; name ; keys ; targets ; signatures }
+
+  let equal t t' =
+    timestamp_equal t.created t'.created &&
+    Uint.compare t.counter t'.counter = 0 &&
+    Uint.compare t.epoch t'.epoch = 0 &&
+    name_equal t.name t'.name &&
+    M.equal Key.equal t.keys t'.keys &&
+    List.length t.targets = List.length t'.targets &&
+    List.for_all (fun t -> List.exists (Target.equal t) t'.targets) t.targets &&
+    M.equal Signature.equal t.signatures t'.signatures
+
+  let add_signature t id s =
+    let signatures = M.add id s t.signatures in
+    { t with signatures }
+
+  (*BISECT-IGNORE-BEGIN*)
+  let pp ppf t =
+    Format.fprintf ppf "snapshot %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
+      pp_name t.name
+      (Header.counter t.counter t.epoch)
+      pp_timestamp t.created
+      (M.pp Key.pp) t.keys
+      (pp_list Target.pp) t.targets
+      (M.pp Signature.pp) t.signatures
+  (*BISECT-IGNORE-END*)
+
+  let of_wire data =
+    Header.split_signed data >>= fun (signed, sigs) ->
+    let keys = [ "keys" ; "targets" ] in
+    Header.keys keys signed >>= fun () ->
+    Header.of_wire signed >>= fun h ->
+    Header.check `Snapshot version h >>= fun () ->
+    let open Wire in
+    (match M.find "keys" signed with
+     | None -> Ok (M.empty, [])
+     | Some keys -> plist keys >>= Key.many_of_wire) >>= fun (keys, w) ->
+    opt_err (M.find "targets" signed) >>= plist >>= fun targets ->
+    (* preserve order! *)
+    foldM (fun acc t -> Target.of_wire t >>= fun t -> Ok (t :: acc)) [] targets >>= fun targets ->
+    let targets = List.rev targets in
+    Signature.many_of_wire sigs >>= fun (signatures, w') ->
+    let warn = w @ w' in
+    Ok ({ created = h.Header.created ; counter = h.Header.counter ;
+          epoch = h.Header.epoch ; name = h.Header.name ;
+          keys ; targets ; signatures }, warn)
+
+
+  let wire_raw t =
+    let open Wire in
+    let created = t.created
+    and counter = t.counter
+    and epoch = t.epoch
+    and name = t.name
+    and typ = `Targets
+    in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
+    M.add "keys" (List (M.fold (fun _ key acc -> Key.wire_raw key :: acc) t.keys []))
+      (M.add "targets" (List (List.map Target.wire_raw t.targets))
+         (Header.wire header))
+
+  let wire t =
+    let open Wire in
+    M.add "signed" (Map (wire_raw t))
+      (M.add "signatures" (List (M.fold (fun _ s acc -> Signature.wire_raw s :: acc) t.signatures []))
+         M.empty)
 end
 
 module Targets = struct

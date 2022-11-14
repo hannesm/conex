@@ -77,6 +77,8 @@ end
 (** The sum type of all possible resources. *)
 type typ = [
   | `Root
+  | `Timestamp
+  | `Snapshot
   | `Targets
 ]
 
@@ -274,7 +276,6 @@ end
 (** The root contains the (offline) root keys, also defines snapshot, timestamp,
     and maintainers.  Furthermore, it contains configuration information such as
     where keys are located in this repository and where the data is stored. *)
-
 module Root : sig
   type t = {
     created : timestamp ;
@@ -305,30 +306,10 @@ module Root : sig
 
 end
 
-(* TODO: how do snapshot and timestamp look like?  basically a set of targets? *)
-(* snapshot needs to include all the keys/ files, plus timestamp and root!? *)
-(* timestamp just needs to sign the snapshot (after verifying the hashes) *)
+(** {1 Target} *)
 
-module Delegation : sig
-  type t = {
-    paths : path list ;
-    valid : Expression.t ;
-    terminating : bool
-  }
-
-  (** [equal a b] is [true] if delegations [a] and [b] are identical. *)
-  val equal : t -> t -> bool
-
-  (** [pp] is a pretty printer for a delegation. *)
-  val pp : t fmt
-
-  (** [of_wire w] converts [w] to a delegation or error. *)
-  val of_wire : Wire.s -> (t, string) result
-
-  (** [wire_raw t] is the raw wire representation of [t]. *)
-  val wire_raw : t -> Wire.s
-end
-
+(** The target is a triple of filename, digest, and size. It is used by snapshot
+    and targets. *)
 module Target : sig
   type t = {
     filename : path ;
@@ -347,6 +328,99 @@ module Target : sig
   val pp : t fmt
 
   (** [of_wire w] converts [w] to a target or error. *)
+  val of_wire : Wire.s -> (t, string) result
+
+  (** [wire_raw t] is the raw wire representation of [t]. *)
+  val wire_raw : t -> Wire.s
+end
+
+(** {1 Timestamp} *)
+
+(** The timestamp is signed by the timestamp role. It lists the snapshot data,
+    (its size, filename, and digest). The purpose is to prevent freeze attacks:
+    It periodically signs the data, a client can discover it does not receive
+    updates.
+*)
+module Timestamp : sig
+  type t = {
+    created : timestamp ;
+    counter : Uint.t ;
+    epoch : Uint.t ;
+    name : identifier ;
+    keys : Key.t M.t ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
+  }
+
+  val t : ?counter:Uint.t -> ?epoch:Uint.t -> ?keys:Key.t M.t ->
+    ?targets:Target.t list -> ?signatures:Signature.t M.t -> timestamp ->
+    identifier -> t
+
+  (** [equal a b] is [true] if all fields of [a] and [b] are equal. *)
+  val equal : t -> t -> bool
+
+  val add_signature : t -> identifier -> Signature.t -> t
+
+  val pp : t fmt
+
+  val of_wire : Wire.t -> (t * string list, string) result
+
+  val wire : t -> Wire.t
+
+  val wire_raw : t -> Wire.t
+
+end
+
+
+(** {1 Snapshot} *)
+
+(** The snapshot is signed by the snapshot role. It lists all targets, with
+    size, filename, and digest. The purpose is to prevent mix-and-match attacks,
+    where an attacker mixes older targets files with newer ones. *)
+module Snapshot : sig
+  type t = {
+    created : timestamp ;
+    counter : Uint.t ;
+    epoch : Uint.t ;
+    name : identifier ;
+    keys : Key.t M.t ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
+  }
+
+  val t : ?counter:Uint.t -> ?epoch:Uint.t -> ?keys:Key.t M.t ->
+    ?targets:Target.t list -> ?signatures:Signature.t M.t -> timestamp ->
+    identifier -> t
+
+  (** [equal a b] is [true] if all fields of [a] and [b] are equal. *)
+  val equal : t -> t -> bool
+
+  val add_signature : t -> identifier -> Signature.t -> t
+
+  val pp : t fmt
+
+  val of_wire : Wire.t -> (t * string list, string) result
+
+  val wire : t -> Wire.t
+
+  val wire_raw : t -> Wire.t
+
+end
+
+module Delegation : sig
+  type t = {
+    paths : path list ;
+    valid : Expression.t ;
+    terminating : bool
+  }
+
+  (** [equal a b] is [true] if delegations [a] and [b] are identical. *)
+  val equal : t -> t -> bool
+
+  (** [pp] is a pretty printer for a delegation. *)
+  val pp : t fmt
+
+  (** [of_wire w] converts [w] to a delegation or error. *)
   val of_wire : Wire.s -> (t, string) result
 
   (** [wire_raw t] is the raw wire representation of [t]. *)
