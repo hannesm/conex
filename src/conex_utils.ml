@@ -332,3 +332,100 @@ module Tree = struct
       let res = insert tl value n in
       Node (dels, M.add hd res map)
 end
+
+let days_since_epoch (year, month, day) =
+  (* following https://www.tondering.dk/claus/cal/julperiod.php#formula we
+     compute the julian days of the provided date, and subtract the POSIX epoch
+     from it. *)
+  let open Int64 in
+  let year = of_int year and month = of_int month and day = of_int day in
+  let epoch = 2440588L in
+  let a = div (sub 14L month) 12L in
+  let y = sub (add year 4800L) a in
+  let m = sub (add month (mul 12L a)) 3L in
+  let m' = div (add (mul 153L m) 2L) 5L in
+  let y' = mul 365L y in
+  let y'' = div y 4L in
+  let y''' = div y 100L in
+  let y'''' = div y 400L in
+  sub (sub (add (sub (add (add (add day m') y') y'') y''') y'''') 32045L) epoch
+
+let timestamp_to_int64 ts =
+  let ( let* ) = Result.bind in
+  let* date, time =
+    Option.to_result
+      ~none:"couldn't decode timestamp, missing 'T'"
+      (String.cut 'T' ts)
+  in
+  let* date =
+    match String.cuts '-' date with
+    | [ year ; month ; day ] ->
+      let* () =
+        guard (String.length year = 4)
+          "couldn't decode timestamp: year not 4 digits"
+      in
+      let* y, m, d =
+        try Ok (int_of_string year, int_of_string month, int_of_string day)
+        with
+          Failure _ -> Error "couldn't decode timestamp: bad date (int_of_string)"
+      in
+      let* () = guard (m > 0 && m <= 12) "couldn't decode timestamp: bad month" in
+      let* () = guard (d > 0 && d <= 31) "couldn't decode timestamp: bad day" in
+      Ok (y, m, d)
+    | _ -> Error "couldn't decode timestamp: date not a triple"
+  in
+  let* s =
+    let* time, offset =
+      match String.cut 'Z' time with
+      | Some (time, "") -> Ok (time, 0L)
+      | Some (_, _) ->
+        Error "couldn't decode timestamp: bad time offset ('Z' at arbitrary position)"
+      | None ->
+        let* time, sign, offset =
+          match String.cut '+' time, String.cut '-' time with
+          | None, None -> Error "couldn't decode timestamp: no offset present"
+          | Some _, Some _ -> Error "couldn't decode timestamp: both '+' and '-' present"
+          | Some (time, off), None -> Ok (time, 1L, off)
+          | None, Some (time, off) -> Ok (time, -1L, off)
+        in
+        let* off =
+          let* h, m =
+            Option.to_result ~none:"couldn't decode timestamp: bad offset"
+              (String.cut ':' offset)
+          in
+          let* h, m =
+            try Ok (int_of_string h, int_of_string m) with
+              Failure _ -> Error "couldn't decode timestamp: offset not a number"
+          in
+          let* () =
+            guard (h >= 0 && h <= 23)
+              "couldn't decode timestamp: offset hour out of range"
+          in
+          let* () =
+            guard (m >= 0 && m <= 59)
+              "couldn't decode timestamp: offset minute out of range"
+          in
+          Ok Int64.(mul (add (mul (of_int h) 60L) (of_int m)) 60L)
+        in
+        Ok (time, Int64.mul sign off)
+    in
+    let* s =
+      match String.cuts ':' time with
+      | [ hour ; minute ; second ] ->
+        let* h, m, s =
+          try Ok (int_of_string hour, int_of_string minute, int_of_string second)
+          with
+            Failure _ -> Error "couldn't decode timestamp: bad date (int_of_string)"
+        in
+        let* () = guard (h >= 0 && h <= 23) "couldn't decode timestamp: bad hour" in
+        let* () = guard (m >= 0 && m <= 59) "couldn't decode timestamp: bad minute" in
+        let* () = guard (s >= 0 && s <= 60) "couldn't decode timestamp: bad second" in
+        Ok Int64.(add (mul (add (mul (of_int h) 60L) (of_int m)) 60L) (of_int s))
+      | _ -> Error "couldn't decode timestamp: bad time"
+    in
+    Ok (Int64.add s offset)
+  in
+  let seconds_in_a_day = 86400L in (* 24 * 60 * 60 *)
+  let r = Int64.(add (mul (days_since_epoch date) seconds_in_a_day) s) in
+  let* () = guard (r > 0L) "couldn't decode timestamp: negative" in
+  Ok r

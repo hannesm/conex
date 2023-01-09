@@ -290,3 +290,9 @@ module Tree : sig
       already in the tree, its value is prepended. *)
   val insert : path -> 'a -> 'a t -> 'a t
 end
+
+(** [timestamp_to_int64 timestamp] attempts to convert the provided RFC 3339
+    timestamp to an int64 representing the seconds since Unix epoch
+    (1970-01-01). When decoding leads to an error, or the timestamp is not in
+    range (of the int64), an error message is returned. *)
+val timestamp_to_int64 : string -> (int64, string) result
