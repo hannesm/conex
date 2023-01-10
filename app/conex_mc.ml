@@ -8,7 +8,9 @@ let to_str pp = function
   | Ok x -> Ok x
   | Error e -> Error (Fmt.to_to_string pp e)
 
-let now = Ptime.to_rfc3339 (Ptime_clock.now ())
+let now = Ptime_clock.now ()
+
+let now_rfc3339 = Ptime.to_rfc3339 now
 
 let to_ts f = match Ptime.of_float_s f with
   | None -> None

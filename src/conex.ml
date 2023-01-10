@@ -39,6 +39,40 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     | false, _ -> Error "couldn't validate root role"
     | _, false -> Error "provided quorum was not matched"
 
+  let verify_timestamp io repo ~timestamp_expiry ~now =
+    L.debug (fun m -> m "verifying timestamp") ;
+    match Root.RM.find `Timestamp (Conex_repository.root repo).Root.roles with
+    | None ->
+      L.warn (fun m -> m "no timestamp role found in root") ;
+      Ok ()
+    | Some (Expression.Quorum (1, ks)) when Expression.KS.cardinal ks = 1 ->
+      (* assume a single timestamp *)
+      begin match Expression.KS.choose ks with
+        | Local _ ->
+          Error "only a single remote key expression allowed for timestamp"
+        | Remote (id, dgst, epoch) ->
+          err_to_str IO.pp_r_err (IO.read_timestamp io id) >>= fun (ts, warn) ->
+          List.iter (fun w -> L.warn (fun m -> m "%s" w)) warn ;
+          let sigs, es =
+            Timestamp.(C.verify (wire_raw ts) ts.keys ts.signatures)
+          in
+          List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) es ;
+          match Digest_map.find dgst sigs with
+          | Some id' when id_equal id id' && Uint.compare epoch ts.Timestamp.epoch = 0 ->
+            (* AND also ctr increased if we had an on-disk version (for incremental verification) *)
+            begin match timestamp_to_int64 ts.Timestamp.created with
+              | Ok ts ->
+                if ts >= Int64.sub now timestamp_expiry then
+                  Ok ()
+                else
+                  Error "timestamp is no longer valid"
+              | Error _ as e -> e
+            end
+          | _ -> Error "couldn't validate timestamp signature"
+      end
+    | _ ->
+      Error "only a single key expression with quorum 1 allowed for timestamp"
+
   let targets_cache = ref M.empty
 
   let verify_targets io repo opam id =

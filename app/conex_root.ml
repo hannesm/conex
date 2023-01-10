@@ -25,7 +25,7 @@ let create _ dry repodir force filename =
   msg_to_cmdliner (
     repo ~rw:(not dry) repodir >>= fun io ->
     let valid = Expression.Quorum (0, Expression.KS.empty) in
-    let root = Root.t ~name:filename now valid in
+    let root = Root.t ~name:filename now_rfc3339 valid in
     let root' =
       match IO.read_root io filename with
       | Error _ -> root
@@ -50,7 +50,7 @@ let sign _ dry repodir id no_incr filename =
      | false, (true, _) -> Error "couldn't increment counter"
      | true, _ -> Ok root
      | false, (false, counter) -> Ok { root with Root.counter }) >>= fun root' ->
-    PRIV.sign (Root.wire_raw root') now id' `RSA_PSS_SHA256 priv >>= fun signature ->
+    PRIV.sign (Root.wire_raw root') now_rfc3339 id' `RSA_PSS_SHA256 priv >>= fun signature ->
     let root'' = Root.add_signature root' id' signature in
     IO.write_root io root'')
 

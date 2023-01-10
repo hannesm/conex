@@ -47,6 +47,21 @@ let write_root t root =
   let id = root.Root.name in
   t.write [ id ] (encode (Root.wire root))
 
+let read_timestamp t timestamp_file =
+  match t.read [ timestamp_file ] with
+  | Error _ -> Error (`NotFound (`Timestamp, timestamp_file))
+  | Ok data ->
+    match decode data >>= Timestamp.of_wire with
+    | Error p -> Error (`ParseError (`Timestamp, timestamp_file, p))
+    | Ok (timestamp, warn) ->
+      guard (id_equal timestamp.Timestamp.name timestamp_file)
+        (`NameMismatch (`Timestamp, timestamp_file, timestamp.Timestamp.name)) >>= fun () ->
+      Ok (timestamp, warn)
+
+let write_timestamp t timestamp =
+  let id = timestamp.Timestamp.name in
+  t.write [ id ] (encode (Timestamp.wire timestamp))
+
 let targets t root =
   match t.read_dir root.Root.keydir with
   | Error e ->

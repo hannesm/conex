@@ -16,7 +16,7 @@
   (public_name conex_verify_mirage_crypto)
   (package conex-mirage-crypto)
   (modules conex_verify_mirage_crypto)
-  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd logs fmt logs.fmt fmt.tty logs.cli fmt.cli))
+  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd logs fmt logs.fmt fmt.tty logs.cli fmt.cli conex_cmd_mc))
 
 (library
   (name conex_cmd_mc)

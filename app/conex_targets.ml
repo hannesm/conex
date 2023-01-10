@@ -41,7 +41,7 @@ let create _ repodir id dry root_file no_opam =
         let keyref = Expression.Local id' in
         let keys = M.add id' pub M.empty in
         let valid = Expression.(Quorum (1, KS.singleton keyref)) in
-        Targets.t ~keys now id' valid
+        Targets.t ~keys now_rfc3339 id' valid
       | Ok (targets, warn) ->
         List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
         targets
@@ -102,7 +102,7 @@ let sign _ dry repodir id no_incr root_file no_opam =
      | true, _ -> Ok targets
      | false, (false, counter) -> Ok { targets with Targets.counter }
      | false, (true, _) -> Error "couldn't increment counter") >>= fun targets' ->
-    PRIV.sign (Targets.wire_raw targets') now id' `RSA_PSS_SHA256 priv >>= fun signature ->
+    PRIV.sign (Targets.wire_raw targets') now_rfc3339 id' `RSA_PSS_SHA256 priv >>= fun signature ->
     let targets'' = Targets.add_signature targets' id' signature in
     IO.write_targets io root targets'')
 

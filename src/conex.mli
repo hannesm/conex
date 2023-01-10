@@ -24,6 +24,9 @@ module Make (L : LOGS) (C : Conex_verify.S): sig
   val verify_root : ?valid:(Digest.t -> identifier -> bool) ->
     ?quorum : int -> Conex_io.t -> name -> (Conex_repository.t, string) result
 
+  val verify_timestamp : Conex_io.t -> Conex_repository.t ->
+    timestamp_expiry:int64 -> now:int64 -> (unit, string) result
+
   val verify_targets : Conex_io.t -> Conex_repository.t -> bool -> identifier ->
     (Targets.t, string) result
 

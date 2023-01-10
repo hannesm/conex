@@ -80,7 +80,7 @@ let terminal () =
   in
   if not dumb && isatty then `Ansi_tty else `None
 
-let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root no_opam =
+let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root no_opam timestamp_expiry =
   let level =
     if quiet then `Warn
     else if verbose then `Debug
@@ -90,9 +90,10 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c ro
   let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
+  let now = Int64.of_float (Unix.time ()) in
   msg_to_cmdliner (
     Conex_openssl.V.check_version () >>= fun () ->
-    V.verify_it repo quorum anchors incremental dir patch strict root (not no_opam))
+    V.verify_it repo quorum anchors incremental dir patch strict root (not no_opam) ~timestamp_expiry ~now)
 
 open Conex_opts
 open Cmdliner
@@ -111,7 +112,7 @@ let no_color =
 
 let cmd =
   let term =
-    Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam))
+    Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam $ Keys.timestamp_expiry))
   and info = Cmd.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
       ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
   in

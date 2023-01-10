@@ -41,38 +41,39 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   module C = Conex.Make(L)(V)
 
-  let verify_root_targets io valid quorum ignore_missing root_file opam =
+  let verify_root_targets io valid quorum ignore_missing root_file opam ~timestamp_expiry ~now =
     C.verify_root ~valid ?quorum io root_file >>= fun repo ->
+    C.verify_timestamp io repo ~timestamp_expiry ~now >>= fun () ->
+    (*    C.verify_snapshot io repo >>= fun () -> *)
     C.verify ~ignore_missing io repo opam
 
-  let verify_diff io patch valid quorum ignore_missing root_file opam =
+  let verify_diff io patch valid quorum ignore_missing root_file opam ~timestamp_expiry ~now =
     Conex_unix_persistency.read_file patch >>= fun x ->
     let newio, diffs = Conex_diff_provider.apply_diff io x in
-    (* C.verify_snapshot newio repo >>= fun () -> *)
-    verify_root_targets newio valid quorum ignore_missing root_file opam >>= fun () ->
+    verify_root_targets newio valid quorum ignore_missing root_file opam ~timestamp_expiry ~now >>= fun () ->
     C.verify_diffs root_file io newio diffs opam >>= fun () ->
     Printf.printf "diff verification successfull\n" ;
     Ok ()
 
-  let verify_full io valid quorum ignore_missing root_file opam =
-    verify_root_targets io valid quorum ignore_missing root_file opam >>= fun () ->
+  let verify_full io valid quorum ignore_missing root_file opam ~timestamp_expiry ~now =
+    verify_root_targets io valid quorum ignore_missing root_file opam ~timestamp_expiry ~now >>= fun () ->
     Printf.printf "full verification successfull\n" ;
     Ok ()
 
-  let verify_it repodir quorum anchors incremental dir patch nostrict root_file opam =
+  let verify_it repodir quorum anchors incremental dir patch nostrict root_file opam ~timestamp_expiry ~now =
     let valid = Conex_opts.valid anchors in
     match repodir, incremental, patch, dir with
     | Some repodir, true, Some p, None ->
       Conex_unix_provider.fs_ro_provider repodir >>= fun io ->
       L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-      verify_diff io p valid quorum nostrict root_file opam
+      verify_diff io p valid quorum nostrict root_file opam ~timestamp_expiry ~now
     | _, false, None, Some "" ->
       L.debug (fun m -> m "called with no incremental, and dir = empty -> no update") ;
       Ok ()
     | _, false, None, Some d ->
       Conex_unix_provider.fs_ro_provider d >>= fun io ->
       L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
-      verify_full io valid quorum nostrict root_file opam
+      verify_full io valid quorum nostrict root_file opam ~timestamp_expiry ~now
     | None, _, _, _ -> Error "--repo is required"
     | _ -> Error "invalid combination of incremental, patch and dir"
 end

@@ -68,6 +68,10 @@ module Keys = struct
   let no_opam =
     let doc = "Do not verify opam repository layout" in
     Arg.(value & flag & info [ "no-opam" ] ~doc)
+
+  let timestamp_expiry =
+    let doc = "Expiration of timestamp signature (in seconds)." in
+    Arg.(value & opt int64 900L & info [ "expiry" ] ~doc)
 end
 
 let repo ?(rw = false) repodir =
