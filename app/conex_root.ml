@@ -12,16 +12,22 @@ let status _ repodir anchors filename  =
   msg_to_cmdliner (
     let valid = valid anchors in
     let* io = repo repodir in
-    match IO.read_root io filename with
-    | Error r ->
-      Logs.err (fun m -> m "%a" IO.pp_r_err r) ;
-      Error "failed loading"
-    | Ok (root, warn) ->
-      List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
-      Logs.app (fun m -> m "root file %a" Root.pp root) ;
-      match C.verify_root ~valid io filename with
-      | Error e -> Logs.err (fun m -> m "couldn't verify root: %s" e) ; Error "failed verification"
-      | Ok _repo -> Logs.app (fun m -> m "verified successfully") ; Ok ())
+    Result.fold
+      ~error:(fun r ->
+          Logs.err (fun m -> m "%a" IO.pp_r_err r) ;
+          Error "failed loading")
+      ~ok:(fun (root, warn) ->
+          List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+          Logs.app (fun m -> m "root file %a" Root.pp root) ;
+          Result.fold
+            ~error:(fun e ->
+                Logs.err (fun m -> m "couldn't verify root: %s" e) ;
+                Error "failed verification")
+            ~ok:(fun _ ->
+                Logs.app (fun m -> m "verified successfully") ;
+                Ok ())
+            (C.verify_root ~valid io filename))
+      (IO.read_root io filename))
 
 let create _ dry repodir force filename =
   msg_to_cmdliner (
@@ -29,17 +35,15 @@ let create _ dry repodir force filename =
     let valid = Expression.Quorum (0, Expression.KS.empty) in
     let root = Root.t ~name:filename now_rfc3339 valid in
     let root' =
-      match IO.read_root io filename with
-      | Error _ -> root
-      | Ok _ when force -> root
-      | Ok (root', _) -> root'
+      Result.fold
+        ~error:(fun _ -> root)
+        ~ok:(fun (root', _) -> if force then root else root')
+        (IO.read_root io filename)
     in
     Logs.app (fun m -> m "root file %a" Root.pp root') ;
     IO.write_root io root')
 
-let to_str pp = function
-  | Ok x -> Ok x
-  | Error e -> Error (Fmt.to_to_string pp e)
+let to_str pp = Result.map_error (Fmt.to_to_string pp)
 
 let sign _ dry repodir id no_incr filename =
   Mirage_crypto_rng_unix.initialize () ;

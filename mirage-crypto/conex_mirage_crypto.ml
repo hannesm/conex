@@ -15,18 +15,19 @@ module V = struct
   module Pss_sha256 = Mirage_crypto_pk.Rsa.PSS (Mirage_crypto.Hash.SHA256)
 
   let verify_rsa_pss ~key ~data ~signature id =
-    match Base64.decode signature with
-    | Error _ -> Error (`InvalidBase64Encoding id)
-    | Ok signature ->
-      let signature = Cstruct.of_string signature in
-      let cs_data = Cstruct.of_string data in
-      match decode_key key with
-      | Some key when good_rsa key ->
-        if Pss_sha256.verify ~key ~signature (`Message cs_data) then
-          Ok ()
-        else
-          Error (`InvalidSignature id)
-      | _ -> Error (`InvalidPublicKey id)
+    let ( let* ) = Result.bind in
+    let* signature =
+      Result.map_error (fun _ -> `InvalidBase64Encoding id)
+        (Base64.decode signature)
+    in
+    let signature = Cstruct.of_string signature in
+    let cs_data = Cstruct.of_string data in
+    let* key =
+      Option.to_result ~none:(`InvalidPublicKey id) (decode_key key)
+    in
+    let* () = guard (good_rsa key) (`InvalidPublicKey id) in
+    guard (Pss_sha256.verify ~key ~signature (`Message cs_data))
+      (`InvalidSignature id)
 
   let to_h i =
     if i < 10 then

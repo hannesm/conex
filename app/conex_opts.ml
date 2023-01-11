@@ -75,19 +75,20 @@ module Keys = struct
 end
 
 let repo ?(rw = false) repodir =
-  let dir = match repodir with
-    | None -> Unix.getcwd ()
-    | Some x -> x
-  in
+  let dir = Option.value ~default:(Unix.getcwd ()) repodir in
   if rw
   then Conex_unix_provider.fs_provider dir
   else Conex_unix_provider.fs_ro_provider dir
 
 let valid a =
   let ta = List.fold_left
-      (fun acc str -> match Conex_resource.Digest.of_string str with
-         | Error _ -> Printf.printf "ignoring malformed trust anchor %s" str ; acc
-         | Ok dgst -> dgst :: acc)
+      (fun acc str ->
+         Result.fold
+           ~error:(fun _ ->
+               Printf.printf "ignoring malformed trust anchor %s" str ;
+               acc)
+           ~ok:(fun dgst -> dgst :: acc)
+           (Conex_resource.Digest.of_string str))
       [] (List.flatten (List.map (Conex_utils.String.cuts ',') a))
   in
   let valid digest _ = List.exists (Conex_resource.Digest.equal digest) ta in

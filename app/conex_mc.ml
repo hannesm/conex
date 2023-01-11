@@ -10,9 +10,8 @@ let now = Ptime_clock.now ()
 
 let now_rfc3339 = Ptime.to_rfc3339 now
 
-let to_ts f = match Ptime.of_float_s f with
-  | None -> None
-  | Some x -> Some (Ptime.to_rfc3339 x)
+let to_ts f =
+  Option.map Ptime.to_rfc3339 (Ptime.of_float_s f)
 
 let init_priv_id id =
   let ( let* ) = Result.bind in

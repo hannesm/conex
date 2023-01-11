@@ -9,7 +9,7 @@ module IO = Conex_io
 let ( let* ) = Result.bind
 
 let find_id io root id =
-  let id = match id with None -> "" | Some x -> x in
+  let id = Option.value ~default:"" id in
   match List.filter (fun x -> String.is_prefix ~prefix:id x) (IO.targets io root) with
   | [ x ] -> Ok x
   | [] -> Error "no id found with given prefix"
@@ -39,16 +39,17 @@ let create _ repodir id dry root_file no_opam =
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
     let targets =
-      match IO.read_targets io root (not no_opam) id' with
-      | Error _ ->
-        let pub = PRIV.pub_of_priv priv in
-        let keyref = Expression.Local id' in
-        let keys = M.add id' pub M.empty in
-        let valid = Expression.(Quorum (1, KS.singleton keyref)) in
-        Targets.t ~keys now_rfc3339 id' valid
-      | Ok (targets, warn) ->
-        List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
-        targets
+      Result.fold
+        ~error:(fun _ ->
+            let pub = PRIV.pub_of_priv priv in
+            let keyref = Expression.Local id' in
+            let keys = M.add id' pub M.empty in
+            let valid = Expression.(Quorum (1, KS.singleton keyref)) in
+            Targets.t ~keys now_rfc3339 id' valid)
+        ~ok:(fun (targets, warn) ->
+            List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+            targets)
+        (IO.read_targets io root (not no_opam) id')
     in
     Logs.app (fun m -> m "targets file %a" Targets.pp targets) ;
     IO.write_targets io root targets)
@@ -79,7 +80,7 @@ let compute _ dry repodir id pkg root_file no_opam =
     let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
-    let path = match pkg with None -> [] | Some path -> [ path ] in
+    let path = Option.fold ~none:[] ~some:(fun p -> [ p ]) pkg in
     let* targets =
       IO.compute_checksum ~prefix:root.Root.datadir io (not no_opam) V.raw_digest path
     in
@@ -88,15 +89,13 @@ let compute _ dry repodir id pkg root_file no_opam =
       M.add "targets" (Wire.List raw) M.empty
     in
     Logs.app (fun m -> m "computed targets: %s" (Conex_opam_encoding.encode out)) ;
-    match id with
-    | None -> Error "requires id for writing"
-    | Some id' ->
-      let* t, warn =
-        to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
-      in
-      List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
-      let t' = { t with Targets.targets = t.Targets.targets @ targets } in
-      IO.write_targets io root t')
+    let* id' = Option.to_result ~none:"requires id for writing" id in
+    let* t, warn =
+      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
+    in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let t' = { t with Targets.targets = t.Targets.targets @ targets } in
+    IO.write_targets io root t')
 
 let sign _ dry repodir id no_incr root_file no_opam =
   Mirage_crypto_rng_unix.initialize () ;

@@ -43,8 +43,9 @@ module Log : EXTLOGS = struct
   let report level k msgf =
     let k _ = k () in
     msgf @@ fun ?header ?tags:_ fmt ->
-    let hdr = match header with None -> "" | Some s -> s ^ " " in
-    Format.kfprintf k Format.std_formatter ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
+    let hdr = Option.fold ~none:"" ~some:(fun s -> s ^ " ") header in
+    Format.kfprintf k Format.std_formatter
+      ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
 
   let wcount = ref 0
 
