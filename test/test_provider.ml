@@ -3,6 +3,8 @@ open Conex_io
 
 open Common
 
+let ( let* ) = Result.bind
+
 module Mem = struct
   type tree = Leaf of string * string | Node of string * tree list
 
@@ -50,11 +52,13 @@ module Mem = struct
   let mem_provider () : Conex_io.t =
     let root = ref (Node ("/", [])) in
     let file_type path =
-      find_f !root path >>= function
+      let* n = find_f !root path in
+      match n with
       | Leaf _ -> Ok File
       | Node _ -> Ok Directory
     and read path =
-      find_f !root path >>= function
+      let* n = find_f !root path in
+      match n with
       | Leaf (_, v) -> Ok v
       | _ -> Error "couldn't find what was searched for"
     and write path data =
@@ -62,7 +66,8 @@ module Mem = struct
       root := r ;
       Ok ()
     and read_dir path =
-      find_f !root path >>= function
+      let* n = find_f !root path in
+      match n with
       | Node (_, ch) -> Ok (List.map (function Node (x, _) -> Directory, x | Leaf (x, _) -> File, x) ch)
       | Leaf _ -> Error "reading a directory, but found files"
     and exists path =

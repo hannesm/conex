@@ -75,6 +75,7 @@ end
 
 open Conex_utils
 
+let ( let* ) = Result.bind
 
 module V = struct
 
@@ -105,12 +106,14 @@ module V = struct
       Ok ()
 
   let verify_rsa_pss ~key ~data ~signature id =
-    (try Ok (B64.decode signature) with _ -> Error (`InvalidBase64Encoding id)) >>= fun signature ->
+    let* signature =
+      try Ok (B64.decode signature) with _ -> Error (`InvalidBase64Encoding id)
+    in
     match
       let filename = Filename.temp_file "conex" "sig" in
-      Conex_unix_persistency.write_replace (filename ^ ".key") key >>= fun () ->
-      Conex_unix_persistency.write_replace (filename ^ ".txt") data >>= fun () ->
-      Conex_unix_persistency.write_replace (filename ^ ".sig") signature >>= fun () ->
+      let* () = Conex_unix_persistency.write_replace (filename ^ ".key") key in
+      let* () = Conex_unix_persistency.write_replace (filename ^ ".txt") data in
+      let* () = Conex_unix_persistency.write_replace (filename ^ ".sig") signature in
       let cmd = Printf.sprintf "openssl dgst -sha256 -verify %s.key -sigopt rsa_padding_mode:pss -signature %s.sig %s.txt > /dev/null" filename filename filename in
       let res = if 0 = Sys.command cmd then Ok () else Error "broken" in
       let _ = Conex_unix_persistency.remove (filename ^ ".txt")
@@ -130,7 +133,7 @@ module V = struct
   let sha256 data =
     match
       let filename = Filename.temp_file "conex" "b64" in
-      Conex_unix_persistency.write_replace filename data >>= fun () ->
+      let* () = Conex_unix_persistency.write_replace filename data in
       let cmd = Printf.sprintf "openssl dgst -hex -r -sha256 %s | cut -d ' ' -f 1" filename in
       (* let cmd = Printf.sprintf "sha256 -q %s" filename in *)
       let input = Unix.open_process_in cmd in

@@ -91,8 +91,9 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c ro
   in
   Log.set_styled styled ;
   let now = Int64.of_float (Unix.time ()) in
+  let ( let* ) = Result.bind in
   msg_to_cmdliner (
-    Conex_openssl.V.check_version () >>= fun () ->
+    let* () = Conex_openssl.V.check_version () in
     V.verify_it repo quorum anchors incremental dir patch strict root (not no_opam) ~timestamp_expiry ~now)
 
 open Conex_opts

@@ -48,9 +48,6 @@ val str_pp : 'a fmt -> 'a -> string
 
 (** {1 Result combinators} *)
 
-(** [r >>= f] is [f a] unless [r] is an [Error], which is propagated.  Monadic bind. *)
-val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-
 (** [guard pred err] is either [Ok ()] (if [pred] holds), [Error err] otherwise. *)
 val guard : bool -> 'a -> (unit, 'a) result
 

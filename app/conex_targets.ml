@@ -6,6 +6,8 @@ open Conex_mc
 
 module IO = Conex_io
 
+let ( let* ) = Result.bind
+
 let find_id io root id =
   let id = match id with None -> "" | Some x -> x in
   match List.filter (fun x -> String.is_prefix ~prefix:id x) (IO.targets io root) with
@@ -15,12 +17,14 @@ let find_id io root id =
 
 let status _ repodir id root_file no_opam =
   Conex_opts.msg_to_cmdliner (
-    Conex_opts.repo repodir >>= fun io ->
-    to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
+    let* io = Conex_opts.repo repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
-    find_id io root id >>= fun id' ->
-    to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (targets, warn) ->
+    let* id' = find_id io root id in
+    let* targets, warn =
+      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
+    in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.app (fun m -> m "targets file %a" Targets.pp targets) ;
     Ok ())
@@ -29,9 +33,9 @@ let status _ repodir id root_file no_opam =
 let create _ repodir id dry root_file no_opam =
   (* given private key id, create an initial targets template! *)
   msg_to_cmdliner (
-    init_priv_id id >>= fun (priv, id') ->
-    repo ~rw:(not dry) repodir >>= fun io ->
-    to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
+    let* priv, id' = init_priv_id id in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
     let targets =
@@ -51,30 +55,34 @@ let create _ repodir id dry root_file no_opam =
 
 let hash _ repodir id root_file no_opam =
   msg_to_cmdliner (
-    (match id with None -> Error "requires id" | Some id -> Ok id) >>= fun id' ->
-    repo repodir >>= fun io ->
-    to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
+    let* id' = Option.to_result ~none:"requires id" id in
+    let* io = repo repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
-    to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (targets, warn) ->
+    let* targets, warn =
+      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
+    in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     let keys =
       M.fold
         (fun k v acc -> M.add k (Key.to_string v) acc)
         targets.Targets.keys M.empty
     in
-    Expression.hash V.raw_digest keys targets.Targets.valid >>= fun dgst ->
+    let* dgst = Expression.hash V.raw_digest keys targets.Targets.valid in
     Logs.app (fun m -> m "hash %a" Digest.pp dgst) ;
     Ok ())
 
 let compute _ dry repodir id pkg root_file no_opam =
   msg_to_cmdliner (
-    repo ~rw:(not dry) repodir >>= fun io ->
-    to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
     let path = match pkg with None -> [] | Some path -> [ path ] in
-    IO.compute_checksum ~prefix:root.Root.datadir io (not no_opam) V.raw_digest path >>= fun targets ->
+    let* targets =
+      IO.compute_checksum ~prefix:root.Root.datadir io (not no_opam) V.raw_digest path
+    in
     let out =
       let raw = List.map Target.wire_raw targets in
       M.add "targets" (Wire.List raw) M.empty
@@ -83,7 +91,9 @@ let compute _ dry repodir id pkg root_file no_opam =
     match id with
     | None -> Error "requires id for writing"
     | Some id' ->
-      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (t, warn) ->
+      let* t, warn =
+        to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
+      in
       List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
       let t' = { t with Targets.targets = t.Targets.targets @ targets } in
       IO.write_targets io root t')
@@ -91,18 +101,24 @@ let compute _ dry repodir id pkg root_file no_opam =
 let sign _ dry repodir id no_incr root_file no_opam =
   Mirage_crypto_rng_unix.initialize () ;
   msg_to_cmdliner (
-    init_priv_id id >>= fun (priv, id') ->
-    repo ~rw:(not dry) repodir >>= fun io ->
-    to_str IO.pp_r_err (IO.read_root io root_file) >>= fun (root, warn) ->
+    let* priv, id' = init_priv_id id in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root is %a" Root.pp root) ;
-    to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id') >>= fun (targets, warn) ->
+    let* targets, warn =
+      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
+    in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
-    (match no_incr, Uint.succ targets.Targets.counter with
-     | true, _ -> Ok targets
-     | false, (false, counter) -> Ok { targets with Targets.counter }
-     | false, (true, _) -> Error "couldn't increment counter") >>= fun targets' ->
-    PRIV.sign (Targets.wire_raw targets') now_rfc3339 id' `RSA_PSS_SHA256 priv >>= fun signature ->
+    let* targets' =
+      match no_incr, Uint.succ targets.Targets.counter with
+      | true, _ -> Ok targets
+      | false, (false, counter) -> Ok { targets with Targets.counter }
+      | false, (true, _) -> Error "couldn't increment counter"
+    in
+    let* signature =
+      PRIV.sign (Targets.wire_raw targets') now_rfc3339 id' `RSA_PSS_SHA256 priv
+    in
     let targets'' = Targets.add_signature targets' id' signature in
     IO.write_targets io root targets'')
 

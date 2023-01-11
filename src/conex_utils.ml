@@ -27,24 +27,25 @@ let str_pp pp e =
   Format.(fprintf str_formatter "%a" pp e) ;
   Format.flush_str_formatter ()
 
-let (>>=) a f =
-  match a with
-  | Ok x -> f x
-  | Error e -> Error e
+let ( let* ) = Result.bind
 
 let guard p err = if p then Ok () else Error err
 
 let rec foldM f n = function
   | [] -> Ok n
-  | x::xs -> f n x >>= fun n' -> foldM f n' xs
+  | x::xs ->
+    let* n' = f n x in
+    foldM f n' xs
 
 let rec iterM f = function
   | [] -> Ok ()
-  | x::xs -> f x >>= fun () -> iterM f xs
+  | x::xs ->
+    let* () = f x in
+    iterM f xs
 
 let foldS f a s =
   S.fold (fun id r ->
-      r >>= fun r ->
+      let* r = r in
       f r id) s (Ok a)
 
 let err_to_str pp = function

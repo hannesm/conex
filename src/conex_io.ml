@@ -17,6 +17,8 @@ let pp ppf t =
   Format.fprintf ppf "repository %s: %s" t.basedir t.description
 (*BISECT-IGNORE-END*)
 
+let ( let* ) = Result.bind
+
 type r_err = [
   | `NotFound of typ * name
   | `ParseError of typ * name * string
@@ -33,30 +35,38 @@ let pp_r_err ppf = function
 (*BISECT-IGNORE-END*)
 
 let read_root t root_file =
-  match t.read [ root_file ] with
-  | Error _ -> Error (`NotFound (`Root, root_file))
-  | Ok data ->
-    match decode data >>= Root.of_wire with
-    | Error p -> Error (`ParseError (`Root, root_file, p))
-    | Ok (root, warn) ->
-      guard (id_equal root.Root.name root_file)
-        (`NameMismatch (`Root, root_file, root.Root.name)) >>= fun () ->
-      Ok (root, warn)
+  Result.fold
+    ~error:(fun _ -> Error (`NotFound (`Root, root_file)))
+    ~ok:(fun data ->
+        Result.fold
+          ~error:(fun p -> Error (`ParseError (`Root, root_file, p)))
+          ~ok:(fun (root, warn) ->
+              let* () =
+                guard (id_equal root.Root.name root_file)
+                  (`NameMismatch (`Root, root_file, root.Root.name))
+              in
+              Ok (root, warn))
+          Result.(join (map Root.of_wire (decode data))))
+    (t.read [ root_file ])
 
 let write_root t root =
   let id = root.Root.name in
   t.write [ id ] (encode (Root.wire root))
 
 let read_timestamp t timestamp_file =
-  match t.read [ timestamp_file ] with
-  | Error _ -> Error (`NotFound (`Timestamp, timestamp_file))
-  | Ok data ->
-    match decode data >>= Timestamp.of_wire with
-    | Error p -> Error (`ParseError (`Timestamp, timestamp_file, p))
-    | Ok (timestamp, warn) ->
-      guard (id_equal timestamp.Timestamp.name timestamp_file)
-        (`NameMismatch (`Timestamp, timestamp_file, timestamp.Timestamp.name)) >>= fun () ->
-      Ok (timestamp, warn)
+  Result.fold
+    ~error:(fun _ -> Error (`NotFound (`Timestamp, timestamp_file)))
+    ~ok:(fun data ->
+        Result.fold
+          ~error:(fun p -> Error (`ParseError (`Timestamp, timestamp_file, p)))
+          ~ok:(fun (timestamp, warn) ->
+              let* () =
+                guard (id_equal timestamp.Timestamp.name timestamp_file)
+                  (`NameMismatch (`Timestamp, timestamp_file, timestamp.Timestamp.name))
+              in
+              Ok (timestamp, warn))
+          Result.(join (map Timestamp.of_wire (decode data))))
+    (t.read [ timestamp_file ])
 
 let write_timestamp t timestamp =
   let id = timestamp.Timestamp.name in
@@ -77,22 +87,26 @@ let targets t root =
 
 let read_targets t root opam id =
   let path = root.Root.keydir @ [ id ] in
-  match t.read path with
-  | Error _ -> Error (`NotFound (`Targets, id))
-  | Ok data ->
-    match decode data >>= Targets.of_wire with
-    | Error p -> Error (`ParseError (`Targets, id, p))
-    | Ok (targets, warn) ->
-      guard (id_equal targets.Targets.name id)
-        (`NameMismatch (`Targets, id, targets.Targets.name)) >>= fun () ->
-      let check_path t =
-        if opam then
-          guard (Target.valid_opam_path t) (`InvalidPath (id, t.Target.filename))
-        else
-          Ok ()
-      in
-      iterM check_path targets.Targets.targets >>= fun () ->
-      Ok (targets, warn)
+  Result.fold
+    ~error:(fun _ -> Error (`NotFound (`Targets, id)))
+    ~ok:(fun data ->
+        Result.fold
+          ~error:(fun p -> Error (`ParseError (`Targets, id, p)))
+          ~ok:(fun (targets, warn) ->
+              let* () =
+                guard (id_equal targets.Targets.name id)
+                  (`NameMismatch (`Targets, id, targets.Targets.name))
+              in
+              let check_path t =
+                if opam then
+                  guard (Target.valid_opam_path t) (`InvalidPath (id, t.Target.filename))
+                else
+                  Ok ()
+              in
+              let* () = iterM check_path targets.Targets.targets in
+              Ok (targets, warn))
+          Result.(join (map Targets.of_wire (decode data))))
+    (t.read path)
 
 let write_targets t root targets =
   let path = root.Root.keydir @ [ targets.Targets.name ] in
@@ -113,11 +127,11 @@ let compute_checksum ?(prefix = [ "packages" ]) t opam f path =
   let rec compute_item prefix otherp acc = function
     | Directory, name ->
       let path = prefix @ [ name ] in
-      t.read_dir path >>= fun items ->
+      let* items = t.read_dir path in
       foldM (compute_item path (otherp @ [ name ])) acc items
     | File, name ->
       let filename = prefix @ [ name ] in
-      t.read filename >>= fun data ->
+      let* data = t.read filename in
       let target = target f (otherp @ [ name ]) data in
       if not opam || opam && Target.valid_opam_path target then
         Ok (target :: acc)
@@ -127,7 +141,7 @@ let compute_checksum ?(prefix = [ "packages" ]) t opam f path =
   let go pre name = compute_item (prefix @ pre) pre [] (Directory, name) in
   match List.rev path with
     | [] ->
-      t.read_dir prefix >>= fun items ->
+      let* items = t.read_dir prefix in
       foldM (fun acc e -> match e with
           | Directory, _ -> compute_item prefix [ ] acc e
           | File, _ -> Ok acc)
@@ -140,14 +154,14 @@ let compute_checksum_tree ?(prefix = [ "packages" ]) t f =
   let rec compute_item prefix otherp acc = function
     | Directory, name ->
       let path = prefix @ [ name ] in
-      t.read_dir path >>= fun items ->
+      let* items = t.read_dir path in
       foldM (compute_item path (otherp @ [ name ])) acc items
     | File, name ->
       let filename = prefix @ [ name ] in
-      t.read filename >>= fun data ->
+      let* data = t.read filename in
       let path = otherp @ [name] in
       let digestlen = digest_len f data in
       Ok (Tree.insert path digestlen acc)
   in
-  t.read_dir prefix >>= fun items ->
+  let* items = t.read_dir prefix in
   foldM (compute_item prefix []) Tree.empty items

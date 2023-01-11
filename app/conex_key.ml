@@ -1,8 +1,9 @@
-open Conex_utils
 open Conex_resource
 
 open Conex_opts
 open Conex_mc
+
+let ( let* ) = Result.bind
 
 let jump _ id force pub =
   Mirage_crypto_rng_unix.initialize () ;
@@ -22,7 +23,7 @@ let jump _ id force pub =
          Ok ()
        in
        let gen_or_err () =
-         PRIV.generate to_ts `RSA id () >>= fun t ->
+         let* t = PRIV.generate to_ts `RSA id () in
          Logs.app (fun m -> m "generated fresh key") ;
          fp t
      in

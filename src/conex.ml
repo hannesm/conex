@@ -3,6 +3,8 @@ open Conex_resource
 
 module IO = Conex_io
 
+let ( let* ) = Result.bind
+
 module Make (L : LOGS) (C : Conex_verify.S) = struct
 
   let valid_ids valid sigs =
@@ -18,7 +20,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
 
   let verify_root ?(valid = fun _ _ -> false) ?quorum io filename =
     L.debug (fun m -> m "verifying root %a" pp_name filename) ;
-    err_to_str IO.pp_r_err (IO.read_root io filename) >>= fun (root, warn) ->
+    let* root, warn = err_to_str IO.pp_r_err (IO.read_root io filename) in
     List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
     (* verify signatures *)
     let sigs, errs =
@@ -51,7 +53,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         | Local _ ->
           Error "only a single remote key expression allowed for timestamp"
         | Remote (id, dgst, epoch) ->
-          err_to_str IO.pp_r_err (IO.read_timestamp io id) >>= fun (ts, warn) ->
+          let* ts, warn = err_to_str IO.pp_r_err (IO.read_timestamp io id) in
           List.iter (fun w -> L.warn (fun m -> m "%s" w)) warn ;
           let sigs, es =
             Timestamp.(C.verify (wire_raw ts) ts.keys ts.signatures)
@@ -83,7 +85,9 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       Ok targets
     | None ->
       let root = Conex_repository.root repo in
-      err_to_str IO.pp_r_err (IO.read_targets io root opam id) >>= fun (targets, warn) ->
+      let* targets, warn =
+        err_to_str IO.pp_r_err (IO.read_targets io root opam id)
+      in
       List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
       let sigs, es =
         Targets.(C.verify (wire_raw targets) targets.keys targets.signatures)
@@ -108,7 +112,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         end
       | _ -> true
     in
-    IO.compute_checksum_tree io C.raw_digest >>= fun on_disk ->
+    let* on_disk = IO.compute_checksum_tree io C.raw_digest in
     let errs = Conex_repository.validate_targets repo on_disk in
     List.iter (fun r ->
         L.warn (fun m -> m "%a" Conex_repository.pp_res r))
@@ -210,27 +214,25 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       compare_with_disk ignore_missing io repo'
 
   let verify_diffs root io newio diffs opam =
-    err_to_str IO.pp_r_err (IO.read_root io root) >>= fun (old_root, warn) ->
+    let* old_root, warn = err_to_str IO.pp_r_err (IO.read_root io root) in
     List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
-    err_to_str IO.pp_r_err (IO.read_root newio root) >>= fun (new_root, warn') ->
+    let* new_root, warn' = err_to_str IO.pp_r_err (IO.read_root newio root) in
     List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn' ;
-    guard (path_equal old_root.Root.keydir new_root.Root.keydir)
-      "old and new key directories are differrent" >>= fun () ->
-    Conex_diff.ids root new_root.Root.keydir diffs >>= fun (r, ids) ->
+    let* () =
+      guard (path_equal old_root.Root.keydir new_root.Root.keydir)
+        "old and new key directories are differrent"
+    in
+    let* r, ids = Conex_diff.ids root new_root.Root.keydir diffs in
     L.debug (fun m -> m "root is modified? %b, ids %a" r S.pp ids) ;
-    (match Uint.compare old_root.Root.counter new_root.Root.counter with
-     | 0 ->
-       if r then
-         Error "root counter same, expected to increase"
-       else
-         Ok ()
-     | x ->
-       if x > 0 then
-         Error "root counter decremented"
-       else (* x < 0 *)
-         Ok ()) >>= fun () ->
+    let* () =
+      match Uint.compare old_root.Root.counter new_root.Root.counter with
+      | 0 when r -> Error "root counter same, expected to increase"
+      | 0 (* when not r *) -> Ok ()
+      | x when x > 0 -> Error "root counter decremented"
+      | _ (* when x < 0 *) -> Ok ()
+    in
     S.fold (fun id acc ->
-        acc >>= fun () ->
+        let* () = acc in
         match IO.read_targets io old_root opam id, IO.read_targets newio new_root opam id with
         | Error _, Ok _ -> Ok ()
         | Error _, Error e -> err_to_str IO.pp_r_err (Error e)

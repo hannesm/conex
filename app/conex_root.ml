@@ -6,10 +6,12 @@ open Conex_mc
 
 module IO = Conex_io
 
+let ( let* ) = Result.bind
+
 let status _ repodir anchors filename  =
   msg_to_cmdliner (
     let valid = valid anchors in
-    repo repodir >>= fun io ->
+    let* io = repo repodir in
     match IO.read_root io filename with
     | Error r ->
       Logs.err (fun m -> m "%a" IO.pp_r_err r) ;
@@ -23,7 +25,7 @@ let status _ repodir anchors filename  =
 
 let create _ dry repodir force filename =
   msg_to_cmdliner (
-    repo ~rw:(not dry) repodir >>= fun io ->
+    let* io = repo ~rw:(not dry) repodir in
     let valid = Expression.Quorum (0, Expression.KS.empty) in
     let root = Root.t ~name:filename now_rfc3339 valid in
     let root' =
@@ -42,15 +44,19 @@ let to_str pp = function
 let sign _ dry repodir id no_incr filename =
   Mirage_crypto_rng_unix.initialize () ;
   msg_to_cmdliner (
-    init_priv_id id >>= fun (priv, id') ->
-    repo ~rw:(not dry) repodir >>= fun io ->
-    to_str IO.pp_r_err (IO.read_root io filename) >>= fun (root, warn) ->
+    let* priv, id' = init_priv_id id in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
-    (match no_incr, Uint.succ root.Root.counter with
-     | false, (true, _) -> Error "couldn't increment counter"
-     | true, _ -> Ok root
-     | false, (false, counter) -> Ok { root with Root.counter }) >>= fun root' ->
-    PRIV.sign (Root.wire_raw root') now_rfc3339 id' `RSA_PSS_SHA256 priv >>= fun signature ->
+    let* root' =
+      match no_incr, Uint.succ root.Root.counter with
+      | false, (true, _) -> Error "couldn't increment counter"
+      | true, _ -> Ok root
+      | false, (false, counter) -> Ok { root with Root.counter }
+    in
+    let* signature =
+      PRIV.sign (Root.wire_raw root') now_rfc3339 id' `RSA_PSS_SHA256 priv
+    in
     let root'' = Root.add_signature root' id' signature in
     IO.write_root io root'')
 

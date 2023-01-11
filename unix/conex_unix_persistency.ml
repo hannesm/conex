@@ -1,5 +1,7 @@
 open Conex_utils
 
+let ( let* ) = Result.bind
+
 let exists = Sys.file_exists
 
 let guard_unix f x =
@@ -21,7 +23,7 @@ let remove a = guard_sys Sys.remove a
 let rename a b = guard_sys (Sys.rename a) b
 
 let file_type filename =
-  guard_unix Unix.stat filename >>= fun stat ->
+  let* stat = guard_unix Unix.stat filename in
   match stat.Unix.st_kind with
   | Unix.S_REG -> Ok File
   | Unix.S_DIR -> Ok Directory
@@ -57,8 +59,8 @@ let write_file ?(mode = 0o644) filename data =
 let write_replace ?mode filename data =
   if exists filename then
     let tmp = filename ^ ".tmp" in
-    (if exists tmp then remove tmp else Ok ()) >>= fun () ->
-    write_file ?mode tmp data >>= fun () ->
+    let* () = if exists tmp then remove tmp else Ok () in
+    let* () = write_file ?mode tmp data in
     rename tmp filename
   else
     write_file ?mode filename data

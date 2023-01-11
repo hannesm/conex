@@ -4,8 +4,9 @@ open Conex_resource
 open Common
 
 let wire_s str =
+  let ( let* ) = Result.bind in
   match
-    Conex_opam_encoding.decode str >>= fun wire ->
+    let* wire = Conex_opam_encoding.decode str in
     match M.find "expr" wire with
     | None -> Error "couldn't find expr in wire"
     | Some wire -> Ok wire

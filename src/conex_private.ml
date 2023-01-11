@@ -77,6 +77,8 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
 
   let id = C.id
 
+  let ( let* ) = Result.bind
+
   let generate ?bits to_ts alg id () =
     match alg with
     | `RSA ->
@@ -86,8 +88,8 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
         let keyid = Key.keyid (fun s -> `SHA256, C.sha256 s) pub' in
         get_id id ^ "." ^ Digest.to_string keyid
       in
-      F.write filename key >>= fun () ->
-      F.read to_ts filename >>= fun (_, ts) ->
+      let* () = F.write filename key in
+      let* _, ts = F.read to_ts filename in
       C.decode_priv id ts key
 
   let pub_of_priv t =
@@ -99,6 +101,6 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
     match alg with
     | `RSA_PSS_SHA256 ->
       let data = Wire.to_string (to_be_signed data now id alg) in
-      C.sign_pss t data >>= fun raw ->
+      let* raw = C.sign_pss t data in
       Ok (id, now, alg, raw)
 end

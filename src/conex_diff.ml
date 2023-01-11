@@ -255,9 +255,10 @@ let patch filedata diff =
 
 (* TODO which equality to use here? is = ok? *)
 let ids root keydir diffs =
+  let ( let* ) = Result.bind in
   List.fold_left (fun acc diff ->
       let add_name name (r, ids) =
-        string_to_path name >>= fun path ->
+        let* path = string_to_path name in
         if subpath ~parent:keydir path then
           (* TODO according to here, keydir must be flat! *)
           match List.rev path with
@@ -267,8 +268,10 @@ let ids root keydir diffs =
           | [ x ] when x = root -> Ok (true, ids)
           | _ -> Ok (r, ids)
       in
-      acc >>= fun (r, ids) ->
+      let* r, ids = acc in
       match diff.operation with
       | Create a | Delete a | Edit a -> add_name a (r, ids)
-      | Rename (a, b) | Rename_only (a, b) -> add_name a (r, ids) >>= add_name b)
+      | Rename (a, b) | Rename_only (a, b) ->
+        let* ids' = add_name a (r, ids) in
+        add_name b ids')
     (Ok (false, S.empty)) diffs
