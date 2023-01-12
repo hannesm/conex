@@ -7,10 +7,10 @@ module V = struct
     String.trim (Cstruct.to_string (X509.Public_key.encode_pem (`RSA pub)))
 
   let decode_key data =
-    match X509.Public_key.decode_pem (Cstruct.of_string data) with
-    | Error _ -> None
-    | Ok (`RSA pub) -> Some pub
-    | Ok _ -> None
+    Result.fold
+      ~error:(fun _ -> None)
+      ~ok:(function `RSA pub -> Some pub | _ -> None)
+      (X509.Public_key.decode_pem (Cstruct.of_string data))
 
   module Pss_sha256 = Mirage_crypto_pk.Rsa.PSS (Mirage_crypto.Hash.SHA256)
 
@@ -66,10 +66,12 @@ module C = struct
   let id (id, _, _) = id
 
   let decode_priv id ts data =
-    match X509.Private_key.decode_pem (Cstruct.of_string data) with
-    | Error (`Msg e) -> Error e
-    | Ok (`RSA priv) -> Ok (id, ts, priv)
-    | Ok _ -> Error "only RSA keys supported"
+    Result.fold
+      ~ok:(function
+          | `RSA priv -> Ok (id, ts, priv)
+          | _ -> Error "only RSA keys supported")
+      ~error:(function `Msg e -> Error e)
+      (X509.Private_key.decode_pem (Cstruct.of_string data))
 
   let encode_priv priv =
     let pem = X509.Private_key.encode_pem (`RSA priv) in

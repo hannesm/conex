@@ -29,9 +29,8 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) errs ;
     (* need to unique over keyids *)
     let ids = valid_ids valid sigs in
-    let quorum_satisfied = match quorum with
-      | None -> true
-      | Some q -> q <= S.cardinal ids
+    let quorum_satisfied =
+      Option.fold ~none:true ~some:(fun q -> q <= S.cardinal ids) quorum
     in
     match
       Expression.eval root.Root.valid Digest_map.empty ids,
@@ -183,41 +182,42 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     end
 
   let verify ?(ignore_missing = false) io repo opam =
-    match Conex_repository.maintainer_delegation repo with
-    | None -> Error "no delegation for maintainers"
-    | Some (expr, term, supp) ->
-      (* queue is mutable, not thread safe, raises on pop when empty
-         - it does not leave the scope here
-         - pop is guarded by the is_empty *)
-      let q = Queue.create () in
-      (* termination argument is tricky here, but:
-         - delegations may delegate (unless terminating = true) any subpath
-            (subpath ~parent:p p is false forall p!)
-         - maybe path should be limited in length (2?3?)
-      *)
-      let rec process_delegation repo =
-        if Queue.is_empty q
-        then repo
-        else begin
-          let (path, expr, terminating, _supp) = Queue.pop q in
-          let repo', dels = verify_one io repo opam path expr terminating in
-          List.iter (fun (p, e, t, s) ->
-              L.debug (fun m -> m "pushing delegation path %a expr %a terminating %b s %a"
-                         pp_path p Expression.pp e t S.pp s) ;
-              Queue.push (p, e, t, s) q)
-            dels ;
-          process_delegation repo'
-        end
-      in
-      Queue.push (root, expr, term, supp) q ;
-      let repo' = process_delegation repo in
-      let pp_t ppf (dgst, len, s) =
-        Format.fprintf ppf "digest %a len %s supporters %a@."
-          Digest.pp dgst (Uint.decimal len) S.pp s
-      in
-      L.debug (fun m -> m "end of verification, targets tree is %a"
-                  (Tree.pp pp_t) (Conex_repository.targets repo')) ;
-      compare_with_disk ignore_missing io repo'
+    let* expr, term, supp =
+      Option.to_result ~none:"no delegation for maintainers"
+        (Conex_repository.maintainer_delegation repo)
+    in
+    (* queue is mutable, not thread safe, raises on pop when empty
+       - it does not leave the scope here
+       - pop is guarded by the is_empty *)
+    let q = Queue.create () in
+    (* termination argument is tricky here, but:
+       - delegations may delegate (unless terminating = true) any subpath
+         (subpath ~parent:p p is false forall p!)
+       - maybe path should be limited in length (2?3?)
+    *)
+    let rec process_delegation repo =
+      if Queue.is_empty q
+      then repo
+      else begin
+        let (path, expr, terminating, _supp) = Queue.pop q in
+        let repo', dels = verify_one io repo opam path expr terminating in
+        List.iter (fun (p, e, t, s) ->
+            L.debug (fun m -> m "pushing delegation path %a expr %a terminating %b s %a"
+                        pp_path p Expression.pp e t S.pp s) ;
+            Queue.push (p, e, t, s) q)
+          dels ;
+        process_delegation repo'
+      end
+    in
+    Queue.push (root, expr, term, supp) q ;
+    let repo' = process_delegation repo in
+    let pp_t ppf (dgst, len, s) =
+      Format.fprintf ppf "digest %a len %s supporters %a@."
+        Digest.pp dgst (Uint.decimal len) S.pp s
+    in
+    L.debug (fun m -> m "end of verification, targets tree is %a"
+                (Tree.pp pp_t) (Conex_repository.targets repo')) ;
+    compare_with_disk ignore_missing io repo'
 
   let verify_diffs root io newio diffs opam =
     let* old_root, warn = err_to_str IO.pp_r_err (IO.read_root io root) in
@@ -249,15 +249,9 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
             Uint.compare t.Targets.counter t'.Targets.counter
           with
           | 0, 0 -> Error ("counter and epoch of " ^ id ^ " same")
-          | 0, y ->
-            if y > 0 then
-              Error ("counter of " ^ id ^ " is moving backwards")
-            else (* y < 0 *)
-              Ok ()
-          | x, _ ->
-            if x < 0 then
-              Ok ()
-            else (* x > 0 *)
-              Error ("epoch of " ^ id ^ " is moving backwards"))
+          | 0, y when y > 0 -> Error ("counter of " ^ id ^ " is moving backwards")
+          | 0, _ (* when y < 0 *) -> Ok ()
+          | x, _ when x < 0 -> Ok ()
+          | _, _ (* when x > 0 *) -> Error ("epoch of " ^ id ^ " is moving backwards"))
       ids (Ok ())
 end
