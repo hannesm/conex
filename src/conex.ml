@@ -62,13 +62,19 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
           match Digest_map.find dgst sigs with
           | Some id' when id_equal id id' && Uint.compare epoch ts.Timestamp.epoch = 0 ->
             (* AND also ctr increased if we had an on-disk version (for incremental verification) *)
-            begin match timestamp_to_int64 ts.Timestamp.created with
-              | Ok ts ->
-                if ts >= Int64.sub now timestamp_expiry then
+            begin match
+                timestamp_to_int64 ts.Timestamp.created,
+                timestamp_to_int64 now
+              with
+              | Ok ts_sec, Ok now_sec ->
+                if ts_sec > now_sec then
+                  L.warn (fun m -> m "timestamp is in the future (%s, now %s)"
+                               ts.Timestamp.created now);
+                if ts_sec <= Int64.add now_sec timestamp_expiry then
                   Ok ()
                 else
                   Error "timestamp is no longer valid"
-              | Error _ as e -> e
+              | Error _ as e, _ | _, (Error _ as e) -> e
             end
           | _ -> Error "couldn't validate timestamp signature"
       end

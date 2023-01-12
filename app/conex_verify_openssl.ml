@@ -81,6 +81,12 @@ let terminal () =
   in
   if not dumb && isatty then `Ansi_tty else `None
 
+let now =
+  let tm = Unix.(gmtime (time ())) in
+  let y, m, d = Unix.(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday) in
+  let hh, mm, ss = Unix.(tm.tm_hour, tm.tm_min, tm.tm_sec) in
+  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ" y m d hh mm ss
+
 let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root no_opam timestamp_expiry =
   let level =
     if quiet then `Warn
@@ -91,7 +97,6 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c ro
   let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
-  let now = Int64.of_float (Unix.time ()) in
   let ( let* ) = Result.bind in
   msg_to_cmdliner (
     let* () = Conex_openssl.V.check_version () in

@@ -5,7 +5,7 @@ open Conex_opts
 module V = VERIFY(Logs)(Conex_mirage_crypto.NC_V)
 
 let jump _ repo quorum anchors inc dir patch nostrict root no_opam timestamp_expiry =
-  let now = Int64.of_float (Ptime.to_float_s Conex_mc.now) in
+  let now = Conex_mc.now in
   msg_to_cmdliner (V.verify_it repo quorum anchors inc dir patch nostrict root (not no_opam) ~timestamp_expiry ~now)
 
 let setup_log style_renderer level =

@@ -33,7 +33,7 @@ let create _ dry repodir force filename =
   msg_to_cmdliner (
     let* io = repo ~rw:(not dry) repodir in
     let valid = Expression.Quorum (0, Expression.KS.empty) in
-    let root = Root.t ~name:filename now_rfc3339 valid in
+    let root = Root.t ~name:filename now valid in
     let root' =
       Result.fold
         ~error:(fun _ -> root)
@@ -59,7 +59,7 @@ let sign _ dry repodir id no_incr filename =
       | false, (false, counter) -> Ok { root with Root.counter }
     in
     let* signature =
-      PRIV.sign (Root.wire_raw root') now_rfc3339 id' `RSA_PSS_SHA256 priv
+      PRIV.sign (Root.wire_raw root') now id' `RSA_PSS_SHA256 priv
     in
     let root'' = Root.add_signature root' id' signature in
     IO.write_root io root'')
@@ -97,7 +97,7 @@ let sign_cmd =
   let doc = "sign root file with provided key" in
   let man =
     [`S "DESCRIPTION";
-     `P "Cryptographically signs queued changes to your resource list."]
+     `P "Cryptographically signs the root file."]
   in
   let term =
     Term.(ret Conex_opts.(const sign $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Keys.no_incr $ Keys.root))
@@ -109,7 +109,7 @@ let status_cmd =
   let doc = "information about provided root file" in
   let man =
     [`S "DESCRIPTION";
-     `P "Shows information root file."]
+     `P "Shows information about the root file."]
   in
   let term =
     Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.anchors $ Keys.root))
