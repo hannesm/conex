@@ -123,45 +123,45 @@ let target f filename data =
   let digest, size = digest_len f data in
   { Target.digest = [ digest ] ; size ; filename }
 
+let compute_checksum_file t f filename =
+  let* data = t.read filename in
+  Ok (target f filename data)
+
 let compute_checksum ?(prefix = [ "packages" ]) t opam f path =
-  let rec compute_item prefix otherp acc = function
+  let rec compute_item prefix acc = function
     | Directory, name ->
       let path = prefix @ [ name ] in
       let* items = t.read_dir path in
-      foldM (compute_item path (otherp @ [ name ])) acc items
+      foldM (compute_item path) acc items
     | File, name ->
       let filename = prefix @ [ name ] in
-      let* data = t.read filename in
-      let target = target f (otherp @ [ name ]) data in
+      let* target = compute_checksum_file t f filename in
       if not opam || opam && Target.valid_opam_path target then
         Ok (target :: acc)
       else
         Error ("invalid path " ^ path_to_string filename)
   in
-  let go pre name = compute_item (prefix @ pre) pre [] (Directory, name) in
+  let go pre name = compute_item (prefix @ pre) [] (Directory, name) in
   match List.rev path with
     | [] ->
       let* items = t.read_dir prefix in
       foldM (fun acc e -> match e with
-          | Directory, _ -> compute_item prefix [ ] acc e
+          | Directory, _ -> compute_item prefix acc e
           | File, _ -> Ok acc)
         [] items
     | [ name ] -> go [] name
     | name::rest -> go (List.rev rest) name
 
-
 let compute_checksum_tree ?(prefix = [ "packages" ]) t f =
-  let rec compute_item prefix otherp acc = function
+  let rec compute_item prefix acc = function
     | Directory, name ->
       let path = prefix @ [ name ] in
       let* items = t.read_dir path in
-      foldM (compute_item path (otherp @ [ name ])) acc items
+      foldM (compute_item path) acc items
     | File, name ->
       let filename = prefix @ [ name ] in
-      let* data = t.read filename in
-      let path = otherp @ [name] in
-      let digestlen = digest_len f data in
-      Ok (Tree.insert path digestlen acc)
+      let* target = compute_checksum_file t f filename in
+      Ok (Tree.insert filename (List.hd target.digest, target.size) acc)
   in
   let* items = t.read_dir prefix in
-  foldM (compute_item prefix []) Tree.empty items
+  foldM (compute_item prefix) Tree.empty items

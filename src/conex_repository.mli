@@ -15,6 +15,10 @@ val with_targets : t -> (Digest.t * Uint.t * S.t) Tree.t -> t
 
 val maintainer_delegation : t -> (Expression.t * bool * S.t) option
 
+val timestamp : t -> ((identifier * Digest.t * Uint.t) option, string) result
+
+val snapshots : t -> ((Digest.t * Uint.t) M.t option, string) result
+
 val create : Root.t -> t
 
 

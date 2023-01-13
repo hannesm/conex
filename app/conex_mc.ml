@@ -2,9 +2,7 @@ module V = Conex_mirage_crypto.NC_V
 module C = Conex.Make(Logs)(V)
 module PRIV = Conex_private.Make(Conex_mirage_crypto.C)(Conex_unix_private_key)
 
-let to_str pp = function
-  | Ok x -> Ok x
-  | Error e -> Error (Fmt.to_to_string pp e)
+let to_str pp = Result.map_error (Fmt.to_to_string pp)
 
 let now = Ptime.to_rfc3339 (Ptime_clock.now ())
 

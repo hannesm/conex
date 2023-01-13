@@ -8,7 +8,7 @@ module IO = Conex_io
 
 let ( let* ) = Result.bind
 
-let status _ repodir anchors filename  =
+let status _ repodir anchors filename =
   msg_to_cmdliner (
     let valid = valid anchors in
     let* io = repo repodir in
@@ -42,8 +42,6 @@ let create _ dry repodir force filename =
     in
     Logs.app (fun m -> m "root file %a" Root.pp root') ;
     IO.write_root io root')
-
-let to_str pp = Result.map_error (Fmt.to_to_string pp)
 
 let sign _ dry repodir id no_incr filename =
   Mirage_crypto_rng_unix.initialize () ;

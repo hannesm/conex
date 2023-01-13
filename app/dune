@@ -44,3 +44,10 @@
   (package conex-mirage-crypto)
   (modules conex_targets)
   (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))
+
+(executable
+  (name conex_timestamp)
+  (public_name conex_timestamp)
+  (package conex-mirage-crypto)
+  (modules conex_timestamp)
+  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))

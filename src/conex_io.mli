@@ -52,6 +52,9 @@ val read_targets : t -> Root.t -> bool -> identifier -> (Targets.t * string list
 
 val write_targets : t -> Root.t -> Targets.t -> (unit, string) result
 
+val compute_checksum_file : t -> (string -> Digest.t) -> path ->
+  (Target.t, string) result
+
 val compute_checksum : ?prefix:path -> t -> bool -> (string -> Digest.t) -> path ->
   (Target.t list, string) result
 

@@ -18,6 +18,29 @@ let maintainer_delegation t =
   | None -> None
   | Some e -> Some (e, false, S.singleton "root")
 
+let timestamp t =
+  Option.fold
+    ~none:(Ok None)
+    ~some:(function
+        | Expression.Quorum (1, ks) when Expression.KS.cardinal ks = 1 ->
+          (* assume a single timestamp *)
+          begin match Expression.KS.choose ks with
+            | Local _ ->
+              Error "only a single remote key expression allowed for timestamp"
+            | Remote (id, dgst, epoch) -> Ok (Some (id, dgst, epoch))
+          end
+        | _ ->
+          Error "only a single key expression with quorum 1 allowed for timestamp")
+    (Root.RM.find `Timestamp (root t).Root.roles)
+
+let snapshots t =
+  Option.fold
+    ~none:(Ok None)
+    ~some:(function
+        | Expression.Quorum _  as q -> Ok (Some (Expression.keys M.empty q))
+        | _ -> Error "expected a quorum")
+    (Root.RM.find `Snapshot (root t).Root.roles)
+
 let targets t = t.targets
 
 let with_targets t targets = { t with targets }
