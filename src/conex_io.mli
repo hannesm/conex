@@ -46,6 +46,10 @@ val read_timestamp : t -> name -> (Timestamp.t * string list, [> r_err ]) result
 
 val write_timestamp : t -> Timestamp.t -> (unit, string) result
 
+val read_snapshot : t -> name -> (Snapshot.t * string list, [> r_err ]) result
+
+val write_snapshot : t -> Snapshot.t -> (unit, string) result
+
 val targets : t -> Root.t -> identifier list
 
 val read_targets : t -> Root.t -> bool -> identifier -> (Targets.t * string list, [> r_err ]) result

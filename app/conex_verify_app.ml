@@ -45,9 +45,9 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
 
   let verify_root_targets io valid quorum ignore_missing root_file opam ~timestamp_expiry ~now =
     let* repo = C.verify_root ~valid ?quorum io root_file in
-    let* _ts = C.verify_timestamp io repo ~timestamp_expiry ~now in
-    (* let* _snap_targets = C.verify_snapshot io repo ts in *)
-    C.verify ~ignore_missing (* ?snap_targets *) io repo opam
+    let* timestamp = C.verify_timestamp io repo ~timestamp_expiry ~now in
+    let* snapshot = C.verify_snapshot ?timestamp io repo in
+    C.verify ~ignore_missing ?snapshot io repo opam
 
   let verify_diff io patch valid quorum ignore_missing root_file opam ~timestamp_expiry ~now =
     let* x = Conex_unix_persistency.read_file patch in

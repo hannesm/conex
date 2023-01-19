@@ -27,11 +27,14 @@ module Make (L : LOGS) (C : Conex_verify.S): sig
   val verify_timestamp : Conex_io.t -> Conex_repository.t ->
     timestamp_expiry:int64 -> now:string -> (Timestamp.t option, string) result
 
-  val verify_targets : Conex_io.t -> Conex_repository.t -> bool -> identifier ->
-    (Targets.t, string) result
+  val verify_snapshot : ?timestamp:Timestamp.t -> Conex_io.t ->
+    Conex_repository.t -> (Snapshot.t option, string) result
 
-  val verify : ?ignore_missing:bool -> Conex_io.t -> Conex_repository.t ->
-    bool -> (unit, string) result
+  val verify_targets : ?snapshot:Snapshot.t -> Conex_io.t ->
+    Conex_repository.t -> bool -> identifier -> (Targets.t, string) result
+
+  val verify : ?ignore_missing:bool -> ?snapshot:Snapshot.t -> Conex_io.t ->
+    Conex_repository.t -> bool -> (unit, string) result
 
   val verify_diffs : string -> Conex_io.t -> Conex_io.t -> Conex_diff.t list -> bool ->
     (unit, string) result

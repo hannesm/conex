@@ -73,9 +73,41 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         end
       | _ -> Error "couldn't validate timestamp signature"
 
+  let verify_snapshot ?timestamp io repo =
+    L.debug (fun m -> m "verifying timestamp") ;
+    let* r = Conex_repository.snapshot repo in
+    match r with
+    | None ->
+      L.warn (fun m -> m "no snapshot role found in root") ;
+      Ok None
+    | Some (id, dgst, epoch) ->
+      let* snap, warn = err_to_str IO.pp_r_err (IO.read_snapshot io id) in
+      List.iter (fun w -> L.warn (fun m -> m "%s" w)) warn ;
+      let sigs, es =
+        Snapshot.(C.verify (wire_raw snap) snap.keys snap.signatures)
+      in
+      List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) es ;
+      match Digest_map.find dgst sigs with
+      | Some id' when id_equal id id' && Uint.compare epoch snap.Snapshot.epoch = 0 ->
+        begin match timestamp with
+          | None ->
+            L.warn (fun m -> m "no timestamp provided, taking snapshot as is");
+            Ok (Some snap)
+          | Some ts ->
+            let* tgt =
+              let snap_path = Conex_repository.keydir repo @ [ id ] in
+              IO.compute_checksum_file io C.raw_digest snap_path
+            in
+            if List.exists (Target.equal tgt) ts.Timestamp.targets then
+              Ok (Some snap)
+            else
+              Error "couldn't validate snapshot: no match in timestamp target"
+        end
+      | _-> Error "couldn't validate snapshot signature"
+
   let targets_cache = ref M.empty
 
-  let verify_targets io repo opam id =
+  let verify_targets ?snapshot io repo opam id =
     L.debug (fun m -> m "verifying target %a" pp_id id) ;
     match M.find id !targets_cache with
     | Some targets ->
@@ -87,6 +119,19 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
         err_to_str IO.pp_r_err (IO.read_targets io root opam id)
       in
       List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
+      let* () = match snapshot with
+        | None -> Ok ()
+        | Some snap ->
+          let path = Conex_repository.keydir repo @ [ id ] in
+          let* tgt = IO.compute_checksum_file io C.raw_digest path in
+          if List.exists (Target.equal tgt) snap.Snapshot.targets then
+            Ok ()
+          else
+            let msg =
+              "couldn't validate target " ^ id ^ ": no match in snapshot targets"
+            in
+            Error msg
+      in
       let sigs, es =
         Targets.(C.verify (wire_raw targets) targets.keys targets.signatures)
       in
@@ -122,9 +167,9 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       | [] -> Ok ()
       | _ -> Error "non-strict comparison failed"
 
-  let collect_targets io repo opam keyrefs =
+  let collect_targets ?snapshot io repo opam keyrefs =
     M.fold (fun id (dgst, epoch) (dm, id_d, targets) ->
-        match verify_targets io repo opam id with
+        match verify_targets ?snapshot io repo opam id with
         | Error msg ->
           L.warn (fun m -> m "couldn't load or verify target %a: %s" pp_id id msg) ;
           (dm, id_d, targets)
@@ -152,9 +197,9 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
             end)
       keyrefs (Digest_map.empty, M.empty, [])
 
-  let verify_one io repo opam path expr terminating =
+  let verify_one ?snapshot io repo opam path expr terminating =
     let keyrefs = Expression.keys M.empty expr in
-    let dm, id_d, targets = collect_targets io repo opam keyrefs in
+    let dm, id_d, targets = collect_targets ?snapshot io repo opam keyrefs in
     if Expression.eval expr dm S.empty then begin
       let tree = Conex_repository.targets repo in
       let tree' = Conex_repository.collect_and_validate_targets ~tree id_d path expr targets in
@@ -174,7 +219,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       (repo, [])
     end
 
-  let verify ?(ignore_missing = false) io repo opam =
+  let verify ?(ignore_missing = false) ?snapshot io repo opam =
     let* expr, term, supp =
       Option.to_result ~none:"no delegation for maintainers"
         (Conex_repository.maintainer_delegation repo)
@@ -193,7 +238,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       then repo
       else begin
         let (path, expr, terminating, _supp) = Queue.pop q in
-        let repo', dels = verify_one io repo opam path expr terminating in
+        let repo', dels = verify_one ?snapshot io repo opam path expr terminating in
         List.iter (fun (p, e, t, s) ->
             L.debug (fun m -> m "pushing delegation path %a expr %a terminating %b s %a"
                         pp_path p Expression.pp e t S.pp s) ;

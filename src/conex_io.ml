@@ -72,6 +72,25 @@ let write_timestamp t timestamp =
   let id = timestamp.Timestamp.name in
   t.write [ id ] (encode (Timestamp.wire timestamp))
 
+let read_snapshot t snapshot_file =
+  Result.fold
+    ~error:(fun _ -> Error (`NotFound (`Snapshot, snapshot_file)))
+    ~ok:(fun data ->
+        Result.fold
+          ~error:(fun p -> Error (`ParseError (`Snapshot, snapshot_file, p)))
+          ~ok:(fun (snap, warn) ->
+              let* () =
+                guard (id_equal snap.Snapshot.name snapshot_file)
+                  (`NameMismatch (`Snapshot, snapshot_file, snap.Snapshot.name))
+              in
+              Ok (snap, warn))
+          Result.(join (map Snapshot.of_wire (decode data))))
+    (t.read [ snapshot_file ])
+
+let write_snapshot t snapshot =
+  let id = snapshot.Snapshot.name in
+  t.write [ id ] (encode (Snapshot.wire snapshot))
+
 let targets t root =
   match t.read_dir root.Root.keydir with
   | Error e ->
