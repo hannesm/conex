@@ -25,7 +25,7 @@ module Make (L : LOGS) (C : Conex_verify.S): sig
     ?quorum : int -> Conex_io.t -> name -> (Conex_repository.t, string) result
 
   val verify_timestamp : Conex_io.t -> Conex_repository.t ->
-    timestamp_expiry:int64 -> now:string -> (unit, string) result
+    timestamp_expiry:int64 -> now:string -> (Timestamp.t option, string) result
 
   val verify_targets : Conex_io.t -> Conex_repository.t -> bool -> identifier ->
     (Targets.t, string) result

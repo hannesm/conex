@@ -18,7 +18,8 @@ let io_repo ?(rw = true) repodir root_file =
 let status _ repodir root_file timestamp_expiry =
   Conex_opts.msg_to_cmdliner (
     let* io, repo = io_repo repodir root_file in
-    C.verify_timestamp io repo ~timestamp_expiry ~now)
+    let* _ts = C.verify_timestamp io repo ~timestamp_expiry ~now in
+    Ok ())
 
 let time_id id repo =
   let* time_id = Conex_repository.timestamp repo in
@@ -40,24 +41,20 @@ let create _ dry repodir root_file id =
   Conex_opts.msg_to_cmdliner (
     let* io, repo = io_repo ~rw:(not dry) repodir root_file in
     let* id = time_id id repo in
-    let* snaps = Conex_repository.snapshots repo in
-    let snaps =
-      match snaps with
-      | Some f -> f
+    let* snap = Conex_repository.snapshot repo in
+    let targets =
+      match snap with
       | None ->
         Logs.warn (fun m -> m "no snapshots found in root file");
-        M.empty
-    in
-    let targets =
-      M.fold (fun key _ acc ->
-          let path = Conex_repository.keydir repo @ [ key ] in
-          match IO.compute_checksum_file io V.raw_digest path with
-          | Ok target -> target :: acc
-          | Error msg ->
-            Logs.warn (fun m -> m "error %s while computing checksum for key %s"
-                          msg key);
-            acc)
-        snaps []
+        []
+      | Some (key, _, _) ->
+        let path = Conex_repository.keydir repo @ [ key ] in
+        match IO.compute_checksum_file io V.raw_digest path with
+        | Ok target -> [ target ]
+        | Error msg ->
+          Logs.warn (fun m -> m "error %s while computing checksum for key %s"
+                        msg key);
+          []
     in
     let old_ts, warn = match IO.read_timestamp io id with
       | Ok ts -> ts

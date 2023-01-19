@@ -46,7 +46,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     match r with
     | None ->
       L.warn (fun m -> m "no timestamp role found in root") ;
-      Ok ()
+      Ok None
     | Some (id, dgst, epoch) ->
       let* ts, warn = err_to_str IO.pp_r_err (IO.read_timestamp io id) in
       List.iter (fun w -> L.warn (fun m -> m "%s" w)) warn ;
@@ -66,7 +66,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
               L.warn (fun m -> m "timestamp is in the future (%s, now %s)"
                          ts.Timestamp.created now);
             if ts_sec <= Int64.add now_sec timestamp_expiry then
-              Ok ()
+              Ok (Some ts)
             else
               Error "timestamp is no longer valid"
           | Error _ as e, _ | _, (Error _ as e) -> e
