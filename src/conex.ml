@@ -233,6 +233,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
          (subpath ~parent:p p is false forall p!)
        - maybe path should be limited in length (2?3?)
     *)
+    (* TODO: if snapshot is provided, ensure all targets of snap are present (!?) *)
     let rec process_delegation repo =
       if Queue.is_empty q
       then repo

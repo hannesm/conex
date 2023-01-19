@@ -51,3 +51,10 @@
   (package conex-mirage-crypto)
   (modules conex_timestamp)
   (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))
+
+(executable
+  (name conex_snapshot)
+  (public_name conex_snapshot)
+  (package conex-mirage-crypto)
+  (modules conex_snapshot)
+  (libraries cmdliner conex conex-mirage-crypto conex.unix conex_cmd conex_cmd_mc logs fmt logs.fmt fmt.tty logs.cli fmt.cli mirage-crypto-rng.unix))
