@@ -15,10 +15,10 @@ let io_repo ?(rw = true) repodir root_file =
   let repo = Conex_repository.create root in
   Ok (io, repo)
 
-let status _ repodir root_file timestamp_expiry =
+let status _ repodir root_file id timestamp_expiry =
   Conex_opts.msg_to_cmdliner (
     let* io, repo = io_repo repodir root_file in
-    let* _ts = C.verify_timestamp io repo ~timestamp_expiry ~now in
+    let* _ts = C.verify_timestamp ?id io repo ~timestamp_expiry ~now in
     Ok ())
 
 let time_id id repo =
@@ -141,10 +141,12 @@ let status_cmd =
   let doc = "information about provided timestamp file" in
   let man =
     [`S "DESCRIPTION";
-     `P "Shows information about the timestamp file."]
+     `P "Shows information about the timestamp file. Th provided ID is used as \
+         timestamp identifier. The timestamp file is verified. If a timestamp \
+         role is present in the root file, it is validated."]
   in
   let term =
-    Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.root $ Keys.timestamp_expiry))
+    Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.root $ Keys.id $ Keys.timestamp_expiry))
   and info = Cmd.info "status" ~doc ~man
   in
   Cmd.v info term

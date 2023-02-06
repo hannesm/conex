@@ -24,11 +24,11 @@ module Make (L : LOGS) (C : Conex_verify.S): sig
   val verify_root : ?valid:(Digest.t -> identifier -> bool) ->
     ?quorum : int -> Conex_io.t -> name -> (Conex_repository.t, string) result
 
-  val verify_timestamp : Conex_io.t -> Conex_repository.t ->
+  val verify_timestamp : ?id:identifier -> Conex_io.t -> Conex_repository.t ->
     timestamp_expiry:int64 -> now:string -> (Timestamp.t option, string) result
 
-  val verify_snapshot : ?timestamp:Timestamp.t -> Conex_io.t ->
-    Conex_repository.t -> (Snapshot.t option, string) result
+  val verify_snapshot : ?timestamp:Timestamp.t -> ?id:identifier ->
+    Conex_io.t -> Conex_repository.t -> (Snapshot.t option, string) result
 
   val verify_targets : ?snapshot:Snapshot.t -> Conex_io.t ->
     Conex_repository.t -> bool -> identifier -> (Targets.t, string) result

@@ -40,70 +40,126 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
     | false, _ -> Error "couldn't validate root role"
     | _, false -> Error "provided quorum was not matched"
 
-  let verify_timestamp io repo ~timestamp_expiry ~now =
+  let verify_timestamp ?id io repo ~timestamp_expiry ~now =
     L.debug (fun m -> m "verifying timestamp") ;
     let* r = Conex_repository.timestamp repo in
-    match r with
-    | None ->
-      L.warn (fun m -> m "no timestamp role found in root") ;
-      Ok None
-    | Some (id, dgst, epoch) ->
+    let read_and_verify id =
       let* ts, warn = err_to_str IO.pp_r_err (IO.read_timestamp io id) in
       List.iter (fun w -> L.warn (fun m -> m "%s" w)) warn ;
       let sigs, es =
         Timestamp.(C.verify (wire_raw ts) ts.keys ts.signatures)
       in
       List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) es ;
+      Ok (ts, sigs)
+    in
+    let validate_with_root (id, dgst, epoch) ts sigs =
       match Digest_map.find dgst sigs with
-      | Some id' when id_equal id id' && Uint.compare epoch ts.Timestamp.epoch = 0 ->
-        (* AND also ctr increased if we had an on-disk version (for incremental verification) *)
-        begin match
-            timestamp_to_int64 ts.Timestamp.created,
-            timestamp_to_int64 now
-          with
-          | Ok ts_sec, Ok now_sec ->
-            if ts_sec > now_sec then
-              L.warn (fun m -> m "timestamp is in the future (%s, now %s)"
+      | None -> Error "couldn't validate timestamp signature"
+      | Some id' ->
+        match id_equal id id', Uint.compare epoch ts.Timestamp.epoch = 0 with
+        | false, _ ->
+          L.warn (fun m -> m "delegated public key was not used for signature on timestamp");
+          Error "no valid signature on timestamp"
+        | true, false ->
+          L.warn (fun m -> m "timestamp epoch mismatch: root %a, timestamp %a"
+                     Uint.pp epoch Uint.pp ts.Timestamp.epoch);
+          Error "timestamp with bad epoch"
+        | true, true ->
+          begin match
+              timestamp_to_int64 ts.Timestamp.created,
+              timestamp_to_int64 now
+            with
+            | Ok ts_sec, Ok now_sec ->
+              if ts_sec > now_sec then
+                L.warn (fun m -> m "timestamp is in the future (%s, now %s)"
+                           ts.Timestamp.created now);
+              if ts_sec <= Int64.add now_sec timestamp_expiry then
+                Ok (Some ts)
+              else
+                (L.warn (fun m -> m "timestamp is invalid (%s, now %s)"
+                            ts.Timestamp.created now);
+                 Error "timestamp is no longer valid")
+            | Error _ as e, _ | _, (Error _ as e) ->
+              L.warn (fun m -> m "error converting some timestamp %s or %s"
                          ts.Timestamp.created now);
-            if ts_sec <= Int64.add now_sec timestamp_expiry then
-              Ok (Some ts)
-            else
-              Error "timestamp is no longer valid"
-          | Error _ as e, _ | _, (Error _ as e) -> e
-        end
-      | _ -> Error "couldn't validate timestamp signature"
+              e
+          end
+    in
+    match r, id with
+    | None, None ->
+      L.warn (fun m -> m "no timestamp role found in root, and no ID provided") ;
+      Ok None
+    | Some (id, _, _), Some id' when not (id_equal id id') ->
+      L.warn (fun m -> m "ID mismatch: timestamp in root %a, provided %a, \
+                          using %a and not validating against root"
+                 pp_id id pp_id id' pp_id id') ;
+      let* ts, _ = read_and_verify id' in
+      Ok (Some ts)
+    | Some (id, dgst, epoch), _ ->
+      let* ts, sigs = read_and_verify id in
+      validate_with_root (id, dgst, epoch) ts sigs
+    | None, Some id ->
+      L.warn (fun m -> m "no timestamp role found in root") ;
+      let* ts, _ = read_and_verify id in
+      Ok (Some ts)
 
-  let verify_snapshot ?timestamp io repo =
+  let verify_snapshot ?timestamp ?id io repo =
     L.debug (fun m -> m "verifying timestamp") ;
     let* r = Conex_repository.snapshot repo in
-    match r with
-    | None ->
-      L.warn (fun m -> m "no snapshot role found in root") ;
-      Ok None
-    | Some (id, dgst, epoch) ->
+    let read_and_verify id =
       let* snap, warn = err_to_str IO.pp_r_err (IO.read_snapshot io id) in
       List.iter (fun w -> L.warn (fun m -> m "%s" w)) warn ;
       let sigs, es =
         Snapshot.(C.verify (wire_raw snap) snap.keys snap.signatures)
       in
       List.iter (fun e -> L.warn (fun m -> m "%a" Conex_verify.pp_error e)) es ;
+      Ok (snap, sigs)
+    in
+    let validate_with_root (id, dgst, epoch) snap sigs =
       match Digest_map.find dgst sigs with
-      | Some id' when id_equal id id' && Uint.compare epoch snap.Snapshot.epoch = 0 ->
-        begin match timestamp with
-          | None ->
-            L.warn (fun m -> m "no timestamp provided, taking snapshot as is");
-            Ok (Some snap)
-          | Some ts ->
-            let* tgt =
-              let snap_path = Conex_repository.keydir repo @ [ id ] in
-              IO.compute_checksum_file io C.raw_digest snap_path
-            in
-            if List.exists (Target.equal tgt) ts.Timestamp.targets then
+      | None -> Error "couldn't validate snapshot signature"
+      | Some id' ->
+        match id_equal id id', Uint.compare epoch snap.Snapshot.epoch = 0 with
+        | false, _ ->
+          L.warn (fun m -> m "delegated public key was not used for signature on snapshot");
+          Error "no valid signature on snapshot"
+        | true, false ->
+          L.warn (fun m -> m "snapshot epoch mismatch: root %a, snapshot %a"
+                     Uint.pp epoch Uint.pp snap.Snapshot.epoch);
+          Error "snapshot with bad epoch"
+        | true, true ->
+          begin match timestamp with
+            | None ->
+              L.warn (fun m -> m "no timestamp provided, taking snapshot as is");
               Ok (Some snap)
-            else
-              Error "couldn't validate snapshot: no match in timestamp target"
-        end
-      | _-> Error "couldn't validate snapshot signature"
+            | Some ts ->
+              let* tgt =
+                let snap_path = Conex_repository.keydir repo @ [ id ] in
+                IO.compute_checksum_file io C.raw_digest snap_path
+              in
+              if List.exists (Target.equal tgt) ts.Timestamp.targets then
+                Ok (Some snap)
+              else
+                Error "couldn't validate snapshot: no match in timestamp target"
+          end
+    in
+    match r, id with
+    | None, None ->
+      L.warn (fun m -> m "no snapshot role found in root and none provided") ;
+      Ok None
+    | Some (id, _, _), Some id' when not (id_equal id id') ->
+      L.warn (fun m -> m "ID mismatch: snapshot in root %a, provided %a, \
+                          using %a and not validating against root"
+                 pp_id id pp_id id' pp_id id') ;
+      let* snap, _ = read_and_verify id' in
+      Ok (Some snap)
+    | Some (id, dgst, epoch), _ ->
+      let* snap, sigs = read_and_verify id in
+      validate_with_root (id, dgst, epoch) snap sigs
+    | None, Some id ->
+      L.warn (fun m -> m "no snapshot role found in root") ;
+      let* snap, _ = read_and_verify id in
+      Ok (Some snap)
 
   let targets_cache = ref M.empty
 

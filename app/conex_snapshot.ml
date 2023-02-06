@@ -15,10 +15,10 @@ let io_repo ?(rw = true) repodir root_file =
   let repo = Conex_repository.create root in
   Ok (io, repo)
 
-let status _ repodir root_file =
+let status _ repodir root_file id =
   Conex_opts.msg_to_cmdliner (
     let* io, repo = io_repo repodir root_file in
-    let* _ = C.verify_snapshot io repo in
+    let* _ = C.verify_snapshot ?id io repo in
     Ok ())
 
 let snap_id id repo =
@@ -145,10 +145,12 @@ let status_cmd =
   let doc = "information about provided snapshot file" in
   let man =
     [`S "DESCRIPTION";
-     `P "Shows information about the snapshot file."]
+     `P "Shows information about the snapshot file. The provided ID is used as \
+         snapshot identifier. The snapshot file is verified. If a snapshot role \
+         is present in the root file, it is validated."]
   in
   let term =
-    Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.root))
+    Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.root $ Keys.id))
   and info = Cmd.info "status" ~doc ~man
   in
   Cmd.v info term

@@ -21,14 +21,11 @@ let status _ repodir id root_file no_opam =
     let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
+    let repo = Conex_repository.create root in
     let* id' = find_id io root id in
-    let* targets, warn =
-      to_str IO.pp_r_err (IO.read_targets io root (not no_opam) id')
-    in
-    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let* targets = C.verify_targets io repo (not no_opam) id' in
     Logs.app (fun m -> m "targets file %a" Targets.pp targets) ;
     Ok ())
-    (* should verify targets now, but need root (delegations, +others) + TA *)
 
 let create _ repodir id dry root_file no_opam =
   (* given private key id, create an initial targets template! *)

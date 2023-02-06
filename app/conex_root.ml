@@ -107,7 +107,9 @@ let status_cmd =
   let doc = "information about provided root file" in
   let man =
     [`S "DESCRIPTION";
-     `P "Shows information about the root file."]
+     `P "Shows information about the root file. The provided anchors are used \
+         to validate the root file. The signatures are cryptographically \
+         verified."]
   in
   let term =
     Term.(ret Conex_opts.(const status $ setup_log $ Keys.repo $ Keys.anchors $ Keys.root))
