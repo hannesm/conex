@@ -123,7 +123,8 @@ module ExprTests = struct
       (Ok (Expression.Or (a, b)))
       (Expression.of_wire (wire_s str)) ;
     (* TODO: bug or feature? | has higher precedence
-       fixed in opam-file-format rc2 sincehttps://github.com/AltGr/opam/commit/c3a78ad962e177e339774e110dc920040b8f3583 *)
+       fixed in opam-file-format rc2 since
+       https://github.com/AltGr/opam/commit/c3a78ad962e177e339774e110dc920040b8f3583 *)
     let c = Expression.Quorum (1, Expression.KS.singleton (Expression.Local "c")) in
     let str = "expr: (1 [ a ]) & (1 [ b ]) | (1 [ c ])" in
     Alcotest.check (result expr str_err) "or expression from string, no paren"
@@ -156,6 +157,10 @@ module ExprTests = struct
     Alcotest.check (result expr str_err) "local minimal expression (a)"
       (Ok a)
       (Expression.of_wire (wire_s str)) ;
+    let str = "expr: (1 a)" in
+    Alcotest.check (result expr str_err) "local tiny expression"
+      (Ok (Expression.Quorum (1, Expression.KS.of_list [ Expression.Local "a" ])))
+      (Expression.of_wire (wire_s str)) ;
     let str = "expr: (1 [ a ])" in
     Alcotest.check (result expr str_err) "local small expression"
       (Ok a)
@@ -165,43 +170,188 @@ module ExprTests = struct
       (Ok (Expression.Quorum (1, Expression.KS.of_list [ Expression.Local "a" ; Expression.Local "b" ])))
       (Expression.of_wire (wire_s str))
 
-  let basic_eval_tests () =
-    let str = "expr: (0 [])" in
-    (match Expression.of_wire (wire_s str) with
-     | Error e -> Alcotest.fail e
-     | Ok expr ->
-       Alcotest.check Alcotest.bool "simplest expression"
-         true (Expression.eval expr Digest_map.empty S.empty)) ;
-    let str = "expr: a" in
-    (match Expression.of_wire (wire_s str) with
-     | Error e -> Alcotest.fail e
-     | Ok expr ->
-       Alcotest.check Alcotest.bool "simplest false expression"
-         false (Expression.eval expr Digest_map.empty S.empty)) ;
-    let str = "expr: (1 [ a ]) | (0 [])" in
-    (match Expression.of_wire (wire_s str) with
-     | Error e -> Alcotest.fail e
-     | Ok expr ->
-       Alcotest.check Alcotest.bool "simple or expression"
-         true (Expression.eval expr Digest_map.empty S.empty)) ;
-    let str = "expr: (0 []) | (1 [ a ])" in
-    (match Expression.of_wire (wire_s str) with
-     | Error e -> Alcotest.fail e
-     | Ok expr ->
-       Alcotest.check Alcotest.bool "simple or expression"
-         true (Expression.eval expr Digest_map.empty S.empty)) ;
-    let str = "expr: (1 [ a ]) & (1 [ b ])" in
-    (match Expression.of_wire (wire_s str) with
-     | Error e -> Alcotest.fail e
-     | Ok expr ->
-       Alcotest.check Alcotest.bool "simple and expression"
-         false (Expression.eval expr Digest_map.empty S.empty)) ;
-    let str = "expr: (0 []) & (0 [])" in
-    (match Expression.of_wire (wire_s str) with
-     | Error e -> Alcotest.fail e
-     | Ok expr ->
-       Alcotest.check Alcotest.bool "simple and expression with two times zero"
-         true (Expression.eval expr Digest_map.empty S.empty))
+  let compare_tests () =
+    let a = Expression.KS.singleton (Expression.Local "a")
+    and b = Expression.KS.singleton (Expression.Local "b")
+    in
+    let a_q = Expression.Quorum (1, a)
+    and a_q2 = Expression.Quorum (2, a)
+    and a_q3 = Expression.Quorum (1, Expression.KS.add (Expression.Local "b") a)
+    and b_q = Expression.Quorum (1, b)
+    in
+    let a_or_b = Expression.Or (a_q, b_q)
+    and a_and_b = Expression.And (a_q, b_q)
+    and b_or_a = Expression.Or (b_q, a_q)
+    and b_and_a = Expression.And (b_q, a_q)
+    in
+    Alcotest.(check bool "basic expression equality" true
+                Expression.(equal a_q a_q &&
+                            equal a_or_b a_or_b &&
+                            equal a_and_b a_and_b));
+    Alcotest.(check bool "basic expression inequality 1" false
+                Expression.(equal a_q b_q));
+    Alcotest.(check bool "basic expression inequality 2" false
+                Expression.(equal a_q a_q2));
+    Alcotest.(check bool "basic expression inequality 3" false
+                Expression.(equal a_q a_or_b));
+    Alcotest.(check bool "basic expression inequality 4" false
+                Expression.(equal a_q a_and_b));
+    Alcotest.(check bool "basic expression inequality 5" false
+                Expression.(equal a_q b_or_a));
+    Alcotest.(check bool "basic expression inequality 6" false
+                Expression.(equal a_q b_and_a));
+    Alcotest.(check bool "basic expression inequality 7" false
+                Expression.(equal a_or_b b_or_a));
+    Alcotest.(check bool "basic expression inequality 8" false
+                Expression.(equal a_and_b b_and_a));
+    Alcotest.(check bool "basic expression inequality 9" false
+                Expression.(equal a_q a_q3));
+    Alcotest.(check bool "basic expression inequality 10" false
+                Expression.(equal a_q2 a_q3));
+    Alcotest.(check int "basic expression comparison 1" 0
+                Expression.(compare a_q (Quorum (1, KS.singleton (Local "a")))));
+    Alcotest.(check int "basic expression comparison 2" 0
+                Expression.(compare a_q2 (Quorum (2, KS.singleton (Local "a")))));
+    Alcotest.(check int "basic expression comparison 3" 0
+                Expression.(compare b_q (Quorum (1, KS.singleton (Local "b")))));
+    Alcotest.(check int "basic expression comparison 4" 0
+                Expression.(compare a_or_b (Or (Quorum (1, KS.singleton (Local "a")), Quorum (1, KS.singleton (Local "b"))))));
+    Alcotest.(check int "basic expression comparison 5" 0
+                Expression.(compare a_and_b (And (Quorum (1, KS.singleton (Local "a")), Quorum (1, KS.singleton (Local "b"))))));
+    Alcotest.(check int "basic expression comparison not equal 1" (-1)
+                Expression.(compare a_q a_q2));
+    Alcotest.(check int "basic expression comparison not equal 2" 1
+                Expression.(compare a_q2 a_q));
+    Alcotest.(check int "basic expression comparison not equal 3" (-1)
+                Expression.(compare a_and_b b_and_a));
+    Alcotest.(check int "basic expression comparison not equal 4" 1
+                Expression.(compare b_and_a a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 5" (-1)
+                Expression.(compare a_and_b a_or_b));
+    Alcotest.(check int "basic expression comparison not equal 6" 1
+                Expression.(compare a_or_b a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 7" (-1)
+                Expression.(compare a_and_b b_or_a));
+    Alcotest.(check int "basic expression comparison not equal 8" 1
+                Expression.(compare b_or_a a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 9" (-1)
+                Expression.(compare a_or_b b_or_a));
+    Alcotest.(check int "basic expression comparison not equal 10" 1
+                Expression.(compare b_or_a a_or_b));
+    Alcotest.(check int "basic expression comparison not equal 11" 1
+                Expression.(compare a_and_b a_q));
+    Alcotest.(check int "basic expression comparison not equal 12" (-1)
+                Expression.(compare a_q a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 13" (-1)
+                Expression.(compare a_q a_q3));
+    Alcotest.(check int "basic expression comparison not equal 14" 1
+                Expression.(compare a_q3 a_q));
+    Alcotest.(check int "basic expression comparison not equal 15" (-1)
+                Expression.(compare a_q3 a_q2));
+    Alcotest.(check int "basic expression comparison not equal 16" 1
+                Expression.(compare a_q2 a_q3))
+
+  let keys_tests () =
+    let a = Expression.KS.singleton (Expression.Local "a")
+    and b = Expression.KS.singleton (Expression.Local "b")
+    in
+    let a_q = Expression.Quorum (1, a)
+    and b_q = Expression.Quorum (1, b)
+    in
+    let a_or_b = Expression.Or (a_q, b_q)
+    and a_and_b = Expression.And (a_q, b_q)
+    in
+    Alcotest.(check int "keys size of map a_q" 0
+                (M.cardinal (Expression.keys M.empty a_q)));
+    Alcotest.(check int "keys size of map b_q" 0
+                (M.cardinal (Expression.keys M.empty b_q)));
+    Alcotest.(check int "keys size of map a_or_b" 0
+                (M.cardinal (Expression.keys M.empty a_or_b)));
+    Alcotest.(check int "keys size of map a_and_b" 0
+                (M.cardinal (Expression.keys M.empty a_and_b)));
+    let ar = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcdef"), Uint.zero))
+    and br = Expression.KS.singleton (Expression.Remote ("b", (`SHA256, "abcdef"), Uint.zero))
+    in
+    let ar_q = Expression.Quorum (1, ar)
+    and br_q = Expression.Quorum (1, br)
+    in
+    let ar_or_br = Expression.Or (ar_q, br_q)
+    and ar_and_br = Expression.And (ar_q, br_q)
+    in
+    let a_ar_q = Expression.Quorum (1, Expression.KS.union a ar)
+    and b_br_q = Expression.Quorum (1, Expression.KS.union b br)
+    in
+    Alcotest.(check int "keys size of map ar_q" 1
+                (M.cardinal (Expression.keys M.empty ar_q)));
+    Alcotest.(check int "keys size of map br_q" 1
+                (M.cardinal (Expression.keys M.empty br_q)));
+    Alcotest.(check int "keys size of map a_ar_q" 1
+                (M.cardinal (Expression.keys M.empty a_ar_q)));
+    Alcotest.(check int "keys size of map b_br_q" 1
+                (M.cardinal (Expression.keys M.empty b_br_q)));
+    Alcotest.(check int "keys size of map ar_or_br" 2
+                (M.cardinal (Expression.keys M.empty ar_or_br)));
+    Alcotest.(check int "keys size of map ar_and_br" 2
+                (M.cardinal (Expression.keys M.empty ar_and_br)));
+    let ar' = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcdef"), Uint.zero)) in
+    let ar'_q = Expression.Quorum (1, ar') in
+    let ar_and_ar' = Expression.And (ar_q, ar'_q) in
+    Alcotest.(check int "keys size of map ar_and_ar' 1" 1
+                (M.cardinal (Expression.keys M.empty ar_and_ar')));
+    let ar' = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcde"), Uint.zero)) in
+    let ar'_q = Expression.Quorum (1, ar') in
+    let ar_and_ar' = Expression.And (ar_q, ar'_q) in
+    Alcotest.(check int "keys size of map ar_and_ar' 2" 1
+                (M.cardinal (Expression.keys M.empty ar_and_ar')));
+    let ar' = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "123456"), snd (Uint.succ Uint.zero))) in
+    let ar'_q = Expression.Quorum (1, ar') in
+    let ar_and_ar' = Expression.And (ar_q, ar'_q) in
+    Alcotest.(check int "keys size of map ar_and_ar' 3" 1
+                (M.cardinal (Expression.keys M.empty ar_and_ar')));
+    let _, data = M.choose (Expression.keys M.empty ar_and_ar') in
+    let hash, epoch = match data with
+      | (`SHA256, h), e -> h, e
+    in
+    Alcotest.(check string "hash is the new one" "123456" hash);
+    Alcotest.(check string "epoch is the new one" "1" (Uint.to_string epoch))
+
+    let basic_eval_tests () =
+      let str = "expr: (0 [])" in
+      (match Expression.of_wire (wire_s str) with
+       | Error e -> Alcotest.fail e
+       | Ok expr ->
+         Alcotest.check Alcotest.bool "simplest expression"
+           true (Expression.eval expr Digest_map.empty S.empty)) ;
+      let str = "expr: a" in
+      (match Expression.of_wire (wire_s str) with
+       | Error e -> Alcotest.fail e
+       | Ok expr ->
+         Alcotest.check Alcotest.bool "simplest false expression"
+           false (Expression.eval expr Digest_map.empty S.empty)) ;
+      let str = "expr: (1 [ a ]) | (0 [])" in
+      (match Expression.of_wire (wire_s str) with
+       | Error e -> Alcotest.fail e
+       | Ok expr ->
+         Alcotest.check Alcotest.bool "simple or expression"
+           true (Expression.eval expr Digest_map.empty S.empty)) ;
+      let str = "expr: (0 []) | (1 [ a ])" in
+      (match Expression.of_wire (wire_s str) with
+       | Error e -> Alcotest.fail e
+       | Ok expr ->
+         Alcotest.check Alcotest.bool "simple or expression"
+           true (Expression.eval expr Digest_map.empty S.empty)) ;
+      let str = "expr: (1 [ a ]) & (1 [ b ])" in
+      (match Expression.of_wire (wire_s str) with
+       | Error e -> Alcotest.fail e
+       | Ok expr ->
+         Alcotest.check Alcotest.bool "simple and expression"
+           false (Expression.eval expr Digest_map.empty S.empty)) ;
+      let str = "expr: (0 []) & (0 [])" in
+      (match Expression.of_wire (wire_s str) with
+       | Error e -> Alcotest.fail e
+       | Ok expr ->
+         Alcotest.check Alcotest.bool "simple and expression with two times zero"
+           true (Expression.eval expr Digest_map.empty S.empty))
 
   let eval_test_1 () =
     let str = "expr: (1 [ rootA \"sha256=abcdef\" 0x0 ])" in
@@ -447,6 +597,8 @@ module ExprTests = struct
     "basic good of_wire", `Quick, basic_good_of_wire ;
     "basic of_string", `Quick, basic_of_string ;
     "local tests", `Quick, local_tests ;
+    "compare tests", `Quick, compare_tests ;
+    "keys tests", `Quick, keys_tests ;
     "basic eval", `Quick, basic_eval_tests ;
     "eval test 1", `Quick, eval_test_1 ;
     "eval test 2", `Quick, eval_test_2 ;
