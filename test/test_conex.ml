@@ -1670,7 +1670,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       "signature is good" (Ok ())
       (R.verify_rsa_pss pid ~key:pu ~data:d ~signature)
 
-  let raw_sig_bad data () =
+  let raw_sig_bad ~openssl data () =
     let pid = "foobar" in
     let pub, p = gen_pub () in
     let pu = match pub with (_, _, `RSA, k) -> k in
@@ -1684,17 +1684,23 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     Alcotest.check (result Alcotest.unit verr)
       "signature is bad (invalid base64)" (Error (`InvalidBase64Encoding pid))
       (R.verify_rsa_pss pid ~key:pu ~data:d ~signature:badsig) ;
-    (* the following is fine with OpenSSL :/ *)
-    let badsig = signature ^ "=" in
+    let badsig =
+      if openssl then
+        signature ^ "=fdd"
+      else
+        (* the following is fine with OpenSSL :/ *)
+        signature ^ "="
+    in
     Alcotest.check (result Alcotest.unit verr)
       "signature is bad (invalid base64) take 2" (Error (`InvalidBase64Encoding pid))
       (R.verify_rsa_pss pid ~key:pu ~data:d ~signature:badsig) ;
     let badkey = pu ^ "=" in
     Alcotest.check (result Alcotest.unit verr)
-      "signature is bad (invalid key)" (Error (`InvalidPublicKey pid))
+      "signature is bad (invalid key)"
+      (Error (if openssl then `InvalidSignature pid else `InvalidPublicKey pid))
       (R.verify_rsa_pss pid ~key:badkey ~data:d ~signature)
 
-  let raw_sigs, _ =
+  let raw_sigs ~openssl =
     let tests = [
       M.empty ;
       M.add "foo" (Wire.Data "foobar") M.empty ;
@@ -1702,11 +1708,12 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       M.add "foo" (Wire.Bigint Uint.zero) M.empty ;
       M.add "barf" (Wire.Smallint 42) (M.add "foo" (Wire.Bigint Uint.zero) M.empty) ;
     ] in
-    List.fold_left (fun (acc, i) data ->
-        acc @ [
-          ("sign and verify is good " ^ string_of_int i, `Quick, raw_sig_good data) ;
-          ("sign and verify is bad " ^ string_of_int i, `Quick, raw_sig_bad data)
-        ], succ i) ([], 0) tests
+    fst (
+      List.fold_left (fun (acc, i) data ->
+          acc @ [
+            ("sign and verify is good " ^ string_of_int i, `Quick, raw_sig_good data) ;
+            ("sign and verify is bad " ^ string_of_int i, `Quick, raw_sig_bad ~openssl data)
+          ], succ i) ([], 0) tests)
 
   let ver =
     let module M = struct
@@ -1771,11 +1778,11 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     <verify>
       <maybe play a bit with modifyin root and attempt to verify> *)
 
-  let sign_tests = raw_sigs @ [
+  let sign_tests ~openssl = raw_sigs ~openssl @ [
       "sign and verify root", `Quick, sign_verify_root ;
     ]
-  let tests prefix =
-    [ (prefix ^ "Signature", sign_tests) ]
+  let tests ~openssl prefix =
+    [ (prefix ^ "Signature", sign_tests ~openssl) ]
 end
 
 module MC = BasicTests (Conex_mirage_crypto.NC_V) (Conex_mirage_crypto.V)
@@ -1787,4 +1794,4 @@ let tests = ("Expressions", ExprTests.tests) ::
             ("Digests", DigestTests.tests) ::
             ("Roots", RootTests.tests) ::
             ("Repos", RepoTests.tests) ::
-            MC.tests "Mirage_crypto"
+            MC.tests ~openssl:false "Mirage_crypto"
