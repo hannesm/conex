@@ -147,14 +147,14 @@ module Uint = struct
     else
       (false, Int64.succ x)
 
-  let to_string s = Printf.sprintf "%LX" s
+  let to_string s = Printf.sprintf "0x%LX" s
 
   let pp ppf i = Format.pp_print_string ppf (to_string i) [@@coverage off]
 
   let decimal s = Printf.sprintf "%Lu" s
 
   let of_string s =
-    try Some (Int64.of_string ("0x" ^ s)) with Failure _ -> None
+    try Some (Int64.of_string s) with Failure _ -> None
 
   let of_float f =
     if f < 0. then

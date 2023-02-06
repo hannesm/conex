@@ -313,7 +313,7 @@ module ExprTests = struct
       | (`SHA256, h), e -> h, e
     in
     Alcotest.(check string "hash is the new one" "123456" hash);
-    Alcotest.(check string "epoch is the new one" "1" (Uint.to_string epoch))
+    Alcotest.(check string "epoch is the new one" "0x1" (Uint.to_string epoch))
 
     let basic_eval_tests () =
       let str = "expr: (0 [])" in

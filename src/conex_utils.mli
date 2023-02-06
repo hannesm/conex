@@ -149,7 +149,7 @@ module Uint : sig
       [next] is always the next integer in the [Z/2^64-1Z] group. *)
   val succ : t -> bool * t
 
-  (** [to_string t] is [t] converted to a string in hexadecimal ([%LX]).  *)
+  (** [to_string t] is [t] converted to a string in hexadecimal ([0x%LX]).  *)
   val to_string : t -> string
 
   (** [pp] is a pretty printer *)
@@ -159,7 +159,7 @@ module Uint : sig
   val decimal : t -> string
 
   (** [of_string s] attempts to parse the string [s] as hexadecimal encoded
-      number using [Int64.of_string "0x" ^ s]. *)
+      number using [Int64.of_string s]. *)
   val of_string : string -> t option
 
   (** [of_float f] is [Int64.of_float f] if [f >= 0.0]. *)

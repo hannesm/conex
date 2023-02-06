@@ -27,7 +27,7 @@ let rec encode_s x =
       | Wire.List l -> OpamParserTypes.List (np (List.map encode_s l))
       | Wire.Identifier i -> OpamParserTypes.Ident i
       | Wire.Data s -> OpamParserTypes.String s
-      | Wire.Bigint i -> OpamParserTypes.Ident ("0x" ^ Uint.to_string i)
+      | Wire.Bigint i -> OpamParserTypes.Ident (Uint.to_string i)
       | Wire.Smallint i -> OpamParserTypes.Int i
       | Wire.Pair (i, s) -> OpamParserTypes.Group (np [ encode_s i ; encode_s s ])
       | Wire.And (a, b) -> OpamParserTypes.Logop (np `And, encode_s a, encode_s b)

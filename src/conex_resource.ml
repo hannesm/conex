@@ -36,7 +36,7 @@ module Wire = struct
     | Or of s * s
 
   let rec s_to_string = function
-    | Bigint x -> "0x" ^ Uint.to_string x
+    | Bigint x -> Uint.to_string x
     | Smallint i -> string_of_int i
     | Data s -> string_of_int (String.length s) ^ "'" ^ s
     | Identifier i -> i
