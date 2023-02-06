@@ -12,10 +12,9 @@ type t = {
   exists : path -> bool ;
 }
 
-(*BISECT-IGNORE-BEGIN*)
 let pp ppf t =
   Format.fprintf ppf "repository %s: %s" t.basedir t.description
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 let ( let* ) = Result.bind
 
@@ -26,13 +25,12 @@ type r_err = [
   | `InvalidPath of identifier * path
 ]
 
-(*BISECT-IGNORE-BEGIN*)
 let pp_r_err ppf = function
   | `NotFound (res, nam) -> Format.fprintf ppf "%a (type %a) was not found in repository" pp_name nam pp_typ res
   | `ParseError (res, n, e) -> Format.fprintf ppf "parse error while parsing %a (type %a): %s" pp_name n pp_typ res e
   | `NameMismatch (res, should, is) -> Format.fprintf ppf "%a (type %a) is named %a" pp_name should pp_typ res pp_name is
   | `InvalidPath (nam, path) -> Format.fprintf ppf "%a contains an invalid path %a" pp_id nam pp_path path
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 let read_root t root_file =
   Result.fold

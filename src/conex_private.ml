@@ -51,6 +51,7 @@ module Make (C : S_RSA_BACK) (F : FS) = struct
     | `None -> Format.pp_print_string ppf "id does not exist"
     | `Multiple ids -> Format.fprintf ppf "found multiple matching ids %a"
                          (pp_list Format.pp_print_string) ids
+  [@@coverage off]
 
   let ids = F.ids
 

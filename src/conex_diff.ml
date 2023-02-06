@@ -18,6 +18,7 @@ let pp_hunk ppf hunk =
   Format.fprintf ppf "@@@@ -%d,%d +%d,%d @@@@\n%s"
     hunk.mine_start hunk.mine_len hunk.their_start hunk.their_len
     (unified_diff hunk)
+[@@coverage off]
 
 let take data num =
   let rec take0 num data acc =
@@ -164,6 +165,7 @@ let pp_operation ~git ppf op =
     hdr old_name new_name ;
     Format.fprintf ppf "rename from %s\n" old_name;
     Format.fprintf ppf "rename to %s\n" new_name
+[@@coverage off]
 
 type t = {
   operation : operation ;
@@ -175,6 +177,7 @@ type t = {
 let pp ~git ppf t =
   pp_operation ~git ppf t.operation ;
   List.iter (pp_hunk ppf) t.hunks
+[@@coverage off]
 
 let operation_of_strings git mine their =
   let get_filename_opt n =

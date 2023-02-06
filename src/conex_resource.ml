@@ -4,27 +4,21 @@ let ( let* ) = Result.bind
 
 type name = string
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_name = Format.pp_print_string
-(*BISECT-IGNORE-END*)
+let pp_name = Format.pp_print_string [@@coverage off]
 
 let name_equal a b = String.compare_insensitive a b = 0
 
 
 type identifier = string
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_id = Format.pp_print_string
-(*BISECT-IGNORE-END*)
+let pp_id = Format.pp_print_string [@@coverage off]
 
 let id_equal a b = String.compare_insensitive a b = 0
 
 
 type timestamp = string
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_timestamp = Format.pp_print_string
-(*BISECT-IGNORE-END*)
+let pp_timestamp = Format.pp_print_string [@@coverage off]
 
 let timestamp_equal a b = String.compare a b = 0
 
@@ -111,9 +105,9 @@ let string_to_typ = function
   | "targets" -> Some `Targets
   | _ -> None
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_typ ppf typ = Format.pp_print_string ppf (typ_to_string typ)
-(*BISECT-IGNORE-END*)
+let pp_typ ppf typ =
+  Format.pp_print_string ppf (typ_to_string typ)
+[@@coverage off]
 
 let wire_typ typ = Wire.Identifier (typ_to_string typ)
 
@@ -130,12 +124,11 @@ type err = [
   | `Malformed
 ]
 
-(*BISECT-IGNORE-BEGIN*)
 let pp_err ppf = function
   | `Parse err -> Format.fprintf ppf "parse error %s" err
   | `Unknown_alg alg -> Format.fprintf ppf "unknown algorithm %s" alg
   | `Malformed -> Format.pp_print_string ppf "malformed"
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 module Header = struct
   type t = {
@@ -157,11 +150,11 @@ module Header = struct
     let* typ = Result.(join (map typ_of_wire (opt_err (M.find "typ" data)))) in
     Ok { version ; created ; counter ; epoch ; name ; typ }
 
-  (*BISECT-IGNORE-BEGIN*)
   let counter x epoch =
     "#" ^ (Uint.decimal x) ^
     (if Uint.compare epoch Uint.zero = 0 then ""
      else "[" ^ (Uint.decimal epoch) ^ "]")
+  [@@coverage off]
 
   let pp ppf hdr =
     Format.fprintf ppf "%a %a %s created %a"
@@ -169,7 +162,7 @@ module Header = struct
       pp_name hdr.name
       (counter hdr.counter hdr.epoch)
       pp_timestamp hdr.created
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let wire t =
     let open Wire in
@@ -239,9 +232,7 @@ module Digest = struct
       | Some hash -> Ok (hash, data)
       | None -> Error (`Unknown_alg alg)
 
-  (*BISECT-IGNORE-BEGIN*)
-  let pp ppf t = Format.pp_print_string ppf (to_string t)
-  (*BISECT-IGNORE-END*)
+  let pp ppf t = Format.pp_print_string ppf (to_string t) [@@coverage off]
 
   let of_wire = function
     | Wire.Data dgst -> of_string dgst
@@ -257,6 +248,7 @@ module Digest_map = struct
 
   let pp pp_e ppf t =
     iter (fun k v -> Format.fprintf ppf "%a -> %a@ " Digest.pp k pp_e v) t
+  [@@coverage off]
 end
 
 module Key = struct
@@ -273,12 +265,11 @@ module Key = struct
     id_equal id id' && timestamp_equal ts ts' &&
     alg_equal alg alg' && String.compare data data' = 0
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf (id, created, a, x) =
     Format.fprintf ppf "%a (created %a) %s key %d bytes"
       pp_id id pp_timestamp created
       (alg_to_string a) (String.length x)
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   (* stored persistently on disk inside Root and Targets *)
   let of_wire data =
@@ -340,11 +331,10 @@ module Signature = struct
     id_equal id id' && timestamp_equal ts ts' &&
     alg_equal alg alg' && String.compare data data' = 0
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf (id, created, alg, data) =
     Format.fprintf ppf "%s signature by %a (created %a), %d bytes"
       (alg_to_string alg) pp_id id pp_timestamp created (String.length data)
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   (* again stored on disk as part of other files *)
   let of_wire data =
@@ -411,12 +401,11 @@ module Expression = struct
       let compare = keyref_compare
     end)
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp_keyref ppf = function
     | Local id -> Format.fprintf ppf "local %a" pp_id id
     | Remote (id, digest, epoch) ->
       Format.fprintf ppf "remote %a %a %s" pp_id id Digest.pp digest (Uint.to_string epoch)
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let keyref_of_wire data =
     let open Wire in
@@ -482,13 +471,12 @@ module Expression = struct
     | Or (a, b), Or (a', b') -> equal a a' && equal b b'
     | _ -> false
 
-  (*BISECT-IGNORE-BEGIN*)
   let rec pp ppf = function
     | Quorum (quorum, keys) ->
       Format.fprintf ppf "(%d %a)" quorum (pp_list pp_keyref) (KS.elements keys)
     | And (a, b) -> Format.fprintf ppf "(%a & %a)" pp a pp b
     | Or (a, b) -> Format.fprintf ppf "(%a | %a)" pp a pp b
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let rec keys m = function
     | Quorum (_, keyrefs) ->
@@ -637,9 +625,9 @@ module Root = struct
     | "maintainer" -> Some `Maintainer
     | _ -> None
 
-  (*BISECT-IGNORE-BEGIN*)
-  let pp_role ppf role = Format.pp_print_string ppf (role_to_string role)
-  (*BISECT-IGNORE-END*)
+  let pp_role ppf role =
+    Format.pp_print_string ppf (role_to_string role)
+  [@@coverage off]
 
   module RM = struct
     include Map.Make (struct
@@ -649,10 +637,9 @@ module Root = struct
 
     let find k m = try Some (find k m) with Not_found -> None
 
-    (*BISECT-IGNORE-BEGIN*)
     let pp pp_e ppf m =
       iter (fun k v -> Format.fprintf ppf "%a -> %a@ " pp_role k pp_e v) m
-    (*BISECT-IGNORE-END*)
+    [@@coverage off]
   end
 
   let supported_roles = [ `Timestamp ; `Snapshot ; `Maintainer ]
@@ -679,7 +666,6 @@ module Root = struct
     let signatures = M.add id s t.signatures in
     { t with signatures }
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf
       "root %s (created %a), datadir %a keydir %a@.@valid %a@.[<2>keys %a@]@.@[<2>roles %a@]@.@[<2> signatures %a@]"
@@ -690,7 +676,7 @@ module Root = struct
       (M.pp Key.pp) t.keys
       (RM.pp Expression.pp) t.roles
       (M.pp Signature.pp) t.signatures
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire data =
     let* signed, sigs = Header.split_signed data in
@@ -778,13 +764,12 @@ module Delegation = struct
     Expression.equal a.valid b.valid &&
     a.terminating = b.terminating
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "delegation (terminating %b) paths %a@.keys %a@."
       t.terminating
       (pp_list pp_path) t.paths
       Expression.pp t.valid
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire wire =
     let open Wire in
@@ -839,13 +824,12 @@ module Target = struct
     List.length t.digest = List.length t'.digest &&
     List.for_all (fun d -> List.exists (Digest.equal d) t'.digest) t.digest
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "%a (%s bytes) %a"
       pp_path t.filename
       (Uint.decimal t.size)
       (pp_list Digest.pp) t.digest
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let valid_opam_path t =
     (* this is an opam repository side condition:
@@ -926,7 +910,6 @@ module Timestamp = struct
     let signatures = M.add id s t.signatures in
     { t with signatures }
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "timestamp %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
       pp_name t.name
@@ -935,7 +918,7 @@ module Timestamp = struct
       (M.pp Key.pp) t.keys
       (pp_list Target.pp) t.targets
       (M.pp Signature.pp) t.signatures
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire data =
     let* signed, sigs = Header.split_signed data in
@@ -1018,7 +1001,6 @@ module Snapshot = struct
     let signatures = M.add id s t.signatures in
     { t with signatures }
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "snapshot %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
       pp_name t.name
@@ -1027,7 +1009,7 @@ module Snapshot = struct
       (M.pp Key.pp) t.keys
       (pp_list Target.pp) t.targets
       (M.pp Signature.pp) t.signatures
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire data =
     let* signed, sigs = Header.split_signed data in
@@ -1116,7 +1098,6 @@ module Targets = struct
     List.for_all (fun t -> List.exists (Target.equal t) t'.targets) t.targets &&
     M.equal Signature.equal t.signatures t'.signatures
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "targets %a %s (created %a)@.@[<2>keys %a@]@.@[<2>valid %a@]@.@[<2>delegations %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
       pp_name t.name
@@ -1127,7 +1108,7 @@ module Targets = struct
       (pp_list Delegation.pp) t.delegations
       (pp_list Target.pp) t.targets
       (M.pp Signature.pp) t.signatures
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire data =
     let* signed, sigs = Header.split_signed data in

@@ -2,4 +2,5 @@
   (name conex_unix)
   (public_name conex.unix)
   (wrapped false)
+  (instrumentation (backend bisect_ppx))
   (libraries conex unix))

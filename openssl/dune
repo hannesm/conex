@@ -2,4 +2,5 @@
   (name conex_openssl)
   (public_name conex.openssl)
   (wrapped false)
+  (instrumentation (backend bisect_ppx))
   (libraries conex unix conex_unix))

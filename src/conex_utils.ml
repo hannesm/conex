@@ -1,7 +1,6 @@
 
 type 'a fmt = Format.formatter -> 'a -> unit
 
-(*BISECT-IGNORE-BEGIN*)
 let pp_list pe ppf xs =
   match xs with
   | [] -> Format.pp_print_string ppf "empty"
@@ -13,12 +12,14 @@ let pp_list pe ppf xs =
       | x::xs -> Format.fprintf ppf "%a;@ " pe x ; p1 xs
     in
     p1 xs
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 module S = struct
   include Set.Make(String)
 
-  let pp fmt t = pp_list Format.pp_print_string fmt (elements t)
+  let pp fmt t =
+    pp_list Format.pp_print_string fmt (elements t)
+  [@@coverage off]
 
   let of_list es = List.fold_right add es empty
 end
@@ -148,9 +149,7 @@ module Uint = struct
 
   let to_string s = Printf.sprintf "%LX" s
 
-  (*BISECT-IGNORE-BEGIN*)
-  let pp ppf i = Format.pp_print_string ppf (to_string i)
-  (*BISECT-IGNORE-END*)
+  let pp ppf i = Format.pp_print_string ppf (to_string i) [@@coverage off]
 
   let decimal s = Printf.sprintf "%Lu" s
 
@@ -183,10 +182,9 @@ module M = struct
 
   let find k m = try Some (find k m) with Not_found -> None
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp pp_e ppf m =
     iter (fun k v -> Format.fprintf ppf "%s -> %a@ " k pp_e v) m
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 end
 
 let rec filter_map ~f = function
@@ -255,9 +253,9 @@ let rec subpath ~parent b =
   | _, [] -> false
   | hd::tl, hd'::tl' -> if str_eq hd hd' then subpath ~parent:tl tl' else false
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_path fmt p = Format.pp_print_string fmt (path_to_string p)
-(*BISECT-IGNORE-END*)
+let pp_path fmt p =
+  Format.pp_print_string fmt (path_to_string p)
+[@@coverage off]
 
 type item = file_type * string
 
@@ -287,7 +285,6 @@ module Tree = struct
     in
     doit [] root acc
 
-(*BISECT-IGNORE-BEGIN*)
   let pp pp_e ppf node =
     let rec pp prefix ppf (Node (dels, map)) =
       let pp_map ppf map =
@@ -302,7 +299,7 @@ module Tree = struct
         pp_map map
     in
     (pp "") ppf node
-(*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let rec lookup path (Node (dels, map)) =
     match path with

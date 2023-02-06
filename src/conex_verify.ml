@@ -8,13 +8,12 @@ type error = [
   | `InvalidPublicKey of identifier
 ]
 
-(*BISECT-IGNORE-BEGIN*)
 let pp_error ppf = function
   | `UnknownKey id -> Format.fprintf ppf "unknown public key %a" pp_id id
   | `InvalidBase64Encoding id -> Format.fprintf ppf "signature %a: no valid base64 encoding" pp_id id
   | `InvalidSignature id -> Format.fprintf ppf "invalid signature %a" pp_id id
   | `InvalidPublicKey id -> Format.fprintf ppf "invalid public key %a" pp_id id
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 module type S_RSA_BACK = sig
   val verify_rsa_pss : key:string -> data:string -> signature:string -> identifier -> (unit, [> error ]) result

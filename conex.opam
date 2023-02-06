@@ -7,7 +7,7 @@ doc: "https://hannesm.github.io/conex/doc"
 bug-reports: "https://github.com/hannesm/conex/issues"
 depends: [
   "ocaml" {>= "4.08.0"}
-  "dune"
+  "dune" {>= "2.7"}
   "cmdliner" {>= "1.1.0"}
   "opam-file-format" {>= "2.1.1"}
 ]

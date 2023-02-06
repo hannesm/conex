@@ -74,6 +74,7 @@ let pp_res ppf =
   | `No_match (p, disk, targets) ->
     Format.fprintf ppf "no matching digest for %a (on_disk %a, targets %a)"
       pp_path p (pp_list pp_d) disk (pp_list pp_t) targets
+[@@coverage off]
 
 let validate_targets t on_disk =
   (* foreach digest in on_disk there exists a matching one in t.targets
