@@ -21,6 +21,7 @@ depends: [
   "fmt"
   "ptime"
   "base64" {>= "3.4.0"}
+  "conf-openssl" {with-test}
 ]
 conflicts: [ "result" {< "1.5"} ]
 build: [
