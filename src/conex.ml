@@ -19,7 +19,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       sigs S.empty
 
   let verify_root ?(valid = fun _ _ -> false) ?quorum io filename =
-    L.debug (fun m -> m "verifying root %a" pp_name filename) ;
+    L.debug (fun m -> m "verifying root: %a" pp_name filename) ;
     let* root, warn = err_to_str IO.pp_r_err (IO.read_root io filename) in
     List.iter (fun msg -> L.warn (fun m -> m "%s" msg)) warn ;
     (* verify signatures *)

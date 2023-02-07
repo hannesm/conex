@@ -59,7 +59,7 @@ module Keys = struct
 
   let dir =
     let doc = "Directory which is verified." in
-    Arg.(value & opt (some string) None & info [ "dir" ] ~doc)
+    Arg.(value & opt (some dir) None & info [ "dir" ] ~doc)
 
   let patch =
     let doc = "Patch file which is verified." in

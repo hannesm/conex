@@ -71,14 +71,14 @@ module VERIFY (L : LOGS) (V : Conex_verify.S) = struct
     match repodir, incremental, patch, dir with
     | Some repodir, true, Some p, None ->
       let* io = Conex_unix_provider.fs_ro_provider repodir in
-      L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
+      L.debug (fun m -> m "%a" Conex_io.pp io) ;
       verify_diff io p valid quorum nostrict root_file opam ~timestamp_expiry ~now
     | _, false, None, Some "" ->
       L.debug (fun m -> m "called with no incremental, and dir = empty -> no update") ;
       Ok ()
     | _, false, None, Some d ->
       let* io = Conex_unix_provider.fs_ro_provider d in
-      L.debug (fun m -> m "repository %a" Conex_io.pp io) ;
+      L.debug (fun m -> m "%a" Conex_io.pp io) ;
       verify_full io valid quorum nostrict root_file opam ~timestamp_expiry ~now
     | None, _, _, _ -> Error "--repo is required"
     | _ -> Error "invalid combination of incremental, patch and dir"

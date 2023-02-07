@@ -749,9 +749,7 @@ module Root = struct
 end
 
 module Delegation = struct
-  (* TODO paths should be a path set!
-     - of_wire should pick a default for terminating, and make its orccurence optional
- *)
+  (* TODO paths should be a path set! *)
   type t = {
     paths : path list ;
     valid : Expression.t ;
