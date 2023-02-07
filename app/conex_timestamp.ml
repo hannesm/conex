@@ -7,7 +7,7 @@ module IO = Conex_io
 
 let ( let* ) = Result.bind
 
-let io_repo ?(rw = true) repodir root_file =
+let io_repo ~rw repodir root_file =
   let* io = Conex_opts.repo ~rw repodir in
   let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
   List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
@@ -17,7 +17,7 @@ let io_repo ?(rw = true) repodir root_file =
 
 let status _ repodir root_file id timestamp_expiry =
   Conex_opts.msg_to_cmdliner (
-    let* io, repo = io_repo repodir root_file in
+    let* io, repo = io_repo ~rw:false repodir root_file in
     let* _ts = C.verify_timestamp ?id io repo ~timestamp_expiry ~now in
     Ok ())
 

@@ -11,7 +11,7 @@ let ( let* ) = Result.bind
 let status _ repodir anchors filename =
   msg_to_cmdliner (
     let valid = valid anchors in
-    let* io = repo repodir in
+    let* io = repo ~rw:false repodir in
     Result.fold
       ~error:(fun r ->
           Logs.err (fun m -> m "%a" IO.pp_r_err r) ;

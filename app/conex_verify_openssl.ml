@@ -94,7 +94,11 @@ let setup repo quorum anchors incremental dir patch verbose quiet strict no_c ro
     else `Info
   in
   Log.set_level level ;
-  let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
+  let styled =
+    if no_c then
+      false
+    else
+      match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
   let ( let* ) = Result.bind in

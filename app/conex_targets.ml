@@ -16,8 +16,8 @@ let find_id io root id =
   | _ -> Error "multiple ids found with given prefix"
 
 let status _ repodir id root_file no_opam =
-  Conex_opts.msg_to_cmdliner (
-    let* io = Conex_opts.repo repodir in
+  msg_to_cmdliner (
+    let* io = repo ~rw:false repodir in
     let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;
@@ -54,7 +54,7 @@ let create _ repodir id dry root_file no_opam =
 let hash _ repodir id root_file no_opam =
   msg_to_cmdliner (
     let* id' = Option.to_result ~none:"requires id" id in
-    let* io = repo repodir in
+    let* io = repo ~rw:false repodir in
     let* root, warn = to_str IO.pp_r_err (IO.read_root io root_file) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     Logs.debug (fun m -> m "root file %a" Root.pp root) ;

@@ -74,7 +74,7 @@ module Keys = struct
     Arg.(value & opt int64 900L & info [ "expiry" ] ~doc)
 end
 
-let repo ?(rw = false) repodir =
+let repo ~rw repodir =
   let dir = Option.value ~default:(Unix.getcwd ()) repodir in
   if rw
   then Conex_unix_provider.fs_provider dir
