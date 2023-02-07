@@ -5,6 +5,7 @@ open Conex_io
 let ( let* ) = Result.bind
 
 let fs_provider basedir =
+  let basedir = Unix.realpath basedir in
   let* () =
     if not (exists basedir) then
       mkdir basedir
