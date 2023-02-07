@@ -37,10 +37,7 @@ let fs_provider basedir =
     file_type p
   and read path =
     let fn = get path in
-    Printf.printf "unix reading %s.." fn;
-    match read_file fn with
-    | Ok data -> Printf.printf "%d bytes\n" (String.length data); Ok data
-    | Error e -> Printf.printf "%s errored\n" e; Error e
+    read_file fn
   and write path data =
     let* () = ensure_dir path in
     let nam = get path in
