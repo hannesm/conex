@@ -4,10 +4,10 @@ module PRIV = Conex_private.Make(Conex_mirage_crypto.C)(Conex_unix_private_key)
 
 let to_str pp = Result.map_error (Fmt.to_to_string pp)
 
-let now = Ptime.to_rfc3339 (Ptime_clock.now ())
+let now = Ptime.to_rfc3339 ~tz_offset_s:0 (Ptime_clock.now ())
 
 let to_ts f =
-  Option.map Ptime.to_rfc3339 (Ptime.of_float_s f)
+  Option.map (Ptime.to_rfc3339 ~tz_offset_s:0) (Ptime.of_float_s f)
 
 let init_priv_id id =
   let ( let* ) = Result.bind in
