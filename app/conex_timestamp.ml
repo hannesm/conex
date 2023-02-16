@@ -75,7 +75,7 @@ let create _ dry repodir root_file id =
     IO.write_timestamp io ts)
 
 let sign _ dry repodir id no_incr root_file =
-  Mirage_crypto_rng_unix.initialize () ;
+  Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
   Conex_opts.msg_to_cmdliner (
     let* io, repo = io_repo ~rw:(not dry) repodir root_file in
     let* time_id = time_id id repo in

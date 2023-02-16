@@ -44,7 +44,7 @@ let create _ dry repodir force filename =
     IO.write_root io root')
 
 let sign _ dry repodir id no_incr filename =
-  Mirage_crypto_rng_unix.initialize () ;
+  Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
   msg_to_cmdliner (
     let* priv, id' = init_priv_id id in
     let* io = repo ~rw:(not dry) repodir in
