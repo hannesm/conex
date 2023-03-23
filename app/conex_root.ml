@@ -19,6 +19,24 @@ let status _ repodir anchors filename =
       ~ok:(fun (root, warn) ->
           List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
           Logs.app (fun m -> m "root file %a" Root.pp root) ;
+          (let keys_present =
+             M.fold (fun id _ s -> S.add id s) root.keys S.empty
+           and keys_used = Expression.local_keys root.valid
+           in
+           if S.equal keys_present keys_used then
+             ()
+           else
+             let present_not_used = S.diff keys_present keys_used
+             and used_not_present = S.diff keys_used keys_present
+             in
+             if not (S.is_empty present_not_used) then
+               Logs.warn (fun m -> m "keys %a are present but not used"
+                             Fmt.(list ~sep:(any ", ") string)
+                             (S.elements present_not_used));
+             if not (S.is_empty used_not_present) then
+               Logs.warn (fun m -> m "keys %a are used but not present"
+                             Fmt.(list ~sep:(any ", ") string)
+                             (S.elements used_not_present)));
           Result.fold
             ~error:(fun e ->
                 Logs.err (fun m -> m "couldn't verify root: %s" e) ;
