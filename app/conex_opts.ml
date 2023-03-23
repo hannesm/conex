@@ -17,6 +17,18 @@ module Keys = struct
     let doc = "Use a specific identity (not needed unless you have more than one identity)." in
     Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
 
+  let id_req =
+    let doc = "Identity." in
+    Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
+
+  let alg =
+    let doc = "Public key algorithm." in
+    Arg.(value & opt (enum [ ("rsa", `RSA) ]) `RSA & info ["algorithm"] ~docs ~doc)
+
+  let key_data =
+    let doc = "Public key data." in
+    Arg.(value & opt (some file) None & info ["key-data"] ~docs ~doc)
+
   let ignore_missing =
     let doc = "Non-strict verification mode.  Packages where no release is signed are ignored." in
     Arg.(value & flag & info [ "ignore-missing" ; "nostrict" ] ~doc)

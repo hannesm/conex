@@ -8,6 +8,29 @@ module IO = Conex_io
 
 let ( let* ) = Result.bind
 
+let check_root root =
+  let keys_present =
+    M.fold (fun id _ s -> S.add id s) root.Root.keys S.empty
+  and keys_used = Expression.local_keys root.valid
+  and q = match root.valid with Quorum (n, _) -> n | _ -> 0
+  in
+  if min (S.cardinal keys_used) (S.cardinal keys_present) < q then
+    Logs.warn (fun m -> m "root file with quorum greater than keys");
+  if S.equal keys_present keys_used then
+    ()
+  else
+    let present_not_used = S.diff keys_present keys_used
+    and used_not_present = S.diff keys_used keys_present
+    in
+    if not (S.is_empty present_not_used) then
+      Logs.warn (fun m -> m "keys %a are present but not used"
+                    Fmt.(list ~sep:(any ", ") string)
+                    (S.elements present_not_used));
+    if not (S.is_empty used_not_present) then
+      Logs.warn (fun m -> m "keys %a are used but not present"
+                    Fmt.(list ~sep:(any ", ") string)
+                    (S.elements used_not_present))
+
 let status _ repodir anchors filename =
   msg_to_cmdliner (
     let valid = valid anchors in
@@ -19,24 +42,7 @@ let status _ repodir anchors filename =
       ~ok:(fun (root, warn) ->
           List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
           Logs.app (fun m -> m "root file %a" Root.pp root) ;
-          (let keys_present =
-             M.fold (fun id _ s -> S.add id s) root.keys S.empty
-           and keys_used = Expression.local_keys root.valid
-           in
-           if S.equal keys_present keys_used then
-             ()
-           else
-             let present_not_used = S.diff keys_present keys_used
-             and used_not_present = S.diff keys_used keys_present
-             in
-             if not (S.is_empty present_not_used) then
-               Logs.warn (fun m -> m "keys %a are present but not used"
-                             Fmt.(list ~sep:(any ", ") string)
-                             (S.elements present_not_used));
-             if not (S.is_empty used_not_present) then
-               Logs.warn (fun m -> m "keys %a are used but not present"
-                             Fmt.(list ~sep:(any ", ") string)
-                             (S.elements used_not_present)));
+          check_root root ;
           Result.fold
             ~error:(fun e ->
                 Logs.err (fun m -> m "couldn't verify root: %s" e) ;
@@ -59,6 +65,50 @@ let create _ dry repodir force filename =
         (IO.read_root io filename)
     in
     Logs.app (fun m -> m "root file %a" Root.pp root') ;
+    IO.write_root io root')
+
+let add_key _ dry repodir quorum id alg data filename =
+  msg_to_cmdliner (
+    let* id = Option.to_result ~none:"Missing identity" id in
+    let* data = Option.to_result ~none:"Missing key data" data in
+    let* data = Conex_unix_persistency.read_file data in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let root' =
+      let key = (id, now, alg, data) in
+      let valid = match root.valid with
+        | Expression.Quorum (q, ks) ->
+          let q = Option.value ~default:q quorum in
+          let keys = Expression.(KS.add (Local id) ks) in
+          Expression.Quorum (q, keys)
+        | a -> a
+      in
+      { root with keys = M.add id key root.keys ; valid }
+    in
+    Logs.app (fun m -> m "root file %a" Root.pp root') ;
+    check_root root' ;
+    IO.write_root io root')
+
+let remove_key _ dry repodir quorum id filename =
+  msg_to_cmdliner (
+    let* id = Option.to_result ~none:"Missing identity" id in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let root' =
+      let keys = M.remove id root.keys in
+      let valid = match root.valid with
+        | Expression.Quorum (q, ks) ->
+          let q = Option.value ~default:q quorum in
+          let keys = Expression.(KS.remove (Local id) ks) in
+          Expression.Quorum (q, keys)
+        | a -> a
+      in
+      { root with keys ; valid }
+    in
+    Logs.app (fun m -> m "root file %a" Root.pp root') ;
+    check_root root' ;
     IO.write_root io root')
 
 let sign _ dry repodir id no_incr filename =
@@ -147,6 +197,30 @@ let create_cmd =
   in
   Cmd.v info term
 
+let add_key_cmd =
+  let doc = "add a key to the root file" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Adds a public key to the root file."]
+  in
+  let term =
+    Term.(ret Conex_opts.(const add_key $ setup_log $ Keys.dry $ Keys.repo $ Keys.quorum $ Keys.id_req $ Keys.alg $ Keys.key_data $ Keys.root))
+  and info = Cmd.info "add-key" ~doc ~man
+  in
+  Cmd.v info term
+
+let remove_key_cmd =
+  let doc = "remove a key from the root file" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Removes a public key from the root file."]
+  in
+  let term =
+    Term.(ret Conex_opts.(const remove_key $ setup_log $ Keys.dry $ Keys.repo $ Keys.quorum $ Keys.id_req $ Keys.root))
+  and info = Cmd.info "remove-key" ~doc ~man
+  in
+  Cmd.v info term
+
 let help_cmd =
   let topic =
     let doc = "The topic to get help on. `topics' lists the topics." in
@@ -154,7 +228,7 @@ let help_cmd =
   in
   Term.(ret Conex_opts.(const help $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Arg.man_format $ Term.choice_names $ topic))
 
-let cmds = [ status_cmd ; sign_cmd ; create_cmd ]
+let cmds = [ status_cmd ; sign_cmd ; create_cmd ; add_key_cmd ; remove_key_cmd ]
 
 let () =
   let doc = "Manage root file of a signed community repository" in
