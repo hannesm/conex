@@ -315,43 +315,67 @@ module ExprTests = struct
     Alcotest.(check string "hash is the new one" "123456" hash);
     Alcotest.(check string "epoch is the new one" "0x1" (Uint.to_string epoch))
 
-    let basic_eval_tests () =
-      let str = "expr: (0 [])" in
-      (match Expression.of_wire (wire_s str) with
-       | Error e -> Alcotest.fail e
-       | Ok expr ->
-         Alcotest.check Alcotest.bool "simplest expression"
-           true (Expression.eval expr Digest_map.empty S.empty)) ;
-      let str = "expr: a" in
-      (match Expression.of_wire (wire_s str) with
-       | Error e -> Alcotest.fail e
-       | Ok expr ->
-         Alcotest.check Alcotest.bool "simplest false expression"
-           false (Expression.eval expr Digest_map.empty S.empty)) ;
-      let str = "expr: (1 [ a ]) | (0 [])" in
-      (match Expression.of_wire (wire_s str) with
-       | Error e -> Alcotest.fail e
-       | Ok expr ->
-         Alcotest.check Alcotest.bool "simple or expression"
-           true (Expression.eval expr Digest_map.empty S.empty)) ;
-      let str = "expr: (0 []) | (1 [ a ])" in
-      (match Expression.of_wire (wire_s str) with
-       | Error e -> Alcotest.fail e
-       | Ok expr ->
-         Alcotest.check Alcotest.bool "simple or expression"
-           true (Expression.eval expr Digest_map.empty S.empty)) ;
-      let str = "expr: (1 [ a ]) & (1 [ b ])" in
-      (match Expression.of_wire (wire_s str) with
-       | Error e -> Alcotest.fail e
-       | Ok expr ->
-         Alcotest.check Alcotest.bool "simple and expression"
-           false (Expression.eval expr Digest_map.empty S.empty)) ;
-      let str = "expr: (0 []) & (0 [])" in
-      (match Expression.of_wire (wire_s str) with
-       | Error e -> Alcotest.fail e
-       | Ok expr ->
-         Alcotest.check Alcotest.bool "simple and expression with two times zero"
-           true (Expression.eval expr Digest_map.empty S.empty))
+  let local_keys_tests () =
+    let a = Expression.Quorum (1, Expression.KS.singleton (Expression.Local "a")) in
+    let b = Expression.Quorum (1, Expression.KS.singleton (Expression.Local "b")) in
+    let ab = Expression.Quorum (1, Expression.KS.of_list [ Expression.Local "a" ; Expression.Local "b" ]) in
+    let a_and_b = Expression.And (a, b) in
+    let a_or_b = Expression.Or (a, b) in
+    Alcotest.(check (list string) "local keys of a is good" ["a"]
+                (S.elements (Expression.local_keys a)));
+    Alcotest.(check (list string) "local keys of b is good" ["b"]
+                (S.elements (Expression.local_keys b)));
+    Alcotest.(check (list string) "local keys of ab is good" ["a" ; "b"]
+                (S.elements (Expression.local_keys ab)));
+    Alcotest.(check (list string) "local keys of a and b is good" ["a" ; "b"]
+                (S.elements (Expression.local_keys a_and_b)));
+    Alcotest.(check (list string) "local keys of a or b is good" ["a" ; "b"]
+                (S.elements (Expression.local_keys a_or_b)));
+    let ar = Expression.Quorum (1, Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcdef"), Uint.zero))) in
+    let ar_and_b = Expression.And (ar, b) in
+    let ar_or_b = Expression.Or (ar, b) in
+    Alcotest.(check (list string) "local keys of ar and b is good" ["b"]
+                (S.elements (Expression.local_keys ar_and_b)));
+    Alcotest.(check (list string) "local keys of ar or b is good" ["b"]
+                (S.elements (Expression.local_keys ar_or_b)))
+
+  let basic_eval_tests () =
+    let str = "expr: (0 [])" in
+    (match Expression.of_wire (wire_s str) with
+     | Error e -> Alcotest.fail e
+     | Ok expr ->
+       Alcotest.check Alcotest.bool "simplest expression"
+         true (Expression.eval expr Digest_map.empty S.empty)) ;
+    let str = "expr: a" in
+    (match Expression.of_wire (wire_s str) with
+     | Error e -> Alcotest.fail e
+     | Ok expr ->
+       Alcotest.check Alcotest.bool "simplest false expression"
+         false (Expression.eval expr Digest_map.empty S.empty)) ;
+    let str = "expr: (1 [ a ]) | (0 [])" in
+    (match Expression.of_wire (wire_s str) with
+     | Error e -> Alcotest.fail e
+     | Ok expr ->
+       Alcotest.check Alcotest.bool "simple or expression"
+         true (Expression.eval expr Digest_map.empty S.empty)) ;
+    let str = "expr: (0 []) | (1 [ a ])" in
+    (match Expression.of_wire (wire_s str) with
+     | Error e -> Alcotest.fail e
+     | Ok expr ->
+       Alcotest.check Alcotest.bool "simple or expression"
+         true (Expression.eval expr Digest_map.empty S.empty)) ;
+    let str = "expr: (1 [ a ]) & (1 [ b ])" in
+    (match Expression.of_wire (wire_s str) with
+     | Error e -> Alcotest.fail e
+     | Ok expr ->
+       Alcotest.check Alcotest.bool "simple and expression"
+         false (Expression.eval expr Digest_map.empty S.empty)) ;
+    let str = "expr: (0 []) & (0 [])" in
+    (match Expression.of_wire (wire_s str) with
+     | Error e -> Alcotest.fail e
+     | Ok expr ->
+       Alcotest.check Alcotest.bool "simple and expression with two times zero"
+         true (Expression.eval expr Digest_map.empty S.empty))
 
   let eval_test_1 () =
     let str = "expr: (1 [ rootA \"sha256=abcdef\" 0x0 ])" in
@@ -599,6 +623,7 @@ module ExprTests = struct
     "local tests", `Quick, local_tests ;
     "compare tests", `Quick, compare_tests ;
     "keys tests", `Quick, keys_tests ;
+    "local keys tests", `Quick, local_keys_tests ;
     "basic eval", `Quick, basic_eval_tests ;
     "eval test 1", `Quick, eval_test_1 ;
     "eval test 2", `Quick, eval_test_2 ;

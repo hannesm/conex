@@ -478,6 +478,19 @@ module Expression = struct
     | Or (a, b) -> Format.fprintf ppf "(%a | %a)" pp a pp b
   [@@coverage off]
 
+  let local_keys e =
+    let rec go s = function
+      | Quorum (_, keyrefs) ->
+        KS.fold
+          (fun keyref s -> match keyref with
+           | Local id -> S.add id s
+           | Remote _ -> s)
+          keyrefs s
+      | And (a, b) -> go (go s a) b
+      | Or (a, b) -> go (go s a) b
+    in
+    go S.empty e
+
   let rec keys m = function
     | Quorum (_, keyrefs) ->
       KS.fold

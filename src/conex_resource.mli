@@ -258,6 +258,8 @@ module Expression : sig
 
   val equal : t -> t -> bool
 
+  val local_keys : t -> S.t
+
   val keys : (Digest.t * Uint.t) M.t -> t -> (Digest.t * Uint.t) M.t
 
   val pp : t fmt
