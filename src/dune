@@ -2,4 +2,5 @@
   (name conex)
   (public_name conex)
   (wrapped false)
+  (instrumentation (backend bisect_ppx))
   (libraries opam-file-format))

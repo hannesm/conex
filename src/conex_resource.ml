@@ -1,29 +1,24 @@
 open Conex_utils
 
+let ( let* ) = Result.bind
 
 type name = string
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_name = Format.pp_print_string
-(*BISECT-IGNORE-END*)
+let pp_name = Format.pp_print_string [@@coverage off]
 
 let name_equal a b = String.compare_insensitive a b = 0
 
 
 type identifier = string
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_id = Format.pp_print_string
-(*BISECT-IGNORE-END*)
+let pp_id = Format.pp_print_string [@@coverage off]
 
 let id_equal a b = String.compare_insensitive a b = 0
 
 
 type timestamp = string
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_timestamp = Format.pp_print_string
-(*BISECT-IGNORE-END*)
+let pp_timestamp = Format.pp_print_string [@@coverage off]
 
 let timestamp_equal a b = String.compare a b = 0
 
@@ -41,7 +36,7 @@ module Wire = struct
     | Or of s * s
 
   let rec s_to_string = function
-    | Bigint x -> "0x" ^ Uint.to_string x
+    | Bigint x -> Uint.to_string x
     | Smallint i -> string_of_int i
     | Data s -> string_of_int (String.length s) ^ "'" ^ s
     | Identifier i -> i
@@ -61,9 +56,7 @@ module Wire = struct
 
   let to_string t = s_to_string (Map t)
 
-  let opt_err = function
-    | Some x -> Ok x
-    | None -> Error "expected some, got none"
+  let opt_err a = Option.to_result ~none:"expected some, got none" a
 
   let pdata = function
     | Data x -> Ok x
@@ -88,28 +81,36 @@ end
 
 type typ = [
   | `Root
+  | `Timestamp
+  | `Snapshot
   | `Targets
 ]
 
 let typ_equal a b = match a, b with
   | `Root, `Root
-  | `Targets, `Targets -> true
+  | `Timestamp, `Timestamp
+  | `Snapshot, `Snapshot   | `Targets, `Targets -> true
   | _ -> false
 
 let typ_to_string = function
   | `Root -> "root"
+  | `Timestamp -> "timestamp"
+  | `Snapshot -> "snapshot"
   | `Targets -> "targets"
 
 let string_to_typ = function
   | "root" -> Some `Root
+  | "timestamp" -> Some `Timestamp
+  | "snapshot" -> Some `Snapshot
   | "targets" -> Some `Targets
   | _ -> None
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_typ ppf typ = Format.pp_print_string ppf (typ_to_string typ)
-(*BISECT-IGNORE-END*)
+let pp_typ ppf typ =
+  Format.pp_print_string ppf (typ_to_string typ)
+[@@coverage off]
 
 let wire_typ typ = Wire.Identifier (typ_to_string typ)
+
 let typ_of_wire = function
   | Wire.Identifier str ->
     (match string_to_typ str with
@@ -123,12 +124,11 @@ type err = [
   | `Malformed
 ]
 
-(*BISECT-IGNORE-BEGIN*)
 let pp_err ppf = function
   | `Parse err -> Format.fprintf ppf "parse error %s" err
   | `Unknown_alg alg -> Format.fprintf ppf "unknown algorithm %s" alg
   | `Malformed -> Format.pp_print_string ppf "malformed"
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 module Header = struct
   type t = {
@@ -142,19 +142,19 @@ module Header = struct
 
   let of_wire data =
     let open Wire in
-    opt_err (M.find "version" data) >>= pint >>= fun version ->
-    opt_err (M.find "created" data) >>= pdata >>= fun created ->
-    opt_err (M.find "counter" data) >>= puint >>= fun counter ->
-    opt_err (M.find "epoch" data) >>= puint >>= fun epoch ->
-    opt_err (M.find "name" data) >>= pdata >>= fun name ->
-    opt_err (M.find "typ" data) >>= typ_of_wire >>= fun typ ->
+    let* version = Result.(join (map pint (opt_err (M.find "version" data)))) in
+    let* created = Result.(join (map pdata (opt_err (M.find "created" data)))) in
+    let* counter = Result.(join (map puint (opt_err (M.find "counter" data)))) in
+    let* epoch = Result.(join (map puint (opt_err (M.find "epoch" data)))) in
+    let* name = Result.(join (map pdata (opt_err (M.find "name" data)))) in
+    let* typ = Result.(join (map typ_of_wire (opt_err (M.find "typ" data)))) in
     Ok { version ; created ; counter ; epoch ; name ; typ }
 
-  (*BISECT-IGNORE-BEGIN*)
   let counter x epoch =
     "#" ^ (Uint.decimal x) ^
     (if Uint.compare epoch Uint.zero = 0 then ""
      else "[" ^ (Uint.decimal epoch) ^ "]")
+  [@@coverage off]
 
   let pp ppf hdr =
     Format.fprintf ppf "%a %a %s created %a"
@@ -162,7 +162,7 @@ module Header = struct
       pp_name hdr.name
       (counter hdr.counter hdr.epoch)
       pp_timestamp hdr.created
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let wire t =
     let open Wire in
@@ -177,10 +177,12 @@ module Header = struct
     match M.find "signed" map with
     | None -> Error "couldn't find signed part"
     | Some signed ->
-      Wire.pmap signed >>= fun signed ->
-      (match M.find "signatures" map with
-      | None -> Ok []
-      | Some sigs -> Wire.plist sigs) >>= fun sigs ->
+      let* signed = Wire.pmap signed in
+      let* sigs =
+        match M.find "signatures" map with
+        | None -> Ok []
+        | Some sigs -> Wire.plist sigs
+      in
       Ok (signed, sigs)
 
   let keys ?(header = true) additional map =
@@ -198,8 +200,10 @@ module Header = struct
                (String.concat ";" (S.elements have)) (String.concat ";" wanted))
 
   let check t v hdr =
-    guard (hdr.version = v)
-      (Printf.sprintf "expected data version #%d, found #%d" v hdr.version) >>= fun () ->
+    let* () =
+      guard (hdr.version = v)
+        (Printf.sprintf "expected data version #%d, found #%d" v hdr.version)
+    in
     guard (typ_equal t hdr.typ)
       (Printf.sprintf "expected resource type %s, found %s"
          (typ_to_string t) (typ_to_string hdr.typ))
@@ -228,9 +232,7 @@ module Digest = struct
       | Some hash -> Ok (hash, data)
       | None -> Error (`Unknown_alg alg)
 
-  (*BISECT-IGNORE-BEGIN*)
-  let pp ppf t = Format.pp_print_string ppf (to_string t)
-  (*BISECT-IGNORE-END*)
+  let pp ppf t = Format.pp_print_string ppf (to_string t) [@@coverage off]
 
   let of_wire = function
     | Wire.Data dgst -> of_string dgst
@@ -246,6 +248,7 @@ module Digest_map = struct
 
   let pp pp_e ppf t =
     iter (fun k v -> Format.fprintf ppf "%a -> %a@ " Digest.pp k pp_e v) t
+  [@@coverage off]
 end
 
 module Key = struct
@@ -262,12 +265,11 @@ module Key = struct
     id_equal id id' && timestamp_equal ts ts' &&
     alg_equal alg alg' && String.compare data data' = 0
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf (id, created, a, x) =
     Format.fprintf ppf "%a (created %a) %s key %d bytes"
       pp_id id pp_timestamp created
       (alg_to_string a) (String.length x)
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   (* stored persistently on disk inside Root and Targets *)
   let of_wire data =
@@ -329,11 +331,10 @@ module Signature = struct
     id_equal id id' && timestamp_equal ts ts' &&
     alg_equal alg alg' && String.compare data data' = 0
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf (id, created, alg, data) =
     Format.fprintf ppf "%s signature by %a (created %a), %d bytes"
       (alg_to_string alg) pp_id id pp_timestamp created (String.length data)
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   (* again stored on disk as part of other files *)
   let of_wire data =
@@ -400,12 +401,11 @@ module Expression = struct
       let compare = keyref_compare
     end)
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp_keyref ppf = function
     | Local id -> Format.fprintf ppf "local %a" pp_id id
     | Remote (id, digest, epoch) ->
       Format.fprintf ppf "remote %a %a %s" pp_id id Digest.pp digest (Uint.to_string epoch)
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let keyref_of_wire data =
     let open Wire in
@@ -413,7 +413,7 @@ module Expression = struct
     | Identifier id ->
       Ok (Local id)
     | List [ Identifier id ; digest ; Bigint epoch ] ->
-      Digest.of_wire digest >>= fun dgst ->
+      let* dgst = Digest.of_wire digest in
       Ok (Remote (id, dgst, epoch))
     | _ -> Error `Malformed
 
@@ -471,13 +471,25 @@ module Expression = struct
     | Or (a, b), Or (a', b') -> equal a a' && equal b b'
     | _ -> false
 
-  (*BISECT-IGNORE-BEGIN*)
   let rec pp ppf = function
     | Quorum (quorum, keys) ->
       Format.fprintf ppf "(%d %a)" quorum (pp_list pp_keyref) (KS.elements keys)
     | And (a, b) -> Format.fprintf ppf "(%a & %a)" pp a pp b
     | Or (a, b) -> Format.fprintf ppf "(%a | %a)" pp a pp b
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
+
+  let local_keys e =
+    let rec go s = function
+      | Quorum (_, keyrefs) ->
+        KS.fold
+          (fun keyref s -> match keyref with
+           | Local id -> S.add id s
+           | Remote _ -> s)
+          keyrefs s
+      | And (a, b) -> go (go s a) b
+      | Or (a, b) -> go (go s a) b
+    in
+    go S.empty e
 
   let rec keys m = function
     | Quorum (_, keyrefs) ->
@@ -490,9 +502,9 @@ module Expression = struct
              | Some (d', e') ->
                Format.printf "WARN: key %s already needed in (epoch %a, digest %a), now (epoch %a, digest %a) [selected higher epoch]\n"
                  id Uint.pp e' Digest.pp d' Uint.pp e Digest.pp d ;
-               if Uint.compare e' e > 0 then begin
+               if Uint.compare e e' > 0 then begin
                  Format.printf "WARN: replacing existing digest with newer epoch\n" ;
-                 M.add id (d', e') m
+                 M.add id (d, e) m
                end else
                  m)
         keyrefs m
@@ -508,13 +520,16 @@ module Expression = struct
       | Error e -> Error (str_pp pp_err e)
     in
     let multi ws =
-      foldM (fun acc k -> single k >>= fun kr -> Ok (KS.union kr acc))
+      foldM (fun acc k ->
+          let* kr = single k in
+          Ok (KS.union kr acc))
         KS.empty ws
     in
     function
     | Wire.Pair (i, s) ->
-      Wire.pint i >>= fun i ->
-      begin match s with
+      let* i = Wire.pint i in
+      let* keyrefs =
+        match s with
         | Wire.List [] -> Ok KS.empty
         | Wire.List (Wire.List _ :: _ as keyrefs) -> multi keyrefs
         | Wire.Identifier _ -> single s
@@ -522,17 +537,24 @@ module Expression = struct
         | Wire.List (Wire.Identifier _ :: Wire.Data _ :: _) -> single s
         | Wire.List (Wire.Identifier _ :: _ as ids) -> multi ids
         | _ -> Error "malformed"
-      end >>= fun keyrefs ->
-      guard (i <= KS.cardinal keyrefs) ("insufficient keys for quorum") >>= fun () ->
+      in
+      let* () =
+        guard (i <= KS.cardinal keyrefs) ("insufficient keys for quorum")
+      in
       Ok (Quorum (i, keyrefs))
     | Wire.And (a, b) ->
-      of_wire a >>= fun a -> of_wire b >>= fun b -> Ok (And (a, b))
+      let* a = of_wire a in
+      let* b = of_wire b in
+      Ok (And (a, b))
     | Wire.Or (a, b) ->
-      of_wire a >>= fun a -> of_wire b >>= fun b -> Ok (Or (a, b))
+      let* a = of_wire a in
+      let* b = of_wire b in
+      Ok (Or (a, b))
     (* short of Quorum (1, [ x ]) is just x *)
     | Wire.Identifier _
     | Wire.List (Wire.Identifier _ :: _) as e ->
-      single e >>= fun ks -> Ok (Quorum (1, ks))
+      let* ks = single e in
+      Ok (Quorum (1, ks))
     | _ -> Error "malformed"
 
   let rec to_wire = function
@@ -552,23 +574,25 @@ module Expression = struct
     in
     let rec to_hash = function
       | And (a, b) ->
-        to_hash a >>= fun ha ->
-        to_hash b >>= fun hb ->
+        let* ha = to_hash a in
+        let* hb = to_hash b in
         Ok ("(" ^ ha ^ "&" ^ hb ^ ")")
       | Or (a, b) ->
-        to_hash a >>= fun ha ->
-        to_hash b >>= fun hb ->
+        let* ha = to_hash a in
+        let* hb = to_hash b in
         Ok ("(" ^ ha ^ "|" ^ hb ^ ")")
       | Quorum (1, s) when KS.cardinal s = 1 ->
         map (KS.choose s)
       | Quorum (n, s) ->
-        foldM (fun acc kr ->
-            map kr >>= fun s ->
+        let* ks =
+          foldM (fun acc kr ->
+            let* s = map kr in
             Ok (s :: acc))
-          [] (KS.elements s) >>= fun ks ->
+            [] (KS.elements s)
+        in
         Ok ("(" ^ string_of_int n ^ "[" ^ String.concat "," ks ^ "])")
     in
-    to_hash expr >>= fun s ->
+    let* s = to_hash expr in
     Ok (f s)
 
   let rec eval t keys sigs =
@@ -592,7 +616,46 @@ end
 module Root = struct
   let version = 1
 
-  let supported_roles = [ "timestamp" ; "snapshot" ; "maintainer" ]
+  type role = [
+    | `Timestamp
+    | `Snapshot
+    | `Maintainer
+  ]
+
+  let role_compare a b = match a, b with
+    | `Timestamp, `Timestamp -> 0 | `Timestamp, _ -> -1 | _, `Timestamp -> 1
+    | `Snapshot, `Snapshot -> 0 | `Snapshot, _ -> -1 | _, `Snapshot -> 1
+    | `Maintainer, `Maintainer -> 0
+
+  let role_to_string = function
+    | `Timestamp -> "timestamp"
+    | `Snapshot -> "snapshot"
+    | `Maintainer -> "maintainer"
+
+  let string_to_role = function
+    | "timestamp" -> Some `Timestamp
+    | "snapshot" -> Some `Snapshot
+    | "maintainer" -> Some `Maintainer
+    | _ -> None
+
+  let pp_role ppf role =
+    Format.pp_print_string ppf (role_to_string role)
+  [@@coverage off]
+
+  module RM = struct
+    include Map.Make (struct
+        type t = role
+        let compare (a : t) (b : t) = role_compare a b
+      end)
+
+    let find k m = try Some (find k m) with Not_found -> None
+
+    let pp pp_e ppf m =
+      iter (fun k v -> Format.fprintf ppf "%a -> %a@ " pp_role k pp_e v) m
+    [@@coverage off]
+  end
+
+  let supported_roles = [ `Timestamp ; `Snapshot ; `Maintainer ]
 
   type t = {
     created : timestamp ;
@@ -603,20 +666,19 @@ module Root = struct
     keydir : path ;
     keys : Key.t M.t ;
     valid : Expression.t ;
-    roles : Expression.t M.t ;
+    roles : Expression.t RM.t ;
     signatures : Signature.t M.t ;
   }
 
   let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(name = "root")
       ?(datadir = [ "packages" ]) ?(keydir = [ "keys" ]) ?(keys = M.empty)
-      ?(roles = M.empty) ?(signatures = M.empty) created valid  =
+      ?(roles = RM.empty) ?(signatures = M.empty) created valid  =
     { created ; counter ; epoch ; name ; datadir ; keydir ; keys ; roles ; signatures ; valid }
 
   let add_signature t id s =
     let signatures = M.add id s t.signatures in
     { t with signatures }
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf
       "root %s (created %a), datadir %a keydir %a@.@valid %a@.[<2>keys %a@]@.@[<2>roles %a@]@.@[<2> signatures %a@]"
@@ -625,36 +687,49 @@ module Root = struct
       pp_path t.datadir pp_path t.keydir
       Expression.pp t.valid
       (M.pp Key.pp) t.keys
-      (M.pp Expression.pp) t.roles
+      (RM.pp Expression.pp) t.roles
       (M.pp Signature.pp) t.signatures
-  (*BISECT-IGNORE-END*)
-
-  let safe_role s = guard (String.is_ascii s) ("invalid role")
+  [@@coverage off]
 
   let of_wire data =
-    Header.split_signed data >>= fun (signed, sigs) ->
+    let* signed, sigs = Header.split_signed data in
     let keys = [ "datadir" ; "keydir" ; "keys" ; "roles" ; "valid" ] in
-    Header.keys keys signed >>= fun () ->
-    Header.of_wire signed >>= fun h ->
-    Header.check `Root version h >>= fun () ->
+    let* () = Header.keys keys signed in
+    let* h = Header.of_wire signed in
+    let* () = Header.check `Root version h in
     let open Wire in
-    opt_err (M.find "datadir" signed) >>= pdata >>= string_to_path >>= fun datadir ->
-    opt_err (M.find "keydir" signed) >>= pdata >>= string_to_path >>= fun keydir ->
-    opt_err (M.find "keys" signed) >>= plist >>= Key.many_of_wire >>= fun (keys, w) ->
-    opt_err (M.find "roles" signed) >>= pmap >>= fun roles ->
-    opt_err (M.find "valid" signed) >>= Expression.of_wire >>= fun valid ->
-    Header.keys ~header:false supported_roles roles >>= fun () ->
-    M.fold (fun k v acc ->
-        acc >>= fun (map, msgs) ->
-        safe_role k >>= fun () ->
-        Expression.of_wire v >>= fun expr ->
-        if M.mem k map then begin
-          let msg = "roles with name " ^ k ^ " already present, ignoring" in
-          Ok (map, msg :: msgs)
-        end else
-          Ok (M.add k expr map, msgs))
-      roles (Ok (M.empty, [])) >>= fun (roles, w') ->
-    Signature.many_of_wire sigs >>= fun (signatures, w'') ->
+    let* datadir =
+      Result.(join (map string_to_path
+                      (join (map pdata (opt_err (M.find "datadir" signed))))))
+    in
+    let* keydir =
+      Result.(join (map string_to_path
+                      (join (map pdata (opt_err (M.find "keydir" signed))))))
+    in
+    let* keys, w =
+      Result.(join (map Key.many_of_wire
+                      (join (map plist (opt_err (M.find "keys" signed))))))
+    in
+    let* roles = Result.(join (map pmap (opt_err (M.find "roles" signed)))) in
+    let* valid =
+      Result.(join (map Expression.of_wire (opt_err (M.find "valid" signed))))
+    in
+    let* () =
+      Header.keys ~header:false (List.map role_to_string supported_roles) roles
+    in
+    let* roles, w' =
+      M.fold (fun k v acc ->
+          let* map, msgs = acc in
+          let* role = Option.to_result ~none:"invalid role" (string_to_role k) in
+          let* expr = Expression.of_wire v in
+          if RM.mem role map then begin
+            let msg = "roles with name " ^ k ^ " already present, ignoring" in
+            Ok (map, msg :: msgs)
+          end else
+            Ok (RM.add role expr map, msgs))
+        roles (Ok (RM.empty, []))
+    in
+    let* signatures, w'' = Signature.many_of_wire sigs in
     let warns = w @ w' @ w'' in
     Ok ({ created = h.Header.created ; counter = h.Header.counter ;
           epoch = h.Header.epoch ; name = h.Header.name ;
@@ -670,7 +745,7 @@ module Root = struct
     in
     let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
     let roles =
-      M.fold (fun k v acc -> M.add k (Expression.to_wire v) acc) t.roles M.empty
+      RM.fold (fun k v acc -> M.add (role_to_string k) (Expression.to_wire v) acc) t.roles M.empty
     in
     M.add "datadir" (Data (path_to_string t.datadir))
       (M.add "keydir" (Data (path_to_string t.keydir))
@@ -687,9 +762,7 @@ module Root = struct
 end
 
 module Delegation = struct
-  (* TODO paths should be a path set!
-     - of_wire should pick a default for terminating, and make its orccurence optional
- *)
+  (* TODO paths should be a path set! *)
   type t = {
     paths : path list ;
     valid : Expression.t ;
@@ -702,27 +775,40 @@ module Delegation = struct
     Expression.equal a.valid b.valid &&
     a.terminating = b.terminating
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "delegation (terminating %b) paths %a@.keys %a@."
       t.terminating
       (pp_list pp_path) t.paths
       Expression.pp t.valid
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire wire =
     let open Wire in
-    pmap wire >>= fun delegation ->
-    Header.keys ~header:false [ "paths" ; "valid" ; "terminating" ] delegation >>= fun () ->
-    opt_err (M.find "paths" delegation) >>= plist >>= fun paths ->
-    opt_err (M.find "valid" delegation) >>= Expression.of_wire >>= fun valid ->
-    (match M.find "terminating" delegation with
-     | None -> Ok true
-     | Some x -> pdata x >>= function
-       | "true" | "yes" -> Ok true
-       | "false" | "no" -> Ok false
-       | x -> Error ("unkown value for terminating " ^ x)) >>= fun terminating ->
-    foldM (fun acc p -> pdata p >>= string_to_path >>= fun s -> Ok (s :: acc)) [] paths >>= fun paths ->
+    let* delegation = pmap wire in
+    let* () =
+      Header.keys ~header:false [ "paths" ; "valid" ; "terminating" ] delegation
+    in
+    let* paths =
+      Result.(join (map plist (opt_err (M.find "paths" delegation))))
+    in
+    let* valid =
+      Result.(join (map Expression.of_wire (opt_err (M.find "valid" delegation))))
+    in
+    let* terminating =
+      match M.find "terminating" delegation with
+      | None -> Ok true
+      | Some x ->
+        let* r = pdata x in
+        match r with
+        | "true" | "yes" -> Ok true
+        | "false" | "no" -> Ok false
+        | x -> Error ("unkown value for terminating " ^ x)
+    in
+    let* paths =
+      foldM (fun acc p ->
+          let* s = Result.(join (map string_to_path (pdata p))) in
+          Ok (s :: acc)) [] paths
+    in
     let paths = List.rev paths in
     Ok { paths ; valid ; terminating }
 
@@ -749,13 +835,12 @@ module Target = struct
     List.length t.digest = List.length t'.digest &&
     List.for_all (fun d -> List.exists (Digest.equal d) t'.digest) t.digest
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "%a (%s bytes) %a"
       pp_path t.filename
       (Uint.decimal t.size)
       (pp_list Digest.pp) t.digest
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let valid_opam_path t =
     (* this is an opam repository side condition:
@@ -770,18 +855,27 @@ module Target = struct
 
   let of_wire wire =
     let open Wire in
-    pmap wire >>= fun target ->
-    Header.keys ~header:false [ "filename" ; "digest" ; "size" ] target >>= fun () ->
-    opt_err (M.find "filename" target) >>= pdata >>= string_to_path >>= fun filename ->
-    opt_err (M.find "size" target) >>= puint >>= fun size ->
-    opt_err (M.find "digest" target) >>= plist >>= fun digest ->
-    foldM (fun acc d -> match Digest.of_wire d with
-        | Ok d -> Ok (d :: acc)
-        | Error (`Unknown_alg a) -> (* TODO *)
-          Printf.printf "WARN: ignoring unknown digest algorithm %s\n" a ;
-          Ok acc
-        | Error e -> Error (str_pp pp_err e))
-      [] digest >>= fun digest ->
+    let* target = pmap wire in
+    let* () =
+      Header.keys ~header:false [ "filename" ; "digest" ; "size" ] target
+    in
+    let* filename =
+      Result.(join (map string_to_path
+                      (join (map pdata (opt_err (M.find "filename" target))))))
+    in
+    let* size = Result.(join (map puint (opt_err (M.find "size" target)))) in
+    let* digest =
+      Result.(join (map plist (opt_err (M.find "digest" target))))
+    in
+    let* digest =
+      foldM (fun acc d -> match Digest.of_wire d with
+          | Ok d -> Ok (d :: acc)
+          | Error (`Unknown_alg a) -> (* TODO *)
+            Printf.printf "WARN: ignoring unknown digest algorithm %s\n" a ;
+            Ok acc
+          | Error e -> Error (str_pp pp_err e))
+        [] digest
+    in
     let digest = List.rev digest in
     Ok { filename ; size ; digest }
 
@@ -794,6 +888,188 @@ module Target = struct
               M.empty))
     in
     Map map
+end
+
+module Timestamp = struct
+  let version = 0
+
+  type t = {
+    created : timestamp ;
+    counter : Uint.t ;
+    epoch : Uint.t ;
+    name : identifier ;
+    keys : Key.t M.t ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
+  }
+
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(keys = M.empty)
+    ?(targets = []) ?(signatures = M.empty) created name =
+    { created ; counter ; epoch ; name ; keys ; targets ; signatures }
+
+  let equal t t' =
+    timestamp_equal t.created t'.created &&
+    Uint.compare t.counter t'.counter = 0 &&
+    Uint.compare t.epoch t'.epoch = 0 &&
+    name_equal t.name t'.name &&
+    M.equal Key.equal t.keys t'.keys &&
+    List.length t.targets = List.length t'.targets &&
+    List.for_all (fun t -> List.exists (Target.equal t) t'.targets) t.targets &&
+    M.equal Signature.equal t.signatures t'.signatures
+
+  let add_signature t id s =
+    let signatures = M.add id s t.signatures in
+    { t with signatures }
+
+  let pp ppf t =
+    Format.fprintf ppf "timestamp %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
+      pp_name t.name
+      (Header.counter t.counter t.epoch)
+      pp_timestamp t.created
+      (M.pp Key.pp) t.keys
+      (pp_list Target.pp) t.targets
+      (M.pp Signature.pp) t.signatures
+  [@@coverage off]
+
+  let of_wire data =
+    let* signed, sigs = Header.split_signed data in
+    let keys = [ "keys" ; "targets" ] in
+    let* () = Header.keys keys signed in
+    let* h = Header.of_wire signed in
+    let* () = Header.check `Timestamp version h in
+    let open Wire in
+    let* keys, w =
+      match M.find "keys" signed with
+      | None -> Ok (M.empty, [])
+      | Some keys -> Result.(join (map Key.many_of_wire (plist keys)))
+    in
+    let* targets =
+      Result.(join (map plist (opt_err (M.find "targets" signed))))
+    in
+    (* preserve order! *)
+    let* targets =
+      foldM (fun acc t ->
+          let* t = Target.of_wire t in
+          Ok (t :: acc))
+        [] targets
+    in
+    let targets = List.rev targets in
+    let* signatures, w' = Signature.many_of_wire sigs in
+    let warn = w @ w' in
+    Ok ({ created = h.Header.created ; counter = h.Header.counter ;
+          epoch = h.Header.epoch ; name = h.Header.name ;
+          keys ; targets ; signatures }, warn)
+
+
+  let wire_raw t =
+    let open Wire in
+    let created = t.created
+    and counter = t.counter
+    and epoch = t.epoch
+    and name = t.name
+    and typ = `Targets
+    in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
+    M.add "keys" (List (M.fold (fun _ key acc -> Key.wire_raw key :: acc) t.keys []))
+      (M.add "targets" (List (List.map Target.wire_raw t.targets))
+         (Header.wire header))
+
+  let wire t =
+    let open Wire in
+    M.add "signed" (Map (wire_raw t))
+      (M.add "signatures" (List (M.fold (fun _ s acc -> Signature.wire_raw s :: acc) t.signatures []))
+         M.empty)
+end
+
+module Snapshot = struct
+  let version = 0
+
+  type t = {
+    created : timestamp ;
+    counter : Uint.t ;
+    epoch : Uint.t ;
+    name : identifier ;
+    keys : Key.t M.t ;
+    targets : Target.t list ;
+    signatures : Signature.t M.t ;
+  }
+
+  let t ?(counter = Uint.zero) ?(epoch = Uint.zero) ?(keys = M.empty)
+    ?(targets = []) ?(signatures = M.empty) created name =
+    { created ; counter ; epoch ; name ; keys ; targets ; signatures }
+
+  let equal t t' =
+    timestamp_equal t.created t'.created &&
+    Uint.compare t.counter t'.counter = 0 &&
+    Uint.compare t.epoch t'.epoch = 0 &&
+    name_equal t.name t'.name &&
+    M.equal Key.equal t.keys t'.keys &&
+    List.length t.targets = List.length t'.targets &&
+    List.for_all (fun t -> List.exists (Target.equal t) t'.targets) t.targets &&
+    M.equal Signature.equal t.signatures t'.signatures
+
+  let add_signature t id s =
+    let signatures = M.add id s t.signatures in
+    { t with signatures }
+
+  let pp ppf t =
+    Format.fprintf ppf "snapshot %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
+      pp_name t.name
+      (Header.counter t.counter t.epoch)
+      pp_timestamp t.created
+      (M.pp Key.pp) t.keys
+      (pp_list Target.pp) t.targets
+      (M.pp Signature.pp) t.signatures
+  [@@coverage off]
+
+  let of_wire data =
+    let* signed, sigs = Header.split_signed data in
+    let keys = [ "keys" ; "targets" ] in
+    let* () = Header.keys keys signed in
+    let* h = Header.of_wire signed in
+    let* () = Header.check `Snapshot version h in
+    let open Wire in
+    let* keys, w =
+      match M.find "keys" signed with
+      | None -> Ok (M.empty, [])
+      | Some keys -> Result.(join (map Key.many_of_wire (plist keys)))
+    in
+    let* targets =
+      Result.(join (map plist (opt_err (M.find "targets" signed))))
+    in
+    (* preserve order! *)
+    let* targets =
+      foldM (fun acc t ->
+          let* t = Target.of_wire t in
+          Ok (t :: acc))
+        [] targets
+    in
+    let targets = List.rev targets in
+    let* signatures, w' = Signature.many_of_wire sigs in
+    let warn = w @ w' in
+    Ok ({ created = h.Header.created ; counter = h.Header.counter ;
+          epoch = h.Header.epoch ; name = h.Header.name ;
+          keys ; targets ; signatures }, warn)
+
+
+  let wire_raw t =
+    let open Wire in
+    let created = t.created
+    and counter = t.counter
+    and epoch = t.epoch
+    and name = t.name
+    and typ = `Targets
+    in
+    let header = { Header.version ; created ; counter ; epoch ; name ; typ } in
+    M.add "keys" (List (M.fold (fun _ key acc -> Key.wire_raw key :: acc) t.keys []))
+      (M.add "targets" (List (List.map Target.wire_raw t.targets))
+         (Header.wire header))
+
+  let wire t =
+    let open Wire in
+    M.add "signed" (Map (wire_raw t))
+      (M.add "signatures" (List (M.fold (fun _ s acc -> Signature.wire_raw s :: acc) t.signatures []))
+         M.empty)
 end
 
 module Targets = struct
@@ -833,7 +1109,6 @@ module Targets = struct
     List.for_all (fun t -> List.exists (Target.equal t) t'.targets) t.targets &&
     M.equal Signature.equal t.signatures t'.signatures
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp ppf t =
     Format.fprintf ppf "targets %a %s (created %a)@.@[<2>keys %a@]@.@[<2>valid %a@]@.@[<2>delegations %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
       pp_name t.name
@@ -844,27 +1119,45 @@ module Targets = struct
       (pp_list Delegation.pp) t.delegations
       (pp_list Target.pp) t.targets
       (M.pp Signature.pp) t.signatures
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let of_wire data =
-    Header.split_signed data >>= fun (signed, sigs) ->
+    let* signed, sigs = Header.split_signed data in
     let keys = [ "keys" ; "valid" ; "delegations" ; "targets" ] in
-    Header.keys keys signed >>= fun () ->
-    Header.of_wire signed >>= fun h ->
-    Header.check `Targets version h >>= fun () ->
+    let* () = Header.keys keys signed in
+    let* h = Header.of_wire signed in
+    let* () = Header.check `Targets version h in
     let open Wire in
-    (match M.find "keys" signed with
-     | None -> Ok (M.empty, [])
-     | Some keys -> plist keys >>= Key.many_of_wire) >>= fun (keys, w) ->
-    opt_err (M.find "valid" signed) >>= Expression.of_wire >>= fun valid ->
-    opt_err (M.find "delegations" signed) >>= plist >>= fun delegations ->
-    opt_err (M.find "targets" signed) >>= plist >>= fun targets ->
+    let* keys, w =
+      match M.find "keys" signed with
+      | None -> Ok (M.empty, [])
+      | Some keys -> Result.(join (map Key.many_of_wire (plist keys)))
+    in
+    let* valid =
+      Result.(join (map Expression.of_wire (opt_err (M.find "valid" signed))))
+    in
+    let* delegations =
+      Result.(join (map plist (opt_err (M.find "delegations" signed))))
+    in
+    let* targets =
+      Result.(join (map plist (opt_err (M.find "targets" signed))))
+    in
     (* preserve order! *)
-    foldM (fun acc d -> Delegation.of_wire d >>= fun d -> Ok (d :: acc)) [] delegations >>= fun delegations ->
+    let* delegations =
+      foldM (fun acc d ->
+          let* d = Delegation.of_wire d in
+          Ok (d :: acc))
+        [] delegations
+    in
     let delegations = List.rev delegations in
-    foldM (fun acc t -> Target.of_wire t >>= fun t -> Ok (t :: acc)) [] targets >>= fun targets ->
+    let* targets =
+      foldM (fun acc t ->
+          let* t = Target.of_wire t in
+          Ok (t :: acc))
+        [] targets
+    in
     let targets = List.rev targets in
-    Signature.many_of_wire sigs >>= fun (signatures, w') ->
+    let* signatures, w' = Signature.many_of_wire sigs in
     let warn = w @ w' in
     Ok ({ created = h.Header.created ; counter = h.Header.counter ;
           epoch = h.Header.epoch ; name = h.Header.name ;

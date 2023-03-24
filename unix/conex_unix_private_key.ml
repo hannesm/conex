@@ -1,6 +1,8 @@
 open Conex_utils
 open Conex_unix_persistency
 
+let ( let* ) = Result.bind
+
 let private_dir = Filename.concat (Sys.getenv "HOME") ".conex"
 
 let private_s = "private"
@@ -31,17 +33,20 @@ let backup id filename =
         let nam = backup ^ "." ^ string_of_int n in
         if exists nam then inc (succ n) else Ok nam
     in
-    (if exists backup then inc 0 else Ok backup) >>= fun backup ->
+    let* backup = if exists backup then inc 0 else Ok backup in
     rename filename backup
   end else
     Ok ()
 
 let write id key =
   let filename = private_key_path id in
-  backup id filename >>= fun () ->
-  (if not (exists private_dir) then
-     mkdir ~mode:0o700 private_dir
-   else Ok ()) >>= fun () ->
+  let* () = backup id filename in
+  let* () =
+    if not (exists private_dir) then
+      mkdir ~mode:0o700 private_dir
+    else
+      Ok ()
+  in
   match file_type private_dir with
   | Ok Directory -> write_file ~mode:0o400 filename key
   | _ -> Error (private_dir ^ " is not a directory!")
@@ -49,7 +54,7 @@ let write id key =
 let read to_ts id =
   let fn = private_key_path id in
   if exists fn then
-    read_file fn >>= fun key ->
+    let* key = read_file fn in
     let stat = Unix.stat fn in
     match to_ts stat.Unix.st_mtime with
     | None -> Error ("couldn't convert modification time to Uint.t")

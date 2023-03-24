@@ -2,4 +2,5 @@
   (name conex_mirage_crypto)
   (public_name conex-mirage-crypto)
   (wrapped false)
+  (instrumentation (backend bisect_ppx))
   (libraries conex x509 mirage-crypto mirage-crypto-pk base64 cstruct))

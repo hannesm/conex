@@ -3,6 +3,8 @@ open Conex_resource
 
 module OpamParserTypes = OpamParserTypes.FullPos
 
+let ( let* ) = Result.bind
+
 let np pelem =
   let pos = OpamParserTypes.{ filename = ""; start = (0, 0); stop = (0, 0) } in
   OpamParserTypes.{ pelem; pos }
@@ -25,7 +27,7 @@ let rec encode_s x =
       | Wire.List l -> OpamParserTypes.List (np (List.map encode_s l))
       | Wire.Identifier i -> OpamParserTypes.Ident i
       | Wire.Data s -> OpamParserTypes.String s
-      | Wire.Bigint i -> OpamParserTypes.Ident ("0x" ^ Uint.to_string i)
+      | Wire.Bigint i -> OpamParserTypes.Ident (Uint.to_string i)
       | Wire.Smallint i -> OpamParserTypes.Int i
       | Wire.Pair (i, s) -> OpamParserTypes.Group (np [ encode_s i ; encode_s s ])
       | Wire.And (a, b) -> OpamParserTypes.Logop (np `And, encode_s a, encode_s b)
@@ -61,54 +63,61 @@ let rec decode_s s =
            [{ OpamParserTypes.pelem = OpamParserTypes.Ident _; _} ; _]; _}; _} -> true
       | _ -> false
     in
-    if List.for_all is_pair l then begin
-      List.fold_left (fun m xs ->
-          m >>= fun m ->
-          match xs.OpamParserTypes.pelem with
-            OpamParserTypes.List { OpamParserTypes.pelem =
-                [{ OpamParserTypes.pelem =  OpamParserTypes.Ident (k); _} ; v ]; _} ->
-            (decode_s v >>= fun v -> Ok (M.add (String.trim k) v m))
-          | _ -> Error "can not happen")
-        (Ok M.empty) l >>= fun map ->
+    if List.for_all is_pair l then
+      let* map =
+        List.fold_left (fun m xs ->
+            let* m = m in
+            match xs.OpamParserTypes.pelem with
+              OpamParserTypes.List { OpamParserTypes.pelem =
+                                       [{ OpamParserTypes.pelem = OpamParserTypes.Ident (k); _} ; v ]; _} ->
+              let* v = decode_s v in
+              Ok (M.add (String.trim k) v m)
+            | _ -> Error "can not happen")
+          (Ok M.empty) l
+      in
       Ok (Wire.Map map)
-    end else
-      List.fold_left (fun xs s ->
-          xs >>= fun xs ->
-          decode_s s >>= fun x ->
-          Ok (x :: xs))
-          (Ok []) l >>= fun xs ->
+    else
+      let* xs =
+        List.fold_left (fun xs s ->
+            let* xs = xs in
+            let* x = decode_s s in
+            Ok (x :: xs))
+          (Ok []) l
+      in
       Ok (Wire.List (List.rev xs))
   | OpamParserTypes.Int i -> Ok (Wire.Smallint i)
   | OpamParserTypes.Group { OpamParserTypes.pelem =
        [{ OpamParserTypes.pelem = OpamParserTypes.Logop (op, a, b); _}]; _} ->
-    decode_s a >>= fun a ->
-    decode_s b >>= fun b ->
+    let* a = decode_s a in
+    let* b = decode_s b in
     begin match op.OpamParserTypes.pelem with
       | `And -> Ok (Wire.And (a, b))
       | `Or -> Ok (Wire.Or (a, b))
     end
   | OpamParserTypes.Logop (op, a, b) ->
-    decode_s a >>= fun a ->
-    decode_s b >>= fun b ->
+    let* a = decode_s a in
+    let* b = decode_s b in
     begin match op.OpamParserTypes.pelem with
       | `And -> Ok (Wire.And (a, b))
       | `Or -> Ok (Wire.Or (a, b))
     end
   | OpamParserTypes.Group { OpamParserTypes.pelem = [a ; f]; _} ->
-    decode_s a >>= fun a ->
-    decode_s f >>= fun f ->
+    let* a = decode_s a in
+    let* f = decode_s f in
     Ok (Wire.Pair (a, f))
   | _ -> Error "unexpected thing while decoding"
 
 let decode data =
-  (try Ok (OpamParser.FullPos.string data "noname") with
-     Parsing.Parse_error -> Error "parse error") >>= fun file ->
+  let* file =
+    try Ok (OpamParser.FullPos.string data "noname") with
+      Parsing.Parse_error -> Error "parse error"
+  in
   let items = file.OpamParserTypes.file_contents in
   List.fold_left (fun acc v ->
-      acc >>= fun acc ->
+      let* acc = acc in
       match v.OpamParserTypes.pelem with
       | OpamParserTypes.Section _ -> Error "unexpected section"
       | OpamParserTypes.Variable (k, v) ->
-        decode_s v >>= fun v ->
+        let* v = decode_s v in
         Ok (M.add k.OpamParserTypes.pelem v acc))
     (Ok M.empty) items

@@ -18,6 +18,7 @@ let pp_hunk ppf hunk =
   Format.fprintf ppf "@@@@ -%d,%d +%d,%d @@@@\n%s"
     hunk.mine_start hunk.mine_len hunk.their_start hunk.their_len
     (unified_diff hunk)
+[@@coverage off]
 
 let take data num =
   let rec take0 num data acc =
@@ -164,6 +165,7 @@ let pp_operation ~git ppf op =
     hdr old_name new_name ;
     Format.fprintf ppf "rename from %s\n" old_name;
     Format.fprintf ppf "rename to %s\n" new_name
+[@@coverage off]
 
 type t = {
   operation : operation ;
@@ -175,6 +177,7 @@ type t = {
 let pp ~git ppf t =
   pp_operation ~git ppf t.operation ;
   List.iter (pp_hunk ppf) t.hunks
+[@@coverage off]
 
 let operation_of_strings git mine their =
   let get_filename_opt n =
@@ -255,9 +258,10 @@ let patch filedata diff =
 
 (* TODO which equality to use here? is = ok? *)
 let ids root keydir diffs =
+  let ( let* ) = Result.bind in
   List.fold_left (fun acc diff ->
       let add_name name (r, ids) =
-        string_to_path name >>= fun path ->
+        let* path = string_to_path name in
         if subpath ~parent:keydir path then
           (* TODO according to here, keydir must be flat! *)
           match List.rev path with
@@ -267,8 +271,10 @@ let ids root keydir diffs =
           | [ x ] when x = root -> Ok (true, ids)
           | _ -> Ok (r, ids)
       in
-      acc >>= fun (r, ids) ->
+      let* r, ids = acc in
       match diff.operation with
       | Create a | Delete a | Edit a -> add_name a (r, ids)
-      | Rename (a, b) | Rename_only (a, b) -> add_name a (r, ids) >>= add_name b)
+      | Rename (a, b) | Rename_only (a, b) ->
+        let* ids' = add_name a (r, ids) in
+        add_name b ids')
     (Ok (false, S.empty)) diffs

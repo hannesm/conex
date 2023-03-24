@@ -6,21 +6,24 @@ homepage: "https://github.com/hannesm/conex"
 doc: "https://hannesm.github.io/conex/doc"
 bug-reports: "https://github.com/hannesm/conex/issues"
 depends: [
-  "ocaml" {>= "4.08.0"}
-  "dune"
+  "ocaml" {>= "4.13.0"}
+  "dune" {>= "2.7"}
   "alcotest" {with-test}
+  "bisect_ppx" {dev & >= "2.5.0"}
   "cmdliner" {>= "1.1.0"}
   "conex" {= version}
   "cstruct" {>= "6.0.0"}
   "mirage-crypto"
   "mirage-crypto-pk"
-  "mirage-crypto-rng"
-  "x509" {>= "0.7.0"}
+  "mirage-crypto-rng" {>= "0.11.0"}
+  "x509" {>= "0.12.0"}
   "logs"
   "fmt"
   "ptime"
   "base64" {>= "3.4.0"}
+  "conf-openssl" {with-test}
 ]
+conflicts: [ "result" {< "1.5"} ]
 build: [
   ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]

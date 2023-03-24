@@ -43,8 +43,9 @@ module Log : EXTLOGS = struct
   let report level k msgf =
     let k _ = k () in
     msgf @@ fun ?header ?tags:_ fmt ->
-    let hdr = match header with None -> "" | Some s -> s ^ " " in
-    Format.kfprintf k Format.std_formatter ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
+    let hdr = Option.fold ~none:"" ~some:(fun s -> s ^ " ") header in
+    Format.kfprintf k Format.std_formatter
+      ("%s[%s] @[" ^^ fmt ^^ "@]@.") hdr (style level (level_to_string level))
 
   let wcount = ref 0
 
@@ -80,19 +81,30 @@ let terminal () =
   in
   if not dumb && isatty then `Ansi_tty else `None
 
-let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root no_opam =
+let now =
+  let tm = Unix.(gmtime (time ())) in
+  let y, m, d = Unix.(tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday) in
+  let hh, mm, ss = Unix.(tm.tm_hour, tm.tm_min, tm.tm_sec) in
+  Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ" y m d hh mm ss
+
+let setup repo quorum anchors incremental dir patch verbose quiet strict no_c root no_opam timestamp_expiry =
   let level =
     if quiet then `Warn
     else if verbose then `Debug
     else `Info
   in
   Log.set_level level ;
-  let styled = if no_c then false else match terminal () with `Ansi_tty -> true | `None -> false
+  let styled =
+    if no_c then
+      false
+    else
+      match terminal () with `Ansi_tty -> true | `None -> false
   in
   Log.set_styled styled ;
+  let ( let* ) = Result.bind in
   msg_to_cmdliner (
-    Conex_openssl.V.check_version () >>= fun () ->
-    V.verify_it repo quorum anchors incremental dir patch strict root (not no_opam))
+    let* () = Conex_openssl.V.check_version () in
+    V.verify_it repo quorum anchors incremental dir patch strict root (not no_opam) ~timestamp_expiry ~now)
 
 open Conex_opts
 open Cmdliner
@@ -111,7 +123,7 @@ let no_color =
 
 let cmd =
   let term =
-    Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam))
+    Term.(ret (const setup $ Keys.repo $ Keys.quorum $ Keys.anchors $ Keys.incremental $ Keys.dir $ Keys.patch $ verbose $ quiet $ Keys.ignore_missing $ no_color $ Keys.root $ Keys.no_opam $ Keys.timestamp_expiry))
   and info = Cmd.info "conex_verify_openssl" ~version:"%%VERSION_NUM%%"
       ~doc:Conex_verify_app.doc ~man:Conex_verify_app.man
   in

@@ -1,7 +1,6 @@
 
 type 'a fmt = Format.formatter -> 'a -> unit
 
-(*BISECT-IGNORE-BEGIN*)
 let pp_list pe ppf xs =
   match xs with
   | [] -> Format.pp_print_string ppf "empty"
@@ -13,12 +12,14 @@ let pp_list pe ppf xs =
       | x::xs -> Format.fprintf ppf "%a;@ " pe x ; p1 xs
     in
     p1 xs
-(*BISECT-IGNORE-END*)
+[@@coverage off]
 
 module S = struct
   include Set.Make(String)
 
-  let pp fmt t = pp_list Format.pp_print_string fmt (elements t)
+  let pp fmt t =
+    pp_list Format.pp_print_string fmt (elements t)
+  [@@coverage off]
 
   let of_list es = List.fold_right add es empty
 end
@@ -27,24 +28,25 @@ let str_pp pp e =
   Format.(fprintf str_formatter "%a" pp e) ;
   Format.flush_str_formatter ()
 
-let (>>=) a f =
-  match a with
-  | Ok x -> f x
-  | Error e -> Error e
+let ( let* ) = Result.bind
 
 let guard p err = if p then Ok () else Error err
 
 let rec foldM f n = function
   | [] -> Ok n
-  | x::xs -> f n x >>= fun n' -> foldM f n' xs
+  | x::xs ->
+    let* n' = f n x in
+    foldM f n' xs
 
 let rec iterM f = function
   | [] -> Ok ()
-  | x::xs -> f x >>= fun () -> iterM f xs
+  | x::xs ->
+    let* () = f x in
+    iterM f xs
 
 let foldS f a s =
   S.fold (fun id r ->
-      r >>= fun r ->
+      let* r = r in
       f r id) s (Ok a)
 
 let err_to_str pp = function
@@ -145,16 +147,14 @@ module Uint = struct
     else
       (false, Int64.succ x)
 
-  let to_string s = Printf.sprintf "%LX" s
+  let to_string s = Printf.sprintf "0x%LX" s
 
-  (*BISECT-IGNORE-BEGIN*)
-  let pp ppf i = Format.pp_print_string ppf (to_string i)
-  (*BISECT-IGNORE-END*)
+  let pp ppf i = Format.pp_print_string ppf (to_string i) [@@coverage off]
 
   let decimal s = Printf.sprintf "%Lu" s
 
   let of_string s =
-    try Some (Int64.of_string ("0x" ^ s)) with Failure _ -> None
+    try Some (Int64.of_string s) with Failure _ -> None
 
   let of_float f =
     if f < 0. then
@@ -182,10 +182,9 @@ module M = struct
 
   let find k m = try Some (find k m) with Not_found -> None
 
-  (*BISECT-IGNORE-BEGIN*)
   let pp pp_e ppf m =
     iter (fun k v -> Format.fprintf ppf "%s -> %a@ " k pp_e v) m
-  (*BISECT-IGNORE-END*)
+  [@@coverage off]
 end
 
 let rec filter_map ~f = function
@@ -254,9 +253,9 @@ let rec subpath ~parent b =
   | _, [] -> false
   | hd::tl, hd'::tl' -> if str_eq hd hd' then subpath ~parent:tl tl' else false
 
-(*BISECT-IGNORE-BEGIN*)
-let pp_path fmt p = Format.pp_print_string fmt (path_to_string p)
-(*BISECT-IGNORE-END*)
+let pp_path fmt p =
+  Format.pp_print_string fmt (path_to_string p)
+[@@coverage off]
 
 type item = file_type * string
 
@@ -286,7 +285,6 @@ module Tree = struct
     in
     doit [] root acc
 
-(*BISECT-IGNORE-BEGIN*)
   let pp pp_e ppf node =
     let rec pp prefix ppf (Node (dels, map)) =
       let pp_map ppf map =
@@ -301,7 +299,7 @@ module Tree = struct
         pp_map map
     in
     (pp "") ppf node
-(*BISECT-IGNORE-END*)
+  [@@coverage off]
 
   let rec lookup path (Node (dels, map)) =
     match path with
@@ -332,3 +330,100 @@ module Tree = struct
       let res = insert tl value n in
       Node (dels, M.add hd res map)
 end
+
+let days_since_epoch (year, month, day) =
+  (* following https://www.tondering.dk/claus/cal/julperiod.php#formula we
+     compute the julian days of the provided date, and subtract the POSIX epoch
+     from it. *)
+  let open Int64 in
+  let year = of_int year and month = of_int month and day = of_int day in
+  let epoch = 2440588L in
+  let a = div (sub 14L month) 12L in
+  let y = sub (add year 4800L) a in
+  let m = sub (add month (mul 12L a)) 3L in
+  let m' = div (add (mul 153L m) 2L) 5L in
+  let y' = mul 365L y in
+  let y'' = div y 4L in
+  let y''' = div y 100L in
+  let y'''' = div y 400L in
+  sub (sub (add (sub (add (add (add day m') y') y'') y''') y'''') 32045L) epoch
+
+let timestamp_to_int64 ts =
+  let ( let* ) = Result.bind in
+  let* date, time =
+    Option.to_result
+      ~none:"couldn't decode timestamp, missing 'T'"
+      (String.cut 'T' ts)
+  in
+  let* date =
+    match String.cuts '-' date with
+    | [ year ; month ; day ] ->
+      let* () =
+        guard (String.length year = 4)
+          "couldn't decode timestamp: year not 4 digits"
+      in
+      let* y, m, d =
+        try Ok (int_of_string year, int_of_string month, int_of_string day)
+        with
+          Failure _ -> Error "couldn't decode timestamp: bad date (int_of_string)"
+      in
+      let* () = guard (m > 0 && m <= 12) "couldn't decode timestamp: bad month" in
+      let* () = guard (d > 0 && d <= 31) "couldn't decode timestamp: bad day" in
+      Ok (y, m, d)
+    | _ -> Error "couldn't decode timestamp: date not a triple"
+  in
+  let* s =
+    let* time, offset =
+      match String.cut 'Z' time with
+      | Some (time, "") -> Ok (time, 0L)
+      | Some (_, _) ->
+        Error "couldn't decode timestamp: bad time offset ('Z' at arbitrary position)"
+      | None ->
+        let* time, sign, offset =
+          match String.cut '+' time, String.cut '-' time with
+          | None, None -> Error "couldn't decode timestamp: no offset present"
+          | Some _, Some _ -> Error "couldn't decode timestamp: both '+' and '-' present"
+          | Some (time, off), None -> Ok (time, 1L, off)
+          | None, Some (time, off) -> Ok (time, -1L, off)
+        in
+        let* off =
+          let* h, m =
+            Option.to_result ~none:"couldn't decode timestamp: bad offset"
+              (String.cut ':' offset)
+          in
+          let* h, m =
+            try Ok (int_of_string h, int_of_string m) with
+              Failure _ -> Error "couldn't decode timestamp: offset not a number"
+          in
+          let* () =
+            guard (h >= 0 && h <= 23)
+              "couldn't decode timestamp: offset hour out of range"
+          in
+          let* () =
+            guard (m >= 0 && m <= 59)
+              "couldn't decode timestamp: offset minute out of range"
+          in
+          Ok Int64.(mul (add (mul (of_int h) 60L) (of_int m)) 60L)
+        in
+        Ok (time, Int64.mul sign off)
+    in
+    let* s =
+      match String.cuts ':' time with
+      | [ hour ; minute ; second ] ->
+        let* h, m, s =
+          try Ok (int_of_string hour, int_of_string minute, int_of_string second)
+          with
+            Failure _ -> Error "couldn't decode timestamp: bad date (int_of_string)"
+        in
+        let* () = guard (h >= 0 && h <= 23) "couldn't decode timestamp: bad hour" in
+        let* () = guard (m >= 0 && m <= 59) "couldn't decode timestamp: bad minute" in
+        let* () = guard (s >= 0 && s <= 60) "couldn't decode timestamp: bad second" in
+        Ok Int64.(add (mul (add (mul (of_int h) 60L) (of_int m)) 60L) (of_int s))
+      | _ -> Error "couldn't decode timestamp: bad time"
+    in
+    Ok (Int64.add s offset)
+  in
+  let seconds_in_a_day = 86400L in (* 24 * 60 * 60 *)
+  let r = Int64.(add (mul (days_since_epoch date) seconds_in_a_day) s) in
+  let* () = guard (r > 0L) "couldn't decode timestamp: negative" in
+  Ok r

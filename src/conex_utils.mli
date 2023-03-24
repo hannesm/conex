@@ -48,9 +48,6 @@ val str_pp : 'a fmt -> 'a -> string
 
 (** {1 Result combinators} *)
 
-(** [r >>= f] is [f a] unless [r] is an [Error], which is propagated.  Monadic bind. *)
-val (>>=) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-
 (** [guard pred err] is either [Ok ()] (if [pred] holds), [Error err] otherwise. *)
 val guard : bool -> 'a -> (unit, 'a) result
 
@@ -152,7 +149,7 @@ module Uint : sig
       [next] is always the next integer in the [Z/2^64-1Z] group. *)
   val succ : t -> bool * t
 
-  (** [to_string t] is [t] converted to a string in hexadecimal ([%LX]).  *)
+  (** [to_string t] is [t] converted to a string in hexadecimal ([0x%LX]).  *)
   val to_string : t -> string
 
   (** [pp] is a pretty printer *)
@@ -162,7 +159,7 @@ module Uint : sig
   val decimal : t -> string
 
   (** [of_string s] attempts to parse the string [s] as hexadecimal encoded
-      number using [Int64.of_string "0x" ^ s]. *)
+      number using [Int64.of_string s]. *)
   val of_string : string -> t option
 
   (** [of_float f] is [Int64.of_float f] if [f >= 0.0]. *)
@@ -290,3 +287,9 @@ module Tree : sig
       already in the tree, its value is prepended. *)
   val insert : path -> 'a -> 'a t -> 'a t
 end
+
+(** [timestamp_to_int64 timestamp] attempts to convert the provided RFC 3339
+    timestamp to an int64 representing the seconds since Unix epoch
+    (1970-01-01). When decoding leads to an error, or the timestamp is not in
+    range (of the int64), an error message is returned. *)
+val timestamp_to_int64 : string -> (int64, string) result
