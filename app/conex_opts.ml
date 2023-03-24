@@ -21,13 +21,40 @@ module Keys = struct
     let doc = "Identity." in
     Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
 
-  let alg =
+  let key_alg =
     let doc = "Public key algorithm." in
-    Arg.(value & opt (enum [ ("rsa", `RSA) ]) `RSA & info ["algorithm"] ~docs ~doc)
+    Arg.(value & opt (enum [ ("rsa", `RSA) ]) `RSA & info ["key-algorithm"] ~docs ~doc)
+
+  let role =
+    let doc = "Role." in
+    Arg.(value & opt (some (enum [ ("snapshot", `Snapshot) ;
+                                   ("timestamp", `Timestamp) ;
+                                   ("maintainer", `Maintainer) ]))
+           None & info ["role"] ~docs ~doc)
 
   let key_data =
     let doc = "Public key data." in
     Arg.(value & opt (some file) None & info ["key-data"] ~docs ~doc)
+
+  let hash_alg =
+    let doc = "Hash algorithm." in
+    Arg.(value & opt (enum [ ("sha256", `SHA256) ]) `SHA256 & info ["hash-algorithm"] ~docs ~doc)
+
+  let key_hash =
+    let doc = "Public key hash." in
+    Arg.(value & opt (some string) None & info ["key-hash"] ~docs ~doc)
+
+  let uint_c =
+    let parse s =
+      match Conex_utils.Uint.of_string s with
+      | None -> `Error "Invalid uint"
+      | Some u -> `Ok u
+    in
+    (parse, Conex_utils.Uint.pp)
+
+  let epoch =
+    let doc = "Epoch." in
+    Arg.(value & opt uint_c Conex_utils.Uint.zero & info ["epoch"] ~docs ~doc)
 
   let ignore_missing =
     let doc = "Non-strict verification mode.  Packages where no release is signed are ignored." in

@@ -111,6 +111,88 @@ let remove_key _ dry repodir quorum id filename =
     check_root root' ;
     IO.write_root io root')
 
+let set_role _ dry repodir role id alg h epoch filename =
+  msg_to_cmdliner (
+    let* id = Option.to_result ~none:"Missing identity" id in
+    let* role = Option.to_result ~none:"Missing role" role in
+    let* h = Option.to_result ~none:"Missing hash" h in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let root' =
+      (match Root.(RM.find role root.roles) with
+       | None -> ()
+       | Some _ -> Logs.warn (fun m -> m "replacing role %s"
+                                 (Root.role_to_string role)));
+      let e = Expression.(Quorum (1, KS.singleton (Remote (id, (alg, h), epoch)))) in
+      let roles = Root.RM.add role e root.roles in
+      { root with roles }
+    in
+    Logs.app (fun m -> m "root file %a" Root.pp root') ;
+    IO.write_root io root')
+
+let add_to_role _ dry repodir role id alg h epoch quorum filename =
+  msg_to_cmdliner (
+    let* id = Option.to_result ~none:"Missing identity" id in
+    let* role = Option.to_result ~none:"Missing role" role in
+    let* h = Option.to_result ~none:"Missing hash" h in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let* roles =
+      match Root.(RM.find role root.roles) with
+      | None ->
+        let q = Option.value ~default:1 quorum in
+        let e = Expression.(Quorum (q, KS.singleton (Remote (id, (alg, h), epoch)))) in
+        Ok (Root.RM.add role e root.roles)
+      | Some (Quorum (n, k)) ->
+        let q = Option.value ~default:n quorum in
+        let e = Expression.(Quorum (q, KS.add (Remote (id, (alg, h), epoch)) k)) in
+        Ok (Root.RM.add role e root.roles)
+      | Some _ ->
+        Logs.warn (fun m -> m "The role %s expression is not a quorum, ignoring"
+                      (Root.role_to_string role));
+        Error "Bad expression for role"
+    in
+    let root' = { root with roles } in
+    Logs.app (fun m -> m "root file %a" Root.pp root') ;
+    IO.write_root io root')
+
+let remove_from_role _ dry repodir role id quorum filename =
+  msg_to_cmdliner (
+    let* id = Option.to_result ~none:"Missing identity" id in
+    let* role = Option.to_result ~none:"Missing role" role in
+    let* io = repo ~rw:(not dry) repodir in
+    let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
+    List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
+    let* roles =
+      match Root.(RM.find role root.roles) with
+      | None ->
+        Logs.warn (fun m -> m "No role %s found" (Root.role_to_string role));
+        Error "Role not found"
+      | Some (Quorum (n, k)) ->
+        let q = Option.value ~default:n quorum in
+        let e =
+          Expression.KS.fold (fun e acc ->
+              match e with
+              | Expression.Local _ as l -> Expression.KS.add l acc
+              | Remote (id', _, _) as r ->
+                if id_equal id id' then
+                  acc
+                else
+                  Expression.KS.add r acc)
+            k Expression.KS.empty
+        in
+        Ok (Root.RM.add role Expression.(Quorum (q, e)) root.roles)
+      | Some _ ->
+        Logs.warn (fun m -> m "The role %s expression is not a quorum, ignoring"
+                      (Root.role_to_string role));
+        Error "Bad expression for role"
+    in
+    let root' = { root with roles } in
+    Logs.app (fun m -> m "root file %a" Root.pp root') ;
+    IO.write_root io root')
+
 let sign _ dry repodir id no_incr filename =
   Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
   msg_to_cmdliner (
@@ -204,7 +286,7 @@ let add_key_cmd =
      `P "Adds a public key to the root file."]
   in
   let term =
-    Term.(ret Conex_opts.(const add_key $ setup_log $ Keys.dry $ Keys.repo $ Keys.quorum $ Keys.id_req $ Keys.alg $ Keys.key_data $ Keys.root))
+    Term.(ret Conex_opts.(const add_key $ setup_log $ Keys.dry $ Keys.repo $ Keys.quorum $ Keys.id_req $ Keys.key_alg $ Keys.key_data $ Keys.root))
   and info = Cmd.info "add-key" ~doc ~man
   in
   Cmd.v info term
@@ -221,6 +303,42 @@ let remove_key_cmd =
   in
   Cmd.v info term
 
+let set_role_cmd =
+  let doc = "set the role in the root file" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Sets the role in the root file."]
+  in
+  let term =
+    Term.(ret Conex_opts.(const set_role $ setup_log $ Keys.dry $ Keys.repo $ Keys.role $ Keys.id_req $ Keys.hash_alg $ Keys.key_hash $ Keys.epoch $ Keys.root))
+  and info = Cmd.info "set-role" ~doc ~man
+  in
+  Cmd.v info term
+
+let add_to_role_cmd =
+  let doc = "add key hash to role in the root file" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Adds key hash to role in the root file."]
+  in
+  let term =
+    Term.(ret Conex_opts.(const add_to_role $ setup_log $ Keys.dry $ Keys.repo $ Keys.role $ Keys.id_req $ Keys.hash_alg $ Keys.key_hash $ Keys.epoch $ Keys.quorum $ Keys.root))
+  and info = Cmd.info "add-to-role" ~doc ~man
+  in
+  Cmd.v info term
+
+let remove_from_role_cmd =
+  let doc = "removes key from role in the root file" in
+  let man =
+    [`S "DESCRIPTION";
+     `P "Removes key from role in the root file."]
+  in
+  let term =
+    Term.(ret Conex_opts.(const remove_from_role $ setup_log $ Keys.dry $ Keys.repo $ Keys.role $ Keys.id_req $ Keys.quorum $ Keys.root))
+  and info = Cmd.info "remove-from-role" ~doc ~man
+  in
+  Cmd.v info term
+
 let help_cmd =
   let topic =
     let doc = "The topic to get help on. `topics' lists the topics." in
@@ -228,7 +346,8 @@ let help_cmd =
   in
   Term.(ret Conex_opts.(const help $ setup_log $ Keys.dry $ Keys.repo $ Keys.id $ Arg.man_format $ Term.choice_names $ topic))
 
-let cmds = [ status_cmd ; sign_cmd ; create_cmd ; add_key_cmd ; remove_key_cmd ]
+let cmds = [ status_cmd ; sign_cmd ; create_cmd ; add_key_cmd ; remove_key_cmd ;
+             set_role_cmd ; add_to_role_cmd ; remove_from_role_cmd ]
 
 let () =
   let doc = "Manage root file of a signed community repository" in

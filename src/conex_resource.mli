@@ -281,6 +281,8 @@ end
 module Root : sig
   type role = [ `Snapshot | `Timestamp | `Maintainer ]
 
+  val role_to_string : role -> string
+
   module RM : sig
     include Map.S with type key = role
     val find : role -> 'a t -> 'a option
