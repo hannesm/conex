@@ -42,11 +42,22 @@ val read_root : t -> name -> (Root.t * string list, [> r_err ]) result
 
 val write_root : t -> Root.t -> (unit, string) result
 
+val read_timestamp : t -> name -> (Timestamp.t * string list, [> r_err ]) result
+
+val write_timestamp : t -> Timestamp.t -> (unit, string) result
+
+val read_snapshot : t -> name -> (Snapshot.t * string list, [> r_err ]) result
+
+val write_snapshot : t -> Snapshot.t -> (unit, string) result
+
 val targets : t -> Root.t -> identifier list
 
 val read_targets : t -> Root.t -> bool -> identifier -> (Targets.t * string list, [> r_err ]) result
 
 val write_targets : t -> Root.t -> Targets.t -> (unit, string) result
+
+val compute_checksum_file : t -> (string -> Digest.t) -> path ->
+  (Target.t, string) result
 
 val compute_checksum : ?prefix:path -> t -> bool -> (string -> Digest.t) -> path ->
   (Target.t list, string) result

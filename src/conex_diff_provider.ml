@@ -56,9 +56,9 @@ let apply provider diffs =
        I also know the diffs (i.e. added and removed and renamed files), but
        for inspecting whether a directory is empty (i.e. all files are removed),
        I'd need the whole subdir information (prune empty ones) *)
-    let old = match provider.read_dir path with
-      | Ok files -> FS.of_list files
-      | Error _ -> FS.empty
+    let old =
+      Result.fold ~ok:(fun files -> FS.of_list files) ~error:(fun _ -> FS.empty)
+        (provider.read_dir path)
     in
     let drop_pre dir path' =
       let rec dropit a b = match a, b with
@@ -68,8 +68,8 @@ let apply provider diffs =
         | _ -> None
       in
       dropit path (string_to_path_exn path')
-    and opt_add x xs = match x with None -> xs | Some x -> FS.add x xs
-    and opt_rem x xs = match x with None -> xs | Some x -> FS.remove x xs
+    and opt_add x xs = Option.fold ~none:xs ~some:(fun x -> FS.add x xs) x
+    and opt_rem x xs = Option.fold ~none:xs ~some:(fun x -> FS.remove x xs) x
     in
     let stuff =
       List.fold_left (fun acc d ->

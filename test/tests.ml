@@ -1,10 +1,10 @@
 
 let () =
-  Mirage_crypto_rng_unix.initialize () ;
-  let more = []
-    (* match Conex_openssl.V.check_version () with
+  Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
+  let more =
+    match Conex_openssl.V.check_version () with
     | Error e -> Printf.printf "no openssl tests, version %s\n" e ; []
-    | Ok () -> Test_conex.OC.tests "OpenSSL" *)
+    | Ok () -> Test_conex.OC.tests ~openssl:true "OpenSSL"
   in
   Alcotest.run "Conex tests" (
     ("Uint", Test_uint.tests) ::

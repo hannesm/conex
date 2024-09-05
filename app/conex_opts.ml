@@ -17,6 +17,45 @@ module Keys = struct
     let doc = "Use a specific identity (not needed unless you have more than one identity)." in
     Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
 
+  let id_req =
+    let doc = "Identity." in
+    Arg.(value & opt (some id_c) None & info ["id"] ~docs ~doc)
+
+  let key_alg =
+    let doc = "Public key algorithm." in
+    Arg.(value & opt (enum [ ("rsa", `RSA) ]) `RSA & info ["key-algorithm"] ~docs ~doc)
+
+  let role =
+    let doc = "Role." in
+    Arg.(value & opt (some (enum [ ("snapshot", `Snapshot) ;
+                                   ("timestamp", `Timestamp) ;
+                                   ("maintainer", `Maintainer) ]))
+           None & info ["role"] ~docs ~doc)
+
+  let key_data =
+    let doc = "Public key data." in
+    Arg.(value & opt (some file) None & info ["key-data"] ~docs ~doc)
+
+  let hash_alg =
+    let doc = "Hash algorithm." in
+    Arg.(value & opt (enum [ ("sha256", `SHA256) ]) `SHA256 & info ["hash-algorithm"] ~docs ~doc)
+
+  let key_hash =
+    let doc = "Public key hash." in
+    Arg.(value & opt (some string) None & info ["key-hash"] ~docs ~doc)
+
+  let uint_c =
+    let parse s =
+      match Conex_utils.Uint.of_string s with
+      | None -> `Error "Invalid uint"
+      | Some u -> `Ok u
+    in
+    (parse, Conex_utils.Uint.pp)
+
+  let epoch =
+    let doc = "Epoch." in
+    Arg.(value & opt uint_c Conex_utils.Uint.zero & info ["epoch"] ~docs ~doc)
+
   let ignore_missing =
     let doc = "Non-strict verification mode.  Packages where no release is signed are ignored." in
     Arg.(value & flag & info [ "ignore-missing" ; "nostrict" ] ~doc)
@@ -59,7 +98,7 @@ module Keys = struct
 
   let dir =
     let doc = "Directory which is verified." in
-    Arg.(value & opt (some string) None & info [ "dir" ] ~doc)
+    Arg.(value & opt (some dir) None & info [ "dir" ] ~doc)
 
   let patch =
     let doc = "Patch file which is verified." in
@@ -68,22 +107,27 @@ module Keys = struct
   let no_opam =
     let doc = "Do not verify opam repository layout" in
     Arg.(value & flag & info [ "no-opam" ] ~doc)
+
+  let timestamp_expiry =
+    let doc = "Expiration of timestamp signature (in seconds)." in
+    Arg.(value & opt int64 900L & info [ "expiry" ] ~doc)
 end
 
-let repo ?(rw = false) repodir =
-  let dir = match repodir with
-    | None -> Unix.getcwd ()
-    | Some x -> x
-  in
+let repo ~rw repodir =
+  let dir = Option.value ~default:(Unix.getcwd ()) repodir in
   if rw
   then Conex_unix_provider.fs_provider dir
   else Conex_unix_provider.fs_ro_provider dir
 
 let valid a =
   let ta = List.fold_left
-      (fun acc str -> match Conex_resource.Digest.of_string str with
-         | Error _ -> Printf.printf "ignoring malformed trust anchor %s" str ; acc
-         | Ok dgst -> dgst :: acc)
+      (fun acc str ->
+         Result.fold
+           ~error:(fun _ ->
+               Printf.printf "ignoring malformed trust anchor %s" str ;
+               acc)
+           ~ok:(fun dgst -> dgst :: acc)
+           (Conex_resource.Digest.of_string str))
       [] (List.flatten (List.map (Conex_utils.String.cuts ',') a))
   in
   let valid digest _ = List.exists (Conex_resource.Digest.equal digest) ta in

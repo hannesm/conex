@@ -9,9 +9,9 @@ let ui =
   (module M: Alcotest.TESTABLE with type t = M.t)
 
 let the x = match Uint.of_string x with Some x -> x | None -> Alcotest.fail "cannot parse"
-let max = the "FFFFFFFFFFFFFFFF"
-let max_int64 = the "7FFFFFFFFFFFFFFF"
-let min_int64 = the "8000000000000000"
+let max = the "0xFFFFFFFFFFFFFFFF"
+let max_int64 = the "0x7FFFFFFFFFFFFFFF"
+let min_int64 = the "0x8000000000000000"
 
 let compare_initial () =
   Alcotest.(check int "compare 0 0 is 0"
@@ -43,24 +43,21 @@ let succ_initial () =
 let r () =
   let buf = Bytes.create 16 in
   let one i =
-    let r = Random.int 16 in
+    let r =
+      let r = Random.int 16 in
+      if i = 0 && r = 0 then r + 1 else r
+    in
     let ascii = r + (if r < 10 then 0x30 else 0x37) in
     Bytes.set buf i (char_of_int ascii)
   in
   for i = 0 to 15 do one i done ;
-  Bytes.to_string buf
-
-let rec trim0 s =
-  if String.get s 0 = '0' then
-    trim0 (String.slice ~start:1 s)
-  else
-    s
+  "0x" ^ Bytes.to_string buf
 
 let to_of_str_id n () =
   for _i = 0 to n do
     let r = r () in
     Alcotest.(check string "to_of_string is identity"
-                (trim0 r) Uint.(to_string (the r)))
+                r Uint.(to_string (the r)))
   done
 
 let compare_random n () =

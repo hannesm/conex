@@ -4,8 +4,9 @@ open Conex_resource
 open Common
 
 let wire_s str =
+  let ( let* ) = Result.bind in
   match
-    Conex_opam_encoding.decode str >>= fun wire ->
+    let* wire = Conex_opam_encoding.decode str in
     match M.find "expr" wire with
     | None -> Error "couldn't find expr in wire"
     | Some wire -> Ok wire
@@ -122,7 +123,8 @@ module ExprTests = struct
       (Ok (Expression.Or (a, b)))
       (Expression.of_wire (wire_s str)) ;
     (* TODO: bug or feature? | has higher precedence
-       fixed in opam-file-format rc2 sincehttps://github.com/AltGr/opam/commit/c3a78ad962e177e339774e110dc920040b8f3583 *)
+       fixed in opam-file-format rc2 since
+       https://github.com/AltGr/opam/commit/c3a78ad962e177e339774e110dc920040b8f3583 *)
     let c = Expression.Quorum (1, Expression.KS.singleton (Expression.Local "c")) in
     let str = "expr: (1 [ a ]) & (1 [ b ]) | (1 [ c ])" in
     Alcotest.check (result expr str_err) "or expression from string, no paren"
@@ -155,6 +157,10 @@ module ExprTests = struct
     Alcotest.check (result expr str_err) "local minimal expression (a)"
       (Ok a)
       (Expression.of_wire (wire_s str)) ;
+    let str = "expr: (1 a)" in
+    Alcotest.check (result expr str_err) "local tiny expression"
+      (Ok (Expression.Quorum (1, Expression.KS.of_list [ Expression.Local "a" ])))
+      (Expression.of_wire (wire_s str)) ;
     let str = "expr: (1 [ a ])" in
     Alcotest.check (result expr str_err) "local small expression"
       (Ok a)
@@ -163,6 +169,175 @@ module ExprTests = struct
     Alcotest.check (result expr str_err) "local simple quorum"
       (Ok (Expression.Quorum (1, Expression.KS.of_list [ Expression.Local "a" ; Expression.Local "b" ])))
       (Expression.of_wire (wire_s str))
+
+  let compare_tests () =
+    let a = Expression.KS.singleton (Expression.Local "a")
+    and b = Expression.KS.singleton (Expression.Local "b")
+    in
+    let a_q = Expression.Quorum (1, a)
+    and a_q2 = Expression.Quorum (2, a)
+    and a_q3 = Expression.Quorum (1, Expression.KS.add (Expression.Local "b") a)
+    and b_q = Expression.Quorum (1, b)
+    in
+    let a_or_b = Expression.Or (a_q, b_q)
+    and a_and_b = Expression.And (a_q, b_q)
+    and b_or_a = Expression.Or (b_q, a_q)
+    and b_and_a = Expression.And (b_q, a_q)
+    in
+    Alcotest.(check bool "basic expression equality" true
+                Expression.(equal a_q a_q &&
+                            equal a_or_b a_or_b &&
+                            equal a_and_b a_and_b));
+    Alcotest.(check bool "basic expression inequality 1" false
+                Expression.(equal a_q b_q));
+    Alcotest.(check bool "basic expression inequality 2" false
+                Expression.(equal a_q a_q2));
+    Alcotest.(check bool "basic expression inequality 3" false
+                Expression.(equal a_q a_or_b));
+    Alcotest.(check bool "basic expression inequality 4" false
+                Expression.(equal a_q a_and_b));
+    Alcotest.(check bool "basic expression inequality 5" false
+                Expression.(equal a_q b_or_a));
+    Alcotest.(check bool "basic expression inequality 6" false
+                Expression.(equal a_q b_and_a));
+    Alcotest.(check bool "basic expression inequality 7" false
+                Expression.(equal a_or_b b_or_a));
+    Alcotest.(check bool "basic expression inequality 8" false
+                Expression.(equal a_and_b b_and_a));
+    Alcotest.(check bool "basic expression inequality 9" false
+                Expression.(equal a_q a_q3));
+    Alcotest.(check bool "basic expression inequality 10" false
+                Expression.(equal a_q2 a_q3));
+    Alcotest.(check int "basic expression comparison 1" 0
+                Expression.(compare a_q (Quorum (1, KS.singleton (Local "a")))));
+    Alcotest.(check int "basic expression comparison 2" 0
+                Expression.(compare a_q2 (Quorum (2, KS.singleton (Local "a")))));
+    Alcotest.(check int "basic expression comparison 3" 0
+                Expression.(compare b_q (Quorum (1, KS.singleton (Local "b")))));
+    Alcotest.(check int "basic expression comparison 4" 0
+                Expression.(compare a_or_b (Or (Quorum (1, KS.singleton (Local "a")), Quorum (1, KS.singleton (Local "b"))))));
+    Alcotest.(check int "basic expression comparison 5" 0
+                Expression.(compare a_and_b (And (Quorum (1, KS.singleton (Local "a")), Quorum (1, KS.singleton (Local "b"))))));
+    Alcotest.(check int "basic expression comparison not equal 1" (-1)
+                Expression.(compare a_q a_q2));
+    Alcotest.(check int "basic expression comparison not equal 2" 1
+                Expression.(compare a_q2 a_q));
+    Alcotest.(check int "basic expression comparison not equal 3" (-1)
+                Expression.(compare a_and_b b_and_a));
+    Alcotest.(check int "basic expression comparison not equal 4" 1
+                Expression.(compare b_and_a a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 5" (-1)
+                Expression.(compare a_and_b a_or_b));
+    Alcotest.(check int "basic expression comparison not equal 6" 1
+                Expression.(compare a_or_b a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 7" (-1)
+                Expression.(compare a_and_b b_or_a));
+    Alcotest.(check int "basic expression comparison not equal 8" 1
+                Expression.(compare b_or_a a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 9" (-1)
+                Expression.(compare a_or_b b_or_a));
+    Alcotest.(check int "basic expression comparison not equal 10" 1
+                Expression.(compare b_or_a a_or_b));
+    Alcotest.(check int "basic expression comparison not equal 11" 1
+                Expression.(compare a_and_b a_q));
+    Alcotest.(check int "basic expression comparison not equal 12" (-1)
+                Expression.(compare a_q a_and_b));
+    Alcotest.(check int "basic expression comparison not equal 13" (-1)
+                Expression.(compare a_q a_q3));
+    Alcotest.(check int "basic expression comparison not equal 14" 1
+                Expression.(compare a_q3 a_q));
+    Alcotest.(check int "basic expression comparison not equal 15" (-1)
+                Expression.(compare a_q3 a_q2));
+    Alcotest.(check int "basic expression comparison not equal 16" 1
+                Expression.(compare a_q2 a_q3))
+
+  let keys_tests () =
+    let a = Expression.KS.singleton (Expression.Local "a")
+    and b = Expression.KS.singleton (Expression.Local "b")
+    in
+    let a_q = Expression.Quorum (1, a)
+    and b_q = Expression.Quorum (1, b)
+    in
+    let a_or_b = Expression.Or (a_q, b_q)
+    and a_and_b = Expression.And (a_q, b_q)
+    in
+    Alcotest.(check int "keys size of map a_q" 0
+                (M.cardinal (Expression.keys M.empty a_q)));
+    Alcotest.(check int "keys size of map b_q" 0
+                (M.cardinal (Expression.keys M.empty b_q)));
+    Alcotest.(check int "keys size of map a_or_b" 0
+                (M.cardinal (Expression.keys M.empty a_or_b)));
+    Alcotest.(check int "keys size of map a_and_b" 0
+                (M.cardinal (Expression.keys M.empty a_and_b)));
+    let ar = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcdef"), Uint.zero))
+    and br = Expression.KS.singleton (Expression.Remote ("b", (`SHA256, "abcdef"), Uint.zero))
+    in
+    let ar_q = Expression.Quorum (1, ar)
+    and br_q = Expression.Quorum (1, br)
+    in
+    let ar_or_br = Expression.Or (ar_q, br_q)
+    and ar_and_br = Expression.And (ar_q, br_q)
+    in
+    let a_ar_q = Expression.Quorum (1, Expression.KS.union a ar)
+    and b_br_q = Expression.Quorum (1, Expression.KS.union b br)
+    in
+    Alcotest.(check int "keys size of map ar_q" 1
+                (M.cardinal (Expression.keys M.empty ar_q)));
+    Alcotest.(check int "keys size of map br_q" 1
+                (M.cardinal (Expression.keys M.empty br_q)));
+    Alcotest.(check int "keys size of map a_ar_q" 1
+                (M.cardinal (Expression.keys M.empty a_ar_q)));
+    Alcotest.(check int "keys size of map b_br_q" 1
+                (M.cardinal (Expression.keys M.empty b_br_q)));
+    Alcotest.(check int "keys size of map ar_or_br" 2
+                (M.cardinal (Expression.keys M.empty ar_or_br)));
+    Alcotest.(check int "keys size of map ar_and_br" 2
+                (M.cardinal (Expression.keys M.empty ar_and_br)));
+    let ar' = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcdef"), Uint.zero)) in
+    let ar'_q = Expression.Quorum (1, ar') in
+    let ar_and_ar' = Expression.And (ar_q, ar'_q) in
+    Alcotest.(check int "keys size of map ar_and_ar' 1" 1
+                (M.cardinal (Expression.keys M.empty ar_and_ar')));
+    let ar' = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcde"), Uint.zero)) in
+    let ar'_q = Expression.Quorum (1, ar') in
+    let ar_and_ar' = Expression.And (ar_q, ar'_q) in
+    Alcotest.(check int "keys size of map ar_and_ar' 2" 1
+                (M.cardinal (Expression.keys M.empty ar_and_ar')));
+    let ar' = Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "123456"), snd (Uint.succ Uint.zero))) in
+    let ar'_q = Expression.Quorum (1, ar') in
+    let ar_and_ar' = Expression.And (ar_q, ar'_q) in
+    Alcotest.(check int "keys size of map ar_and_ar' 3" 1
+                (M.cardinal (Expression.keys M.empty ar_and_ar')));
+    let _, data = M.choose (Expression.keys M.empty ar_and_ar') in
+    let hash, epoch = match data with
+      | (`SHA256, h), e -> h, e
+    in
+    Alcotest.(check string "hash is the new one" "123456" hash);
+    Alcotest.(check string "epoch is the new one" "0x1" (Uint.to_string epoch))
+
+  let local_keys_tests () =
+    let a = Expression.Quorum (1, Expression.KS.singleton (Expression.Local "a")) in
+    let b = Expression.Quorum (1, Expression.KS.singleton (Expression.Local "b")) in
+    let ab = Expression.Quorum (1, Expression.KS.of_list [ Expression.Local "a" ; Expression.Local "b" ]) in
+    let a_and_b = Expression.And (a, b) in
+    let a_or_b = Expression.Or (a, b) in
+    Alcotest.(check (list string) "local keys of a is good" ["a"]
+                (S.elements (Expression.local_keys a)));
+    Alcotest.(check (list string) "local keys of b is good" ["b"]
+                (S.elements (Expression.local_keys b)));
+    Alcotest.(check (list string) "local keys of ab is good" ["a" ; "b"]
+                (S.elements (Expression.local_keys ab)));
+    Alcotest.(check (list string) "local keys of a and b is good" ["a" ; "b"]
+                (S.elements (Expression.local_keys a_and_b)));
+    Alcotest.(check (list string) "local keys of a or b is good" ["a" ; "b"]
+                (S.elements (Expression.local_keys a_or_b)));
+    let ar = Expression.Quorum (1, Expression.KS.singleton (Expression.Remote ("a", (`SHA256, "abcdef"), Uint.zero))) in
+    let ar_and_b = Expression.And (ar, b) in
+    let ar_or_b = Expression.Or (ar, b) in
+    Alcotest.(check (list string) "local keys of ar and b is good" ["b"]
+                (S.elements (Expression.local_keys ar_and_b)));
+    Alcotest.(check (list string) "local keys of ar or b is good" ["b"]
+                (S.elements (Expression.local_keys ar_or_b)))
 
   let basic_eval_tests () =
     let str = "expr: (0 [])" in
@@ -446,6 +621,9 @@ module ExprTests = struct
     "basic good of_wire", `Quick, basic_good_of_wire ;
     "basic of_string", `Quick, basic_of_string ;
     "local tests", `Quick, local_tests ;
+    "compare tests", `Quick, compare_tests ;
+    "keys tests", `Quick, keys_tests ;
+    "local keys tests", `Quick, local_keys_tests ;
     "basic eval", `Quick, basic_eval_tests ;
     "eval test 1", `Quick, eval_test_1 ;
     "eval test 2", `Quick, eval_test_2 ;
@@ -677,7 +855,7 @@ module RootTests = struct
         id_equal r.Root.name r'.Root.name &&
         path_equal r.Root.datadir r'.Root.datadir &&
         path_equal r.Root.keydir r'.Root.keydir &&
-        M.equal Expression.equal r.Root.roles r'.Root.roles &&
+        Root.RM.equal Expression.equal r.Root.roles r'.Root.roles &&
         M.equal Signature.equal r.Root.signatures r'.Root.signatures
     end in
     (module M : Alcotest.TESTABLE with type t = M.t)
@@ -713,7 +891,7 @@ module RootTests = struct
     in
     let root = { Root.created = "now" ; counter = Uint.zero ; epoch = Uint.zero ;
                  name = "root" ; datadir = [ "here" ] ; keydir = [ "there" ] ;
-                 keys = M.empty ; roles = M.empty ; signatures = M.empty ; valid = empty_valid }
+                 keys = M.empty ; roles = Root.RM.empty ; signatures = M.empty ; valid = empty_valid }
     in
     Alcotest.check (result roo str_err) "good wire"
       (Ok (root, [])) (Root.of_wire (root_wire signed)) ;
@@ -1669,7 +1847,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       "signature is good" (Ok ())
       (R.verify_rsa_pss pid ~key:pu ~data:d ~signature)
 
-  let raw_sig_bad data () =
+  let raw_sig_bad ~openssl data () =
     let pid = "foobar" in
     let pub, p = gen_pub () in
     let pu = match pub with (_, _, `RSA, k) -> k in
@@ -1683,17 +1861,23 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     Alcotest.check (result Alcotest.unit verr)
       "signature is bad (invalid base64)" (Error (`InvalidBase64Encoding pid))
       (R.verify_rsa_pss pid ~key:pu ~data:d ~signature:badsig) ;
-    (* the following is fine with OpenSSL :/ *)
-    let badsig = signature ^ "=" in
+    let badsig =
+      if openssl then
+        signature ^ "=fdd"
+      else
+        (* the following is fine with OpenSSL :/ *)
+        signature ^ "="
+    in
     Alcotest.check (result Alcotest.unit verr)
       "signature is bad (invalid base64) take 2" (Error (`InvalidBase64Encoding pid))
       (R.verify_rsa_pss pid ~key:pu ~data:d ~signature:badsig) ;
     let badkey = pu ^ "=" in
     Alcotest.check (result Alcotest.unit verr)
-      "signature is bad (invalid key)" (Error (`InvalidPublicKey pid))
+      "signature is bad (invalid key)"
+      (Error (if openssl then `InvalidSignature pid else `InvalidPublicKey pid))
       (R.verify_rsa_pss pid ~key:badkey ~data:d ~signature)
 
-  let raw_sigs, _ =
+  let raw_sigs ~openssl =
     let tests = [
       M.empty ;
       M.add "foo" (Wire.Data "foobar") M.empty ;
@@ -1701,11 +1885,12 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       M.add "foo" (Wire.Bigint Uint.zero) M.empty ;
       M.add "barf" (Wire.Smallint 42) (M.add "foo" (Wire.Bigint Uint.zero) M.empty) ;
     ] in
-    List.fold_left (fun (acc, i) data ->
-        acc @ [
-          ("sign and verify is good " ^ string_of_int i, `Quick, raw_sig_good data) ;
-          ("sign and verify is bad " ^ string_of_int i, `Quick, raw_sig_bad data)
-        ], succ i) ([], 0) tests
+    fst (
+      List.fold_left (fun (acc, i) data ->
+          acc @ [
+            ("sign and verify is good " ^ string_of_int i, `Quick, raw_sig_good data) ;
+            ("sign and verify is bad " ^ string_of_int i, `Quick, raw_sig_bad ~openssl data)
+          ], succ i) ([], 0) tests)
 
   let ver =
     let module M = struct
@@ -1743,7 +1928,7 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
       keydir = [ "elsewhere" ] ;
       keys = keys ;
       valid = expr ;
-      roles = M.empty ;
+      roles = Root.RM.empty ;
       signatures = M.empty
     } in
     match PRIV.sign (Root.wire_raw root) "now!" id `RSA_PSS_SHA256 (Obj.magic p) with
@@ -1770,11 +1955,11 @@ module BasicTests (V : Conex_verify.S) (R : Conex_verify.S_RSA_BACK) = struct
     <verify>
       <maybe play a bit with modifyin root and attempt to verify> *)
 
-  let sign_tests = raw_sigs @ [
+  let sign_tests ~openssl = raw_sigs ~openssl @ [
       "sign and verify root", `Quick, sign_verify_root ;
     ]
-  let tests prefix =
-    [ (prefix ^ "Signature", sign_tests) ]
+  let tests ~openssl prefix =
+    [ (prefix ^ "Signature", sign_tests ~openssl) ]
 end
 
 module MC = BasicTests (Conex_mirage_crypto.NC_V) (Conex_mirage_crypto.V)
@@ -1786,4 +1971,4 @@ let tests = ("Expressions", ExprTests.tests) ::
             ("Digests", DigestTests.tests) ::
             ("Roots", RootTests.tests) ::
             ("Repos", RepoTests.tests) ::
-            MC.tests "Mirage_crypto"
+            MC.tests ~openssl:false "Mirage_crypto"

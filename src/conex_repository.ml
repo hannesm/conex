@@ -14,9 +14,39 @@ let keydir t = t.root.Root.keydir
 let datadir t = t.root.Root.datadir
 
 let maintainer_delegation t =
-  match M.find "maintainer" t.root.Root.roles with
+  match Root.RM.find `Maintainer t.root.Root.roles with
   | None -> None
   | Some e -> Some (e, false, S.singleton "root")
+
+let timestamp t =
+  Option.fold
+    ~none:(Ok None)
+    ~some:(function
+        | Expression.Quorum (1, ks) when Expression.KS.cardinal ks = 1 ->
+          (* assume a single timestamp *)
+          begin match Expression.KS.choose ks with
+            | Local _ ->
+              Error "only a single remote key expression allowed for timestamp"
+            | Remote (id, dgst, epoch) -> Ok (Some (id, dgst, epoch))
+          end
+        | _ ->
+          Error "only a single key expression with quorum 1 allowed for timestamp")
+    (Root.RM.find `Timestamp (root t).Root.roles)
+
+let snapshot t =
+  Option.fold
+    ~none:(Ok None)
+    ~some:(function
+        | Expression.Quorum (1, ks) when Expression.KS.cardinal ks = 1 ->
+          (* assume a single snapshot *)
+          begin match Expression.KS.choose ks with
+            | Local _ ->
+              Error "only a single remote key expression allowed for snapshot"
+            | Remote (id, dgst, epoch) -> Ok (Some (id, dgst, epoch))
+          end
+        | _ ->
+          Error "only a single key expression with quorum 1 allowed for snapshot")
+    (Root.RM.find `Snapshot (root t).Root.roles)
 
 let targets t = t.targets
 
@@ -44,6 +74,7 @@ let pp_res ppf =
   | `No_match (p, disk, targets) ->
     Format.fprintf ppf "no matching digest for %a (on_disk %a, targets %a)"
       pp_path p (pp_list pp_d) disk (pp_list pp_t) targets
+[@@coverage off]
 
 let validate_targets t on_disk =
   (* foreach digest in on_disk there exists a matching one in t.targets
