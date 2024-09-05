@@ -12,15 +12,14 @@ depends: [
   "bisect_ppx" {dev & >= "2.5.0"}
   "cmdliner" {>= "1.1.0"}
   "conex" {= version}
-  "cstruct" {>= "6.0.0"}
-  "mirage-crypto"
-  "mirage-crypto-pk"
-  "mirage-crypto-rng" {>= "0.11.0"}
-  "x509" {>= "0.12.0"}
+  "mirage-crypto-pk" {>= "1.0.0"}
+  "mirage-crypto-rng" {>= "1.0.0"}
+  "x509" {>= "1.0.0"}
   "logs"
   "fmt"
   "ptime"
   "base64" {>= "3.4.0"}
+  "digestif" {>= "1.2.0"}
   "conf-openssl" {with-test}
 ]
 conflicts: [ "result" {< "1.5"} ]
