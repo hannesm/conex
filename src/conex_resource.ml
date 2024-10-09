@@ -922,7 +922,7 @@ module Timestamp = struct
     { t with signatures }
 
   let pp ppf t =
-    Format.fprintf ppf "timestamp %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
+    Format.fprintf ppf "timestamp %a %s (created %a)@.@[<2>keys %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
       pp_name t.name
       (Header.counter t.counter t.epoch)
       pp_timestamp t.created
@@ -1013,7 +1013,7 @@ module Snapshot = struct
     { t with signatures }
 
   let pp ppf t =
-    Format.fprintf ppf "snapshot %a %s (created %a)@.@[<2>kets %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
+    Format.fprintf ppf "snapshot %a %s (created %a)@.@[<2>keys %a@]@.@[<2>targets %a@]@.@[<2>signatures %a@]"
       pp_name t.name
       (Header.counter t.counter t.epoch)
       pp_timestamp t.created
