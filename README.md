@@ -12,7 +12,7 @@ The [TUF spec](https://github.com/theupdateframework/specification/blob/master/t
 
 Spring 2017, together with Justin Cappos [TAP 8](https://github.com/theupdateframework/taps/blob/master/tap8.md) was designed which extends TUF with key rotation and explicit self-revocation.
 
-Early 2017, a [blog post](https://hannes.nqsb.io/Posts/Conex) introducing a prototype was published.
+Early 2017, a [blog post](https://hannes.robur.coop/Posts/Conex) introducing a prototype was published.
 
 We presented [an earlier design at OCaml 2016](https://github.com/hannesm/conex-paper/raw/master/paper.pdf) about an earlier design.
 
