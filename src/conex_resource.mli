@@ -167,7 +167,6 @@ end
 
 module Digest_map : sig
   include Map.S with type key = Digest.t
-  val find : Digest.t -> 'a t -> 'a option
   val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 end
 
@@ -285,7 +284,6 @@ module Root : sig
 
   module RM : sig
     include Map.S with type key = role
-    val find : role -> 'a t -> 'a option
     val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
   end
 

@@ -46,7 +46,7 @@ module Make (C : S_RSA_BACK) = struct
   (* using a digest map here to uniquify the public keys! *)
   let verify data keys sigs =
     M.fold (fun _ (id, created, alg, s) (ok, err) ->
-        match M.find id keys with
+        match M.find_opt id keys with
         | None -> (ok, `UnknownKey id :: err)
         | Some key ->
           match verify_signature data key (id, created, alg, s) with

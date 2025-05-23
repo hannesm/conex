@@ -142,12 +142,12 @@ module Header = struct
 
   let of_wire data =
     let open Wire in
-    let* version = Result.(join (map pint (opt_err (M.find "version" data)))) in
-    let* created = Result.(join (map pdata (opt_err (M.find "created" data)))) in
-    let* counter = Result.(join (map puint (opt_err (M.find "counter" data)))) in
-    let* epoch = Result.(join (map puint (opt_err (M.find "epoch" data)))) in
-    let* name = Result.(join (map pdata (opt_err (M.find "name" data)))) in
-    let* typ = Result.(join (map typ_of_wire (opt_err (M.find "typ" data)))) in
+    let* version = Result.(join (map pint (opt_err (M.find_opt "version" data)))) in
+    let* created = Result.(join (map pdata (opt_err (M.find_opt "created" data)))) in
+    let* counter = Result.(join (map puint (opt_err (M.find_opt "counter" data)))) in
+    let* epoch = Result.(join (map puint (opt_err (M.find_opt "epoch" data)))) in
+    let* name = Result.(join (map pdata (opt_err (M.find_opt "name" data)))) in
+    let* typ = Result.(join (map typ_of_wire (opt_err (M.find_opt "typ" data)))) in
     Ok { version ; created ; counter ; epoch ; name ; typ }
 
   let counter x epoch =
@@ -174,12 +174,12 @@ module Header = struct
                   (M.add "typ" (wire_typ t.typ) M.empty)))))
 
   let split_signed map =
-    match M.find "signed" map with
+    match M.find_opt "signed" map with
     | None -> Error "couldn't find signed part"
     | Some signed ->
       let* signed = Wire.pmap signed in
       let* sigs =
-        match M.find "signatures" map with
+        match M.find_opt "signatures" map with
         | None -> Ok []
         | Some sigs -> Wire.plist sigs
       in
@@ -243,8 +243,6 @@ end
 
 module Digest_map = struct
   include Map.Make(Digest)
-
-  let find k m = try Some (find k m) with Not_found -> None
 
   let pp pp_e ppf t =
     iter (fun k v -> Format.fprintf ppf "%a -> %a@ " Digest.pp k pp_e v) t
@@ -496,7 +494,7 @@ module Expression = struct
       KS.fold
         (fun keyref m -> match keyref with
            | Local _ -> m
-           | Remote (id, d, e) -> match M.find id m with
+           | Remote (id, d, e) -> match M.find_opt id m with
              | None -> M.add id (d, e) m
              | Some (d', e') when Digest.equal d d' && Uint.compare e e' = 0 -> m
              | Some (d', e') ->
@@ -568,7 +566,7 @@ module Expression = struct
     let map = function
       | Remote (id, hash, epoch) ->
         Ok (id ^ ":" ^ Digest.to_string hash ^ ":" ^ Uint.to_string epoch)
-      | Local id -> match M.find id id_m with
+      | Local id -> match M.find_opt id id_m with
         | None -> Error (id ^ " was not found in provided map")
         | Some x -> Ok x
     in
@@ -603,7 +601,7 @@ module Expression = struct
              match keyref with
              | Local id -> if S.mem id sigs then succ acc else acc
              | Remote (id, digest, e) ->
-               match Digest_map.find digest keys with
+               match Digest_map.find_opt digest keys with
                | Some (id', e') when id_equal id id' && Uint.compare e e' = 0 -> succ acc
                | _ -> acc)
           ids 0
@@ -647,8 +645,6 @@ module Root = struct
         type t = role
         let compare (a : t) (b : t) = role_compare a b
       end)
-
-    let find k m = try Some (find k m) with Not_found -> None
 
     let pp pp_e ppf m =
       iter (fun k v -> Format.fprintf ppf "%a -> %a@ " pp_role k pp_e v) m
@@ -700,19 +696,19 @@ module Root = struct
     let open Wire in
     let* datadir =
       Result.(join (map string_to_path
-                      (join (map pdata (opt_err (M.find "datadir" signed))))))
+                      (join (map pdata (opt_err (M.find_opt "datadir" signed))))))
     in
     let* keydir =
       Result.(join (map string_to_path
-                      (join (map pdata (opt_err (M.find "keydir" signed))))))
+                      (join (map pdata (opt_err (M.find_opt "keydir" signed))))))
     in
     let* keys, w =
       Result.(join (map Key.many_of_wire
-                      (join (map plist (opt_err (M.find "keys" signed))))))
+                      (join (map plist (opt_err (M.find_opt "keys" signed))))))
     in
-    let* roles = Result.(join (map pmap (opt_err (M.find "roles" signed)))) in
+    let* roles = Result.(join (map pmap (opt_err (M.find_opt "roles" signed)))) in
     let* valid =
-      Result.(join (map Expression.of_wire (opt_err (M.find "valid" signed))))
+      Result.(join (map Expression.of_wire (opt_err (M.find_opt "valid" signed))))
     in
     let* () =
       Header.keys ~header:false (List.map role_to_string supported_roles) roles
@@ -789,13 +785,13 @@ module Delegation = struct
       Header.keys ~header:false [ "paths" ; "valid" ; "terminating" ] delegation
     in
     let* paths =
-      Result.(join (map plist (opt_err (M.find "paths" delegation))))
+      Result.(join (map plist (opt_err (M.find_opt "paths" delegation))))
     in
     let* valid =
-      Result.(join (map Expression.of_wire (opt_err (M.find "valid" delegation))))
+      Result.(join (map Expression.of_wire (opt_err (M.find_opt "valid" delegation))))
     in
     let* terminating =
-      match M.find "terminating" delegation with
+      match M.find_opt "terminating" delegation with
       | None -> Ok true
       | Some x ->
         let* r = pdata x in
@@ -861,11 +857,11 @@ module Target = struct
     in
     let* filename =
       Result.(join (map string_to_path
-                      (join (map pdata (opt_err (M.find "filename" target))))))
+                      (join (map pdata (opt_err (M.find_opt "filename" target))))))
     in
-    let* size = Result.(join (map puint (opt_err (M.find "size" target)))) in
+    let* size = Result.(join (map puint (opt_err (M.find_opt "size" target)))) in
     let* digest =
-      Result.(join (map plist (opt_err (M.find "digest" target))))
+      Result.(join (map plist (opt_err (M.find_opt "digest" target))))
     in
     let* digest =
       foldM (fun acc d -> match Digest.of_wire d with
@@ -939,12 +935,12 @@ module Timestamp = struct
     let* () = Header.check `Timestamp version h in
     let open Wire in
     let* keys, w =
-      match M.find "keys" signed with
+      match M.find_opt "keys" signed with
       | None -> Ok (M.empty, [])
       | Some keys -> Result.(join (map Key.many_of_wire (plist keys)))
     in
     let* targets =
-      Result.(join (map plist (opt_err (M.find "targets" signed))))
+      Result.(join (map plist (opt_err (M.find_opt "targets" signed))))
     in
     (* preserve order! *)
     let* targets =
@@ -1030,12 +1026,12 @@ module Snapshot = struct
     let* () = Header.check `Snapshot version h in
     let open Wire in
     let* keys, w =
-      match M.find "keys" signed with
+      match M.find_opt "keys" signed with
       | None -> Ok (M.empty, [])
       | Some keys -> Result.(join (map Key.many_of_wire (plist keys)))
     in
     let* targets =
-      Result.(join (map plist (opt_err (M.find "targets" signed))))
+      Result.(join (map plist (opt_err (M.find_opt "targets" signed))))
     in
     (* preserve order! *)
     let* targets =
@@ -1129,18 +1125,18 @@ module Targets = struct
     let* () = Header.check `Targets version h in
     let open Wire in
     let* keys, w =
-      match M.find "keys" signed with
+      match M.find_opt "keys" signed with
       | None -> Ok (M.empty, [])
       | Some keys -> Result.(join (map Key.many_of_wire (plist keys)))
     in
     let* valid =
-      Result.(join (map Expression.of_wire (opt_err (M.find "valid" signed))))
+      Result.(join (map Expression.of_wire (opt_err (M.find_opt "valid" signed))))
     in
     let* delegations =
-      Result.(join (map plist (opt_err (M.find "delegations" signed))))
+      Result.(join (map plist (opt_err (M.find_opt "delegations" signed))))
     in
     let* targets =
-      Result.(join (map plist (opt_err (M.find "targets" signed))))
+      Result.(join (map plist (opt_err (M.find_opt "targets" signed))))
     in
     (* preserve order! *)
     let* delegations =

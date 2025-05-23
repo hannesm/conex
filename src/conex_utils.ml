@@ -176,13 +176,10 @@ end
 
 module Uint_map = struct
   include Map.Make(Uint)
-  let find k m = try Some (find k m) with Not_found -> None
 end
 
 module M = struct
   include Map.Make(String)
-
-  let find k m = try Some (find k m) with Not_found -> None
 
   let pp pp_e ppf m =
     iter (fun k v -> Format.fprintf ppf "%s -> %a@ " k pp_e v) m
@@ -276,7 +273,7 @@ module Tree = struct
 
   let rec sub path t = match path, t with
     | [], n -> n
-    | hd::tl, Node (_, m) -> match M.find hd m with
+    | hd::tl, Node (_, m) -> match M.find_opt hd m with
       | None -> empty
       | Some n -> sub tl n
 
@@ -306,7 +303,7 @@ module Tree = struct
   let rec lookup path (Node (dels, map)) =
     match path with
     | [] -> Some dels
-    | hd::tl -> match M.find hd map with
+    | hd::tl -> match M.find_opt hd map with
       | None -> None
       | Some x -> lookup tl x
 
@@ -315,7 +312,7 @@ module Tree = struct
       let ext = match dels with [] -> sofar | d -> d in
       match path with
       | [] -> ext
-      | hd::tl -> match M.find hd map with
+      | hd::tl -> match M.find_opt hd map with
         | None -> ext
         | Some x -> lookup ext tl x
     in
@@ -325,7 +322,7 @@ module Tree = struct
     match path with
     | [] -> Node (dels @ [ value ], map)
     | hd::tl ->
-      let n = match M.find hd map with
+      let n = match M.find_opt hd map with
         | None -> empty
         | Some x -> x
       in
