@@ -6,7 +6,7 @@ open Conex_mc
 let ( let* ) = Result.bind
 
 let jump _ id force pub =
-  Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
+  Mirage_crypto_rng_unix.use_default () ;
   msg_to_cmdliner (
     let* id = Option.to_result ~none:"need an id" id in
     let fp k =

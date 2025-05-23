@@ -1,6 +1,6 @@
 
 let () =
-  Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
+  Mirage_crypto_rng_unix.use_default () ;
   let more =
     match Conex_openssl.V.check_version () with
     | Error e -> Printf.printf "no openssl tests, version %s\n" e ; []
