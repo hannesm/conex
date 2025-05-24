@@ -95,7 +95,7 @@ let compute _ dry repodir id pkg root_file no_opam =
     IO.write_targets io root t')
 
 let sign _ dry repodir id no_incr root_file no_opam =
-  Mirage_crypto_rng_unix.initialize (module Mirage_crypto_rng.Fortuna) ;
+  Mirage_crypto_rng_unix.use_default () ;
   msg_to_cmdliner (
     let* priv, id' = init_priv_id id in
     let* io = repo ~rw:(not dry) repodir in
