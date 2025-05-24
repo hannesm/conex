@@ -21,10 +21,6 @@ module M : sig
   (** {1 String maps} *)
   include Map.S with type key = string
 
-  (** [find key t] is [Some a] where a is the binding of [key] in [t]. [None] if
-     the [key] is not present. *)
-  val find : string -> 'a t -> 'a option
-
   (** [pp pp_e fmt t] pretty prints [t] using [pp_e] for printing the values. *)
   val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 end
@@ -181,10 +177,6 @@ module Uint_map : sig
 
   (** {1 String maps} *)
   include Map.S with type key = Uint.t
-
-  (** [find key t] is [Some a] where a is the binding of [key] in [t]. [None] if
-     the [key] is not present. *)
-  val find : key -> 'a t -> 'a option
 end
 
 (** {1 Logging} *)

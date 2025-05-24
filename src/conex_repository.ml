@@ -14,7 +14,7 @@ let keydir t = t.root.Root.keydir
 let datadir t = t.root.Root.datadir
 
 let maintainer_delegation t =
-  match Root.RM.find `Maintainer t.root.Root.roles with
+  match Root.RM.find_opt `Maintainer t.root.Root.roles with
   | None -> None
   | Some e -> Some (e, false, S.singleton "root")
 
@@ -31,7 +31,7 @@ let timestamp t =
           end
         | _ ->
           Error "only a single key expression with quorum 1 allowed for timestamp")
-    (Root.RM.find `Timestamp (root t).Root.roles)
+    (Root.RM.find_opt `Timestamp (root t).Root.roles)
 
 let snapshot t =
   Option.fold
@@ -46,7 +46,7 @@ let snapshot t =
           end
         | _ ->
           Error "only a single key expression with quorum 1 allowed for snapshot")
-    (Root.RM.find `Snapshot (root t).Root.roles)
+    (Root.RM.find_opt `Snapshot (root t).Root.roles)
 
 let targets t = t.targets
 
@@ -114,7 +114,7 @@ let fold_targets f acc id_d targets =
         id (Digest.to_string dgst) (Uint.decimal epoch))
     id_d ; *)
   List.fold_left (fun acc target ->
-      match M.find target.Targets.name id_d with
+      match M.find_opt target.Targets.name id_d with
       | None ->
         Format.printf "couldn't find id %a in id_d@." pp_id target.Targets.name ;
         acc
@@ -123,8 +123,6 @@ let fold_targets f acc id_d targets =
 
 module Expr_map = struct
   include Map.Make(Expression)
-
-  let find k m = try Some (find k m) with Not_found -> None
 end
 
 let collect_and_validate_delegations id_d parent expr targets =
@@ -159,7 +157,7 @@ let collect_and_validate_delegations id_d parent expr targets =
               let supporter = (terminating, id, keyid, epoch) in
               (* Format.printf "inserting expr %a (terminating %b) (supporter %a) for %a@."
                  Expression.pp expression terminating pp_id id pp_path path ; *)
-              let v = match Expr_map.find expression acc with
+              let v = match Expr_map.find_opt expression acc with
                 | None -> [ supporter ]
                 | Some m -> supporter :: m
               in
@@ -233,10 +231,10 @@ let collect_and_validate_targets ?(tree = Tree.empty) id_d parent expr targets =
               List.fold_left (fun acc dgst ->
 (*                  Format.printf "inserting digest %a (supporter %a) for %a (digest %a, len %s)@."
                     Digest.pp dgst pp_id id pp_path path Digest.pp dgst (Uint.decimal len) ; *)
-                  let v = match Digest_map.find dgst acc with
+                  let v = match Digest_map.find_opt dgst acc with
                     | None -> Uint_map.add len [ supporter ] Uint_map.empty
                     | Some m ->
-                      match Uint_map.find len m with
+                      match Uint_map.find_opt len m with
                       | None -> Uint_map.add len [ supporter ] m
                       | Some sups -> Uint_map.add len (supporter :: sups) m
                   in

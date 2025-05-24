@@ -120,7 +120,7 @@ let set_role _ dry repodir role id alg h epoch filename =
     let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     let root' =
-      (match Root.(RM.find role root.roles) with
+      (match Root.(RM.find_opt role root.roles) with
        | None -> ()
        | Some _ -> Logs.warn (fun m -> m "replacing role %s"
                                  (Root.role_to_string role)));
@@ -140,7 +140,7 @@ let add_to_role _ dry repodir role id alg h epoch quorum filename =
     let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     let* roles =
-      match Root.(RM.find role root.roles) with
+      match Root.(RM.find_opt role root.roles) with
       | None ->
         let q = Option.value ~default:1 quorum in
         let e = Expression.(Quorum (q, KS.singleton (Remote (id, (alg, h), epoch)))) in
@@ -166,7 +166,7 @@ let remove_from_role _ dry repodir role id quorum filename =
     let* root, warn = to_str IO.pp_r_err (IO.read_root io filename) in
     List.iter (fun msg -> Logs.warn (fun m -> m "%s" msg)) warn ;
     let* roles =
-      match Root.(RM.find role root.roles) with
+      match Root.(RM.find_opt role root.roles) with
       | None ->
         Logs.warn (fun m -> m "No role %s found" (Root.role_to_string role));
         Error "Role not found"

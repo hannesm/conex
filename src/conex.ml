@@ -53,7 +53,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       Ok (ts, sigs)
     in
     let validate_with_root (id, dgst, epoch) ts sigs =
-      match Digest_map.find dgst sigs with
+      match Digest_map.find_opt dgst sigs with
       | None -> Error "couldn't validate timestamp signature"
       | Some id' ->
         match id_equal id id', Uint.compare epoch ts.Timestamp.epoch = 0 with
@@ -116,7 +116,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
       Ok (snap, sigs)
     in
     let validate_with_root (id, dgst, epoch) snap sigs =
-      match Digest_map.find dgst sigs with
+      match Digest_map.find_opt dgst sigs with
       | None -> Error "couldn't validate snapshot signature"
       | Some id' ->
         match id_equal id id', Uint.compare epoch snap.Snapshot.epoch = 0 with
@@ -165,7 +165,7 @@ module Make (L : LOGS) (C : Conex_verify.S) = struct
 
   let verify_targets ?snapshot io repo opam id =
     L.debug (fun m -> m "verifying target %a" pp_id id) ;
-    match M.find id !targets_cache with
+    match M.find_opt id !targets_cache with
     | Some targets ->
       L.debug (fun m -> m "found in cache") ;
       Ok targets
